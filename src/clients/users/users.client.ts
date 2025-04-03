@@ -17,7 +17,7 @@ export class UsersClient {
   }
 
   async findOne(id: string): Promise<User> {
-    const { data } = await this.httpClient.get<User>(`/users/${id}`);
+    const { data } = await this.httpClient.get<User>(`/customers/${id}`);
     return data;
   }
 

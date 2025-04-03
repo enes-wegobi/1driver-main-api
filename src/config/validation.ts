@@ -37,7 +37,7 @@ class EnvironmentVariables {
   @IsOptional()
   @IsNumber()
   USERS_SERVICE_TIMEOUT: number;
-  
+
   @IsOptional()
   @IsString()
   AUTH_SERVICE_URL: string;
@@ -57,10 +57,6 @@ class EnvironmentVariables {
   @IsOptional()
   @IsString()
   JWT_SECRET: string;
-
-  @IsOptional()
-  @IsString()
-  JWT_EXPIRES_IN: string;
 }
 
 export function validate(config: Record<string, unknown>) {

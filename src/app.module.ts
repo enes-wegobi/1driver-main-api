@@ -4,8 +4,8 @@ import configuration from './config/configuration';
 import { validate } from './config/validation';
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
-import { JwtMiddleware } from './jwt/jwt.middleware';
-import { JwtModule } from '@nestjs/jwt';
+import { JwtModule } from './jwt/jwt.modulte';
+import { CustomersModule } from './modules/customers/customers.module';
 
 @Module({
   imports: [
@@ -18,14 +18,9 @@ import { JwtModule } from '@nestjs/jwt';
     JwtModule,
     UsersModule,
     AuthModule,
+    CustomersModule,
   ],
   controllers: [],
   providers: [],
 })
-export class AppModule implements NestModule {
-  configure(consumer: MiddlewareConsumer) {
-    consumer
-      .apply(JwtMiddleware)
-      .forRoutes('*');
-  }
-}
+export class AppModule {}

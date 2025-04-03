@@ -10,11 +10,10 @@ export default () => ({
     auth: {
       url: process.env.AUTH_SERVICE_URL || 'http://localhost:3001',
       timeout: parseInt(process.env.AUTH_SERVICE_TIMEOUT || '5000', 10),
-    }
+    },
   },
   jwt: {
     secret: process.env.JWT_SECRET || 'supersecret',
-    expiresIn: process.env.JWT_EXPIRES_IN || '1d',
   },
   logging: {
     level: process.env.LOG_LEVEL || 'info',

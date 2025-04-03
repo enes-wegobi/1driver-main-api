@@ -1,5 +1,14 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsOptional, IsString, ValidateNested, IsEnum, IsDateString, Matches } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  ValidateNested,
+  IsEnum,
+  IsDateString,
+  Matches,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { CreateVehicleDto } from './create-vehicle.dto';
 import { Gender } from '../gender.enum';
@@ -44,7 +53,7 @@ export class CreateCustomerDto {
   @ValidateNested()
   @Type(() => CreateVehicleDto)
   vehicle: CreateVehicleDto;
-  
+
   @ApiProperty({
     example: '12345678901',
     description: 'National identity number (11 digits)',
@@ -54,7 +63,7 @@ export class CreateCustomerDto {
   @IsString()
   @Matches(/^\d{11}$/, { message: 'Identity number must be 11 digits' })
   identityNumber?: string;
-  
+
   @ApiProperty({
     example: '1993-06-17',
     description: 'Date of birth in ISO format',
@@ -63,7 +72,7 @@ export class CreateCustomerDto {
   @IsOptional()
   @IsDateString()
   dateOfBirth?: string;
-  
+
   @ApiProperty({
     example: Gender.MALE,
     description: 'Gender',

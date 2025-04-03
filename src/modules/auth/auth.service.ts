@@ -19,4 +19,8 @@ export class AuthService {
   async signinCustomer(signinDto: SigninDto) {
     return this.authClient.signinCustomer(signinDto);
   }
+
+  async completeCustomerSignin(validateOtpDto: ValidateOtpDto) {
+    return this.authClient.completeCustomerSignin(validateOtpDto);
+  }
 }

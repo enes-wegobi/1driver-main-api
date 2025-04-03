@@ -13,18 +13,37 @@ export class AuthClient {
     this.httpClient = this.clientsService.createHttpClient('auth');
   }
 
-  async initiateCustomerSignup(createCustomerDto: CreateCustomerDto): Promise<any> {
-    const { data } = await this.httpClient.post<any>('/auth/customer/initiate-signup', createCustomerDto);
+  async initiateCustomerSignup(
+    createCustomerDto: CreateCustomerDto,
+  ): Promise<any> {
+    const { data } = await this.httpClient.post<any>(
+      '/auth/customer/initiate-signup',
+      createCustomerDto,
+    );
     return data;
   }
 
   async completeCustomerSignup(validateOtpDto: ValidateOtpDto): Promise<any> {
-    const { data } = await this.httpClient.post<any>('/auth/customer/complete-signup', validateOtpDto);
+    const { data } = await this.httpClient.post<any>(
+      '/auth/customer/complete-signup',
+      validateOtpDto,
+    );
     return data;
   }
 
   async signinCustomer(signinDto: SigninDto): Promise<any> {
-    const { data } = await this.httpClient.post<any>('/auth/customer/sign-in', signinDto);
+    const { data } = await this.httpClient.post<any>(
+      '/auth/customer/initiate-sign-in',
+      signinDto,
+    );
+    return data;
+  }
+
+  async completeCustomerSignin(validateOtpDto: ValidateOtpDto): Promise<any> {
+    const { data } = await this.httpClient.post<any>(
+      '/auth/customer/complete-sign-in',
+      validateOtpDto,
+    );
     return data;
   }
 }
