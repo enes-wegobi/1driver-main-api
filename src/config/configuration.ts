@@ -7,6 +7,10 @@ export default () => ({
       url: process.env.USERS_SERVICE_URL || 'http://localhost:3001',
       timeout: parseInt(process.env.USERS_SERVICE_TIMEOUT || '5000', 10),
     },
+    auth: {
+      url: process.env.AUTH_SERVICE_URL || 'http://localhost:3001',
+      timeout: parseInt(process.env.AUTH_SERVICE_TIMEOUT || '5000', 10),
+    }
   },
   jwt: {
     secret: process.env.JWT_SECRET || 'supersecret',

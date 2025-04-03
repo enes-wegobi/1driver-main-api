@@ -37,6 +37,14 @@ class EnvironmentVariables {
   @IsOptional()
   @IsNumber()
   USERS_SERVICE_TIMEOUT: number;
+  
+  @IsOptional()
+  @IsString()
+  AUTH_SERVICE_URL: string;
+
+  @IsOptional()
+  @IsNumber()
+  AUTH_SERVICE_TIMEOUT: number;
 
   @IsOptional()
   @IsString()

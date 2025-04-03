@@ -9,6 +9,7 @@ import fastifyCompress from '@fastify/compress';
 import fastifyCors from '@fastify/cors';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'; // Eklenen import
 
 async function bootstrap() {
   const fastifyAdapter = new FastifyAdapter();
@@ -30,6 +31,17 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
     }),
   );
+
+  // Swagger yapılandırması
+  const config = new DocumentBuilder()
+    .setTitle('Customer API Gateway')
+    .setDescription('The Customer API Gateway description')
+    .setVersion('1.0')
+    .addTag('users')
+    .addBearerAuth()
+    .build();
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api/docs', app, document);
 
   await app.register(fastifyCors, {
     origin: configService.get<string>('CORS_ORIGINS', '*').split(','),
@@ -57,6 +69,7 @@ async function bootstrap() {
 
   await app.listen(port, host);
   console.log(`API Gateway started: ${await app.getUrl()}`);
+  console.log(`Swagger documentation: ${await app.getUrl()}/api/docs`);
 }
 
 bootstrap();
