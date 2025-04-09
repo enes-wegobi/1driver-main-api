@@ -22,11 +22,17 @@ export class ConfigService {
   }
 
   get redisUrl(): string {
-    return this.configService.get<string>('redis.url', 'redis://localhost:6379');
+    return this.configService.get<string>(
+      'redis.url',
+      'redis://localhost:6379',
+    );
   }
 
   get usersServiceUrl(): string {
-    return this.configService.get<string>('services.users.url', 'http://localhost:3001');
+    return this.configService.get<string>(
+      'services.users.url',
+      'http://localhost:3001',
+    );
   }
 
   get usersServiceTimeout(): number {
@@ -34,7 +40,10 @@ export class ConfigService {
   }
 
   get authServiceUrl(): string {
-    return this.configService.get<string>('services.auth.url', 'http://localhost:3001');
+    return this.configService.get<string>(
+      'services.auth.url',
+      'http://localhost:3001',
+    );
   }
 
   get authServiceTimeout(): number {

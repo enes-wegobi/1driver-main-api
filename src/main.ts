@@ -32,7 +32,7 @@ class FastifySocketIOAdapter extends IoAdapter {
       // Allows Socket.IO to be attached to the existing Fastify server
       serverFactory: (handler) => handler(server),
     });
-    
+
     return io;
   }
 }
@@ -45,7 +45,7 @@ async function bootstrap() {
     fastifyAdapter,
     { logger: ['error', 'warn', 'log', 'debug'] },
   );
-  
+
   // Configure WebSocket adapter with Fastify
   app.useWebSocketAdapter(new FastifySocketIOAdapter(app));
 
