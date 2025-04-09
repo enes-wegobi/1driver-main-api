@@ -27,7 +27,7 @@ const PING_TIMEOUT = 10000;
   pingTimeout: PING_TIMEOUT,
 })
 export class WebSocketGateway
-  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
+  implements OnGatewayInit, OnGatewayConnection
 {
   private readonly logger = new Logger(WebSocketGateway.name);
 
@@ -103,11 +103,6 @@ export class WebSocketGateway
     }
   }
 
-  async handleDisconnect(client: Socket) {
-    this.logger.log(`Client disconnected: ${client.id}`);
-    // Socket.IO and Redis adapter handle cleanup automatically
-  }
-
   @SubscribeMessage('message')
   handleMessage(client: Socket, payload: any) {
     this.logger.debug(
@@ -131,16 +126,9 @@ export class WebSocketGateway
       `Location update from ${userType} ${userId}: ${JSON.stringify(payload)}`,
     );
 
-    // Konumu Redis'e kaydedelim
+    // Store location to redis
     this.storeUserLocation(userId, userType, payload);
 
-    // Kullanıcı tipine göre farklı işlemler yapabiliriz
-    if (userType === 'driver') {
-      // Sürücü konumunu belirli müşterilere göndermek için kullanabiliriz
-      // Örneğin, bu sürücüye atanmış bir yolcu varsa ona konum güncellemesi gönderilebilir
-    }
-
-    // İşlem başarılı cevabı
     return { success: true };
   }
 
