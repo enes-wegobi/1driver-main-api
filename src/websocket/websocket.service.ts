@@ -13,19 +13,23 @@ export class WebSocketService {
     this.server = server;
   }
 
-  async handleConnection(client: Socket, userId: string) {
-    const clientId = client.id;
-    this.logger.log(`New connection: ${clientId} for user: ${userId}`);
-
-    await this.redisService.addClient(clientId, {
-      ip: client.handshake.address,
-      userAgent: client.handshake.headers['user-agent'],
-      connectedAt: new Date().toISOString(),
-      userId: userId,
-    });
-
-    await this.redisService.associateUserWithSocket(userId, clientId);
-  }
+async handleConnection(client: Socket, userId: string, userType: string) {
+  const clientId = client.id;
+  this.logger.log(`New connection: ${clientId} for ${userType} with userId: ${userId}`);
+  
+  await this.redisService.addClient(clientId, {
+    ip: client.handshake.address,
+    userAgent: client.handshake.headers['user-agent'],
+    connectedAt: new Date().toISOString(),
+    userId: userId,
+    userType: userType, // Store user type
+  });
+  
+  await this.redisService.associateUserWithSocket(userId, clientId);
+  
+  // Also associate with user type
+  await this.redisService.associateWithUserType(clientId, userType);
+}
 
   async handleDisconnection(clientId: string) {
     this.logger.log(`Client disconnected: ${clientId}`);
@@ -95,5 +99,29 @@ export class WebSocketService {
     } else {
       this.server.emit(event, data);
     }
+  }
+
+  async sendToUserType(userType: string, event: string, data: any) {
+    const socketIds = await this.redisService.getUserTypeSocketIds(userType);
+    
+    this.logger.debug(`Sending to ${userType}s via ${socketIds.length} sockets`);
+    
+    // Emit to each socket
+    for (const socketId of socketIds) {
+      this.server.to(socketId).emit(event, data);
+    }
+  }
+
+  async sendToDrivers(event: string, data: any) {
+    return this.sendToUserType('driver', event, data);
+  }
+  
+  async sendToCustomers(event: string, data: any) {
+    return this.sendToUserType('customer', event, data);
+  }
+
+  isUserType(clientId: string, expectedType: string): Promise<boolean> {
+    return this.redisService.getSocketClient(clientId)
+      .then(client => client.userType === expectedType);
   }
 }

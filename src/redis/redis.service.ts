@@ -38,6 +38,12 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   async removeClient(clientId: string) {
+    const clientData = await this.getSocketClient(clientId);
+    
+    if (clientData && clientData.userType) {
+      await this.client.sRem(`socket:userType:${clientData.userType}`, clientId);
+    }
+    
     await this.client.del(`socket:client:${clientId}`);
   }
 
@@ -76,4 +82,25 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   async removeUserSocket(userId: string, clientId: string) {
     await this.client.sRem(`socket:user:${userId}`, clientId);
   }
+
+  async associateWithUserType(clientId: string, userType: string) {
+    await this.client.sAdd(`socket:userType:${userType}`, clientId);
+    await this.client.expire(`socket:userType:${userType}`, 3600); // TTL: 1 hour
+  }
+
+  async getUserTypeSocketIds(userType: string) {
+    return this.client.sMembers(`socket:userType:${userType}`);
+  }
+
+  async getClientsByUserType(userType: string) {
+    const socketIds = await this.getUserTypeSocketIds(userType);
+    const clients = {};
+    
+    for (const socketId of socketIds) {
+      clients[socketId] = await this.getSocketClient(socketId);
+    }
+    
+    return clients;
+  }
+
 }

@@ -238,8 +238,7 @@
                     <span id="connectionStatus" class="status disconnected">Bağlı Değil</span>
                 </div>
                 <div id="socketId"></div>
-            </div>
-        </div>
+            </ невозмож
 
         <div class="tabs">
             <div class="tab active" data-tab="standard-events">Standart Olaylar</div>
@@ -249,11 +248,6 @@
 
         <div id="standard-events" class="tab-content active">
             <h3>Standart Olaylar</h3>
-            <div class="event-row">
-                <input type="text" class="event-name" value="pong" placeholder="Olay adı" />
-                <input type="text" value="{}" style="flex: 2" placeholder="İçerik (JSON)" />
-                <button class="send-event">Gönder</button>
-            </div>
             <div class="event-row">
                 <input type="text" class="event-name" value="message" placeholder="Olay adı" />
                 <input type="text" value='{"type":"message","content":"Merhaba Dünya!"}' style="flex: 2" placeholder="İçerik (JSON)" />
@@ -292,7 +286,6 @@
 
         <h3>İletişim Günlüğü</h3>
         <div id="logContainer" class="log-container"></div>
-
     </div>
 
     <script>
@@ -321,13 +314,9 @@
         // JWT token'ı çözümle ve bilgileri göster
         function parseJwt(token) {
             try {
-                // Token'ı . ile bölerek header, payload ve signature kısımlarını ayır
                 const parts = token.split('.');
-                if (parts.length !== 3) {
-                    return null;
-                }
+                if (parts.length !== 3) return null;
                 
-                // Base64Url kodlu payload kısmını çöz
                 const base64Url = parts[1];
                 const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
                 const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
@@ -341,10 +330,8 @@
             }
         }
 
-        // Token bilgilerini görüntüle
         function displayTokenInfo(token) {
             const payload = parseJwt(token);
-            
             if (!payload) {
                 tokenInfoElement.innerHTML = `<p>Token çözümlenemedi veya geçersiz format.</p>`;
                 return;
@@ -353,28 +340,19 @@
             let html = '<div style="background-color: #f5f5f5; padding: 10px; border-radius: 5px;">';
             html += '<h4>Token Payload Bilgileri:</h4>';
             html += '<ul>';
-            
             for (const [key, value] of Object.entries(payload)) {
-                let displayValue = value;
-                if (typeof value === 'object') {
-                    displayValue = JSON.stringify(value);
-                }
+                let displayValue = typeof value === 'object' ? JSON.stringify(value) : value;
                 html += `<li><strong>${key}:</strong> ${displayValue}</li>`;
             }
-            
             html += '</ul>';
             
-            // Token'ın süresini kontrol et
             if (payload.exp) {
                 const expDate = new Date(payload.exp * 1000);
                 const now = new Date();
                 const timeLeft = expDate - now;
-                
                 const isExpired = timeLeft < 0;
                 const style = isExpired ? 'color: red;' : 'color: green;';
-                
                 html += `<p style="${style}">Token ${isExpired ? 'süresi dolmuş' : 'geçerli'}. `;
-                
                 if (!isExpired) {
                     const minutes = Math.floor(timeLeft / (1000 * 60));
                     const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
@@ -382,10 +360,8 @@
                 } else {
                     html += `${Math.abs(Math.floor(timeLeft / (1000 * 60)))} dakika önce süresi dolmuş.`;
                 }
-                
                 html += '</p>';
             }
-            
             html += '</div>';
             tokenInfoElement.innerHTML = html;
         }
@@ -403,21 +379,9 @@
             messageElement.className = 'message';
             
             if (data) {
-                let displayData;
-                try {
-                    if (typeof data === 'string') {
-                        // JSON string ise parse et
-                        if (data.trim().startsWith('{') || data.trim().startsWith('[')) {
-                            displayData = JSON.stringify(JSON.parse(data), null, 2);
-                        } else {
-                            displayData = data;
-                        }
-                    } else {
-                        displayData = JSON.stringify(data, null, 2);
-                    }
-                } catch (e) {
-                    displayData = String(data);
-                }
+                let displayData = typeof data === 'string' && (data.trim().startsWith('{') || data.trim().startsWith('[')) 
+                    ? JSON.stringify(JSON.parse(data), null, 2) 
+                    : String(data);
                 messageElement.textContent = `${message}: ${displayData}`;
             } else {
                 messageElement.textContent = message;
@@ -429,21 +393,10 @@
             logContainer.scrollTop = logContainer.scrollHeight;
         }
 
-        function logSent(event, data) {
-            log('sent', `Gönderildi [${event}]`, data);
-        }
-
-        function logReceived(event, data) {
-            log('received', `Alındı [${event}]`, data);
-        }
-
-        function logInfo(message) {
-            log('info', message);
-        }
-
-        function logError(message, error = null) {
-            log('error', message, error);
-        }
+        function logSent(event, data) { log('sent', `Gönderildi [${event}]`, data); }
+        function logReceived(event, data) { log('received', `Alındı [${event}]`, data); }
+        function logInfo(message) { log('info', message); }
+        function logError(message, error = null) { log('error', message, error); }
 
         // Socket.IO bağlantı fonksiyonları
         function connect() {
@@ -463,37 +416,24 @@
             
             let transports;
             switch(transportOption) {
-                case 'websocket':
-                    transports = ['websocket'];
-                    break;
-                case 'polling':
-                    transports = ['polling'];
-                    break;
-                default:
-                    transports = ['websocket', 'polling'];
+                case 'websocket': transports = ['websocket']; break;
+                case 'polling': transports = ['polling']; break;
+                default: transports = ['websocket', 'polling'];
             }
 
             try {
                 logInfo(`${url} adresine token ile bağlanılıyor...`);
-                
-                // Token bilgilerini görüntüle
                 displayTokenInfo(token);
                 
-                // JWT tokeni hem auth objesinde hem de query string'de gönder
                 socket = io(url, {
                     transports: transports,
                     reconnectionAttempts: 5,
                     reconnectionDelay: 1000,
                     timeout: 20000,
-                    auth: {
-                        token: token
-                    },
-                    query: {
-                        token: token
-                    }
+                    auth: { token: token },
+                    query: { token: token }
                 });
 
-                // Bağlantı olaylarını dinle
                 socket.on('connect', () => {
                     connectionStatus.textContent = 'Bağlı';
                     connectionStatus.className = 'status connected';
@@ -525,21 +465,11 @@
                     logError('Bağlantı hatası:', error.message);
                 });
 
-                // Sunucudan gelen olayları dinle
-                socket.on('connection', (data) => {
-                    logReceived('connection', data);
-                });
-
-                socket.on('message', (data) => {
-                    logReceived('message', data);
-                });
-
-                socket.on('error', (data) => {
-                    logError('Sunucu hatası:', data);
-                });
+                socket.on('connection', (data) => { logReceived('connection', data); });
+                socket.on('message', (data) => { logReceived('message', data); });
+                socket.on('error', (data) => { logError('Sunucu hatası:', data); });
 
                 socket.onAny((event, ...args) => {
-                    // Özel olayları yakala
                     if (!['connect', 'disconnect', 'connect_error', 'connection', 'message', 'error'].includes(event)) {
                         logReceived(event, args[0]);
                     }
@@ -555,7 +485,6 @@
                 logInfo('Aktif bağlantı yok.');
                 return;
             }
-
             socket.disconnect();
             logInfo('Bağlantı kapatma isteği gönderildi.');
         }
@@ -566,10 +495,8 @@
                 logError('Bağlantı açık değil, önce bağlanın.');
                 return;
             }
-
             const event = document.getElementById('messageEvent').value;
             const contentStr = document.getElementById('messageContent').value;
-            
             try {
                 const content = JSON.parse(contentStr);
                 socket.emit(event, content);
@@ -584,18 +511,10 @@
                 logError('Bağlantı açık değil, önce bağlanın.');
                 return;
             }
-
             const eventName = eventRow.querySelector('.event-name').value;
             const contentStr = eventRow.querySelector('input[type="text"]:nth-child(2)').value;
-            
             try {
-                let content;
-                if (contentStr.trim() === '' || contentStr === '{}') {
-                    content = {};
-                } else {
-                    content = JSON.parse(contentStr);
-                }
-                
+                const content = contentStr.trim() === '' || contentStr === '{}' ? {} : JSON.parse(contentStr);
                 socket.emit(eventName, content);
                 logSent(eventName, content);
             } catch (e) {
@@ -629,7 +548,6 @@
             newRow.appendChild(sendButton);
             
             standardEventsTab.insertBefore(newRow, addEventBtn);
-            
             sendButton.addEventListener('click', () => sendEvent(newRow));
         }
 
@@ -643,13 +561,9 @@
         });
         addEventBtn.addEventListener('click', addEventRow);
 
-        // İlk standart olay butonlarını ayarla
         document.querySelectorAll('.send-event').forEach(button => {
-            button.addEventListener('click', () => {
-                const row = button.closest('.event-row');
-                sendEvent(row);
-            });
-            button.disabled = true; // Başlangıçta devre dışı
+            button.addEventListener('click', () => sendEvent(button.closest('.event-row')));
+            button.disabled = true;
         });
 
         // Başlangıç mesajı

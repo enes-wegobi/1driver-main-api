@@ -67,12 +67,21 @@ export class WebSocketGateway
         return;
       }
 
-      await this.webSocketService.handleConnection(client, payload.userId);
+      const userType = payload.userType;
+      //Todo user type
+      if (userType !== 'driver' && userType !== 'customer') {
+        client.emit('error', { message: 'Invalid user type' });
+        client.disconnect(true);
+        return;
+      }
 
-      client.emit('connection', {
+      await this.webSocketService.handleConnection(client, payload.userId, userType);
+
+      client.emit('connection', { 
         status: 'connected',
         clientId: clientId,
-        message: 'Connection successful',
+        userType: userType,
+        message: 'Connection successful'
       });
     } catch (error) {
       this.logger.error(`Authentication error: ${error.message}`);
@@ -86,11 +95,6 @@ export class WebSocketGateway
   async handleDisconnect(client: Socket) {
     const clientId = client.id;
     await this.webSocketService.handleDisconnection(clientId);
-  }
-
-  @SubscribeMessage('pong')
-  handlePong(client: Socket) {
-    this.webSocketService.updateClientActivity(client.id);
   }
 
   @SubscribeMessage('message')
