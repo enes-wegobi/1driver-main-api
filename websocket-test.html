@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer API Gateway - JWT Token ile Socket.IO Test Paneli</title>
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f7fa;
+            color: #333;
+        }
+        h1, h2, h3 {
+            color: #2c3e50;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        .connection-info {
+            background-color: #f1f8ff;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border-left: 4px solid #1e88e5;
+        }
+        .status {
+            font-weight: bold;
+        }
+        .status.connected {
+            color: #2e7d32;
+        }
+        .status.disconnected {
+            color: #c62828;
+        }
+        .panel-row {
+            display: flex;
+            margin-bottom: 15px;
+            gap: 15px;
+        }
+        .panel {
+            flex: 1;
+            background-color: white;
+            border-radius: 5px;
+            padding: 15px;
+            border: 1px solid #ddd;
+        }
+        .log-container {
+            background-color: #263238;
+            color: #eceff1;
+            padding: 15px;
+            border-radius: 5px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            margin-top: 15px;
+        }
+        .log-entry {
+            margin-bottom: 5px;
+            line-height: 1.5;
+            display: flex;
+        }
+        .log-entry .timestamp {
+            color: #b3e5fc;
+            margin-right: 10px;
+            min-width: 140px;
+            font-size: 12px;
+        }
+        .log-entry .message {
+            flex: 1;
+            word-break: break-word;
+        }
+        .log-entry.sent {
+            color: #b9f6ca;
+        }
+        .log-entry.received {
+            color: #ffcdd2;
+        }
+        .log-entry.info {
+            color: #fff59d;
+        }
+        .log-entry.error {
+            color: #ff5252;
+        }
+        button {
+            background-color: #1976d2;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background-color 0.2s;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #1565c0;
+        }
+        button.disconnect {
+            background-color: #e53935;
+        }
+        button.disconnect:hover {
+            background-color: #c62828;
+        }
+        button.send {
+            background-color: #388e3c;
+        }
+        button.send:hover {
+            background-color: #2e7d32;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            font-family: inherit;
+        }
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        .clear-button {
+            background-color: #546e7a;
+            margin-top: 5px;
+        }
+        .clear-button:hover {
+            background-color: #455a64;
+        }
+        .event-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .event-name {
+            flex: 1;
+        }
+        .event-row button {
+            flex: 0 0 auto;
+        }
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 15px;
+        }
+        .tab {
+            padding: 8px 16px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            border-bottom: none;
+            background-color: #f5f5f5;
+            margin-right: 5px;
+            border-top-left-radius: 4px;
+            border-top-right-radius: 4px;
+        }
+        .tab.active {
+            background-color: white;
+            border-color: #ddd;
+            border-bottom: 1px solid white;
+            margin-bottom: -1px;
+            font-weight: bold;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .token-required {
+            background-color: #fff8e1;
+            padding: 12px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            border-left: 4px solid #ffb300;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>JWT Token ile Socket.IO Test Paneli</h1>
+            <div>
+                <button id="clearLogBtn" class="clear-button">Logu Temizle</button>
+            </div>
+        </div>
+
+        <div class="token-required">
+            <strong>Not:</strong> Bu sunucu JWT token ile kimlik doğrulaması gerektirmektedir. Lütfen bağlanmadan önce geçerli bir JWT token girin.
+        </div>
+
+        <div class="connection-info">
+            <div class="panel-row">
+                <div style="flex: 3">
+                    <label for="serverUrl">Server URL:</label>
+                    <input type="text" id="serverUrl" value="http://127.0.0.1:3000" />
+                </div>
+                <div style="flex: 2">
+                    <label for="jwtToken">JWT Token:</label>
+                    <input type="text" id="jwtToken" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." />
+                </div>
+                <div style="flex: 1">
+                    <label for="transport">Transport:</label>
+                    <select id="transport">
+                        <option value="both">WebSocket & Polling</option>
+                        <option value="websocket">WebSocket Only</option>
+                        <option value="polling">Polling Only</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="panel-row" style="align-items: flex-end;">
+                <div>
+                    <button id="connectBtn">Bağlan</button>
+                    <button id="disconnectBtn" class="disconnect" disabled>Bağlantıyı Kes</button>
+                </div>
+                <div>
+                    <span>Durum: </span>
+                    <span id="connectionStatus" class="status disconnected">Bağlı Değil</span>
+                </div>
+                <div id="socketId"></div>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" data-tab="standard-events">Standart Olaylar</div>
+            <div class="tab" data-tab="custom-message">Özel Mesaj</div>
+            <div class="tab" data-tab="user-info">Kullanıcı Bilgileri</div>
+        </div>
+
+        <div id="standard-events" class="tab-content active">
+            <h3>Standart Olaylar</h3>
+            <div class="event-row">
+                <input type="text" class="event-name" value="pong" placeholder="Olay adı" />
+                <input type="text" value="{}" style="flex: 2" placeholder="İçerik (JSON)" />
+                <button class="send-event">Gönder</button>
+            </div>
+            <div class="event-row">
+                <input type="text" class="event-name" value="message" placeholder="Olay adı" />
+                <input type="text" value='{"type":"message","content":"Merhaba Dünya!"}' style="flex: 2" placeholder="İçerik (JSON)" />
+                <button class="send-event">Gönder</button>
+            </div>
+            <button id="addEventBtn">+ Yeni Olay Ekle</button>
+        </div>
+
+        <div id="custom-message" class="tab-content">
+            <h3>Özel Mesaj</h3>
+            <div>
+                <label for="messageEvent">Olay Adı:</label>
+                <input type="text" id="messageEvent" value="message" />
+
+                <label for="messageContent">Mesaj İçeriği (JSON):</label>
+                <textarea id="messageContent">{
+  "type": "message",
+  "content": "Bu bir test mesajıdır.",
+  "timestamp": "2025-04-09T12:00:00Z"
+}</textarea>
+
+                <button id="sendMessageBtn" class="send" disabled>Mesaj Gönder</button>
+            </div>
+        </div>
+
+        <div id="user-info" class="tab-content">
+            <h3>Kullanıcı Bilgileri</h3>
+            <div>
+                <p>Token bağlantısı ile kullanıcı kimliği otomatik olarak doğrulanır. JWT tokenınızın payload kısmındaki bilgiler bu kısma otomatik doldurulur.</p>
+                
+                <div id="tokenInfo">
+                    <p>Bağlandıktan sonra, token içeriği burada gösterilecektir.</p>
+                </div>
+            </div>
+        </div>
+
+        <h3>İletişim Günlüğü</h3>
+        <div id="logContainer" class="log-container"></div>
+
+    </div>
+
+    <script>
+        let socket = null;
+        const logContainer = document.getElementById('logContainer');
+        const connectionStatus = document.getElementById('connectionStatus');
+        const socketIdElement = document.getElementById('socketId');
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const sendMessageBtn = document.getElementById('sendMessageBtn');
+        const clearLogBtn = document.getElementById('clearLogBtn');
+        const addEventBtn = document.getElementById('addEventBtn');
+        const tokenInfoElement = document.getElementById('tokenInfo');
+
+        // Sekme işlevselliği
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                
+                tab.classList.add('active');
+                document.getElementById(tab.dataset.tab).classList.add('active');
+            });
+        });
+
+        // JWT token'ı çözümle ve bilgileri göster
+        function parseJwt(token) {
+            try {
+                // Token'ı . ile bölerek header, payload ve signature kısımlarını ayır
+                const parts = token.split('.');
+                if (parts.length !== 3) {
+                    return null;
+                }
+                
+                // Base64Url kodlu payload kısmını çöz
+                const base64Url = parts[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+
+                return JSON.parse(jsonPayload);
+            } catch (e) {
+                logError('JWT token çözümlenirken hata:', e.message);
+                return null;
+            }
+        }
+
+        // Token bilgilerini görüntüle
+        function displayTokenInfo(token) {
+            const payload = parseJwt(token);
+            
+            if (!payload) {
+                tokenInfoElement.innerHTML = `<p>Token çözümlenemedi veya geçersiz format.</p>`;
+                return;
+            }
+            
+            let html = '<div style="background-color: #f5f5f5; padding: 10px; border-radius: 5px;">';
+            html += '<h4>Token Payload Bilgileri:</h4>';
+            html += '<ul>';
+            
+            for (const [key, value] of Object.entries(payload)) {
+                let displayValue = value;
+                if (typeof value === 'object') {
+                    displayValue = JSON.stringify(value);
+                }
+                html += `<li><strong>${key}:</strong> ${displayValue}</li>`;
+            }
+            
+            html += '</ul>';
+            
+            // Token'ın süresini kontrol et
+            if (payload.exp) {
+                const expDate = new Date(payload.exp * 1000);
+                const now = new Date();
+                const timeLeft = expDate - now;
+                
+                const isExpired = timeLeft < 0;
+                const style = isExpired ? 'color: red;' : 'color: green;';
+                
+                html += `<p style="${style}">Token ${isExpired ? 'süresi dolmuş' : 'geçerli'}. `;
+                
+                if (!isExpired) {
+                    const minutes = Math.floor(timeLeft / (1000 * 60));
+                    const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+                    html += `Kalan süre: ${minutes} dakika ${seconds} saniye`;
+                } else {
+                    html += `${Math.abs(Math.floor(timeLeft / (1000 * 60)))} dakika önce süresi dolmuş.`;
+                }
+                
+                html += '</p>';
+            }
+            
+            html += '</div>';
+            tokenInfoElement.innerHTML = html;
+        }
+
+        // Log fonksiyonları
+        function log(type, message, data = null) {
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            
+            const timestamp = document.createElement('span');
+            timestamp.className = 'timestamp';
+            timestamp.textContent = new Date().toISOString().replace('T', ' ').substr(0, 19);
+            
+            const messageElement = document.createElement('span');
+            messageElement.className = 'message';
+            
+            if (data) {
+                let displayData;
+                try {
+                    if (typeof data === 'string') {
+                        // JSON string ise parse et
+                        if (data.trim().startsWith('{') || data.trim().startsWith('[')) {
+                            displayData = JSON.stringify(JSON.parse(data), null, 2);
+                        } else {
+                            displayData = data;
+                        }
+                    } else {
+                        displayData = JSON.stringify(data, null, 2);
+                    }
+                } catch (e) {
+                    displayData = String(data);
+                }
+                messageElement.textContent = `${message}: ${displayData}`;
+            } else {
+                messageElement.textContent = message;
+            }
+            
+            entry.appendChild(timestamp);
+            entry.appendChild(messageElement);
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        function logSent(event, data) {
+            log('sent', `Gönderildi [${event}]`, data);
+        }
+
+        function logReceived(event, data) {
+            log('received', `Alındı [${event}]`, data);
+        }
+
+        function logInfo(message) {
+            log('info', message);
+        }
+
+        function logError(message, error = null) {
+            log('error', message, error);
+        }
+
+        // Socket.IO bağlantı fonksiyonları
+        function connect() {
+            if (socket) {
+                logInfo('Zaten bir bağlantı var, önce bağlantıyı kesin.');
+                return;
+            }
+
+            const url = document.getElementById('serverUrl').value;
+            const token = document.getElementById('jwtToken').value.trim();
+            const transportOption = document.getElementById('transport').value;
+            
+            if (!token) {
+                logError('JWT token boş olamaz. Lütfen geçerli bir token girin.');
+                return;
+            }
+            
+            let transports;
+            switch(transportOption) {
+                case 'websocket':
+                    transports = ['websocket'];
+                    break;
+                case 'polling':
+                    transports = ['polling'];
+                    break;
+                default:
+                    transports = ['websocket', 'polling'];
+            }
+
+            try {
+                logInfo(`${url} adresine token ile bağlanılıyor...`);
+                
+                // Token bilgilerini görüntüle
+                displayTokenInfo(token);
+                
+                // JWT tokeni hem auth objesinde hem de query string'de gönder
+                socket = io(url, {
+                    transports: transports,
+                    reconnectionAttempts: 5,
+                    reconnectionDelay: 1000,
+                    timeout: 20000,
+                    auth: {
+                        token: token
+                    },
+                    query: {
+                        token: token
+                    }
+                });
+
+                // Bağlantı olaylarını dinle
+                socket.on('connect', () => {
+                    connectionStatus.textContent = 'Bağlı';
+                    connectionStatus.className = 'status connected';
+                    socketIdElement.textContent = `Socket ID: ${socket.id}`;
+                    
+                    connectBtn.disabled = true;
+                    disconnectBtn.disabled = false;
+                    sendMessageBtn.disabled = false;
+                    document.querySelectorAll('.send-event').forEach(btn => btn.disabled = false);
+                    
+                    logInfo(`Token ile bağlantı başarılı! Socket ID: ${socket.id}`);
+                });
+
+                socket.on('disconnect', (reason) => {
+                    connectionStatus.textContent = 'Bağlı Değil';
+                    connectionStatus.className = 'status disconnected';
+                    socketIdElement.textContent = '';
+                    
+                    connectBtn.disabled = false;
+                    disconnectBtn.disabled = true;
+                    sendMessageBtn.disabled = true;
+                    document.querySelectorAll('.send-event').forEach(btn => btn.disabled = true);
+                    
+                    logInfo(`Bağlantı kesildi, neden: ${reason}`);
+                    socket = null;
+                });
+
+                socket.on('connect_error', (error) => {
+                    logError('Bağlantı hatası:', error.message);
+                });
+
+                // Sunucudan gelen olayları dinle
+                socket.on('connection', (data) => {
+                    logReceived('connection', data);
+                });
+
+                socket.on('message', (data) => {
+                    logReceived('message', data);
+                });
+
+                socket.on('error', (data) => {
+                    logError('Sunucu hatası:', data);
+                });
+
+                socket.onAny((event, ...args) => {
+                    // Özel olayları yakala
+                    if (!['connect', 'disconnect', 'connect_error', 'connection', 'message', 'error'].includes(event)) {
+                        logReceived(event, args[0]);
+                    }
+                });
+
+            } catch (error) {
+                logError('Bağlantı oluşturulurken hata:', error.message);
+            }
+        }
+
+        function disconnect() {
+            if (!socket) {
+                logInfo('Aktif bağlantı yok.');
+                return;
+            }
+
+            socket.disconnect();
+            logInfo('Bağlantı kapatma isteği gönderildi.');
+        }
+
+        // Olay gönderme fonksiyonları
+        function sendMessage() {
+            if (!socket || !socket.connected) {
+                logError('Bağlantı açık değil, önce bağlanın.');
+                return;
+            }
+
+            const event = document.getElementById('messageEvent').value;
+            const contentStr = document.getElementById('messageContent').value;
+            
+            try {
+                const content = JSON.parse(contentStr);
+                socket.emit(event, content);
+                logSent(event, content);
+            } catch (e) {
+                logError('Geçersiz JSON formatı:', e.message);
+            }
+        }
+
+        function sendEvent(eventRow) {
+            if (!socket || !socket.connected) {
+                logError('Bağlantı açık değil, önce bağlanın.');
+                return;
+            }
+
+            const eventName = eventRow.querySelector('.event-name').value;
+            const contentStr = eventRow.querySelector('input[type="text"]:nth-child(2)').value;
+            
+            try {
+                let content;
+                if (contentStr.trim() === '' || contentStr === '{}') {
+                    content = {};
+                } else {
+                    content = JSON.parse(contentStr);
+                }
+                
+                socket.emit(eventName, content);
+                logSent(eventName, content);
+            } catch (e) {
+                logError('Geçersiz JSON formatı:', e.message);
+            }
+        }
+
+        function addEventRow() {
+            const standardEventsTab = document.getElementById('standard-events');
+            const newRow = document.createElement('div');
+            newRow.className = 'event-row';
+            
+            const eventNameInput = document.createElement('input');
+            eventNameInput.type = 'text';
+            eventNameInput.className = 'event-name';
+            eventNameInput.placeholder = 'Olay adı';
+            
+            const contentInput = document.createElement('input');
+            contentInput.type = 'text';
+            contentInput.value = '{}';
+            contentInput.style.flex = '2';
+            contentInput.placeholder = 'İçerik (JSON)';
+            
+            const sendButton = document.createElement('button');
+            sendButton.className = 'send-event';
+            sendButton.textContent = 'Gönder';
+            sendButton.disabled = !socket || !socket.connected;
+            
+            newRow.appendChild(eventNameInput);
+            newRow.appendChild(contentInput);
+            newRow.appendChild(sendButton);
+            
+            standardEventsTab.insertBefore(newRow, addEventBtn);
+            
+            sendButton.addEventListener('click', () => sendEvent(newRow));
+        }
+
+        // Mevcut olay dinleyicileri
+        connectBtn.addEventListener('click', connect);
+        disconnectBtn.addEventListener('click', disconnect);
+        sendMessageBtn.addEventListener('click', sendMessage);
+        clearLogBtn.addEventListener('click', () => {
+            logContainer.innerHTML = '';
+            logInfo('Log temizlendi.');
+        });
+        addEventBtn.addEventListener('click', addEventRow);
+
+        // İlk standart olay butonlarını ayarla
+        document.querySelectorAll('.send-event').forEach(button => {
+            button.addEventListener('click', () => {
+                const row = button.closest('.event-row');
+                sendEvent(row);
+            });
+            button.disabled = true; // Başlangıçta devre dışı
+        });
+
+        // Başlangıç mesajı
+        logInfo('JWT Token ile Socket.IO Test Paneli hazır. JWT Token girin ve "Bağlan" butonuna tıklayın.');
+    </script>
+</body>
+</html>

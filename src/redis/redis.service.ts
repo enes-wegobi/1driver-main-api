@@ -22,7 +22,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     await this.client.disconnect();
   }
   
-  getClient(): RedisClientType {
+  getRedisClient(): RedisClientType {
     return this.client;
   }
   
@@ -47,7 +47,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     await this.client.expire(key, 3600); // Refresh TTL
   }
   
-  async getClient(clientId: string) {
+  async getSocketClient(clientId: string) {
     return this.client.hGetAll(`socket:client:${clientId}`);
   }
   

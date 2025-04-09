@@ -13,23 +13,25 @@ export class WebSocketService {
     this.server = server;
   }
   
-  async handleConnection(client: Socket) {
+  async handleConnection(client: Socket, userId: string) {
     const clientId = client.id;
-    this.logger.log(`New connection: ${clientId}`);
+    this.logger.log(`New connection: ${clientId} for user: ${userId}`);
     
-    // Store client in Redis
     await this.redisService.addClient(clientId, {
       ip: client.handshake.address,
       userAgent: client.handshake.headers['user-agent'],
       connectedAt: new Date().toISOString(),
+      userId: userId,
     });
+    
+    await this.redisService.associateUserWithSocket(userId, clientId);
   }
   
   async handleDisconnection(clientId: string) {
     this.logger.log(`Client disconnected: ${clientId}`);
     
     // Get user ID before removing client
-    const clientData = await this.redisService.getClient(clientId);
+    const clientData = await this.redisService.getSocketClient(clientId);
     
     // Remove client from Redis
     await this.redisService.removeClient(clientId);

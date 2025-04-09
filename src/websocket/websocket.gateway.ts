@@ -9,6 +9,7 @@ import {
 import { Logger } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import { WebSocketService } from './websocket.service';
+import { JwtService } from 'src/jwt/jwt.service';
   
 const PING_INTERVAL = 25000;
 const PING_TIMEOUT = 10000;
@@ -26,7 +27,8 @@ const PING_TIMEOUT = 10000;
 export class WebSocketGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   private readonly logger = new Logger(WebSocketGateway.name);
   
-  constructor(private readonly webSocketService: WebSocketService) {}
+  constructor(private readonly webSocketService: WebSocketService,    private readonly jwtService: JwtService
+  ) {}
   
   @WebSocketServer()
   server: Server;
@@ -39,15 +41,47 @@ export class WebSocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
   async handleConnection(client: Socket, ...args: any[]) {
     const clientId = client.id;
     
-    // Register client with service
-    await this.webSocketService.handleConnection(client);
+    // Token bilgisini handshake query veya headers'dan alma
+    const token = client.handshake.auth.token || 
+                  client.handshake.query.token || 
+                  client.handshake.headers.authorization?.replace('Bearer ', '');
     
-    // Welcome message
-    client.emit('connection', { 
-      status: 'connected',
-      clientId: clientId,
-      message: 'Connection successful'
-    });
+    if (!token) {
+      // Token yoksa bağlantıyı reddet
+      client.emit('error', { 
+        message: 'Authentication required' 
+      });
+      client.disconnect(true);
+      return;
+    }
+    
+    try {
+      // JwtService'i enjekte edin
+      const payload = await this.jwtService.validateToken(token);
+      
+      if (!payload || !payload.userId) {
+        client.emit('error', { 
+          message: 'Invalid token' 
+        });
+        client.disconnect(true);
+        return;
+      }
+      
+      await this.webSocketService.handleConnection(client, payload.userId);
+      
+      client.emit('connection', { 
+        status: 'connected',
+        clientId: clientId,
+        message: 'Connection successful'
+      });
+      
+    } catch (error) {
+      this.logger.error(`Authentication error: ${error.message}`);
+      client.emit('error', { 
+        message: 'Authentication failed' 
+      });
+      client.disconnect(true);
+    }
   }
   
   async handleDisconnect(client: Socket) {
