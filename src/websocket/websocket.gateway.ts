@@ -79,19 +79,21 @@ export class WebSocketGateway
       // Store user data in the socket
       client.data.userId = payload.userId;
       client.data.userType = userType;
-      
+
       // Join rooms based on user type and ID for easier targeting
       client.join(`user:${payload.userId}`);
       client.join(`type:${userType}`);
 
-      client.emit('connection', { 
+      client.emit('connection', {
         status: 'connected',
         clientId: clientId,
         userType: userType,
-        message: 'Connection successful'
+        message: 'Connection successful',
       });
-      
-      this.logger.log(`Client ${clientId} authenticated as ${userType} with userId: ${payload.userId}`);
+
+      this.logger.log(
+        `Client ${clientId} authenticated as ${userType} with userId: ${payload.userId}`,
+      );
     } catch (error) {
       this.logger.error(`Authentication error: ${error.message}`);
       client.emit('error', {
@@ -119,33 +121,43 @@ export class WebSocketGateway
     // Client zaten bağlı ve doğrulanmış olmalı
     const userId = client.data.userId;
     const userType = client.data.userType;
-    
+
     if (!userId) {
       client.emit('error', { message: 'User not authenticated' });
       return;
     }
-    
-    this.logger.debug(`Location update from ${userType} ${userId}: ${JSON.stringify(payload)}`);
-    
+
+    this.logger.debug(
+      `Location update from ${userType} ${userId}: ${JSON.stringify(payload)}`,
+    );
+
     // Konumu Redis'e kaydedelim
     this.storeUserLocation(userId, userType, payload);
-    
+
     // Kullanıcı tipine göre farklı işlemler yapabiliriz
     if (userType === 'driver') {
       // Sürücü konumunu belirli müşterilere göndermek için kullanabiliriz
       // Örneğin, bu sürücüye atanmış bir yolcu varsa ona konum güncellemesi gönderilebilir
     }
-    
+
     // İşlem başarılı cevabı
     return { success: true };
   }
-  
-  private async storeUserLocation(userId: string, userType: string, location: LocationDto) {
+
+  private async storeUserLocation(
+    userId: string,
+    userType: string,
+    location: LocationDto,
+  ) {
     try {
       // Use Redis service to store location
-      await this.webSocketService.getRedisService().storeUserLocation(userId, userType, location);
+      await this.webSocketService
+        .getRedisService()
+        .storeUserLocation(userId, userType, location);
     } catch (error) {
-      this.logger.error(`Error storing location for user ${userId}: ${error.message}`);
+      this.logger.error(
+        `Error storing location for user ${userId}: ${error.message}`,
+      );
     }
   }
 }

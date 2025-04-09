@@ -43,7 +43,7 @@ export class WebSocketService {
   async sendToDrivers(event: string, data: any) {
     return this.sendToUserType('driver', event, data);
   }
-  
+
   async sendToCustomers(event: string, data: any) {
     return this.sendToUserType('customer', event, data);
   }
@@ -51,8 +51,18 @@ export class WebSocketService {
   async getUserLocation(userId: string) {
     return this.redisService.getUserLocation(userId);
   }
-  
-  async findNearbyUsers(userType: string, latitude: number, longitude: number, radius: number = 5) {
-    return this.redisService.findNearbyUsers(userType, latitude, longitude, radius);
+
+  async findNearbyUsers(
+    userType: string,
+    latitude: number,
+    longitude: number,
+    radius: number = 5,
+  ) {
+    return this.redisService.findNearbyUsers(
+      userType,
+      latitude,
+      longitude,
+      radius,
+    );
   }
 }

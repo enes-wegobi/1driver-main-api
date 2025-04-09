@@ -27,15 +27,16 @@ class FastifySocketIORedisAdapter extends IoAdapter {
   async connectToRedis(redisUrl: string) {
     this.pubClient = createClient({ url: redisUrl });
     this.subClient = this.pubClient.duplicate();
-    
-    await Promise.all([
-      this.pubClient.connect(),
-      this.subClient.connect()
-    ]);
-    
-    this.pubClient.on('error', (err) => console.error('Redis Pub Client Error', err));
-    this.subClient.on('error', (err) => console.error('Redis Sub Client Error', err));
-    
+
+    await Promise.all([this.pubClient.connect(), this.subClient.connect()]);
+
+    this.pubClient.on('error', (err) =>
+      console.error('Redis Pub Client Error', err),
+    );
+    this.subClient.on('error', (err) =>
+      console.error('Redis Sub Client Error', err),
+    );
+
     console.log('Redis adapter clients connected');
   }
 
@@ -52,7 +53,7 @@ class FastifySocketIORedisAdapter extends IoAdapter {
       // Allows Socket.IO to be attached to the existing Fastify server
       serverFactory: (handler) => handler(server),
     });
-    
+
     // Apply Redis adapter if clients are connected
     if (this.pubClient && this.subClient) {
       const redisAdapter = createAdapter(this.pubClient, this.subClient);
@@ -74,7 +75,7 @@ async function bootstrap() {
   );
 
   const configService = app.get(ConfigService);
-  const redisUrl = configService.get<string>('redis.url','0.0.0.0');
+  const redisUrl = configService.get<string>('redis.url', '0.0.0.0');
   const socketIOAdapter = new FastifySocketIORedisAdapter(app);
   await socketIOAdapter.connectToRedis(redisUrl);
   app.useWebSocketAdapter(socketIOAdapter);
