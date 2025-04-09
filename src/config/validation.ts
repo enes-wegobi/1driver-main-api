@@ -57,6 +57,10 @@ class EnvironmentVariables {
   @IsOptional()
   @IsString()
   JWT_SECRET: string;
+
+  @IsOptional()
+  @IsString()
+  REDIS_URL: string;
 }
 
 export function validate(config: Record<string, unknown>) {

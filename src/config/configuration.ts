@@ -18,4 +18,7 @@ export default () => ({
   logging: {
     level: process.env.LOG_LEVEL || 'info',
   },
+  redis: {
+    url: process.env.REDIS_URL || 'redis://139.59.70.103:6379',
+  },
 });
