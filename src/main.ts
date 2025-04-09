@@ -12,11 +12,31 @@ import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { IoAdapter } from '@nestjs/platform-socket.io';
 import { ServerOptions } from 'socket.io';
+import { createClient } from 'redis';
+import { createAdapter } from '@socket.io/redis-adapter';
 
-// Custom adapter for Fastify + Socket.IO integration
-class FastifySocketIOAdapter extends IoAdapter {
+// Custom adapter for Fastify + Socket.IO + Redis integration
+class FastifySocketIORedisAdapter extends IoAdapter {
+  private pubClient: any;
+  private subClient: any;
+
   constructor(app) {
     super(app);
+  }
+
+  async connectToRedis(redisUrl: string) {
+    this.pubClient = createClient({ url: redisUrl });
+    this.subClient = this.pubClient.duplicate();
+    
+    await Promise.all([
+      this.pubClient.connect(),
+      this.subClient.connect()
+    ]);
+    
+    this.pubClient.on('error', (err) => console.error('Redis Pub Client Error', err));
+    this.subClient.on('error', (err) => console.error('Redis Sub Client Error', err));
+    
+    console.log('Redis adapter clients connected');
   }
 
   createIOServer(port: number, options?: ServerOptions) {
@@ -32,6 +52,13 @@ class FastifySocketIOAdapter extends IoAdapter {
       // Allows Socket.IO to be attached to the existing Fastify server
       serverFactory: (handler) => handler(server),
     });
+    
+    // Apply Redis adapter if clients are connected
+    if (this.pubClient && this.subClient) {
+      const redisAdapter = createAdapter(this.pubClient, this.subClient);
+      io.adapter(redisAdapter);
+      console.log('Redis adapter applied to Socket.IO server');
+    }
 
     return io;
   }
@@ -46,10 +73,11 @@ async function bootstrap() {
     { logger: ['error', 'warn', 'log', 'debug'] },
   );
 
-  // Configure WebSocket adapter with Fastify
-  app.useWebSocketAdapter(new FastifySocketIOAdapter(app));
-
   const configService = app.get(ConfigService);
+  const redisUrl = configService.get<string>('redis.url','0.0.0.0');
+  const socketIOAdapter = new FastifySocketIORedisAdapter(app);
+  await socketIOAdapter.connectToRedis(redisUrl);
+  app.useWebSocketAdapter(socketIOAdapter);
 
   app.setGlobalPrefix('api');
 
@@ -61,7 +89,7 @@ async function bootstrap() {
     }),
   );
 
-  // Swagger yapılandırması
+  // Swagger configuration
   const config = new DocumentBuilder()
     .setTitle('Customer API Gateway')
     .setDescription('The Customer API Gateway description')
@@ -100,7 +128,7 @@ async function bootstrap() {
   await app.listen(port, host);
   console.log(`API Gateway started: ${await app.getUrl()}`);
   console.log(`Swagger documentation: ${await app.getUrl()}/api/docs`);
-  console.log(`WebSocket server is running on the same port`);
+  console.log(`WebSocket server is running with Redis adapter`);
 }
 
 bootstrap();

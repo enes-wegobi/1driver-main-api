@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Server, Socket } from 'socket.io';
-import { RedisService } from '../redis/redis.service';
+import { Server } from 'socket.io';
+import { RedisService } from 'src/redis/redis.service';
 
 @Injectable()
 export class WebSocketService {
@@ -13,103 +13,31 @@ export class WebSocketService {
     this.server = server;
   }
 
-async handleConnection(client: Socket, userId: string, userType: string) {
-  const clientId = client.id;
-  this.logger.log(`New connection: ${clientId} for ${userType} with userId: ${userId}`);
-  
-  await this.redisService.addClient(clientId, {
-    ip: client.handshake.address,
-    userAgent: client.handshake.headers['user-agent'],
-    connectedAt: new Date().toISOString(),
-    userId: userId,
-    userType: userType, // Store user type
-  });
-  
-  await this.redisService.associateUserWithSocket(userId, clientId);
-  
-  // Also associate with user type
-  await this.redisService.associateWithUserType(clientId, userType);
-}
-
-  async handleDisconnection(clientId: string) {
-    this.logger.log(`Client disconnected: ${clientId}`);
-
-    // Get user ID before removing client
-    const clientData = await this.redisService.getSocketClient(clientId);
-
-    // Remove client from Redis
-    await this.redisService.removeClient(clientId);
-
-    // If client was associated with a user, remove from user's socket set
-    if (clientData && clientData.userId) {
-      await this.redisService.removeUserSocket(clientData.userId, clientId);
-    }
+  getServer(): Server {
+    return this.server;
   }
 
-  async updateClientActivity(clientId: string) {
-    await this.redisService.updateClientActivity(clientId);
-  }
-
-  async authenticateClient(clientId: string, userId: string) {
-    // Associate this socket with the user
-    await this.redisService.associateUserWithSocket(userId, clientId);
-    this.logger.log(`Client ${clientId} authenticated as user ${userId}`);
+  getRedisService(): RedisService {
+    return this.redisService;
   }
 
   async sendToUser(userId: string, event: string, data: any) {
-    // Get all sockets for this user
-    const socketIds = await this.redisService.getUserSockets(userId);
-
-    this.logger.debug(
-      `Sending to user ${userId} via ${socketIds.length} sockets`,
-    );
-
-    // Emit to each socket
-    for (const socketId of socketIds) {
-      this.server.to(socketId).emit(event, data);
-    }
+    this.logger.debug(`Sending to user ${userId}`);
+    this.server.to(`user:${userId}`).emit(event, data);
   }
 
-  processMessage(clientId: string, payload: any) {
-    this.logger.debug(
-      `Processing message from ${clientId}: ${JSON.stringify(payload)}`,
-    );
-
-    // Update last activity timestamp
-    this.updateClientActivity(clientId);
-
-    // Process message based on type
-    if (payload.type === 'authenticate' && payload.userId) {
-      this.authenticateClient(clientId, payload.userId);
-      return { success: true, message: 'Authenticated' };
-    }
-
-    // Default response
-    return {
-      processed: true,
-      original: payload,
-      timestamp: new Date().toISOString(),
-    };
-  }
-
-  broadcast(event: string, data: any, exceptClientId?: string) {
+  broadcast(event: string, data: any, exceptSocketId?: string) {
     this.logger.debug(`Broadcasting: ${event}`);
-    if (exceptClientId) {
-      this.server.except(exceptClientId).emit(event, data);
+    if (exceptSocketId) {
+      this.server.except(exceptSocketId).emit(event, data);
     } else {
       this.server.emit(event, data);
     }
   }
 
   async sendToUserType(userType: string, event: string, data: any) {
-    const socketIds = await this.redisService.getUserTypeSocketIds(userType);
-    
-    this.logger.debug(`Sending to ${userType}s via ${socketIds.length} sockets`);
-    
-    // Emit to each socket
-    for (const socketId of socketIds) {
-      this.server.to(socketId).emit(event, data);
-    }
+    this.logger.debug(`Sending to ${userType}s`);
+    this.server.to(`type:${userType}`).emit(event, data);
   }
 
   async sendToDrivers(event: string, data: any) {
@@ -120,8 +48,11 @@ async handleConnection(client: Socket, userId: string, userType: string) {
     return this.sendToUserType('customer', event, data);
   }
 
-  isUserType(clientId: string, expectedType: string): Promise<boolean> {
-    return this.redisService.getSocketClient(clientId)
-      .then(client => client.userType === expectedType);
+  async getUserLocation(userId: string) {
+    return this.redisService.getUserLocation(userId);
+  }
+  
+  async findNearbyUsers(userType: string, latitude: number, longitude: number, radius: number = 5) {
+    return this.redisService.findNearbyUsers(userType, latitude, longitude, radius);
   }
 }

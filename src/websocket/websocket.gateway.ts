@@ -1,3 +1,4 @@
+// in websocket.gateway.ts
 import {
   WebSocketGateway as NestWebSocketGateway,
   OnGatewayConnection,
@@ -10,6 +11,7 @@ import { Logger } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import { WebSocketService } from './websocket.service';
 import { JwtService } from 'src/jwt/jwt.service';
+import { LocationDto } from './dto/location.dto';
 
 const PING_INTERVAL = 25000;
 const PING_TIMEOUT = 10000;
@@ -38,7 +40,7 @@ export class WebSocketGateway
   server: Server;
 
   afterInit(server: Server) {
-    this.logger.log('Socket.IO Server initialized');
+    this.logger.log('Socket.IO Server initialized with Redis Adapter');
     this.webSocketService.setServer(server);
   }
 
@@ -68,14 +70,19 @@ export class WebSocketGateway
       }
 
       const userType = payload.userType;
-      //Todo user type
       if (userType !== 'driver' && userType !== 'customer') {
         client.emit('error', { message: 'Invalid user type' });
         client.disconnect(true);
         return;
       }
 
-      await this.webSocketService.handleConnection(client, payload.userId, userType);
+      // Store user data in the socket
+      client.data.userId = payload.userId;
+      client.data.userType = userType;
+      
+      // Join rooms based on user type and ID for easier targeting
+      client.join(`user:${payload.userId}`);
+      client.join(`type:${userType}`);
 
       client.emit('connection', { 
         status: 'connected',
@@ -83,6 +90,8 @@ export class WebSocketGateway
         userType: userType,
         message: 'Connection successful'
       });
+      
+      this.logger.log(`Client ${clientId} authenticated as ${userType} with userId: ${payload.userId}`);
     } catch (error) {
       this.logger.error(`Authentication error: ${error.message}`);
       client.emit('error', {
@@ -93,43 +102,50 @@ export class WebSocketGateway
   }
 
   async handleDisconnect(client: Socket) {
-    const clientId = client.id;
-    await this.webSocketService.handleDisconnection(clientId);
+    this.logger.log(`Client disconnected: ${client.id}`);
+    // Socket.IO and Redis adapter handle cleanup automatically
   }
 
   @SubscribeMessage('message')
   handleMessage(client: Socket, payload: any) {
-    const clientId = client.id;
     this.logger.debug(
-      `Message received [${clientId}]: ${JSON.stringify(payload)}`,
+      `Message received [${client.id}]: ${JSON.stringify(payload)}`,
     );
-
-    // Update activity and process message
-    const response = this.webSocketService.processMessage(clientId, payload);
-    return { event: 'message', data: response };
+    return { event: 'message', data: payload };
   }
 
-  @SubscribeMessage('authenticate')
-  handleAuthenticate(
-    client: Socket,
-    payload: { token: string; userId: string },
-  ) {
-    const clientId = client.id;
-    this.logger.debug(`Authentication request from ${clientId}`);
-
+  @SubscribeMessage('updateLocation')
+  handleLocationUpdate(client: Socket, payload: LocationDto) {
+    // Client zaten bağlı ve doğrulanmış olmalı
+    const userId = client.data.userId;
+    const userType = client.data.userType;
+    
+    if (!userId) {
+      client.emit('error', { message: 'User not authenticated' });
+      return;
+    }
+    
+    this.logger.debug(`Location update from ${userType} ${userId}: ${JSON.stringify(payload)}`);
+    
+    // Konumu Redis'e kaydedelim
+    this.storeUserLocation(userId, userType, payload);
+    
+    // Kullanıcı tipine göre farklı işlemler yapabiliriz
+    if (userType === 'driver') {
+      // Sürücü konumunu belirli müşterilere göndermek için kullanabiliriz
+      // Örneğin, bu sürücüye atanmış bir yolcu varsa ona konum güncellemesi gönderilebilir
+    }
+    
+    // İşlem başarılı cevabı
+    return { success: true };
+  }
+  
+  private async storeUserLocation(userId: string, userType: string, location: LocationDto) {
     try {
-      // In a real implementation, you'd validate the token
-      // For now, just associate the client with the user ID
-      this.webSocketService.authenticateClient(clientId, payload.userId);
-      return { event: 'authenticate', data: { success: true } };
+      // Use Redis service to store location
+      await this.webSocketService.getRedisService().storeUserLocation(userId, userType, location);
     } catch (error) {
-      this.logger.error(
-        `Authentication error for ${clientId}: ${error.message}`,
-      );
-      return {
-        event: 'authenticate',
-        data: { success: false, error: error.message },
-      };
+      this.logger.error(`Error storing location for user ${userId}: ${error.message}`);
     }
   }
 }

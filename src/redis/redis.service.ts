@@ -1,6 +1,6 @@
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { createClient, RedisClientType } from 'redis';
+import { createClient, RedisClientType, GeoReplyWith } from 'redis';
 
 @Injectable()
 export class RedisService implements OnModuleInit, OnModuleDestroy {
@@ -26,81 +26,87 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     return this.client;
   }
 
-  // Client tracking methods
-  async addClient(clientId: string, metadata: any = {}) {
-    const key = `socket:client:${clientId}`;
-    await this.client.hSet(key, {
-      ...metadata,
-      lastActivity: Date.now().toString(),
-      connected: 'true',
-    });
-    await this.client.expire(key, 3600); // TTL: 1 hour
-  }
-
-  async removeClient(clientId: string) {
-    const clientData = await this.getSocketClient(clientId);
-    
-    if (clientData && clientData.userType) {
-      await this.client.sRem(`socket:userType:${clientData.userType}`, clientId);
+  async storeUserLocation(userId: string, userType: string, locationData: any) {
+    try {
+      const key = `location:user:${userId}`;
+      const data = {
+        ...locationData,
+        userId,
+        userType,
+        updatedAt: new Date().toISOString()
+      };
+      
+      await this.client.set(key, JSON.stringify(data));
+      await this.client.expire(key, 900);
+      
+      const geoKey = `location:${userType}:geo`;
+      await this.client.geoAdd(geoKey, {
+        longitude: locationData.longitude,
+        latitude: locationData.latitude,
+        member: userId
+      });
+      
+      return true;
+    } catch (error) {
+      console.error(`Error storing location for user ${userId}:`, error.message);
+      return false;
     }
+  }
+
+  async getUserLocation(userId: string) {
+    const key = `location:user:${userId}`;
+    const locationData = await this.client.get(key);
+    return locationData ? JSON.parse(locationData) : null;
+  }
+
+  async findNearbyUsers(userType: string, latitude: number, longitude: number, radius: number = 5) {
+    const geoKey = `location:${userType}:geo`;
     
-    await this.client.del(`socket:client:${clientId}`);
-  }
-
-  async updateClientActivity(clientId: string) {
-    const key = `socket:client:${clientId}`;
-    await this.client.hSet(key, 'lastActivity', Date.now().toString());
-    await this.client.expire(key, 3600); // Refresh TTL
-  }
-
-  async getSocketClient(clientId: string) {
-    return this.client.hGetAll(`socket:client:${clientId}`);
-  }
-
-  async getAllClients() {
-    const keys = await this.client.keys('socket:client:*');
-    const clients = {};
-
-    for (const key of keys) {
-      const clientId = key.split(':')[2];
-      clients[clientId] = await this.client.hGetAll(key);
-    }
-
-    return clients;
-  }
-
-  // User-to-socket mapping
-  async associateUserWithSocket(userId: string, clientId: string) {
-    await this.client.sAdd(`socket:user:${userId}`, clientId);
-    await this.client.hSet(`socket:client:${clientId}`, 'userId', userId);
-  }
-
-  async getUserSockets(userId: string) {
-    return this.client.sMembers(`socket:user:${userId}`);
-  }
-
-  async removeUserSocket(userId: string, clientId: string) {
-    await this.client.sRem(`socket:user:${userId}`, clientId);
-  }
-
-  async associateWithUserType(clientId: string, userType: string) {
-    await this.client.sAdd(`socket:userType:${userType}`, clientId);
-    await this.client.expire(`socket:userType:${userType}`, 3600); // TTL: 1 hour
-  }
-
-  async getUserTypeSocketIds(userType: string) {
-    return this.client.sMembers(`socket:userType:${userType}`);
-  }
-
-  async getClientsByUserType(userType: string) {
-    const socketIds = await this.getUserTypeSocketIds(userType);
-    const clients = {};
+    try {
+      const results = await this.client.sendCommand(['GEORADIUS', 
+        geoKey, 
+        longitude.toString(), 
+        latitude.toString(), 
+        radius.toString(), 
+        'km', 
+        'WITHDIST', 
+        'WITHCOORD'
+      ]);
+      
+      // Process results to get more information about each user
+      const enhancedResults: any[] = [];
+      
+      if (results && Array.isArray(results)) {
+        for (const result of results) {
+          // Each result is an array: [userId, distance, [longitude, latitude]]
+          if (Array.isArray(result) && result.length >= 3 && result[0] && result[1] && result[2]) {
+            const userId = result[0].toString();
+            const distance = parseFloat(result[1].toString());
+            const coords = result[2];
+            
+            // Get additional user data if available
+            const userData = await this.getUserLocation(userId);
+            
+            // Create a new object with all properties
+            if (Array.isArray(coords) && coords.length >= 2 && coords[0] && coords[1]) {
+              enhancedResults.push({
+                userId,
+                distance,
+                coordinates: {
+                  longitude: parseFloat(coords[0].toString()),
+                  latitude: parseFloat(coords[1].toString())
+                },
+                ...(userData || {}) // Use empty object if userData is null
+              });
+            }
+          }
+        }
+      }
     
-    for (const socketId of socketIds) {
-      clients[socketId] = await this.getSocketClient(socketId);
-    }
-    
-    return clients;
+    return enhancedResults;
+  } catch (error) {
+    console.error(`Error finding nearby users:`, error);
+    return [];
   }
-
+}
 }

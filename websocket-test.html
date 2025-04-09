@@ -193,6 +193,13 @@
             margin-bottom: 15px;
             border-left: 4px solid #ffb300;
         }
+        .redis-info {
+            background-color: #e8f5e9;
+            padding: 12px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            border-left: 4px solid #43a047;
+        }
     </style>
 </head>
 <body>
@@ -206,6 +213,10 @@
 
         <div class="token-required">
             <strong>Not:</strong> Bu sunucu JWT token ile kimlik doğrulaması gerektirmektedir. Lütfen bağlanmadan önce geçerli bir JWT token girin.
+        </div>
+
+        <div class="redis-info">
+            <strong>Bilgi:</strong> Bu sunucu Socket.IO bağlantılarını yönetmek için Redis Adapter kullanmaktadır. Bağlantılar ve kanallar otomatik olarak yönetilmektedir.
         </div>
 
         <div class="connection-info">
@@ -238,11 +249,13 @@
                     <span id="connectionStatus" class="status disconnected">Bağlı Değil</span>
                 </div>
                 <div id="socketId"></div>
-            </ невозмож
+            </div>
+        </div>
 
         <div class="tabs">
             <div class="tab active" data-tab="standard-events">Standart Olaylar</div>
             <div class="tab" data-tab="custom-message">Özel Mesaj</div>
+            <div class="tab" data-tab="location-test">Konum Testi</div>
             <div class="tab" data-tab="user-info">Kullanıcı Bilgileri</div>
         </div>
 
@@ -273,6 +286,60 @@
             </div>
         </div>
 
+        <div id="location-test" class="tab-content">
+            <h3>Konum Testi</h3>
+            <div class="panel-row">
+                <div class="panel">
+                    <h4>Konum Güncelleme</h4>
+                    <p>Kullanıcı konumunuzu güncellemek için aşağıdaki formu doldurun:</p>
+                    
+                    <div>
+                        <label for="locationLatitude">Enlem (Latitude):</label>
+                        <input type="number" id="locationLatitude" value="41.0082" step="0.0001" />
+                        
+                        <label for="locationLongitude">Boylam (Longitude):</label>
+                        <input type="number" id="locationLongitude" value="28.9784" step="0.0001" />
+                        
+                        <label for="locationAccuracy">Doğruluk (Accuracy) (opsiyonel):</label>
+                        <input type="number" id="locationAccuracy" value="10" />
+                        
+                        <label for="locationHeading">Yön (Heading) (opsiyonel):</label>
+                        <input type="number" id="locationHeading" value="90" />
+                        
+                        <label for="locationSpeed">Hız (Speed) (opsiyonel):</label>
+                        <input type="number" id="locationSpeed" value="0" />
+                        
+                        <button id="sendLocationBtn" class="send" disabled>Konum Gönder</button>
+                        <button id="getCurrentLocationBtn">Gerçek Konumu Al</button>
+                    </div>
+                </div>
+                
+                <div class="panel">
+                    <h4>Yakındaki Kullanıcıları Bul</h4>
+                    <p>Belirli bir konumun etrafındaki kullanıcıları bulmak için:</p>
+                    
+                    <div>
+                        <label for="nearbyLatitude">Enlem (Latitude):</label>
+                        <input type="number" id="nearbyLatitude" value="41.0082" step="0.0001" />
+                        
+                        <label for="nearbyLongitude">Boylam (Longitude):</label>
+                        <input type="number" id="nearbyLongitude" value="28.9784" step="0.0001" />
+                        
+                        <label for="nearbyRadius">Yarıçap (km):</label>
+                        <input type="number" id="nearbyRadius" value="5" min="0.1" max="50" step="0.1" />
+                        
+                        <label for="nearbyUserType">Kullanıcı Tipi:</label>
+                        <select id="nearbyUserType">
+                            <option value="driver">Sürücü</option>
+                            <option value="customer">Müşteri</option>
+                        </select>
+                        
+                        <button id="findNearbyBtn" class="send" disabled>Yakındakileri Bul</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div id="user-info" class="tab-content">
             <h3>Kullanıcı Bilgileri</h3>
             <div>
@@ -280,6 +347,16 @@
                 
                 <div id="tokenInfo">
                     <p>Bağlandıktan sonra, token içeriği burada gösterilecektir.</p>
+                </div>
+                
+                <div style="margin-top: 20px;">
+                    <h4>Redis Adapter Bilgisi</h4>
+                    <p>Bağlandığınızda, Socket.IO otomatik olarak sizi şu kanallara ekler:</p>
+                    <ul>
+                        <li><strong>user:{userId}</strong> - Kullanıcı ID'nize özel kanal</li>
+                        <li><strong>type:{userType}</strong> - Kullanıcı tipinize özel kanal (customer/driver)</li>
+                    </ul>
+                    <p>Bu kanallar sayesinde, sunucu size veya benzer gruptaki kullanıcılara kolayca mesaj gönderebilir.</p>
                 </div>
             </div>
         </div>
@@ -362,36 +439,62 @@
                 }
                 html += '</p>';
             }
+            
+            if (payload.userId && payload.userType) {
+                html += '<div style="margin-top: 10px; background-color: #e3f2fd; padding: 10px; border-radius: 5px;">';
+                html += '<h4>Redis Adapter Oda Bilgileri:</h4>';
+                html += '<ul>';
+                html += `<li><strong>user:${payload.userId}</strong> - Kullanıcı ID'nize özel kanal</li>`;
+                html += `<li><strong>type:${payload.userType}</strong> - ${payload.userType === 'customer' ? 'Müşteri' : 'Sürücü'} kullanıcı tipine özel kanal</li>`;
+                html += '</ul></div>';
+            }
+            
             html += '</div>';
             tokenInfoElement.innerHTML = html;
         }
 
         // Log fonksiyonları
         function log(type, message, data = null) {
-            const entry = document.createElement('div');
-            entry.className = `log-entry ${type}`;
-            
-            const timestamp = document.createElement('span');
-            timestamp.className = 'timestamp';
-            timestamp.textContent = new Date().toISOString().replace('T', ' ').substr(0, 19);
-            
-            const messageElement = document.createElement('span');
-            messageElement.className = 'message';
-            
-            if (data) {
-                let displayData = typeof data === 'string' && (data.trim().startsWith('{') || data.trim().startsWith('[')) 
-                    ? JSON.stringify(JSON.parse(data), null, 2) 
-                    : String(data);
-                messageElement.textContent = `${message}: ${displayData}`;
-            } else {
-                messageElement.textContent = message;
+    const entry = document.createElement('div');
+    entry.className = `log-entry ${type}`;
+    
+    const timestamp = document.createElement('span');
+    timestamp.className = 'timestamp';
+    timestamp.textContent = new Date().toISOString().replace('T', ' ').substr(0, 19);
+    
+    const messageElement = document.createElement('span');
+    messageElement.className = 'message';
+    
+    if (data) {
+        let displayData;
+        if (typeof data === 'object') {
+            // Nesne türündeki datayı düzgün formatla
+            try {
+                displayData = JSON.stringify(data, null, 2);
+            } catch (e) {
+                displayData = "Object [Cannot stringify]";
             }
-            
-            entry.appendChild(timestamp);
-            entry.appendChild(messageElement);
-            logContainer.appendChild(entry);
-            logContainer.scrollTop = logContainer.scrollHeight;
+        } else if (typeof data === 'string' && (data.trim().startsWith('{') || data.trim().startsWith('['))) {
+            // String ama JSON gibi görünen datayı parse edip formatla
+            try {
+                displayData = JSON.stringify(JSON.parse(data), null, 2);
+            } catch (e) {
+                displayData = data;
+            }
+        } else {
+            // Diğer türdeki dataları string'e dönüştür
+            displayData = String(data);
         }
+        messageElement.textContent = `${message}: ${displayData}`;
+    } else {
+        messageElement.textContent = message;
+    }
+
+    entry.appendChild(timestamp);
+    entry.appendChild(messageElement);
+    logContainer.appendChild(entry);
+    logContainer.scrollTop = logContainer.scrollHeight;
+}
 
         function logSent(event, data) { log('sent', `Gönderildi [${event}]`, data); }
         function logReceived(event, data) { log('received', `Alındı [${event}]`, data); }
@@ -443,6 +546,8 @@
                     disconnectBtn.disabled = false;
                     sendMessageBtn.disabled = false;
                     document.querySelectorAll('.send-event').forEach(btn => btn.disabled = false);
+                    document.getElementById('sendLocationBtn').disabled = false;
+                    document.getElementById('findNearbyBtn').disabled = false;
                     
                     logInfo(`Token ile bağlantı başarılı! Socket ID: ${socket.id}`);
                 });
@@ -456,6 +561,8 @@
                     disconnectBtn.disabled = true;
                     sendMessageBtn.disabled = true;
                     document.querySelectorAll('.send-event').forEach(btn => btn.disabled = true);
+                    document.getElementById('sendLocationBtn').disabled = true;
+                    document.getElementById('findNearbyBtn').disabled = true;
                     
                     logInfo(`Bağlantı kesildi, neden: ${reason}`);
                     socket = null;
@@ -551,6 +658,79 @@
             sendButton.addEventListener('click', () => sendEvent(newRow));
         }
 
+        // Konum fonksiyonları
+        function sendLocationUpdate() {
+            if (!socket || !socket.connected) {
+                logError('Bağlantı açık değil, önce bağlanın.');
+                return;
+            }
+            
+            const locationData = {
+                latitude: parseFloat(document.getElementById('locationLatitude').value),
+                longitude: parseFloat(document.getElementById('locationLongitude').value),
+                accuracy: parseFloat(document.getElementById('locationAccuracy').value),
+                heading: parseFloat(document.getElementById('locationHeading').value),
+                speed: parseFloat(document.getElementById('locationSpeed').value),
+                timestamp: new Date().toISOString()
+            };
+            
+            socket.emit('updateLocation', locationData);
+            logSent('updateLocation', locationData);
+        }
+        
+        function getCurrentLocation() {
+            if (!navigator.geolocation) {
+                logError('Tarayıcınız geolocation API desteklemiyor.');
+                return;
+            }
+            
+            logInfo('Gerçek konum alınıyor...');
+            
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    document.getElementById('locationLatitude').value = position.coords.latitude;
+                    document.getElementById('locationLongitude').value = position.coords.longitude;
+                    document.getElementById('locationAccuracy').value = position.coords.accuracy || 0;
+                    document.getElementById('locationHeading').value = position.coords.heading || 0;
+                    document.getElementById('locationSpeed').value = position.coords.speed || 0;
+                    
+                    logInfo(`Gerçek konum alındı: ${position.coords.latitude}, ${position.coords.longitude}`);
+                },
+                (error) => {
+                    logError('Konum alınamadı:', error.message);
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                }
+            );
+        }
+        
+        function findNearbyUsers() {
+            if (!socket || !socket.connected) {
+                logError('Bağlantı açık değil, önce bağlanın.');
+                return;
+            }
+            
+            const latitude = parseFloat(document.getElementById('nearbyLatitude').value);
+            const longitude = parseFloat(document.getElementById('nearbyLongitude').value);
+            const radius = parseFloat(document.getElementById('nearbyRadius').value);
+            const userType = document.getElementById('nearbyUserType').value;
+            
+            // Özel bir event oluşturalım
+            const eventData = {
+                userType: userType,
+                latitude: latitude,
+                longitude: longitude,
+                radius: radius
+            };
+            
+            // Sunucuya istek gönderelim
+            socket.emit('findNearbyUsers', eventData);
+            logSent('findNearbyUsers', eventData);
+        }
+
         // Mevcut olay dinleyicileri
         connectBtn.addEventListener('click', connect);
         disconnectBtn.addEventListener('click', disconnect);
@@ -560,6 +740,11 @@
             logInfo('Log temizlendi.');
         });
         addEventBtn.addEventListener('click', addEventRow);
+        
+        // Konum olay dinleyicileri
+        document.getElementById('sendLocationBtn').addEventListener('click', sendLocationUpdate);
+        document.getElementById('getCurrentLocationBtn').addEventListener('click', getCurrentLocation);
+        document.getElementById('findNearbyBtn').addEventListener('click', findNearbyUsers);
 
         document.querySelectorAll('.send-event').forEach(button => {
             button.addEventListener('click', () => sendEvent(button.closest('.event-row')));
@@ -567,7 +752,7 @@
         });
 
         // Başlangıç mesajı
-        logInfo('JWT Token ile Socket.IO Test Paneli hazır. JWT Token girin ve "Bağlan" butonuna tıklayın.');
+        logInfo('JWT Token ile Socket.IO Test Paneli hazır (Redis Adapter entegreli). JWT Token girin ve "Bağlan" butonuna tıklayın.');
     </script>
 </body>
 </html>
