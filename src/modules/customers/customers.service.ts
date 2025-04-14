@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { CustomersClient } from 'src/clients/customer/customers.client';
 import { CompleteEmailUpdateDto } from 'src/clients/customer/dto/complete-email-update.dto';
 import { CompletePhoneUpdateDto } from 'src/clients/customer/dto/complete-phone-update.dto';
+import { CreateAddressDto } from 'src/clients/customer/dto/create-address.dto';
 import { InitiateEmailUpdateDto } from 'src/clients/customer/dto/initiate-email-update.dto';
 import { InitiatePhoneUpdateDto } from 'src/clients/customer/dto/initiate-phone-update.dto';
 import { UpdateCustomerDto } from 'src/clients/customer/dto/update-customer.dto';
@@ -40,5 +41,13 @@ export class CustomersService {
 
   async completePhoneUpdate(userId: string, dto: CompletePhoneUpdateDto) {
     return this.customersClient.completePhoneUpdate(userId, dto);
+  }
+
+  async addAddress(userId: string, addressDto: CreateAddressDto) {
+    return this.customersClient.addAddress(userId, addressDto);
+  }
+
+  async deleteAddress(userId: string, addressId: string) {
+    return this.customersClient.deleteAddress(userId, addressId);
   }
 }

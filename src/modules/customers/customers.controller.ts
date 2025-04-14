@@ -25,6 +25,7 @@ import { InitiateEmailUpdateDto } from 'src/clients/customer/dto/initiate-email-
 import { CompleteEmailUpdateDto } from 'src/clients/customer/dto/complete-email-update.dto';
 import { InitiatePhoneUpdateDto } from 'src/clients/customer/dto/initiate-phone-update.dto';
 import { CompletePhoneUpdateDto } from 'src/clients/customer/dto/complete-phone-update.dto';
+import { CreateAddressDto } from 'src/clients/customer/dto/create-address.dto';
 import { GetUser } from 'src/jwt/user.decoretor';
 
 @ApiTags('profile')
@@ -224,6 +225,60 @@ export class CustomersController {
       throw new HttpException(
         error.response?.data ||
           'An error occurred while completing phone update',
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Post('me/addresses')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Add a new address for customer' })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Address added successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Invalid input or user ID',
+  })
+  async addAddress(@GetUser() user, @Body() addressDto: CreateAddressDto) {
+    try {
+      this.logger.log(`Adding address for user ID: ${user.userId}`);
+      return await this.customersService.addAddress(user.userId, addressDto);
+    } catch (error) {
+      this.logger.error(
+        `Error adding address: ${error.message}`,
+        error.stack,
+      );
+      throw new HttpException(
+        error.response?.data || 'An error occurred while adding address',
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Delete('me/addresses/:addressId')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Delete an address' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Address deleted successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Address not found',
+  })
+  async deleteAddress(@GetUser() user, @Param('addressId') addressId: string) {
+    try {
+      this.logger.log(`Deleting address ${addressId} for user ID: ${user.userId}`);
+      return await this.customersService.deleteAddress(user.userId, addressId);
+    } catch (error) {
+      this.logger.error(
+        `Error deleting address: ${error.message}`,
+        error.stack,
+      );
+      throw new HttpException(
+        error.response?.data || 'An error occurred while deleting address',
         error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }

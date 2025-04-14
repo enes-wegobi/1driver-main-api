@@ -6,6 +6,7 @@ import { InitiateEmailUpdateDto } from './dto/initiate-email-update.dto';
 import { CompleteEmailUpdateDto } from './dto/complete-email-update.dto';
 import { InitiatePhoneUpdateDto } from './dto/initiate-phone-update.dto';
 import { CompletePhoneUpdateDto } from './dto/complete-phone-update.dto';
+import { CreateAddressDto } from './dto/create-address.dto';
 
 @Injectable()
 export class CustomersClient {
@@ -81,6 +82,21 @@ export class CustomersClient {
     const { data } = await this.httpClient.post(
       `/customers/${userId}/complete-phone-update`,
       dto,
+    );
+    return data;
+  }
+
+  async addAddress(userId: string, addressDto: CreateAddressDto): Promise<any> {
+    const { data } = await this.httpClient.post(
+      `/customers/${userId}/addresses`,
+      addressDto,
+    );
+    return data;
+  }
+
+  async deleteAddress(userId: string, addressId: string): Promise<any> {
+    const { data } = await this.httpClient.delete(
+      `/customers/${userId}/addresses/${addressId}`,
     );
     return data;
   }
