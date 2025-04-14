@@ -28,8 +28,6 @@ class MessageDataDto {
   })
   @IsString()
   type: string;
-
-  // İhtiyaç duyarsanız daha fazla alan ekleyebilirsiniz
 }
 
 class SendMessageDto {

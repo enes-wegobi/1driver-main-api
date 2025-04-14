@@ -1,8 +1,6 @@
-// in websocket.gateway.ts
 import {
   WebSocketGateway as NestWebSocketGateway,
   OnGatewayConnection,
-  OnGatewayDisconnect,
   OnGatewayInit,
   WebSocketServer,
   SubscribeMessage,
