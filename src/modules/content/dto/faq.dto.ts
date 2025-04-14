@@ -9,7 +9,8 @@ export class FaqItemDto {
 
   @ApiProperty({
     description: 'The answer to the question',
-    example: 'You can reset your password by clicking on the "Forgot Password" link on the login page.',
+    example:
+      'You can reset your password by clicking on the "Forgot Password" link on the login page.',
   })
   answer: string;
 }

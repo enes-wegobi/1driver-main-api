@@ -24,9 +24,7 @@ const PING_TIMEOUT = 10000;
   pingInterval: PING_INTERVAL,
   pingTimeout: PING_TIMEOUT,
 })
-export class WebSocketGateway
-  implements OnGatewayInit, OnGatewayConnection
-{
+export class WebSocketGateway implements OnGatewayInit, OnGatewayConnection {
   private readonly logger = new Logger(WebSocketGateway.name);
 
   constructor(

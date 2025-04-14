@@ -5,12 +5,7 @@ import {
   HttpException,
   Logger,
 } from '@nestjs/common';
-import {
-  ApiOperation,
-  ApiResponse,
-  ApiTags,
-  ApiQuery,
-} from '@nestjs/swagger';
+import { ApiOperation, ApiResponse, ApiTags, ApiQuery } from '@nestjs/swagger';
 import { ContentService } from './content.service';
 import { FaqItemDto } from './dto/faq.dto';
 
@@ -32,10 +27,7 @@ export class ContentController {
     try {
       return this.contentService.getFaqs();
     } catch (error) {
-      this.logger.error(
-        `Error fetching FAQs: ${error.message}`,
-        error.stack,
-      );
+      this.logger.error(`Error fetching FAQs: ${error.message}`, error.stack);
       throw new HttpException(
         'An error occurred while fetching FAQs',
         HttpStatus.INTERNAL_SERVER_ERROR,

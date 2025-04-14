@@ -246,10 +246,7 @@ export class CustomersController {
       this.logger.log(`Adding address for user ID: ${user.userId}`);
       return await this.customersService.addAddress(user.userId, addressDto);
     } catch (error) {
-      this.logger.error(
-        `Error adding address: ${error.message}`,
-        error.stack,
-      );
+      this.logger.error(`Error adding address: ${error.message}`, error.stack);
       throw new HttpException(
         error.response?.data || 'An error occurred while adding address',
         error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
@@ -270,7 +267,9 @@ export class CustomersController {
   })
   async deleteAddress(@GetUser() user, @Param('addressId') addressId: string) {
     try {
-      this.logger.log(`Deleting address ${addressId} for user ID: ${user.userId}`);
+      this.logger.log(
+        `Deleting address ${addressId} for user ID: ${user.userId}`,
+      );
       return await this.customersService.deleteAddress(user.userId, addressId);
     } catch (error) {
       this.logger.error(
