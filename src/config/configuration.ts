@@ -4,16 +4,19 @@ export default () => ({
   corsOrigins: process.env.CORS_ORIGINS || '*',
   services: {
     users: {
-      url: process.env.USERS_SERVICE_URL || 'http://0.0.0.0:3001',
+      url: process.env.USERS_SERVICE_URL || 'http://localhost:3001',
       timeout: parseInt(process.env.USERS_SERVICE_TIMEOUT || '5000', 10),
     },
     auth: {
-      url: process.env.AUTH_SERVICE_URL || 'http://0.0.0.0:3001',
+      url: process.env.AUTH_SERVICE_URL || 'http://localhost:3001',
       timeout: parseInt(process.env.AUTH_SERVICE_TIMEOUT || '5000', 10),
     },
   },
   jwt: {
     secret: process.env.JWT_SECRET || 'supersecret',
+  },
+  redis: {
+    url: process.env.REDIS_URL || 'supersecret',
   },
   logging: {
     level: process.env.LOG_LEVEL || 'info',
