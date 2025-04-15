@@ -34,6 +34,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UploadFileDto } from './dto/upload-file.dto';
 import { S3Service } from 'src/s3/s3.service';
+import { FileType } from './enum/file-type.enum';
 
 @ApiTags('drivers')
 @ApiBearerAuth()
@@ -86,16 +87,15 @@ export class DriversController {
       }
 
       const fileKey = `${user.userId}/${uploadFileDto.fileType}/${uuidv4()}-${file.originalname}`;
-
-      await this.s3Service.uploadFileWithKey(file, fileKey);
-      
-      // Notify driver service about the file upload
+      await this.s3Service.uploadFileWithKey(file, fileKey);      
       await this.driversService.notifyFileUploaded(user.userId, uploadFileDto.fileType, fileKey);
+      const fileUrl = await this.s3Service.getSignedUrl(fileKey, 3600);
       
       return { 
         message: 'File uploaded successfully', 
         fileKey,
-        fileType: uploadFileDto.fileType 
+        fileType: uploadFileDto.fileType,
+        fileUrl
       };
     } catch (error) {
       if (error instanceof ConflictException) {
@@ -167,6 +167,48 @@ export class DriversController {
     }
   }
 
-  // Add other driver-specific endpoints here as needed
-  // e.g., managing vehicles, availability, routes, etc.
+  @Delete('files/:fileType')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Delete a specific file type for the current driver' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'File deleted successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'File not found',
+  })
+  async deleteFile(
+    @Param('fileType') fileType: FileType,
+    @GetUser() user: IJwtPayload,
+  ) {
+    try {
+      this.logger.log(`Deleting file of type ${fileType} for driver ${user.userId}`);
+      
+      // First check if file exists
+      const fileExists = await this.driversService.checkFileExists(user.userId, fileType);
+      if (!fileExists) {
+        throw new NotFoundException(`File of type ${fileType} not found`);
+      }
+
+      // Delete file from driver client first
+      const deleteResult = await this.driversService.deleteFile(user.userId, fileType);
+      
+      // If driver client deletion successful, delete from S3
+      if (deleteResult?.fileKey) {
+        await this.s3Service.deleteFile(deleteResult.fileKey);
+      }
+
+      return { message: `File of type ${fileType} deleted successfully` };
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      this.logger.error(`Error deleting file: ${error.message}`, error.stack);
+      throw new HttpException(
+        error.response?.data || 'An error occurred while deleting file',
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 }
