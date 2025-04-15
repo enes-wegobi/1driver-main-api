@@ -27,10 +27,11 @@ import { InitiatePhoneUpdateDto } from 'src/clients/customer/dto/initiate-phone-
 import { CompletePhoneUpdateDto } from 'src/clients/customer/dto/complete-phone-update.dto';
 import { CreateAddressDto } from 'src/clients/customer/dto/create-address.dto';
 import { GetUser } from 'src/jwt/user.decoretor';
+import { IJwtPayload } from 'src/jwt/jwt-payload.interface';
 
-@ApiTags('profile')
+@ApiTags('customer')
 @ApiBearerAuth()
-@Controller('profile')
+@Controller('customer')
 @UseGuards(JwtAuthGuard)
 export class CustomersController {
   private readonly logger = new Logger(CustomersController.name);
@@ -40,9 +41,9 @@ export class CustomersController {
   @Get('me')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  async getProfile(@GetUser() user) {
+  async getProfile(@GetUser() user: IJwtPayload) {
     try {
-      this.logger.log(`Getting profile for user ID: ${user.userId}`);
+      this.logger.log(`Getting profile for customer ID: ${user.userId}`);
       return await this.customersService.findOne(user.userId);
     } catch (error) {
       this.logger.error(
@@ -67,7 +68,10 @@ export class CustomersController {
     status: HttpStatus.NOT_FOUND,
     description: 'Customer not found',
   })
-  async updateProfile(@Body() profileData: UpdateCustomerDto, @GetUser() user) {
+  async updateProfile(
+    @Body() profileData: UpdateCustomerDto,
+    @GetUser() user: IJwtPayload,
+  ) {
     try {
       return await this.customersService.updateProfile(
         user.userId,
@@ -93,7 +97,7 @@ export class CustomersController {
     status: HttpStatus.NOT_FOUND,
     description: 'Customer not found',
   })
-  async remove(@GetUser() user) {
+  async remove(@GetUser() user: IJwtPayload) {
     try {
       return await this.customersService.remove(user.userId);
     } catch (error) {
@@ -121,7 +125,7 @@ export class CustomersController {
     description: 'Invalid user ID',
   })
   async initiateEmailUpdate(
-    @GetUser() user,
+    @GetUser() user: IJwtPayload,
     @Body() dto: InitiateEmailUpdateDto,
   ) {
     try {
@@ -151,7 +155,7 @@ export class CustomersController {
     description: 'Invalid OTP or user ID',
   })
   async completeEmailUpdate(
-    @GetUser() user,
+    @GetUser() user: IJwtPayload,
     @Body() dto: CompleteEmailUpdateDto,
   ) {
     try {
@@ -182,7 +186,7 @@ export class CustomersController {
     description: 'Invalid user ID',
   })
   async initiatePhoneUpdate(
-    @GetUser() user,
+    @GetUser() user: IJwtPayload,
     @Body() dto: InitiatePhoneUpdateDto,
   ) {
     try {
@@ -212,7 +216,7 @@ export class CustomersController {
     description: 'Invalid OTP or user ID',
   })
   async completePhoneUpdate(
-    @GetUser() user,
+    @GetUser() user: IJwtPayload,
     @Body() dto: CompletePhoneUpdateDto,
   ) {
     try {
@@ -241,7 +245,10 @@ export class CustomersController {
     status: HttpStatus.BAD_REQUEST,
     description: 'Invalid input or user ID',
   })
-  async addAddress(@GetUser() user, @Body() addressDto: CreateAddressDto) {
+  async addAddress(
+    @GetUser() user: IJwtPayload,
+    @Body() addressDto: CreateAddressDto,
+  ) {
     try {
       this.logger.log(`Adding address for user ID: ${user.userId}`);
       return await this.customersService.addAddress(user.userId, addressDto);
