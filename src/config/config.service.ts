@@ -49,4 +49,20 @@ export class ConfigService {
   get authServiceTimeout(): number {
     return this.configService.get<number>('services.auth.timeout', 5000);
   }
+
+  get awsRegion(): string {
+    return this.configService.get<string>('aws.region')!;
+  }
+
+  get awsAccessKeyId(): string {
+    return this.configService.get<string>('aws.accessKeyId')!;
+  }
+
+  get awsSecretAccessKey(): string {
+    return this.configService.get<string>('aws.secretAccessKey')!;
+  }
+
+  get awsS3BucketName(): string {
+    return this.configService.get<string>('aws.s3BucketName')!;
+  }
 }

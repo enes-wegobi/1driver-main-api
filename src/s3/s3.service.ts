@@ -1,4 +1,10 @@
-import { S3Client } from '@aws-sdk/client-s3';
+import {
+  DeleteObjectCommand,
+  GetObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from 'src/config/config.service';
 import { v4 as uuidv4 } from 'uuid';
@@ -8,25 +14,37 @@ export class S3Service {
   private s3Client: S3Client;
   private readonly bucketName: string;
   private readonly region: string;
-/*
+
   constructor(private readonly configService: ConfigService) {
-    this.region = this.configService.get<string>('AWS_REGION');
+    this.region = this.configService.awsRegion;
+    this.bucketName = this.configService.awsS3BucketName;
+
     this.s3Client = new S3Client({
       region: this.region,
       credentials: {
-        accessKeyId: this.configService.get<string>('AWS_ACCESS_KEY_ID'),
-        secretAccessKey: this.configService.get<string>(
-          'AWS_SECRET_ACCESS_KEY',
-        ),
+        accessKeyId: this.configService.awsAccessKeyId,
+        secretAccessKey: this.configService.awsSecretAccessKey,
       },
     });
-
-    this.bucketName = this.configService.get<string>('AWS_S3_BUCKET_NAME');
   }
 
-  async uploadFile(file: Express.Multer.File): Promise<string> {
+  /**
+   * Uploads a file to S3 with an automatically generated key.
+   * @param file The file to upload.
+   * @returns The generated file key.
+   */
+  async uploadFileWithGeneratedKey(file: Express.Multer.File): Promise<string> {
     const fileKey = `${uuidv4()}-${file.originalname}`;
+    await this.uploadFileWithKey(file, fileKey);
+    return fileKey;
+  }
 
+  /**
+   * Uploads a file to S3 with a specific key.
+   * @param file The file to upload.
+   * @param fileKey The specific key to use for the S3 object.
+   */
+  async uploadFileWithKey(file: Express.Multer.File, fileKey: string): Promise<void> {
     const command = new PutObjectCommand({
       Bucket: this.bucketName,
       Key: fileKey,
@@ -35,7 +53,6 @@ export class S3Service {
     });
 
     await this.s3Client.send(command);
-    return fileKey;
   }
 
   async getSignedUrl(
@@ -59,9 +76,4 @@ export class S3Service {
     await this.s3Client.send(command);
   }
 
-  extractKeyFromUrl(fileUrl: string): string {
-    const urlParts = fileUrl.split('/');
-    return urlParts.pop();
-  }
-    */
 }
