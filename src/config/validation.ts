@@ -1,81 +1,32 @@
-import { plainToClass } from 'class-transformer';
-import {
-  IsEnum,
-  IsNumber,
-  IsOptional,
-  IsString,
-  validateSync,
-} from 'class-validator';
+import { z } from 'zod';
 
-enum Environment {
-  Development = 'development',
-  Production = 'production',
-  Test = 'test',
-}
+const Environment = z.enum(['development', 'production', 'test']);
 
-class EnvironmentVariables {
-  @IsOptional()
-  @IsEnum(Environment)
-  NODE_ENV: Environment;
+const envSchema = z.object({
+  NODE_ENV: Environment.optional().default('development'),
+  PORT: z.coerce.number().optional().default(3000),
+  HOST: z.string().optional().default('0.0.0.0'),
+  CORS_ORIGINS: z.string().optional().default('*'),
+  USERS_SERVICE_URL: z.string().optional().default('http://localhost:3001'),
+  USERS_SERVICE_TIMEOUT: z.coerce.number().optional().default(5000),
+  AUTH_SERVICE_URL: z.string().optional().default('http://localhost:3001'),
+  AUTH_SERVICE_TIMEOUT: z.coerce.number().optional().default(5000),
+  PRODUCTS_SERVICE_URL: z.string().optional(),
+  PRODUCTS_SERVICE_TIMEOUT: z.coerce.number().optional(),
+  JWT_SECRET: z.string().optional().default('supersecret'),
+  REDIS_URL: z.string().optional().default('redis://localhost:6379'),
+});
 
-  @IsOptional()
-  @IsNumber()
-  PORT: number;
-
-  @IsOptional()
-  @IsString()
-  HOST: string;
-
-  @IsOptional()
-  @IsString()
-  CORS_ORIGINS: string;
-
-  @IsOptional()
-  @IsString()
-  USERS_SERVICE_URL: string;
-
-  @IsOptional()
-  @IsNumber()
-  USERS_SERVICE_TIMEOUT: number;
-
-  @IsOptional()
-  @IsString()
-  AUTH_SERVICE_URL: string;
-
-  @IsOptional()
-  @IsNumber()
-  AUTH_SERVICE_TIMEOUT: number;
-
-  @IsOptional()
-  @IsString()
-  PRODUCTS_SERVICE_URL: string;
-
-  @IsOptional()
-  @IsNumber()
-  PRODUCTS_SERVICE_TIMEOUT: number;
-
-  @IsOptional()
-  @IsString()
-  JWT_SECRET: string;
-
-  @IsOptional()
-  @IsString()
-  REDIS_URL: string;
-}
+export type EnvironmentVariables = z.infer<typeof envSchema>;
 
 export function validate(config: Record<string, unknown>) {
-  const validatedConfig = plainToClass(EnvironmentVariables, config, {
-    enableImplicitConversion: true,
-  });
-
-  const errors = validateSync(validatedConfig, {
-    skipMissingProperties: false,
-  });
-
-  if (errors.length > 0) {
-    console.error(errors.toString());
-    throw new Error('Config validation error!');
+  try {
+    return envSchema.parse(config);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      console.error('Config validation error:', JSON.stringify(error.format(), null, 2));
+      throw new Error('Configuration validation failed');
+    }
+    throw error;
   }
-
-  return validatedConfig;
 }

@@ -16,7 +16,7 @@ export default () => ({
     secret: process.env.JWT_SECRET || 'supersecret',
   },
   redis: {
-    url: process.env.REDIS_URL || 'supersecret',
+    url: process.env.REDIS_URL || 'redis://localhost:6379',
   },
   logging: {
     level: process.env.LOG_LEVEL || 'info',

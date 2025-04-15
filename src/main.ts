@@ -15,7 +15,6 @@ import { ServerOptions } from 'socket.io';
 import { createClient } from 'redis';
 import { createAdapter } from '@socket.io/redis-adapter';
 
-// Custom adapter for Fastify + Socket.IO + Redis integration
 class FastifySocketIORedisAdapter extends IoAdapter {
   private pubClient: any;
   private subClient: any;
@@ -50,11 +49,9 @@ class FastifySocketIORedisAdapter extends IoAdapter {
         credentials: true,
       },
       transports: ['websocket', 'polling'],
-      // Allows Socket.IO to be attached to the existing Fastify server
       serverFactory: (handler) => handler(server),
     });
 
-    // Apply Redis adapter if clients are connected
     if (this.pubClient && this.subClient) {
       const redisAdapter = createAdapter(this.pubClient, this.subClient);
       io.adapter(redisAdapter);
@@ -90,7 +87,6 @@ async function bootstrap() {
     }),
   );
 
-  // Swagger configuration
   const config = new DocumentBuilder()
     .setTitle('Customer API Gateway')
     .setDescription('The Customer API Gateway description')
@@ -101,7 +97,6 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
 
-  // Type assertion to fix TypeScript errors
   await app.register(fastifyCors as any, {
     origin: configService.get<string>('CORS_ORIGINS', '*').split(','),
     methods: ['GET', 'PUT', 'POST', 'DELETE', 'PATCH', 'OPTIONS'],
