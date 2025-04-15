@@ -16,11 +16,6 @@ export class CustomersClient {
     this.httpClient = this.clientsService.createHttpClient('users');
   }
 
-  async findAll(): Promise<any> {
-    const { data } = await this.httpClient.get('/customers');
-    return data;
-  }
-
   async findOne(id: string): Promise<any> {
     const { data } = await this.httpClient.get(`/customers/${id}`);
     return data;

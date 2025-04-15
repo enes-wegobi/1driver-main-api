@@ -11,10 +11,6 @@ import { UpdateCustomerDto } from 'src/clients/customer/dto/update-customer.dto'
 export class CustomersService {
   constructor(private readonly customersClient: CustomersClient) {}
 
-  async findAll() {
-    return this.customersClient.findAll();
-  }
-
   async findOne(id: string) {
     return this.customersClient.findOne(id);
   }
