@@ -16,6 +16,9 @@ import {
   ParseFilePipe,
   MaxFileSizeValidator,
   FileTypeValidator,
+  Param,
+  ConflictException,
+  NotFoundException,
 } from '@nestjs/common';
 import {
   ApiOperation,
@@ -46,6 +49,15 @@ export class DriversController {
 
   @Post('upload')
   @UseInterceptors(FileInterceptor('file'))
+  @ApiOperation({ summary: 'Upload a file' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'File uploaded successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.CONFLICT,
+    description: 'File of this type already exists',
+  })
   async uploadFile(
     @UploadedFile(
       new ParseFilePipe({
@@ -64,48 +76,33 @@ export class DriversController {
     }
 
     try {
+      const fileExists = await this.driversService.checkFileExists(
+        user.userId, 
+        uploadFileDto.fileType
+      );
+      
+      if (fileExists) {
+        throw new ConflictException(`A file of type ${uploadFileDto.fileType} already exists for this user`);
+      }
+
       const fileKey = `${user.userId}/${uploadFileDto.fileType}/${uuidv4()}-${file.originalname}`;
 
       await this.s3Service.uploadFileWithKey(file, fileKey);
-      /*
-      await this.usersClient.notifyFileUploaded({
-        userId: user.userId,
-        fileType: uploadFileDto.fileType,
-        fileKey: fileKey,
-        fileUrl: await this.s3Service.getSignedUrl(fileKey),
-      });
-    */
-      return { message: 'File uploaded successfully', fileKey };
+      
+      // Notify driver service about the file upload
+      await this.driversService.notifyFileUploaded(user.userId, uploadFileDto.fileType, fileKey);
+      
+      return { 
+        message: 'File uploaded successfully', 
+        fileKey,
+        fileType: uploadFileDto.fileType 
+      };
     } catch (error) {
-      console.error('File upload failed:', error);
+      if (error instanceof ConflictException) {
+        throw error;
+      }
+      this.logger.error('File upload failed:', error);
       throw new BadRequestException('File upload failed.');
-    }
-  }
-
-  @Get('me')
-  @ApiOperation({ summary: 'Get current driver profile' })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Driver profile retrieved',
-  })
-  @ApiResponse({
-    status: HttpStatus.NOT_FOUND,
-    description: 'Driver not found',
-  })
-  async getProfile(@GetUser() user: IJwtPayload) {
-    try {
-      this.logger.log(`Getting profile for driver ID: ${user.userId}`);
-      return await this.driversService.findOne(user.userId);
-    } catch (error) {
-      this.logger.error(
-        `Error fetching driver profile: ${error.message}`,
-        error.stack,
-      );
-      throw new HttpException(
-        error.response?.data ||
-          'An error occurred while fetching the driver profile',
-        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      );
     }
   }
 
