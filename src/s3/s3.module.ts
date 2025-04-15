@@ -1,13 +1,9 @@
 import { Module } from '@nestjs/common';
 import { S3Service } from './s3.service';
 import { ConfigModule } from 'src/config/config.module';
-import { S3Controller } from './s3.controller';
-import { ClientsModule } from 'src/clients/clients.module';
-import { JwtModule } from 'src/jwt/jwt.modulte';
 
 @Module({
-  imports: [ConfigModule, ClientsModule, JwtModule],
-  controllers: [S3Controller],
+  imports: [ConfigModule],
   providers: [S3Service],
   exports: [S3Service],
 })

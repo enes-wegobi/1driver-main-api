@@ -1,4 +1,4 @@
-import { S3FileType } from 'src/s3/s3-file-type.enum';
+import { S3FileType } from 'src/modules/drivers/enum/file-type.enum';
 
 export class NotifyFileUploadedDto {
   userId: string;

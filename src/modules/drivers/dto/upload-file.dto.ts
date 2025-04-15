@@ -1,8 +1,8 @@
 import { IsEnum, IsNotEmpty } from 'class-validator';
-import { S3FileType } from '../s3-file-type.enum';
+import { FileType } from '../enum/file-type.enum';
 
 export class UploadFileDto {
-  @IsEnum(S3FileType)
+  @IsEnum(FileType)
   @IsNotEmpty()
-  fileType: S3FileType;
+  fileType: FileType;
 }
