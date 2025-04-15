@@ -16,7 +16,6 @@ import { GetUser } from 'src/jwt/user.decoretor';
 import { S3Service } from './s3.service';
 import { UploadFileDto } from './dto/upload-file.dto';
 import { v4 as uuidv4 } from 'uuid';
-import { S3FileType } from './s3-file-type.enum';
 import { UsersClient } from 'src/clients/users/users.client';
 import { IJwtPayload } from 'src/jwt/jwt-payload.interface';
 

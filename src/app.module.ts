@@ -7,6 +7,7 @@ import { CustomersModule } from './modules/customers/customers.module';
 import { ContentModule } from './modules/content/content.module';
 import { WebSocketModule } from './websocket/websocket.module';
 import { RedisModule } from './redis/redis.module';
+import { S3Module } from './s3/s3.module';
 
 @Module({
   imports: [
@@ -18,8 +19,7 @@ import { RedisModule } from './redis/redis.module';
     ContentModule,
     WebSocketModule,
     RedisModule,
+    S3Module,
   ],
-  controllers: [],
-  providers: [],
 })
 export class AppModule {}

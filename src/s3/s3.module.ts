@@ -3,9 +3,10 @@ import { S3Service } from './s3.service';
 import { ConfigModule } from 'src/config/config.module';
 import { S3Controller } from './s3.controller';
 import { ClientsModule } from 'src/clients/clients.module';
+import { JwtModule } from 'src/jwt/jwt.modulte';
 
 @Module({
-  imports: [ConfigModule, ClientsModule],
+  imports: [ConfigModule, ClientsModule, JwtModule],
   controllers: [S3Controller],
   providers: [S3Service],
   exports: [S3Service],
