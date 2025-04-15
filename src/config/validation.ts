@@ -28,7 +28,10 @@ export function validate(config: Record<string, unknown>) {
     return envSchema.parse(config);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      console.error('Config validation error:', JSON.stringify(error.format(), null, 2));
+      console.error(
+        'Config validation error:',
+        JSON.stringify(error.format(), null, 2),
+      );
       throw new Error('Configuration validation failed');
     }
     throw error;

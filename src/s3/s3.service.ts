@@ -44,7 +44,10 @@ export class S3Service {
    * @param file The file to upload.
    * @param fileKey The specific key to use for the S3 object.
    */
-  async uploadFileWithKey(file: Express.Multer.File, fileKey: string): Promise<void> {
+  async uploadFileWithKey(
+    file: Express.Multer.File,
+    fileKey: string,
+  ): Promise<void> {
     const command = new PutObjectCommand({
       Bucket: this.bucketName,
       Key: fileKey,
@@ -75,5 +78,4 @@ export class S3Service {
 
     await this.s3Client.send(command);
   }
-
 }

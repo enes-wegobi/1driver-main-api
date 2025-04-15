@@ -48,14 +48,14 @@ export class S3Controller {
     }
 
     try {
-      const fileKey = `${user.userId}/${uploadFileDto.fileType}/${uuidv4()}-${file.originalname}`; 
+      const fileKey = `${user.userId}/${uploadFileDto.fileType}/${uuidv4()}-${file.originalname}`;
 
       await this.s3Service.uploadFileWithKey(file, fileKey);
       await this.usersClient.notifyFileUploaded({
         userId: user.userId,
         fileType: uploadFileDto.fileType,
         fileKey: fileKey,
-        fileUrl: await this.s3Service.getSignedUrl(fileKey)
+        fileUrl: await this.s3Service.getSignedUrl(fileKey),
       });
 
       return { message: 'File uploaded successfully', fileKey };

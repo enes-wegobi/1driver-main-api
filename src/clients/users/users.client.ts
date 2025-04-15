@@ -40,16 +40,24 @@ export class UsersClient {
     await this.httpClient.delete(`/users/${id}`);
   }
 
-
-  async notifyFileUploaded(notificationDto: NotifyFileUploadedDto): Promise<void> {
+  async notifyFileUploaded(
+    notificationDto: NotifyFileUploadedDto,
+  ): Promise<void> {
     try {
-      const endpoint = '/users/notify-file-upload'; 
-      this.logger.log(`Sending file upload notification to User API: ${endpoint} for user ${notificationDto.userId}`);
+      const endpoint = '/users/notify-file-upload';
+      this.logger.log(
+        `Sending file upload notification to User API: ${endpoint} for user ${notificationDto.userId}`,
+      );
       await this.httpClient.post(endpoint, notificationDto);
-      this.logger.log(`Successfully notified User API for user ${notificationDto.userId}`);
+      this.logger.log(
+        `Successfully notified User API for user ${notificationDto.userId}`,
+      );
     } catch (error) {
-      this.logger.error(`Failed to notify User API about file upload for user ${notificationDto.userId}: ${error.message}`, error.stack);
-      throw error; 
+      this.logger.error(
+        `Failed to notify User API about file upload for user ${notificationDto.userId}: ${error.message}`,
+        error.stack,
+      );
+      throw error;
     }
   }
 }
