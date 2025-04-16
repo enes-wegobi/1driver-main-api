@@ -7,6 +7,7 @@ import {
 import fastifyHelmet from '@fastify/helmet';
 import fastifyCompress from '@fastify/compress';
 import fastifyCors from '@fastify/cors';
+import fastifyMultipart from '@fastify/multipart';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
@@ -65,11 +66,20 @@ class FastifySocketIORedisAdapter extends IoAdapter {
 async function bootstrap() {
   const fastifyAdapter = new FastifyAdapter();
 
+
+  await fastifyAdapter.register(fastifyMultipart as any, {
+    limits: {
+      fileSize: 10 * 1024 * 1024, // 10MB
+    },
+  });
+  
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
     fastifyAdapter,
     { logger: ['error', 'warn', 'log', 'debug'] },
   );
+
+
 
   const configService = app.get(ConfigService);
   const redisUrl = configService.get<string>('redis.url', '0.0.0.0');

@@ -18,13 +18,13 @@ import {
   ConflictException,
   NotFoundException,
 } from '@nestjs/common';
-import { ApiOperation, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiOperation, ApiTags, ApiBearerAuth, ApiConsumes, ApiBody, ApiParam } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/jwt/jwt.guard';
 import { DriversService } from './drivers.service';
 import { GetUser } from 'src/jwt/user.decoretor';
 import { IJwtPayload } from 'src/jwt/jwt-payload.interface';
 import { v4 as uuidv4 } from 'uuid';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor } from '@nest-lab/fastify-multer';
 import { UploadFileDto } from './dto/upload-file.dto';
 import { S3Service } from 'src/s3/s3.service';
 import { FileType } from './enum/file-type.enum';
@@ -43,17 +43,29 @@ export class DriversController {
 
   @Post('upload/:fileType')
   @UseInterceptors(FileInterceptor('file'))
-  @ApiOperation({ summary: 'Upload a file' })
+  @ApiOperation({ summary: 'Dosya yükleme' })
+  @ApiConsumes('multipart/form-data')
+  @ApiParam({
+    name: 'fileType',
+    enum: FileType,
+    description: 'Yüklenecek dosya türü',
+    example: FileType.DRIVERS_LICENSE_FRONT
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+          description: 'Yüklenecek dosya (png, jpeg, jpg, pdf)',
+        },
+      },
+      required: ['file'],
+    },
+  })
   async uploadFile(
-    @UploadedFile(
-      new ParseFilePipe({
-        validators: [
-          new MaxFileSizeValidator({ maxSize: 10 * 1024 * 1024 }),
-          new FileTypeValidator({ fileType: '.(png|jpeg|jpg|pdf)' }),
-        ],
-      }),
-    )
-    file: Express.Multer.File,
+    @UploadedFile() file: Express.Multer.File,
     @Param('fileType') fileType: FileType,
     @GetUser() user: IJwtPayload,
   ) {
@@ -75,14 +87,15 @@ export class DriversController {
 
       const fileKey = `${user.userId}/${fileType}/${uuidv4()}-${file.originalname}`;
       await this.s3Service.uploadFileWithKey(file, fileKey);
+
       await this.driversService.notifyFileUploaded(
         user.userId,
         fileType,
         fileKey,
         file.mimetype,
       );
-      const fileUrl = await this.s3Service.getSignedUrl(fileKey, 3600);
 
+      const fileUrl = await this.s3Service.getSignedUrl(fileKey, 3600);
       return {
         message: 'File uploaded successfully',
         fileKey,
@@ -102,6 +115,12 @@ export class DriversController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Delete a specific file type for the current driver',
+  })
+  @ApiParam({
+    name: 'fileType',
+    enum: FileType,
+    description: 'Type of file to delete',
+    example: FileType.DRIVERS_LICENSE_FRONT
   })
   async deleteFile(
     @Param('fileType') fileType: FileType,
