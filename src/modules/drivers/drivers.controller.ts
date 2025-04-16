@@ -17,6 +17,7 @@ import {
   Param,
   ConflictException,
   NotFoundException,
+  Get,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags, ApiBearerAuth, ApiConsumes, ApiBody, ApiParam } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/jwt/jwt.guard';
@@ -40,6 +41,25 @@ export class DriversController {
     private readonly driversService: DriversService,
     private readonly s3Service: S3Service,
   ) {}
+
+    @Get('me')
+    @ApiBearerAuth()
+    @UseGuards(JwtAuthGuard)
+    async getProfile(@GetUser() user: IJwtPayload) {
+      try {
+        this.logger.log(`Getting profile for customer ID: ${user.userId}`);
+        return await this.driversService.findOne(user.userId);
+      } catch (error) {
+        this.logger.error(
+          `Error fetching profile: ${error.message}`,
+          error.stack,
+        );
+        throw new HttpException(
+          error.response?.data || 'An error occurred while fetching the profile',
+          error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
+    }
 
   @Post('upload/:fileType')
   @UseInterceptors(FileInterceptor('file'))
