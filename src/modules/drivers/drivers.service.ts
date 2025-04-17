@@ -36,4 +36,33 @@ export class DriversService {
       contentType,
     );
   }
+
+  async verifyFile(
+    driverId: string,
+    fileType: FileType,
+    isVerified: boolean,
+  ): Promise<any> {
+    return this.driversClient.verifyFile(driverId, fileType, isVerified);
+  }
+
+  async verifyCriminalRecord(
+    driverId: string,
+    isVerified: boolean,
+  ): Promise<any> {
+    return this.verifyFile(driverId, FileType.CRIMINAL_RECORD, isVerified);
+  }
+
+  async verifyDrivingLicenseFront(
+    driverId: string,
+    isVerified: boolean,
+  ): Promise<any> {
+    return this.verifyFile(driverId, FileType.DRIVERS_LICENSE_FRONT, isVerified);
+  }
+
+  async verifyDrivingLicenseBack(
+    driverId: string,
+    isVerified: boolean,
+  ): Promise<any> {
+    return this.verifyFile(driverId, FileType.DRIVERS_LICENSE_BACK, isVerified);
+  }
 }

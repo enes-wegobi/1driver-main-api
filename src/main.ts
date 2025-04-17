@@ -117,9 +117,11 @@ async function bootstrap() {
     contentSecurityPolicy: {
       directives: {
         defaultSrc: [`'self'`],
-        styleSrc: [`'self'`, `'unsafe-inline'`],
+        styleSrc: [`'self'`, `'unsafe-inline'`, 'https://fonts.googleapis.com'],
+        fontSrc: [`'self'`, 'https://fonts.gstatic.com'],
         imgSrc: [`'self'`, 'data:', 'validator.swagger.io'],
-        scriptSrc: [`'self'`, `https: 'unsafe-inline'`],
+        scriptSrc: [`'self'`, `'unsafe-inline'`, `'unsafe-eval'`],
+        connectSrc: [`'self'`],
       },
     },
   });

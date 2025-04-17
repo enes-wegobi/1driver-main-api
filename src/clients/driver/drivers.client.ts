@@ -53,4 +53,16 @@ export class DriversClient {
     );
     return data;
   }
+
+  async verifyFile(
+    driverId: string,
+    fileType: FileType,
+    isVerified: boolean,
+  ): Promise<any> {
+    const { data } = await this.httpClient.put(
+      `/drivers/${driverId}/files/${fileType}/verify`,
+      { isVerified }
+    );
+    return data;
+  }
 }

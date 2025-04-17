@@ -18,6 +18,7 @@ import {
   ConflictException,
   NotFoundException,
   Get,
+  Put,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags, ApiBearerAuth, ApiConsumes, ApiBody, ApiParam } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/jwt/jwt.guard';
@@ -173,6 +174,71 @@ export class DriversController {
         error.response?.data || 'An error occurred while deleting file',
         error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
+    }
+  }
+
+  @Put('files/:fileType/verify')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Verify a file',
+    description:
+      'Verifies a specific document. For driving license, front and back are verified separately. The file must be uploaded first.',
+  })
+  @ApiParam({
+    name: 'fileType',
+    enum: FileType,
+    description: 'Type of file to verify',
+    example: FileType.DRIVERS_LICENSE_FRONT
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        isVerified: {
+          type: 'boolean',
+          description: 'Whether the file is verified or not',
+          example: true,
+        },
+      },
+      required: ['isVerified'],
+    },
+  })
+  async verifyFile(
+    @Param('fileType') fileType: FileType,
+    @Body('isVerified') isVerified: boolean,
+    @GetUser() user: IJwtPayload,
+  ) {
+    try {
+      const fileExists = await this.driversService.checkFileExists(
+        user.userId,
+        fileType,
+      );
+      if (!fileExists) {
+        throw new NotFoundException(`File of type ${fileType} not found`);
+      }
+
+      switch (fileType) {
+        case FileType.CRIMINAL_RECORD:
+          return await this.driversService.verifyCriminalRecord(
+            user.userId,
+            isVerified,
+          );
+        case FileType.DRIVERS_LICENSE_FRONT:
+          return await this.driversService.verifyDrivingLicenseFront(
+            user.userId,
+            isVerified,
+          );
+        case FileType.DRIVERS_LICENSE_BACK:
+          return await this.driversService.verifyDrivingLicenseBack(
+            user.userId,
+            isVerified,
+          );
+        default:
+          throw new NotFoundException(`Invalid file type: ${fileType}`);
+      }
+    } catch (error) {
+      this.logger.error(`Error verifying file: ${error.message}`, error.stack);
+      throw error;
     }
   }
 }
