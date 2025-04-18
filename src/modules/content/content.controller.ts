@@ -20,7 +20,7 @@ export class ContentController {
   @ApiOperation({ summary: 'Get all frequently asked questions' })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Returns all FAQ items',
+    description: 'Returns all FAQ categories with their questions and answers',
     type: [FaqItemDto],
   })
   getFaqs(): FaqItemDto[] {
