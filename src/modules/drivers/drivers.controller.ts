@@ -153,9 +153,15 @@ export class DriversController {
       );
 
       if (fileExists) {
-        throw new ConflictException(
-          `A file of type ${fileType} already exists for this user`,
+        // Delete the existing file before uploading a new one
+        const existingFileKey = await this.driversService.deleteFile(
+          user.userId,
+          fileType,
         );
+        if (existingFileKey) {
+          await this.s3Service.deleteFile(existingFileKey);
+        }
+        this.logger.log(`Deleted existing file of type ${fileType} for user ${user.userId}`);
       }
 
       const fileKey = `${user.userId}/${fileType}/${uuidv4()}-${file.originalname}`;
@@ -177,9 +183,6 @@ export class DriversController {
         fileUrl,
       };
     } catch (error) {
-      if (error instanceof ConflictException) {
-        throw error;
-      }
       this.logger.error('File upload failed:', error);
       throw new BadRequestException('File upload failed.');
     }
