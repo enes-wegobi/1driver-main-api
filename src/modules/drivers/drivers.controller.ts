@@ -12,7 +12,6 @@ import {
   UseInterceptors,
   UploadedFile,
   Param,
-  ConflictException,
   NotFoundException,
   Get,
   Put,
@@ -27,6 +26,8 @@ import { FileInterceptor } from '@nest-lab/fastify-multer';
 import { S3Service } from 'src/s3/s3.service';
 import { FileType } from './enum/file-type.enum';
 import { DriverFilesStatusDto } from './dto/file-status.dto';
+import { BankInformationDto, CreateBankInformationDto } from './dto/bank-information.dto';
+import { CompanyInformationDto, CreateCompanyInformationDto } from './dto/company-information.dto';
 
 @ApiTags('drivers')
 @ApiBearerAuth()
@@ -72,36 +73,6 @@ export class DriversController {
     try {
       this.logger.log(`Getting files for driver ID: ${user.userId}`);
       return await this.driversService.getDriverFiles(user.userId);
-    } catch (error) {
-      this.logger.error(
-        `Error fetching driver files: ${error.message}`,
-        error.stack,
-      );
-      throw new HttpException(
-        error.response?.data || 'An error occurred while fetching driver files',
-        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-
-  @Get(':driverId/files')
-  @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Get all files and their status for a specific driver' })
-  @ApiParam({
-    name: 'driverId',
-    description: 'ID of the driver',
-    example: '123e4567-e89b-12d3-a456-426614174000',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Returns all files with their status and whether the driver can use the app',
-    type: DriverFilesStatusDto,
-  })
-  async getDriverFiles(@Param('driverId') driverId: string) {
-    try {
-      this.logger.log(`Getting files for driver ID: ${driverId}`);
-      return await this.driversService.getDriverFiles(driverId);
     } catch (error) {
       this.logger.error(
         `Error fetching driver files: ${error.message}`,
@@ -295,6 +266,184 @@ export class DriversController {
     } catch (error) {
       this.logger.error(`Error verifying file: ${error.message}`, error.stack);
       throw error;
+    }
+  }
+
+  // Bank Information Endpoints
+  @Post('bank-info')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Create or update bank information',
+    description: 'Creates or updates bank information for the current driver',
+  })
+  @ApiBody({ type: CreateBankInformationDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Bank information created or updated successfully',
+    type: BankInformationDto,
+  })
+  async createOrUpdateBankInformation(
+    @Body() bankInfoDto: CreateBankInformationDto,
+    @GetUser() user: IJwtPayload,
+  ) {
+    try {
+      this.logger.log(`Creating/updating bank information for driver ID: ${user.userId}`);
+      return await this.driversService.createOrUpdateBankInformation(user.userId, bankInfoDto);
+    } catch (error) {
+      this.logger.error(
+        `Error creating/updating bank information: ${error.message}`,
+        error.stack,
+      );
+      throw new HttpException(
+        error.response?.data || 'An error occurred while creating/updating bank information',
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Get('bank-info')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Get bank information',
+    description: 'Gets bank information for the current driver',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Bank information retrieved successfully',
+    type: BankInformationDto,
+  })
+  async getBankInformation(
+    @GetUser() user: IJwtPayload,
+  ) {
+    try {
+      this.logger.log(`Getting bank information for driver ID: ${user.userId}`);
+      return await this.driversService.getBankInformation(user.userId);
+    } catch (error) {
+      this.logger.error(
+        `Error fetching bank information: ${error.message}`,
+        error.stack,
+      );
+      throw new HttpException(
+        error.response?.data || 'An error occurred while fetching bank information',
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Delete('bank-info')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Delete bank information',
+    description: 'Deletes bank information for the current driver',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Bank information deleted successfully',
+  })
+  async deleteBankInformation(
+    @GetUser() user: IJwtPayload,
+  ) {
+    try {
+      this.logger.log(`Deleting bank information for driver ID: ${user.userId}`);
+      return await this.driversService.deleteBankInformation(user.userId);
+    } catch (error) {
+      this.logger.error(
+        `Error deleting bank information: ${error.message}`,
+        error.stack,
+      );
+      throw new HttpException(
+        error.response?.data || 'An error occurred while deleting bank information',
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  // Company Information Endpoints
+  @Post('company-info')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Create or update company information',
+    description: 'Creates or updates company information for the current driver',
+  })
+  @ApiBody({ type: CreateCompanyInformationDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Company information created or updated successfully',
+    type: CompanyInformationDto,
+  })
+  async createOrUpdateCompanyInformation(
+    @Body() companyInfoDto: CreateCompanyInformationDto,
+    @GetUser() user: IJwtPayload,
+  ) {
+    try {
+      this.logger.log(`Creating/updating company information for driver ID: ${user.userId}`);
+      return await this.driversService.createOrUpdateCompanyInformation(user.userId, companyInfoDto);
+    } catch (error) {
+      this.logger.error(
+        `Error creating/updating company information: ${error.message}`,
+        error.stack,
+      );
+      throw new HttpException(
+        error.response?.data || 'An error occurred while creating/updating company information',
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Get('company-info')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Get company information',
+    description: 'Gets company information for the current driver',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Company information retrieved successfully',
+    type: CompanyInformationDto,
+  })
+  async getCompanyInformation(
+    @GetUser() user: IJwtPayload,
+  ) {
+    try {
+      this.logger.log(`Getting company information for driver ID: ${user.userId}`);
+      return await this.driversService.getCompanyInformation(user.userId);
+    } catch (error) {
+      this.logger.error(
+        `Error fetching company information: ${error.message}`,
+        error.stack,
+      );
+      throw new HttpException(
+        error.response?.data || 'An error occurred while fetching company information',
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Delete('company-info')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Delete company information',
+    description: 'Deletes company information for the current driver',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Company information deleted successfully',
+  })
+  async deleteCompanyInformation(
+    @GetUser() user: IJwtPayload,
+  ) {
+    try {
+      this.logger.log(`Deleting company information for driver ID: ${user.userId}`);
+      return await this.driversService.deleteCompanyInformation(user.userId);
+    } catch (error) {
+      this.logger.error(
+        `Error deleting company information: ${error.message}`,
+        error.stack,
+      );
+      throw new HttpException(
+        error.response?.data || 'An error occurred while deleting company information',
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 }

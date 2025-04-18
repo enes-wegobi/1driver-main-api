@@ -4,6 +4,8 @@ import { ClientsService } from '../clients.service';
 import { FileType } from 'src/modules/drivers/enum/file-type.enum';
 import { NotifyFileUploadedDto } from '../users/dto/notify-file-uploaded.dto';
 import { DriverFilesStatusDto } from 'src/modules/drivers/dto/file-status.dto';
+import { BankInformationDto, CreateBankInformationDto } from 'src/modules/drivers/dto/bank-information.dto';
+import { CompanyInformationDto, CreateCompanyInformationDto } from 'src/modules/drivers/dto/company-information.dto';
 
 @Injectable()
 export class DriversClient {
@@ -79,6 +81,50 @@ export class DriversClient {
 
   async getDriverFiles(driverId: string): Promise<DriverFilesStatusDto> {
     const { data } = await this.httpClient.get(`/drivers/${driverId}/files`);
+    return data;
+  }
+
+  // Bank Information Methods
+  async createOrUpdateBankInformation(
+    driverId: string,
+    bankInfoDto: CreateBankInformationDto,
+  ): Promise<BankInformationDto> {
+    const { data } = await this.httpClient.post(
+      `/drivers/${driverId}/bank-info`,
+      bankInfoDto,
+    );
+    return data;
+  }
+
+  async getBankInformation(driverId: string): Promise<BankInformationDto> {
+    const { data } = await this.httpClient.get(`/drivers/${driverId}/bank-info`);
+    return data;
+  }
+
+  async deleteBankInformation(driverId: string): Promise<any> {
+    const { data } = await this.httpClient.delete(`/drivers/${driverId}/bank-info`);
+    return data;
+  }
+
+  // Company Information Methods
+  async createOrUpdateCompanyInformation(
+    driverId: string,
+    companyInfoDto: CreateCompanyInformationDto,
+  ): Promise<CompanyInformationDto> {
+    const { data } = await this.httpClient.post(
+      `/drivers/${driverId}/company-info`,
+      companyInfoDto,
+    );
+    return data;
+  }
+
+  async getCompanyInformation(driverId: string): Promise<CompanyInformationDto> {
+    const { data } = await this.httpClient.get(`/drivers/${driverId}/company-info`);
+    return data;
+  }
+
+  async deleteCompanyInformation(driverId: string): Promise<any> {
+    const { data } = await this.httpClient.delete(`/drivers/${driverId}/company-info`);
     return data;
   }
 }
