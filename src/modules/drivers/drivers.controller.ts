@@ -11,25 +11,22 @@ import {
   Post,
   UseInterceptors,
   UploadedFile,
-  ParseFilePipe,
-  MaxFileSizeValidator,
-  FileTypeValidator,
   Param,
   ConflictException,
   NotFoundException,
   Get,
   Put,
 } from '@nestjs/common';
-import { ApiOperation, ApiTags, ApiBearerAuth, ApiConsumes, ApiBody, ApiParam } from '@nestjs/swagger';
+import { ApiOperation, ApiTags, ApiBearerAuth, ApiConsumes, ApiBody, ApiParam, ApiResponse } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/jwt/jwt.guard';
 import { DriversService } from './drivers.service';
 import { GetUser } from 'src/jwt/user.decoretor';
 import { IJwtPayload } from 'src/jwt/jwt-payload.interface';
 import { v4 as uuidv4 } from 'uuid';
 import { FileInterceptor } from '@nest-lab/fastify-multer';
-import { UploadFileDto } from './dto/upload-file.dto';
 import { S3Service } from 'src/s3/s3.service';
 import { FileType } from './enum/file-type.enum';
+import { DriverFilesStatusDto } from './dto/file-status.dto';
 
 @ApiTags('drivers')
 @ApiBearerAuth()
@@ -61,6 +58,61 @@ export class DriversController {
         );
       }
     }
+
+  @Get('me/files')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Get all files and their status for the current driver' })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns all files with their status and whether the driver can use the app',
+    type: DriverFilesStatusDto,
+  })
+  async getMyFiles(@GetUser() user: IJwtPayload) {
+    try {
+      this.logger.log(`Getting files for driver ID: ${user.userId}`);
+      return await this.driversService.getDriverFiles(user.userId);
+    } catch (error) {
+      this.logger.error(
+        `Error fetching driver files: ${error.message}`,
+        error.stack,
+      );
+      throw new HttpException(
+        error.response?.data || 'An error occurred while fetching driver files',
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Get(':driverId/files')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Get all files and their status for a specific driver' })
+  @ApiParam({
+    name: 'driverId',
+    description: 'ID of the driver',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns all files with their status and whether the driver can use the app',
+    type: DriverFilesStatusDto,
+  })
+  async getDriverFiles(@Param('driverId') driverId: string) {
+    try {
+      this.logger.log(`Getting files for driver ID: ${driverId}`);
+      return await this.driversService.getDriverFiles(driverId);
+    } catch (error) {
+      this.logger.error(
+        `Error fetching driver files: ${error.message}`,
+        error.stack,
+      );
+      throw new HttpException(
+        error.response?.data || 'An error occurred while fetching driver files',
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 
   @Post('upload/:fileType')
   @UseInterceptors(FileInterceptor('file'))

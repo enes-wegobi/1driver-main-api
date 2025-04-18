@@ -3,6 +3,7 @@ import { AxiosInstance } from 'axios';
 import { ClientsService } from '../clients.service';
 import { FileType } from 'src/modules/drivers/enum/file-type.enum';
 import { NotifyFileUploadedDto } from '../users/dto/notify-file-uploaded.dto';
+import { DriverFilesStatusDto } from 'src/modules/drivers/dto/file-status.dto';
 
 @Injectable()
 export class DriversClient {
@@ -63,6 +64,11 @@ export class DriversClient {
       `/drivers/${driverId}/files/${fileType}/verify`,
       { isVerified }
     );
+    return data;
+  }
+
+  async getDriverFiles(driverId: string): Promise<DriverFilesStatusDto> {
+    const { data } = await this.httpClient.get(`/drivers/${driverId}/files`);
     return data;
   }
 }

@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { DriversClient } from 'src/clients/driver/drivers.client';
 import { FileType } from './enum/file-type.enum';
+import { DriverFilesStatusDto } from './dto/file-status.dto';
 
 @Injectable()
 export class DriversService {
@@ -64,5 +65,9 @@ export class DriversService {
     isVerified: boolean,
   ): Promise<any> {
     return this.verifyFile(driverId, FileType.DRIVERS_LICENSE_BACK, isVerified);
+  }
+
+  async getDriverFiles(driverId: string): Promise<DriverFilesStatusDto> {
+    return this.driversClient.getDriverFiles(driverId);
   }
 }

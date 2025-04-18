@@ -5,7 +5,7 @@ import {
   HttpException,
   Logger,
 } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags, ApiQuery } from '@nestjs/swagger';
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ContentService } from './content.service';
 import { FaqItemDto } from './dto/faq.dto';
 
