@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { AxiosInstance } from 'axios';
+import { AxiosInstance, AxiosError } from 'axios';
 import { ClientsService } from '../clients.service';
 import { FileType } from 'src/modules/drivers/enum/file-type.enum';
 import { NotifyFileUploadedDto } from '../users/dto/notify-file-uploaded.dto';
@@ -50,10 +50,18 @@ export class DriversClient {
       contentType: contentType,
       fileName: fileName,
     };
+
+    this.logger.log(`Notifying file upload for driver ${driverId}, file type ${fileType}`);
+    
+    // Use a longer timeout for this specific request
+    // The retry mechanism is now handled by ClientsService
     const { data } = await this.httpClient.post(
       `/drivers/${driverId}/files/notify`,
       notifyDto,
+      { timeout: 60000 } // 60 seconds timeout for the first attempt
     );
+    
+    this.logger.log(`Successfully notified file upload for driver ${driverId}, file type ${fileType}`);
     return data;
   }
 

@@ -5,12 +5,20 @@ export default () => ({
   services: {
     users: {
       url: process.env.USERS_SERVICE_URL || 'http://localhost:3001',
-      timeout: parseInt(process.env.USERS_SERVICE_TIMEOUT || '5000', 10),
+      timeout: parseInt(process.env.USERS_SERVICE_TIMEOUT || '30000', 10), // Increased from 15000 to 30000
+      retryCount: parseInt(process.env.USERS_SERVICE_RETRY_COUNT || '3', 10),
+      retryDelay: parseInt(process.env.USERS_SERVICE_RETRY_DELAY || '1000', 10),
     },
     auth: {
       url: process.env.AUTH_SERVICE_URL || 'http://localhost:3001',
       timeout: parseInt(process.env.AUTH_SERVICE_TIMEOUT || '5000', 10),
+      retryCount: parseInt(process.env.AUTH_SERVICE_RETRY_COUNT || '3', 10),
+      retryDelay: parseInt(process.env.AUTH_SERVICE_RETRY_DELAY || '1000', 10),
     },
+  },
+  retry: {
+    defaultCount: parseInt(process.env.DEFAULT_RETRY_COUNT || '3', 10),
+    defaultDelay: parseInt(process.env.DEFAULT_RETRY_DELAY || '1000', 10),
   },
   jwt: {
     secret: process.env.JWT_SECRET || 'supersecret',
