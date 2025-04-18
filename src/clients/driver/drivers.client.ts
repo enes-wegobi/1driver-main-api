@@ -41,12 +41,14 @@ export class DriversClient {
     fileType: FileType,
     fileKey: string,
     contentType: string,
+    fileName: string,
   ): Promise<any> {
     const notifyDto: NotifyFileUploadedDto = {
       userId: driverId,
       fileType: fileType,
       fileKey: fileKey,
       contentType: contentType,
+      fileName: fileName,
     };
     const { data } = await this.httpClient.post(
       `/drivers/${driverId}/files/notify`,

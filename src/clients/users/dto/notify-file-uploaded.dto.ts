@@ -5,4 +5,5 @@ export class NotifyFileUploadedDto {
   fileType: FileType;
   fileKey: string;
   contentType: string;
+  fileName: string;
 }

@@ -29,12 +29,14 @@ export class DriversService {
     fileType: FileType,
     fileKey: string,
     contentType: string,
+    fileName: string,
   ): Promise<any> {
     return this.driversClient.notifyFileUploaded(
       driverId,
       fileType,
       fileKey,
       contentType,
+      fileName,
     );
   }
 

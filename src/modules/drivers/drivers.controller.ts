@@ -166,6 +166,7 @@ export class DriversController {
         fileType,
         fileKey,
         file.mimetype,
+        file.originalname,
       );
 
       const fileUrl = await this.s3Service.getSignedUrl(fileKey, 3600);
