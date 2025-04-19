@@ -1,17 +1,21 @@
-import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient, RedisClientType } from 'redis';
+import { DriverAvailabilityStatus } from 'src/websocket/dto/driver-location.dto';
 
 @Injectable()
 export class RedisService implements OnModuleInit, OnModuleDestroy {
   private client: RedisClientType;
+  private readonly logger = new Logger(RedisService.name);
+  private readonly DRIVER_LOCATION_EXPIRY = 900; // 15 minutes
+  private readonly ACTIVE_DRIVER_EXPIRY = 1800; // 30 minutes
 
   constructor(private configService: ConfigService) {
     this.client = createClient({
       url: this.configService.get<string>('redis.url'),
     });
 
-    this.client.on('error', (err) => console.error('Redis Client Error', err));
+    this.client.on('error', (err) => this.logger.error('Redis Client Error', err));
   }
 
   async onModuleInit() {
@@ -37,7 +41,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       };
 
       await this.client.set(key, JSON.stringify(data));
-      await this.client.expire(key, 900);
+      await this.client.expire(key, this.DRIVER_LOCATION_EXPIRY);
 
       const geoKey = `location:${userType}:geo`;
       await this.client.geoAdd(geoKey, {
@@ -46,9 +50,22 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
         member: userId,
       });
 
+      // If this is a driver, update active drivers set
+      if (userType === 'driver') {
+        await this.markDriverAsActive(userId);
+        
+        // If availability status is provided, update it
+        if (locationData.availabilityStatus) {
+          await this.updateDriverAvailability(
+            userId, 
+            locationData.availabilityStatus
+          );
+        }
+      }
+
       return true;
     } catch (error) {
-      console.error(
+      this.logger.error(
         `Error storing location for user ${userId}:`,
         error.message,
       );
@@ -62,11 +79,103 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     return locationData ? JSON.parse(locationData) : null;
   }
 
+  async markDriverAsActive(driverId: string) {
+    try {
+      const key = `driver:active:${driverId}`;
+      await this.client.set(key, new Date().toISOString());
+      await this.client.expire(key, this.ACTIVE_DRIVER_EXPIRY);
+      
+      // Add to active drivers set
+      await this.client.sAdd('drivers:active', driverId);
+      
+      return true;
+    } catch (error) {
+      this.logger.error(`Error marking driver ${driverId} as active:`, error.message);
+      return false;
+    }
+  }
+
+  async markDriverAsInactive(driverId: string) {
+    try {
+      const key = `driver:active:${driverId}`;
+      await this.client.del(key);
+      
+      // Remove from active drivers set
+      await this.client.sRem('drivers:active', driverId);
+      
+      // Update availability status to offline
+      await this.updateDriverAvailability(driverId, DriverAvailabilityStatus.OFFLINE);
+      
+      return true;
+    } catch (error) {
+      this.logger.error(`Error marking driver ${driverId} as inactive:`, error.message);
+      return false;
+    }
+  }
+
+  async updateDriverAvailability(driverId: string, status: DriverAvailabilityStatus) {
+    try {
+      const key = `driver:status:${driverId}`;
+      await this.client.set(key, status);
+      await this.client.expire(key, this.ACTIVE_DRIVER_EXPIRY);
+      
+      // Update the status in the location data as well
+      const locationKey = `location:user:${driverId}`;
+      const locationData = await this.client.get(locationKey);
+      
+      if (locationData) {
+        const parsedData = JSON.parse(locationData);
+        parsedData.availabilityStatus = status;
+        await this.client.set(locationKey, JSON.stringify(parsedData));
+        await this.client.expire(locationKey, this.DRIVER_LOCATION_EXPIRY);
+      }
+      
+      return true;
+    } catch (error) {
+      this.logger.error(`Error updating driver ${driverId} availability:`, error.message);
+      return false;
+    }
+  }
+
+  async getDriverAvailability(driverId: string): Promise<DriverAvailabilityStatus> {
+    try {
+      const key = `driver:status:${driverId}`;
+      const status = await this.client.get(key);
+      
+      return (status as DriverAvailabilityStatus) || DriverAvailabilityStatus.OFFLINE;
+    } catch (error) {
+      this.logger.error(`Error getting driver ${driverId} availability:`, error.message);
+      return DriverAvailabilityStatus.OFFLINE;
+    }
+  }
+
+  async isDriverActive(driverId: string): Promise<boolean> {
+    try {
+      const key = `driver:active:${driverId}`;
+      const result = await this.client.exists(key);
+      
+      return result === 1;
+    } catch (error) {
+      this.logger.error(`Error checking if driver ${driverId} is active:`, error.message);
+      return false;
+    }
+  }
+
+  async getActiveDrivers(): Promise<string[]> {
+    try {
+      return await this.client.sMembers('drivers:active');
+    } catch (error) {
+      this.logger.error('Error getting active drivers:', error.message);
+      return [];
+    }
+  }
+
   async findNearbyUsers(
     userType: string,
     latitude: number,
     longitude: number,
     radius: number = 5,
+    onlyAvailable: boolean = false,
   ) {
     const geoKey = `location:${userType}:geo`;
 
@@ -101,6 +210,15 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
             // Get additional user data if available
             const userData = await this.getUserLocation(userId);
+            
+            // Skip if we only want available drivers and this one isn't available
+            if (
+              onlyAvailable && 
+              userType === 'driver' && 
+              userData?.availabilityStatus !== DriverAvailabilityStatus.AVAILABLE
+            ) {
+              continue;
+            }
 
             // Create a new object with all properties
             if (
@@ -125,8 +243,16 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
       return enhancedResults;
     } catch (error) {
-      console.error(`Error finding nearby users:`, error);
+      this.logger.error(`Error finding nearby users:`, error);
       return [];
     }
+  }
+  
+  async findNearbyAvailableDrivers(
+    latitude: number,
+    longitude: number,
+    radius: number = 5,
+  ) {
+    return this.findNearbyUsers('driver', latitude, longitude, radius, true);
   }
 }

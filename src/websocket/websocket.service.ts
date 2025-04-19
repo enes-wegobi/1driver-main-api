@@ -57,9 +57,23 @@ export class WebSocketService {
     latitude: number,
     longitude: number,
     radius: number = 5,
+    onlyAvailable: boolean = false,
   ) {
     return this.redisService.findNearbyUsers(
       userType,
+      latitude,
+      longitude,
+      radius,
+      onlyAvailable,
+    );
+  }
+  
+  async findNearbyAvailableDrivers(
+    latitude: number,
+    longitude: number,
+    radius: number = 5,
+  ) {
+    return this.redisService.findNearbyAvailableDrivers(
       latitude,
       longitude,
       radius,

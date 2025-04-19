@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Driver WebSocket Test</title>
+    <script src="https://cdn.socket.io/4.4.1/socket.io.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .card { border: 1px solid #ccc; border-radius: 5px; padding: 15px; margin-bottom: 15px; }
+        .form-group { margin-bottom: 10px; }
+        label { display: block; margin-bottom: 5px; }
+        input, select, button { padding: 8px; width: 100%; box-sizing: border-box; }
+        button { background-color: #4CAF50; color: white; border: none; cursor: pointer; }
+        button:hover { background-color: #45a049; }
+        #log { height: 300px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; background-color: #f9f9f9; }
+        .log-entry { margin-bottom: 5px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Sürücü WebSocket Test Sayfası</h1>
+        
+        <div class="card">
+            <h2>Bağlantı</h2>
+            <div class="form-group">
+                <label for="token">JWT Token:</label>
+                <input type="text" id="token" placeholder="JWT token girin">
+            </div>
+            <div class="form-group">
+                <button id="connect">Bağlan</button>
+                <button id="disconnect" disabled>Bağlantıyı Kes</button>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>Konum Güncelleme</h2>
+            <div class="form-group">
+                <label for="latitude">Enlem:</label>
+                <input type="number" id="latitude" placeholder="Örn: 41.0082" step="0.0001" value="41.0082">
+            </div>
+            <div class="form-group">
+                <label for="longitude">Boylam:</label>
+                <input type="number" id="longitude" placeholder="Örn: 28.9784" step="0.0001" value="28.9784">
+            </div>
+            <div class="form-group">
+                <label for="status">Müsaitlik Durumu:</label>
+                <select id="status">
+                    <option value="available">Müsait</option>
+                    <option value="busy">Meşgul</option>
+                    <option value="offline">Çevrimdışı</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <button id="updateLocation" disabled>Konum Güncelle</button>
+                <button id="updateStatus" disabled>Durum Güncelle</button>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>Log</h2>
+            <div id="log"></div>
+        </div>
+    </div>
+
+    <script>
+        let socket;
+        
+        function addLogEntry(message, type = 'info') {
+            const log = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+        
+        document.getElementById('connect').addEventListener('click', () => {
+            const token = document.getElementById('token').value;
+            if (!token) {
+                addLogEntry('Token gerekli!', 'error');
+                return;
+            }
+            
+            try {
+                socket = io('http://localhost:3000', {
+                    transports: ['websocket'],
+                    auth: { token }
+                });
+                
+                socket.on('connect', () => {
+                    addLogEntry('WebSocket bağlantısı kuruldu!', 'success');
+                    document.getElementById('connect').disabled = true;
+                    document.getElementById('disconnect').disabled = false;
+                    document.getElementById('updateLocation').disabled = false;
+                    document.getElementById('updateStatus').disabled = false;
+                });
+                
+                socket.on('connection', (data) => {
+                    addLogEntry(`Bağlantı başarılı: ${JSON.stringify(data)}`, 'success');
+                });
+                
+                socket.on('disconnect', () => {
+                    addLogEntry('WebSocket bağlantısı kesildi', 'info');
+                    document.getElementById('connect').disabled = false;
+                    document.getElementById('disconnect').disabled = true;
+                    document.getElementById('updateLocation').disabled = true;
+                    document.getElementById('updateStatus').disabled = true;
+                });
+                
+                socket.on('error', (error) => {
+                    addLogEntry(`Hata: ${JSON.stringify(error)}`, 'error');
+                });
+                
+                socket.on('availabilityUpdated', (data) => {
+                    addLogEntry(`Müsaitlik durumu güncellendi: ${JSON.stringify(data)}`, 'success');
+                });
+                
+            } catch (error) {
+                addLogEntry(`Bağlantı hatası: ${error.message}`, 'error');
+            }
+        });
+        
+        document.getElementById('disconnect').addEventListener('click', () => {
+            if (socket) {
+                socket.disconnect();
+                document.getElementById('connect').disabled = false;
+                document.getElementById('disconnect').disabled = true;
+                document.getElementById('updateLocation').disabled = true;
+                document.getElementById('updateStatus').disabled = true;
+                addLogEntry('Bağlantı manuel olarak kesildi', 'info');
+            }
+        });
+        
+        document.getElementById('updateLocation').addEventListener('click', () => {
+            if (!socket || !socket.connected) {
+                addLogEntry('WebSocket bağlantısı yok!', 'error');
+                return;
+            }
+            
+            const latitude = parseFloat(document.getElementById('latitude').value);
+            const longitude = parseFloat(document.getElementById('longitude').value);
+            const status = document.getElementById('status').value;
+            
+            const locationData = {
+                latitude,
+                longitude,
+                availabilityStatus: status,
+                timestamp: new Date().toISOString()
+            };
+            
+            socket.emit('updateDriverLocation', locationData, (response) => {
+                if (response && response.success) {
+                    addLogEntry(`Konum güncellendi: ${JSON.stringify(locationData)}`, 'success');
+                } else {
+                    addLogEntry(`Konum güncelleme hatası: ${JSON.stringify(response)}`, 'error');
+                }
+            });
+        });
+        
+        document.getElementById('updateStatus').addEventListener('click', () => {
+            if (!socket || !socket.connected) {
+                addLogEntry('WebSocket bağlantısı yok!', 'error');
+                return;
+            }
+            
+            const status = document.getElementById('status').value;
+            
+            socket.emit('updateDriverAvailability', { status }, (response) => {
+                if (response && response.success) {
+                    addLogEntry(`Durum güncellendi: ${status}`, 'success');
+                } else {
+                    addLogEntry(`Durum güncelleme hatası: ${JSON.stringify(response)}`, 'error');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

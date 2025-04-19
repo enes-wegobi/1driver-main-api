@@ -2,6 +2,7 @@ import {
   WebSocketGateway as NestWebSocketGateway,
   OnGatewayConnection,
   OnGatewayInit,
+  OnGatewayDisconnect,
   WebSocketServer,
   SubscribeMessage,
 } from '@nestjs/websockets';
@@ -10,6 +11,7 @@ import { Server, Socket } from 'socket.io';
 import { WebSocketService } from './websocket.service';
 import { JwtService } from 'src/jwt/jwt.service';
 import { LocationDto } from './dto/location.dto';
+import { DriverLocationDto, DriverAvailabilityStatus } from './dto/driver-location.dto';
 
 const PING_INTERVAL = 25000;
 const PING_TIMEOUT = 10000;
@@ -24,7 +26,7 @@ const PING_TIMEOUT = 10000;
   pingInterval: PING_INTERVAL,
   pingTimeout: PING_TIMEOUT,
 })
-export class WebSocketGateway implements OnGatewayInit, OnGatewayConnection {
+export class WebSocketGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   private readonly logger = new Logger(WebSocketGateway.name);
 
   constructor(
@@ -80,12 +82,28 @@ export class WebSocketGateway implements OnGatewayInit, OnGatewayConnection {
       client.join(`user:${payload.userId}`);
       client.join(`type:${userType}`);
 
-      client.emit('connection', {
-        status: 'connected',
-        clientId: clientId,
-        userType: userType,
-        message: 'Connection successful',
-      });
+      // If this is a driver, mark them as active
+      if (userType === 'driver') {
+        await this.webSocketService.getRedisService().markDriverAsActive(payload.userId);
+        
+        // Get current availability status
+        const status = await this.webSocketService.getRedisService().getDriverAvailability(payload.userId);
+        
+        client.emit('connection', {
+          status: 'connected',
+          clientId: clientId,
+          userType: userType,
+          availabilityStatus: status,
+          message: 'Connection successful',
+        });
+      } else {
+        client.emit('connection', {
+          status: 'connected',
+          clientId: clientId,
+          userType: userType,
+          message: 'Connection successful',
+        });
+      }
 
       this.logger.log(
         `Client ${clientId} authenticated as ${userType} with userId: ${payload.userId}`,
@@ -99,6 +117,19 @@ export class WebSocketGateway implements OnGatewayInit, OnGatewayConnection {
     }
   }
 
+  async handleDisconnect(client: Socket) {
+    const userId = client.data.userId;
+    const userType = client.data.userType;
+    
+    if (userId && userType === 'driver') {
+      // Mark driver as inactive when they disconnect
+      await this.webSocketService.getRedisService().markDriverAsInactive(userId);
+      this.logger.log(`Driver ${userId} marked as inactive due to disconnect`);
+    }
+    
+    this.logger.log(`Client disconnected: ${client.id}`);
+  }
+
   @SubscribeMessage('message')
   handleMessage(client: Socket, payload: any) {
     this.logger.debug(
@@ -109,7 +140,7 @@ export class WebSocketGateway implements OnGatewayInit, OnGatewayConnection {
 
   @SubscribeMessage('updateLocation')
   handleLocationUpdate(client: Socket, payload: LocationDto) {
-    // Client zaten bağlı ve doğrulanmış olmalı
+    // Client must be connected and authenticated
     const userId = client.data.userId;
     const userType = client.data.userType;
 
@@ -126,6 +157,73 @@ export class WebSocketGateway implements OnGatewayInit, OnGatewayConnection {
     this.storeUserLocation(userId, userType, payload);
 
     return { success: true };
+  }
+
+  @SubscribeMessage('updateDriverLocation')
+  handleDriverLocationUpdate(client: Socket, payload: DriverLocationDto) {
+    const userId = client.data.userId;
+    const userType = client.data.userType;
+
+    if (!userId) {
+      client.emit('error', { message: 'User not authenticated' });
+      return { success: false, message: 'User not authenticated' };
+    }
+
+    if (userType !== 'driver') {
+      client.emit('error', { message: 'Only drivers can update driver location' });
+      return { success: false, message: 'Only drivers can update driver location' };
+    }
+
+    this.logger.debug(
+      `Driver location update from ${userId}: ${JSON.stringify(payload)}`,
+    );
+
+    // Store location to redis
+    this.storeUserLocation(userId, userType, payload);
+
+    return { success: true };
+  }
+
+  @SubscribeMessage('updateDriverAvailability')
+  async handleDriverAvailabilityUpdate(
+    client: Socket, 
+    payload: { status: DriverAvailabilityStatus }
+  ) {
+    const userId = client.data.userId;
+    const userType = client.data.userType;
+
+    if (!userId) {
+      client.emit('error', { message: 'User not authenticated' });
+      return { success: false, message: 'User not authenticated' };
+    }
+
+    if (userType !== 'driver') {
+      client.emit('error', { message: 'Only drivers can update availability status' });
+      return { success: false, message: 'Only drivers can update availability status' };
+    }
+
+    this.logger.debug(
+      `Driver ${userId} availability update: ${payload.status}`,
+    );
+
+    try {
+      await this.webSocketService
+        .getRedisService()
+        .updateDriverAvailability(userId, payload.status);
+        
+      return { 
+        success: true, 
+        status: payload.status 
+      };
+    } catch (error) {
+      this.logger.error(
+        `Error updating driver ${userId} availability: ${error.message}`,
+      );
+      return { 
+        success: false, 
+        message: 'Failed to update availability status' 
+      };
+    }
   }
 
   private async storeUserLocation(
