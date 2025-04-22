@@ -45,7 +45,7 @@ class FastifySocketIORedisAdapter extends IoAdapter {
     const io = super.createIOServer(port, {
       ...options,
   cors: {
-    origin: ["http://localhost:8080", "http://127.0.0.1:8080", "https://1drive-dev.wegobitest.com"], // Specify exact origins
+    origin: "*", 
     methods: ['GET', 'POST'],
     credentials: true,
     allowedHeaders: ['Authorization', 'Content-Type']
@@ -109,7 +109,7 @@ async function bootstrap() {
   SwaggerModule.setup('api/docs', app, document);
 
   await app.register(fastifyCors as any, {
-    origin: ["http://localhost:8080", "http://127.0.0.1:8080", "https://1drive-dev.wegobitest.com"],
+    origin: "*",
     methods: ['GET', 'PUT', 'POST', 'DELETE', 'PATCH', 'OPTIONS'],
     credentials: true,
     allowedHeaders: ['Authorization', 'Content-Type', 'Accept', 'Origin', 'X-Requested-With']
