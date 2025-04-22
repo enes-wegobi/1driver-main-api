@@ -19,7 +19,7 @@ const PING_TIMEOUT = 10000;
 
 @NestWebSocketGateway({
   cors: {
-    origin: ["http://localhost:8080", "http://127.0.0.1:8080"],
+    origin: ["http://localhost:8080", "http://127.0.0.1:8080", "https://1drive-dev.wegobitest.com"],
     credentials: true,
     allowedHeaders: ['Authorization', 'Content-Type']
   },
