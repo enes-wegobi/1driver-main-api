@@ -19,8 +19,9 @@ const PING_TIMEOUT = 10000;
 
 @NestWebSocketGateway({
   cors: {
-    origin: '*',
-    credentials: false,
+    origin: ["http://localhost:8080", "http://127.0.0.1:8080"],
+    credentials: true,
+    allowedHeaders: ['Authorization', 'Content-Type']
   },
   namespace: '/',
   transports: ['websocket', 'polling'],

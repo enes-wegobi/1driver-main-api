@@ -1,5 +1,8 @@
 // DOM Elements
 const tokenInput = document.getElementById('token');
+const serverUrlInput = document.getElementById('server-url');
+const protocolSelect = document.getElementById('protocol-select');
+const transportSelect = document.getElementById('transport-select');
 const connectBtn = document.getElementById('connect-btn');
 const disconnectBtn = document.getElementById('disconnect-btn');
 const availableBtn = document.getElementById('available-btn');
@@ -9,6 +12,8 @@ const availabilityStatus = document.getElementById('availability-status');
 const currentLocation = document.getElementById('current-location');
 const lastUpdate = document.getElementById('last-update');
 const eventLog = document.getElementById('event-log');
+const debugInfo = document.getElementById('debug-info');
+const clearLogBtn = document.getElementById('clear-log-btn');
 
 // WebSocket connection
 let socket = null;
@@ -25,13 +30,40 @@ const DriverAvailabilityStatus = {
 let currentAvailabilityStatus = DriverAvailabilityStatus.OFFLINE;
 
 // Log an event
-function logEvent(event, data = null) {
+function logEvent(event, data = null, isError = false) {
     const timestamp = new Date().toLocaleTimeString();
     const logEntry = document.createElement('p');
+    
+    if (isError) {
+        logEntry.style.color = '#f44336';
+        logEntry.style.fontWeight = 'bold';
+    }
+    
     logEntry.innerHTML = `<strong>[${timestamp}]</strong> ${event}`;
     
     if (data) {
-        logEntry.innerHTML += `: <span style="color: #0066cc">${JSON.stringify(data)}</span>`;
+        const jsonData = typeof data === 'object' ? JSON.stringify(data, null, 2) : data;
+        logEntry.innerHTML += `: <span style="color: ${isError ? '#f44336' : '#0066cc'}">${jsonData}</span>`;
+        
+        // Also update debug info for errors
+        if (isError && debugInfo) {
+            debugInfo.innerHTML = `
+                <h3>Connection Debug Information</h3>
+                <p><strong>Error Type:</strong> ${event}</p>
+                <p><strong>Message:</strong> ${typeof data === 'object' ? data.message || 'Unknown error' : data}</p>
+                <p><strong>Server URL:</strong> ${serverUrlInput?.value || 'https://1drive-dev.wegobitest.com'}</p>
+                <p><strong>Timestamp:</strong> ${timestamp}</p>
+                <p><strong>Full Error Details:</strong> <pre>${jsonData}</pre></p>
+                <p><strong>Troubleshooting Tips:</strong></p>
+                <ul>
+                    <li>Check if the server URL is correct</li>
+                    <li>Verify that the server is running and accessible</li>
+                    <li>Check for CORS issues (try with/without https)</li>
+                    <li>Verify your token is valid</li>
+                    <li>Check browser console for additional errors (F12)</li>
+                </ul>
+            `;
+        }
     }
     
     eventLog.appendChild(logEntry);
@@ -168,10 +200,21 @@ function stopLocationUpdates() {
 // Connect to WebSocket
 function connectWebSocket() {
     const token = tokenInput.value.trim();
+    const serverUrl = serverUrlInput.value.trim();
     
     if (!token) {
         alert('Please enter a JWT token');
         return;
+    }
+    
+    if (!serverUrl) {
+        alert('Please enter a server URL');
+        return;
+    }
+    
+    // Clear debug info
+    if (debugInfo) {
+        debugInfo.innerHTML = '';
     }
     
     // Disconnect existing socket if any
@@ -179,14 +222,44 @@ function connectWebSocket() {
         socket.disconnect();
     }
     
-    logEvent('Connecting to WebSocket server...');
+    logEvent('Connecting to WebSocket server...', { url: serverUrl });
     
     // Create socket connection with token authentication
-    // Connect to the backend WebSocket server (default port is 3000)
-    socket = io('http://localhost:3000', {
-        transports: ['websocket'],
-        auth: { token }
-    });
+    try {
+        // Handle different transports based on selection
+        const transports = transportSelect.value === 'both' 
+            ? ['websocket', 'polling'] 
+            : [transportSelect.value];
+        
+        // Create full server URL with selected protocol if not already specified
+        let fullServerUrl = serverUrl;
+        if (!serverUrl.startsWith('http://') && !serverUrl.startsWith('https://') && 
+            !serverUrl.startsWith('ws://') && !serverUrl.startsWith('wss://')) {
+            fullServerUrl = `${protocolSelect.value}://${serverUrl}`;
+        }
+        
+        logEvent('Connecting with configuration', {
+            url: fullServerUrl,
+            transports: transports,
+            protocol: protocolSelect.value
+        });
+        
+        socket = io(fullServerUrl, {
+            transports: transports,
+            auth: { token },
+            reconnection: true,
+            reconnectionAttempts: 5,
+            reconnectionDelay: 1000,
+            timeout: 20000,
+            withCredentials: true,  // Changed to true to match server's expectation
+            extraHeaders: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+    } catch (error) {
+        logEvent('Socket initialization error', { message: error.message, stack: error.stack }, true);
+        return;
+    }
     
     // Socket event handlers
     socket.on('connect', () => {
@@ -194,21 +267,60 @@ function connectWebSocket() {
         updateUIConnectionStatus(true);
     });
     
-    socket.on('disconnect', () => {
-        logEvent('Socket disconnected');
+    socket.on('disconnect', (reason) => {
+        logEvent('Socket disconnected', { reason }, reason !== 'io client disconnect');
         updateUIConnectionStatus(false);
         stopLocationUpdates();
     });
     
     socket.on('error', (error) => {
-        logEvent('Socket error', error);
-        alert(`Connection error: ${error.message || 'Unknown error'}`);
+        logEvent('Socket error', error, true);
+        if (typeof error === 'object') {
+            console.error('WebSocket error:', error);
+        } else {
+            console.error('WebSocket error:', error);
+        }
         socket.disconnect();
     });
     
     socket.on('connect_error', (error) => {
-        logEvent('Connection error', { message: error.message });
-        alert(`Failed to connect: ${error.message}. Make sure the backend server is running on port 3000.`);
+        const errorDetails = {
+            message: error.message,
+            type: error.type,
+            description: error.description,
+            stack: error.stack,
+            server: serverUrl
+        };
+        
+        logEvent('Connection error', errorDetails, true);
+        console.error('WebSocket connection error:', error);
+        
+        // Try to add more detailed troubleshooting information
+        let troubleshootingInfo = '';
+        
+        if (error.message && error.message.includes('websocket error')) {
+            troubleshootingInfo = `
+                <h4>WebSocket Connection Failed</h4>
+                <p>The WebSocket connection couldn't be established. This could be due to:</p>
+                <ul>
+                    <li>The server doesn't support WebSockets</li>
+                    <li>There's a network firewall blocking WebSocket connections</li>
+                    <li>SSL certificate issues when using wss:// (try switching to http:// for testing)</li>
+                    <li>CORS policy restrictions on the server</li>
+                </ul>
+                <p><strong>Suggestions:</strong></p>
+                <ol>
+                    <li>Try switching between WebSocket and Polling transport modes</li>
+                    <li>Try using HTTP instead of HTTPS (or vice versa)</li>
+                    <li>Try connecting to a local development server (http://localhost:3000)</li>
+                    <li>Check if the server has CORS configured correctly</li>
+                </ol>
+            `;
+            
+            if (debugInfo) {
+                debugInfo.innerHTML += troubleshootingInfo;
+            }
+        }
     });
     
     socket.on('connection', (data) => {
@@ -269,6 +381,31 @@ availableBtn.addEventListener('click', () => {
 busyBtn.addEventListener('click', () => {
     updateDriverAvailability(DriverAvailabilityStatus.BUSY);
 });
+
+// Clear log button
+if (clearLogBtn) {
+    clearLogBtn.addEventListener('click', () => {
+        eventLog.innerHTML = '';
+        logEvent('Event log cleared');
+    });
+}
+
+// Preset server configurations
+if (document.getElementById('preset-local')) {
+    document.getElementById('preset-local').addEventListener('click', () => {
+        serverUrlInput.value = 'localhost:3000';
+        protocolSelect.value = 'http';
+        transportSelect.value = 'polling';
+    });
+}
+
+if (document.getElementById('preset-dev')) {
+    document.getElementById('preset-dev').addEventListener('click', () => {
+        serverUrlInput.value = '1drive-dev.wegobitest.com';
+        protocolSelect.value = 'https';
+        transportSelect.value = 'both';
+    });
+}
 
 // Initialize UI
 updateUIConnectionStatus(false);

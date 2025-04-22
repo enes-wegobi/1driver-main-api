@@ -45,7 +45,7 @@ node server.js
 
 ## Integration with Backend
 
-This frontend connects to the WebSocket gateway and uses the following events:
+This frontend connects to the WebSocket gateway at `https://1drive-dev.wegobitest.com` and uses the following events:
 
 - `updateDriverAvailability` - To toggle driver status between available and busy
 - `updateDriverLocation` - To send driver location updates with coordinates

@@ -44,11 +44,12 @@ class FastifySocketIORedisAdapter extends IoAdapter {
     const server = this.httpServer;
     const io = super.createIOServer(port, {
       ...options,
-      cors: {
-        origin: '*',
-        methods: ['GET', 'POST'],
-        credentials: true,
-      },
+  cors: {
+    origin: ["http://localhost:8080", "http://127.0.0.1:8080", "https://1drive-dev.wegobitest.com"], // Specify exact origins
+    methods: ['GET', 'POST'],
+    credentials: true,
+    allowedHeaders: ['Authorization', 'Content-Type']
+  },
       transports: ['websocket', 'polling'],
       serverFactory: (handler) => handler(server),
     });
@@ -108,9 +109,10 @@ async function bootstrap() {
   SwaggerModule.setup('api/docs', app, document);
 
   await app.register(fastifyCors as any, {
-    origin: configService.get<string>('CORS_ORIGINS', '*').split(','),
+    origin: ["http://localhost:8080", "http://127.0.0.1:8080", "https://1drive-dev.wegobitest.com"],
     methods: ['GET', 'PUT', 'POST', 'DELETE', 'PATCH', 'OPTIONS'],
     credentials: true,
+    allowedHeaders: ['Authorization', 'Content-Type', 'Accept', 'Origin', 'X-Requested-With']
   });
 
   await app.register(fastifyHelmet as any, {
@@ -121,7 +123,7 @@ async function bootstrap() {
         fontSrc: [`'self'`, 'https://fonts.gstatic.com'],
         imgSrc: [`'self'`, 'data:', 'validator.swagger.io'],
         scriptSrc: [`'self'`, `'unsafe-inline'`, `'unsafe-eval'`],
-        connectSrc: [`'self'`],
+        connectSrc: [`'self'`, 'http://localhost:8080', 'http://127.0.0.1:8080', 'ws://localhost:8080', 'ws://127.0.0.1:8080', 'https://1drive-dev.wegobitest.com', 'wss://1drive-dev.wegobitest.com'],
       },
     },
   });
