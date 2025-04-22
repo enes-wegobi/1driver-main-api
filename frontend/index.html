@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Driver WebSocket Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        button.disconnect {
+            background-color: #f44336;
+        }
+        button.busy {
+            background-color: #ff9800;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+            background-color: #f5f5f5;
+        }
+        .log {
+            margin-top: 20px;
+            height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+        }
+        .log p {
+            margin: 5px 0;
+            font-family: monospace;
+        }
+        .available {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+        .busy {
+            color: #ff9800;
+            font-weight: bold;
+        }
+        .offline {
+            color: #f44336;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Driver WebSocket Test Client</h1>
+    
+    <div class="container">
+        <div class="form-group">
+            <label for="token">JWT Token:</label>
+            <input type="text" id="token" placeholder="Enter your JWT token">
+        </div>
+        <button id="connect-btn">Connect</button>
+        <button id="disconnect-btn" class="disconnect" disabled>Disconnect</button>
+    </div>
+    
+    <div class="container">
+        <h2>Driver Status</h2>
+        <div class="status">
+            <p>Connection Status: <span id="connection-status">Disconnected</span></p>
+            <p>Availability Status: <span id="availability-status" class="offline">OFFLINE</span></p>
+        </div>
+        <div class="form-group" style="margin-top: 15px;">
+            <button id="available-btn" disabled>Set Available</button>
+            <button id="busy-btn" class="busy" disabled>Set Busy</button>
+        </div>
+    </div>
+    
+    <div class="container">
+        <h2>Location</h2>
+        <div class="status">
+            <p>Current Location: <span id="current-location">Not available</span></p>
+            <p>Last Update: <span id="last-update">Never</span></p>
+        </div>
+    </div>
+    
+    <div class="container">
+        <h2>Event Log</h2>
+        <div class="log" id="event-log"></div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

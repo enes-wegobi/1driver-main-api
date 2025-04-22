@@ -8,6 +8,8 @@ import { WebSocketModule } from './websocket/websocket.module';
 import { RedisModule } from './redis/redis.module';
 import { S3Module } from './s3/s3.module';
 import { DriversModule } from './modules/drivers/drivers.module';
+import { TripsModule } from './modules/trips/trips.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 
 @Module({
   imports: [
@@ -20,6 +22,8 @@ import { DriversModule } from './modules/drivers/drivers.module';
     RedisModule,
     S3Module,
     DriversModule,
+    TripsModule,
+    NotificationsModule,
   ],
 })
 export class AppModule {}

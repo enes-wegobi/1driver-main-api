@@ -12,6 +12,7 @@ import { WebSocketService } from './websocket.service';
 import { JwtService } from 'src/jwt/jwt.service';
 import { LocationDto } from './dto/location.dto';
 import { DriverLocationDto, DriverAvailabilityStatus } from './dto/driver-location.dto';
+import { RedisClientType } from 'redis';
 
 const PING_INTERVAL = 25000;
 const PING_TIMEOUT = 10000;
@@ -155,8 +156,47 @@ export class WebSocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 
     // Store location to redis
     this.storeUserLocation(userId, userType, payload);
+    
+    // If user is in a trip room, broadcast location to the room
+    this.broadcastLocationToTripRoom(client, payload);
 
     return { success: true };
+  }
+  
+  /**
+   * Broadcast location updates to trip room if user is in an active trip
+   */
+  private async broadcastLocationToTripRoom(client: Socket, location: LocationDto) {
+    try {
+      const userId = client.data.userId;
+      const userType = client.data.userType;
+      
+      if (!userId) return;
+      
+      // Check if user is in any trip rooms
+      const rooms = Array.from(client.rooms);
+      const tripRooms = rooms.filter(room => room.startsWith('trip:'));
+      
+      if (tripRooms.length === 0) return;
+      
+      // Broadcast location to all trip rooms the user is in
+      for (const room of tripRooms) {
+        const tripId = room.split(':')[1];
+        
+        // Broadcast to the room except the sender
+        client.to(room).emit('locationUpdate', {
+          tripId,
+          userId,
+          userType,
+          location,
+          timestamp: new Date().toISOString(),
+        });
+        
+        this.logger.debug(`Broadcasted ${userType} location to trip room ${room}`);
+      }
+    } catch (error) {
+      this.logger.error(`Error broadcasting location to trip room: ${error.message}`);
+    }
   }
 
   @SubscribeMessage('updateDriverLocation')
@@ -180,8 +220,87 @@ export class WebSocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 
     // Store location to redis
     this.storeUserLocation(userId, userType, payload);
+    
+    // Broadcast location to trip room if driver is in an active trip
+    this.broadcastLocationToTripRoom(client, payload);
 
     return { success: true };
+  }
+  
+  @SubscribeMessage('joinTripRoom')
+  handleJoinTripRoom(client: Socket, payload: { tripId: string }) {
+    const userId = client.data.userId;
+    const userType = client.data.userType;
+
+    if (!userId) {
+      client.emit('error', { message: 'User not authenticated' });
+      return { success: false, message: 'User not authenticated' };
+    }
+
+    if (!payload.tripId) {
+      client.emit('error', { message: 'Trip ID is required' });
+      return { success: false, message: 'Trip ID is required' };
+    }
+
+    const roomName = `trip:${payload.tripId}`;
+    
+    // Join the room
+    client.join(roomName);
+    
+    this.logger.debug(
+      `User ${userId} (${userType}) joined trip room ${roomName}`,
+    );
+    
+    // Notify the room that a user has joined
+    client.to(roomName).emit('userJoinedTrip', {
+      userId,
+      userType,
+      tripId: payload.tripId,
+      timestamp: new Date().toISOString(),
+    });
+    
+    return { 
+      success: true,
+      message: `Joined trip room for trip ${payload.tripId}`,
+    };
+  }
+  
+  @SubscribeMessage('leaveTripRoom')
+  handleLeaveTripRoom(client: Socket, payload: { tripId: string }) {
+    const userId = client.data.userId;
+    const userType = client.data.userType;
+
+    if (!userId) {
+      client.emit('error', { message: 'User not authenticated' });
+      return { success: false, message: 'User not authenticated' };
+    }
+
+    if (!payload.tripId) {
+      client.emit('error', { message: 'Trip ID is required' });
+      return { success: false, message: 'Trip ID is required' };
+    }
+
+    const roomName = `trip:${payload.tripId}`;
+    
+    // Leave the room
+    client.leave(roomName);
+    
+    this.logger.debug(
+      `User ${userId} (${userType}) left trip room ${roomName}`,
+    );
+    
+    // Notify the room that a user has left
+    client.to(roomName).emit('userLeftTrip', {
+      userId,
+      userType,
+      tripId: payload.tripId,
+      timestamp: new Date().toISOString(),
+    });
+    
+    return { 
+      success: true,
+      message: `Left trip room for trip ${payload.tripId}`,
+    };
   }
 
   @SubscribeMessage('updateDriverAvailability')
@@ -236,10 +355,101 @@ export class WebSocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
       await this.webSocketService
         .getRedisService()
         .storeUserLocation(userId, userType, location);
+      
+      // If this is a driver, send updates to subscribed clients
+      if (userType === 'driver') {
+        await this.sendDriverLocationUpdatesToSubscribers(userId, location);
+      }
     } catch (error) {
       this.logger.error(
         `Error storing location for user ${userId}: ${error.message}`,
       );
     }
+  }
+
+  /**
+   * Send driver location updates to all subscribed clients
+   */
+  private async sendDriverLocationUpdatesToSubscribers(
+    driverId: string,
+    location: LocationDto,
+  ) {
+    try {
+      const redisClient: RedisClientType = this.webSocketService.getRedisService().getRedisClient();
+      
+      // Get driver details
+      const driverLocation = await this.webSocketService.getRedisService().getUserLocation(driverId);
+      if (!driverLocation) return;
+      
+      // Only send updates for available drivers
+      if (driverLocation.availabilityStatus !== DriverAvailabilityStatus.AVAILABLE) {
+        return;
+      }
+      
+      // Get all active subscriptions
+      const subscriptionKeys = await redisClient.keys('subscription:*');
+      
+      for (const key of subscriptionKeys) {
+        const subscriptionData = await redisClient.hGetAll(key);
+        if (!subscriptionData) continue;
+        
+        const clientId = key.split(':')[1];
+        const subLatitude = parseFloat(subscriptionData.latitude);
+        const subLongitude = parseFloat(subscriptionData.longitude);
+        const subRadius = parseFloat(subscriptionData.radius || '5');
+        
+        // Calculate distance between driver and subscription center
+        const distance = this.calculateDistance(
+          subLatitude,
+          subLongitude,
+          location.latitude,
+          location.longitude,
+        );
+        
+        // If driver is within radius, send update to the client
+        if (distance <= subRadius) {
+          const driverInfo = {
+            driverId,
+            distance,
+            location: {
+              latitude: location.latitude,
+              longitude: location.longitude,
+            },
+            availabilityStatus: driverLocation.availabilityStatus,
+            lastUpdated: new Date().toISOString(),
+          };
+          
+          this.server.to(`user:${clientId}`).emit('nearbyDriverUpdate', driverInfo);
+          this.logger.debug(`Sent driver ${driverId} location update to client ${clientId}`);
+        }
+      }
+    } catch (error) {
+      this.logger.error(`Error sending driver location updates: ${error.message}`);
+    }
+  }
+  
+  /**
+   * Calculate distance between two coordinates in kilometers using Haversine formula
+   */
+  private calculateDistance(
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number,
+  ): number {
+    const R = 6371; // Earth radius in kilometers
+    const dLat = this.deg2rad(lat2 - lat1);
+    const dLon = this.deg2rad(lon2 - lon1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(this.deg2rad(lat1)) * Math.cos(this.deg2rad(lat2)) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distance = R * c; // Distance in kilometers
+    return distance;
+  }
+  
+  private deg2rad(deg: number): number {
+    return deg * (Math.PI / 180);
   }
 }

@@ -65,4 +65,20 @@ export class ConfigService {
   get awsS3BucketName(): string {
     return this.configService.get<string>('aws.s3BucketName')!;
   }
+
+  get firebase() {
+    const projectId = this.configService.get<string>('firebase.projectId');
+    const clientEmail = this.configService.get<string>('firebase.clientEmail');
+    const privateKey = this.configService.get<string>('firebase.privateKey');
+    
+    if (!projectId || !clientEmail || !privateKey) {
+      return null;
+    }
+    
+    return {
+      projectId,
+      clientEmail,
+      privateKey,
+    };
+  }
 }

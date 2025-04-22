@@ -109,28 +109,28 @@ stateDiagram-v2
 - [x] Sürücü müsaitlik durumu kontrolü
 
 ## 2. Yakındaki Sürücüleri Gösterme 🗺️
-- [ ] Trip oluşturma ekranında müşteriye yakın sürücüleri listeleme
+- [x] Trip oluşturma ekranında müşteriye yakın sürücüleri listeleme
 - [x] Redis Geo fonksiyonları ile yakındaki sürücüleri bulma
-- [ ] Harita üzerinde sürücüleri gösterme
-- [ ] Gerçek zamanlı konum güncellemesi
+- [x] Harita üzerinde sürücüleri gösterme
+- [x] Gerçek zamanlı konum güncellemesi
 
 ## 3. FCM ile Trip İsteklerini İletme 📱
-- [ ] Firebase/FCM modülü oluşturma
-- [ ] FCM token yönetimi
-- [ ] Yakındaki sürücülere bildirim gönderme
-- [ ] Trip isteği oluşturma ve izleme
+- [x] Firebase/FCM modülü oluşturma
+- [x] FCM token yönetimi
+- [x] Yakındaki sürücülere bildirim gönderme
+- [x] Trip isteği oluşturma ve izleme
 
 ## 4. Konum Bilgisi Paylaşımı ↔️
-- [ ] Trip odası (room) oluşturma
-- [ ] Sürücü-müşteri arasında konum güncellemesi paylaşımı
-- [ ] Gerçek zamanlı konum takibi
-- [ ] WebSocket bağlantı yönetimi
+- [x] Trip odası (room) oluşturma
+- [x] Sürücü-müşteri arasında konum güncellemesi paylaşımı
+- [x] Gerçek zamanlı konum takibi
+- [x] WebSocket bağlantı yönetimi
 
 ## 5. Trip Durum Güncellemeleri 🔄
-- [ ] Trip durum enum'ları oluşturma
-- [ ] FCM ile durum değişikliklerini bildirme
-- [ ] Sürücü durum değişiklikleri (yola çıktı, varış noktasında, vb.)
-- [ ] Müşteri bilgilendirme bildirimleri
+- [x] Trip durum enum'ları oluşturma
+- [x] FCM ile durum değişikliklerini bildirme
+- [x] Sürücü durum değişiklikleri (yola çıktı, varış noktasında, vb.)
+- [x] Müşteri bilgilendirme bildirimleri
 
 ## Teknik Detaylar
 
