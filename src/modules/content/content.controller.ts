@@ -8,6 +8,7 @@ import {
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ContentService } from './content.service';
 import { FaqItemDto } from './dto/faq.dto';
+import { BankDto } from './dto/bank.dto';
 
 @ApiTags('content')
 @Controller('content')
@@ -30,6 +31,25 @@ export class ContentController {
       this.logger.error(`Error fetching FAQs: ${error.message}`, error.stack);
       throw new HttpException(
         'An error occurred while fetching FAQs',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Get('banks')
+  @ApiOperation({ summary: 'Get all banks' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Returns all banks',
+    type: [BankDto],
+  })
+  getBanks(): BankDto[] {
+    try {
+      return this.contentService.getBanks();
+    } catch (error) {
+      this.logger.error(`Error fetching banks: ${error.message}`, error.stack);
+      throw new HttpException(
+        'An error occurred while fetching banks',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }

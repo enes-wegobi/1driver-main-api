@@ -12,15 +12,6 @@ export class BankInformationDto {
   fullName: string;
 
   @ApiProperty({
-    description: 'Bank name',
-    example: 'Example Bank',
-  })
-  @IsNotEmpty()
-  @IsString()
-  @MaxLength(100)
-  bankName: string;
-
-  @ApiProperty({
     description: 'IBAN number',
     example: 'TR123456789012345678901234',
   })
@@ -28,6 +19,15 @@ export class BankInformationDto {
   @IsString()
   @MaxLength(34)
   iban: string;
+
+  @ApiProperty({
+    description: 'Bank ID',
+    example: 'BANK123456',
+  })
+  @IsNotEmpty()
+  @IsString()
+  @MaxLength(50)
+  bankId: string;
 }
 
 export class CreateBankInformationDto extends BankInformationDto {}

@@ -1,8 +1,31 @@
 import { Injectable } from '@nestjs/common';
 import { FaqItemDto, QuestionAnswerDto } from './dto/faq.dto';
+import { BankDto } from './dto/bank.dto';
 
 @Injectable()
 export class ContentService {
+  private readonly dubaiBanks: BankDto[] = [
+    { id: '1', name: 'Emirates NBD' },
+    { id: '2', name: 'Dubai Islamic Bank' },
+    { id: '3', name: 'Mashreq Bank' },
+    { id: '4', name: 'Commercial Bank of Dubai' },
+    { id: '5', name: 'Abu Dhabi Commercial Bank' },
+    { id: '6', name: 'First Abu Dhabi Bank' },
+    { id: '7', name: 'HSBC Bank Middle East' },
+    { id: '8', name: 'Standard Chartered Bank' },
+    { id: '9', name: 'Citibank' },
+    { id: '10', name: 'Noor Bank' },
+    { id: '11', name: 'Ajman Bank' },
+    { id: '12', name: 'Arab Bank' },
+    { id: '13', name: 'Bank of Baroda' },
+    { id: '14', name: 'Habib Bank AG Zurich' },
+    { id: '15', name: 'United Arab Bank' },
+    { id: '16', name: 'Emirates Islamic Bank' },
+    { id: '17', name: 'RAK Bank' },
+    { id: '18', name: 'National Bank of Fujairah' },
+    { id: '19', name: 'Sharjah Islamic Bank' },
+    { id: '20', name: 'National Bank of Umm Al Qaiwain' }
+  ];
   private readonly faqs: FaqItemDto[] = [
     {
       title: 'Account Management',
@@ -48,5 +71,9 @@ export class ContentService {
 
   getFaqs(): FaqItemDto[] {
     return this.faqs;
+  }
+
+  getBanks(): BankDto[] {
+    return this.dubaiBanks;
   }
 }
