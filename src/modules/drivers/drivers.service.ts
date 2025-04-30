@@ -75,42 +75,28 @@ export class DriversService {
   }
 
   // Bank Information Methods
-  async createOrUpdateBankInformation(
+  async addBankInformation(
     driverId: string,
     bankInfoDto: CreateBankInformationDto,
-  ): Promise<BankInformationDto> {
-    return this.driversClient.createOrUpdateBankInformation(
-      driverId,
-      bankInfoDto,
-    );
+  ): Promise<any> {
+    return this.driversClient.addBankInformation(driverId, bankInfoDto);
   }
 
-  async getBankInformation(driverId: string): Promise<BankInformationDto> {
-    return this.driversClient.getBankInformation(driverId);
+  async getAllBankInformation(driverId: string): Promise<any> {
+    return this.driversClient.getAllBankInformation(driverId);
   }
 
-  async deleteBankInformation(driverId: string): Promise<any> {
-    return this.driversClient.deleteBankInformation(driverId);
-  }
-
-  // Company Information Methods
-  async createOrUpdateCompanyInformation(
+  async deleteBankInformation(
     driverId: string,
-    companyInfoDto: CreateCompanyInformationDto,
-  ): Promise<CompanyInformationDto> {
-    return this.driversClient.createOrUpdateCompanyInformation(
-      driverId,
-      companyInfoDto,
-    );
+    bankInfoId: string,
+  ): Promise<any> {
+    return this.driversClient.deleteBankInformation(driverId, bankInfoId);
   }
 
-  async getCompanyInformation(
+  async setDefaultBankInformation(
     driverId: string,
-  ): Promise<CompanyInformationDto> {
-    return this.driversClient.getCompanyInformation(driverId);
-  }
-
-  async deleteCompanyInformation(driverId: string): Promise<any> {
-    return this.driversClient.deleteCompanyInformation(driverId);
+    bankInfoId: string,
+  ): Promise<any> {
+    return this.driversClient.setDefaultBankInformation(driverId, bankInfoId);
   }
 }

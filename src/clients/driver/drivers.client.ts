@@ -87,10 +87,10 @@ export class DriversClient {
   }
 
   // Bank Information Methods
-  async createOrUpdateBankInformation(
+  async addBankInformation(
     driverId: string,
     bankInfoDto: CreateBankInformationDto,
-  ): Promise<BankInformationDto> {
+  ): Promise<any> {
     const { data } = await this.httpClient.post(
       `/drivers/${driverId}/bank-info`,
       bankInfoDto,
@@ -98,44 +98,30 @@ export class DriversClient {
     return data;
   }
 
-  async getBankInformation(driverId: string): Promise<BankInformationDto> {
+  async getAllBankInformation(driverId: string): Promise<any> {
     const { data } = await this.httpClient.get(
       `/drivers/${driverId}/bank-info`,
     );
     return data;
   }
 
-  async deleteBankInformation(driverId: string): Promise<any> {
-    const { data } = await this.httpClient.delete(
-      `/drivers/${driverId}/bank-info`,
-    );
-    return data;
-  }
-
-  // Company Information Methods
-  async createOrUpdateCompanyInformation(
+  async deleteBankInformation(
     driverId: string,
-    companyInfoDto: CreateCompanyInformationDto,
-  ): Promise<CompanyInformationDto> {
-    const { data } = await this.httpClient.post(
-      `/drivers/${driverId}/company-info`,
-      companyInfoDto,
-    );
-    return data;
-  }
-
-  async getCompanyInformation(
-    driverId: string,
-  ): Promise<CompanyInformationDto> {
-    const { data } = await this.httpClient.get(
-      `/drivers/${driverId}/company-info`,
-    );
-    return data;
-  }
-
-  async deleteCompanyInformation(driverId: string): Promise<any> {
+    bankInfoId: string,
+  ): Promise<any> {
     const { data } = await this.httpClient.delete(
-      `/drivers/${driverId}/company-info`,
+      `/drivers/${driverId}/bank-info/${bankInfoId}`,
+    );
+    return data;
+  }
+
+  async setDefaultBankInformation(
+    driverId: string,
+    bankInfoId: string,
+  ): Promise<any> {
+    const { data } = await this.httpClient.put(
+      `/drivers/${driverId}/bank-info/${bankInfoId}/set-default`,
+      {},
     );
     return data;
   }

@@ -258,35 +258,34 @@ export class DriversController {
   @Post('bank-info')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Create or update bank information',
-    description: 'Creates or updates bank information for the current driver',
+    summary: 'Add a new bank information',
+    description: 'Add a new bank information for the current driver',
   })
   @ApiBody({ type: CreateBankInformationDto })
   @ApiResponse({
     status: 200,
-    description: 'Bank information created or updated successfully',
+    description: 'Bank information added successfully',
     type: BankInformationDto,
   })
-  async createOrUpdateBankInformation(
+  async addBankInformation(
     @Body() bankInfoDto: CreateBankInformationDto,
     @GetUser() user: IJwtPayload,
   ) {
     try {
-      this.logger.log(
-        `Creating/updating bank information for driver ID: ${user.userId}`,
-      );
-      return await this.driversService.createOrUpdateBankInformation(
+      this.logger.log(`Adding bank information for driver ID: ${user.userId}`);
+      const updatedDriver = await this.driversService.addBankInformation(
         user.userId,
         bankInfoDto,
       );
+      return updatedDriver;
     } catch (error) {
       this.logger.error(
-        `Error creating/updating bank information: ${error.message}`,
+        `Error adding bank information: ${error.message}`,
         error.stack,
       );
       throw new HttpException(
         error.response?.data ||
-          'An error occurred while creating/updating bank information',
+          'An error occurred while adding bank information',
         error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
@@ -295,18 +294,18 @@ export class DriversController {
   @Get('bank-info')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Get bank information',
-    description: 'Gets bank information for the current driver',
+    summary: 'Get all bank information',
+    description: 'Get all bank information for the current driver',
   })
   @ApiResponse({
     status: 200,
     description: 'Bank information retrieved successfully',
-    type: BankInformationDto,
+    type: [BankInformationDto],
   })
-  async getBankInformation(@GetUser() user: IJwtPayload) {
+  async getAllBankInformation(@GetUser() user: IJwtPayload) {
     try {
       this.logger.log(`Getting bank information for driver ID: ${user.userId}`);
-      return await this.driversService.getBankInformation(user.userId);
+      return await this.driversService.getAllBankInformation(user.userId);
     } catch (error) {
       this.logger.error(
         `Error fetching bank information: ${error.message}`,
@@ -320,22 +319,28 @@ export class DriversController {
     }
   }
 
-  @Delete('bank-info')
+  @Delete('bank-info/:bankInfoId')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Delete bank information',
-    description: 'Deletes bank information for the current driver',
+    summary: 'Delete a bank information',
+    description: 'Delete a specific bank information for the current driver',
   })
   @ApiResponse({
     status: 200,
     description: 'Bank information deleted successfully',
   })
-  async deleteBankInformation(@GetUser() user: IJwtPayload) {
+  async deleteBankInformation(
+    @Param('bankInfoId') bankInfoId: string,
+    @GetUser() user: IJwtPayload,
+  ) {
     try {
       this.logger.log(
-        `Deleting bank information for driver ID: ${user.userId}`,
+        `Deleting bank information ${bankInfoId} for driver ID: ${user.userId}`,
       );
-      return await this.driversService.deleteBankInformation(user.userId);
+      return await this.driversService.deleteBankInformation(
+        user.userId,
+        bankInfoId,
+      );
     } catch (error) {
       this.logger.error(
         `Error deleting bank information: ${error.message}`,
@@ -349,99 +354,37 @@ export class DriversController {
     }
   }
 
-  // Company Information Endpoints
-  @Post('company-info')
+  @Put('bank-info/:bankInfoId/set-default')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Create or update company information',
+    summary: 'Set a bank information as default',
     description:
-      'Creates or updates company information for the current driver',
+      'Set a specific bank information as the default for the current driver',
   })
-  @ApiBody({ type: CreateCompanyInformationDto })
   @ApiResponse({
     status: 200,
-    description: 'Company information created or updated successfully',
-    type: CompanyInformationDto,
+    description: 'Bank information set as default successfully',
   })
-  async createOrUpdateCompanyInformation(
-    @Body() companyInfoDto: CreateCompanyInformationDto,
+  async setDefaultBankInformation(
+    @Param('bankInfoId') bankInfoId: string,
     @GetUser() user: IJwtPayload,
   ) {
     try {
       this.logger.log(
-        `Creating/updating company information for driver ID: ${user.userId}`,
+        `Setting bank information ${bankInfoId} as default for driver ID: ${user.userId}`,
       );
-      return await this.driversService.createOrUpdateCompanyInformation(
+      return await this.driversService.setDefaultBankInformation(
         user.userId,
-        companyInfoDto,
+        bankInfoId,
       );
     } catch (error) {
       this.logger.error(
-        `Error creating/updating company information: ${error.message}`,
+        `Error setting default bank information: ${error.message}`,
         error.stack,
       );
       throw new HttpException(
         error.response?.data ||
-          'An error occurred while creating/updating company information',
-        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-
-  @Get('company-info')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Get company information',
-    description: 'Gets company information for the current driver',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Company information retrieved successfully',
-    type: CompanyInformationDto,
-  })
-  async getCompanyInformation(@GetUser() user: IJwtPayload) {
-    try {
-      this.logger.log(
-        `Getting company information for driver ID: ${user.userId}`,
-      );
-      return await this.driversService.getCompanyInformation(user.userId);
-    } catch (error) {
-      this.logger.error(
-        `Error fetching company information: ${error.message}`,
-        error.stack,
-      );
-      throw new HttpException(
-        error.response?.data ||
-          'An error occurred while fetching company information',
-        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-
-  @Delete('company-info')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Delete company information',
-    description: 'Deletes company information for the current driver',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Company information deleted successfully',
-  })
-  async deleteCompanyInformation(@GetUser() user: IJwtPayload) {
-    try {
-      this.logger.log(
-        `Deleting company information for driver ID: ${user.userId}`,
-      );
-      return await this.driversService.deleteCompanyInformation(user.userId);
-    } catch (error) {
-      this.logger.error(
-        `Error deleting company information: ${error.message}`,
-        error.stack,
-      );
-      throw new HttpException(
-        error.response?.data ||
-          'An error occurred while deleting company information',
+          'An error occurred while setting default bank information',
         error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }

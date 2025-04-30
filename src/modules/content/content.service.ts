@@ -24,7 +24,7 @@ export class ContentService {
     { id: '17', name: 'RAK Bank' },
     { id: '18', name: 'National Bank of Fujairah' },
     { id: '19', name: 'Sharjah Islamic Bank' },
-    { id: '20', name: 'National Bank of Umm Al Qaiwain' }
+    { id: '20', name: 'National Bank of Umm Al Qaiwain' },
   ];
   private readonly faqs: FaqItemDto[] = [
     {
