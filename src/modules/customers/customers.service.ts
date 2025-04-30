@@ -6,6 +6,7 @@ import { CreateAddressDto } from 'src/clients/customer/dto/create-address.dto';
 import { InitiateEmailUpdateDto } from 'src/clients/customer/dto/initiate-email-update.dto';
 import { InitiatePhoneUpdateDto } from 'src/clients/customer/dto/initiate-phone-update.dto';
 import { UpdateCustomerDto } from 'src/clients/customer/dto/update-customer.dto';
+import { UpdateNotificationPermissionsDto } from 'src/clients/customer/dto/update-notification-permissions.dto';
 
 @Injectable()
 export class CustomersService {
@@ -45,5 +46,12 @@ export class CustomersService {
 
   async deleteAddress(userId: string, addressId: string) {
     return this.customersClient.deleteAddress(userId, addressId);
+  }
+
+  async updateNotificationPermissions(
+    userId: string, 
+    permissionsDto: UpdateNotificationPermissionsDto
+  ) {
+    return this.customersClient.updateNotificationPermissions(userId, permissionsDto);
   }
 }

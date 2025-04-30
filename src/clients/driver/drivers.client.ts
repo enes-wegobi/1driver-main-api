@@ -16,6 +16,7 @@ import { InitiateEmailUpdateDto } from 'src/clients/customer/dto/initiate-email-
 import { CompleteEmailUpdateDto } from 'src/clients/customer/dto/complete-email-update.dto';
 import { InitiatePhoneUpdateDto } from 'src/clients/customer/dto/initiate-phone-update.dto';
 import { CompletePhoneUpdateDto } from 'src/clients/customer/dto/complete-phone-update.dto';
+import { UpdateNotificationPermissionsDto } from './dto/update-notification-permissions.dto';
 
 @Injectable()
 export class DriversClient {
@@ -171,6 +172,17 @@ export class DriversClient {
     const { data } = await this.httpClient.post(
       `/drivers/${driverId}/complete-phone-update`,
       dto,
+    );
+    return data;
+  }
+
+  async updateNotificationPermissions(
+    driverId: string,
+    permissionsDto: UpdateNotificationPermissionsDto,
+  ): Promise<any> {
+    const { data } = await this.httpClient.patch(
+      `/drivers/${driverId}/notification-permissions`,
+      permissionsDto,
     );
     return data;
   }

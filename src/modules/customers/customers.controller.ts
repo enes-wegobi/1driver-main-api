@@ -28,6 +28,7 @@ import { CompletePhoneUpdateDto } from 'src/clients/customer/dto/complete-phone-
 import { CreateAddressDto } from 'src/clients/customer/dto/create-address.dto';
 import { GetUser } from 'src/jwt/user.decoretor';
 import { IJwtPayload } from 'src/jwt/jwt-payload.interface';
+import { UpdateNotificationPermissionsDto } from 'src/clients/customer/dto/update-notification-permissions.dto';
 
 @ApiTags('customer')
 @ApiBearerAuth()
@@ -285,6 +286,39 @@ export class CustomersController {
       );
       throw new HttpException(
         error.response?.data || 'An error occurred while deleting address',
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Patch('me/notification-permissions')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Update customer notification permissions' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Notification permissions updated successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Customer not found',
+  })
+  async updateNotificationPermissions(
+    @GetUser() user: IJwtPayload,
+    @Body() permissionsDto: UpdateNotificationPermissionsDto,
+  ) {
+    try {
+      this.logger.log(`Updating notification permissions for user ID: ${user.userId}`);
+      return await this.customersService.updateNotificationPermissions(
+        user.userId,
+        permissionsDto,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Error updating notification permissions: ${error.message}`,
+        error.stack,
+      );
+      throw new HttpException(
+        error.response?.data || 'An error occurred while updating notification permissions',
         error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }

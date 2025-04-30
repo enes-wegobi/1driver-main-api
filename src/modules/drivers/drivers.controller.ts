@@ -15,6 +15,7 @@ import {
   NotFoundException,
   Get,
   Put,
+  Patch,
 } from '@nestjs/common';
 import {
   ApiOperation,
@@ -41,6 +42,7 @@ import { InitiateEmailUpdateDto } from 'src/clients/customer/dto/initiate-email-
 import { CompleteEmailUpdateDto } from 'src/clients/customer/dto/complete-email-update.dto';
 import { InitiatePhoneUpdateDto } from 'src/clients/customer/dto/initiate-phone-update.dto';
 import { CompletePhoneUpdateDto } from 'src/clients/customer/dto/complete-phone-update.dto';
+import { UpdateNotificationPermissionsDto } from 'src/clients/driver/dto/update-notification-permissions.dto';
 
 @ApiTags('drivers')
 @ApiBearerAuth()
@@ -503,6 +505,39 @@ export class DriversController {
       );
       throw new HttpException(
         error.response?.data || 'An error occurred while completing phone update',
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Patch('me/notification-permissions')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Update driver notification permissions' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Notification permissions updated successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Driver not found',
+  })
+  async updateNotificationPermissions(
+    @GetUser() user: IJwtPayload,
+    @Body() permissionsDto: UpdateNotificationPermissionsDto,
+  ) {
+    try {
+      this.logger.log(`Updating notification permissions for driver ID: ${user.userId}`);
+      return await this.driversService.updateNotificationPermissions(
+        user.userId,
+        permissionsDto,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Error updating notification permissions: ${error.message}`,
+        error.stack,
+      );
+      throw new HttpException(
+        error.response?.data || 'An error occurred while updating notification permissions',
         error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }

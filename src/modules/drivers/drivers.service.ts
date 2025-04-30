@@ -8,6 +8,7 @@ import { InitiateEmailUpdateDto } from 'src/clients/customer/dto/initiate-email-
 import { CompleteEmailUpdateDto } from 'src/clients/customer/dto/complete-email-update.dto';
 import { InitiatePhoneUpdateDto } from 'src/clients/customer/dto/initiate-phone-update.dto';
 import { CompletePhoneUpdateDto } from 'src/clients/customer/dto/complete-phone-update.dto';
+import { UpdateNotificationPermissionsDto } from 'src/clients/driver/dto/update-notification-permissions.dto';
 
 @Injectable()
 export class DriversService {
@@ -125,5 +126,12 @@ export class DriversService {
     dto: CompletePhoneUpdateDto,
   ): Promise<any> {
     return this.driversClient.completePhoneUpdate(driverId, dto);
+  }
+
+  async updateNotificationPermissions(
+    driverId: string, 
+    permissionsDto: UpdateNotificationPermissionsDto
+  ): Promise<any> {
+    return this.driversClient.updateNotificationPermissions(driverId, permissionsDto);
   }
 }

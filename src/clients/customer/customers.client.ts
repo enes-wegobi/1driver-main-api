@@ -7,6 +7,7 @@ import { CompleteEmailUpdateDto } from './dto/complete-email-update.dto';
 import { InitiatePhoneUpdateDto } from './dto/initiate-phone-update.dto';
 import { CompletePhoneUpdateDto } from './dto/complete-phone-update.dto';
 import { CreateAddressDto } from './dto/create-address.dto';
+import { UpdateNotificationPermissionsDto } from './dto/update-notification-permissions.dto';
 
 @Injectable()
 export class CustomersClient {
@@ -92,6 +93,17 @@ export class CustomersClient {
   async deleteAddress(userId: string, addressId: string): Promise<any> {
     const { data } = await this.httpClient.delete(
       `/customers/${userId}/addresses/${addressId}`,
+    );
+    return data;
+  }
+
+  async updateNotificationPermissions(
+    userId: string,
+    permissionsDto: UpdateNotificationPermissionsDto,
+  ): Promise<any> {
+    const { data } = await this.httpClient.patch(
+      `/customers/${userId}/notification-permissions`,
+      permissionsDto,
     );
     return data;
   }
