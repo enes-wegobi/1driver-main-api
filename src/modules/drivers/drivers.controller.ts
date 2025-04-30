@@ -74,34 +74,6 @@ export class DriversController {
     }
   }
 
-  @Get('me/files')
-  @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
-  @ApiOperation({
-    summary: 'Get all files and their status for the current driver',
-  })
-  @ApiResponse({
-    status: 200,
-    description:
-      'Returns all files with their status and whether the driver can use the app',
-    type: DriverFilesStatusDto,
-  })
-  async getMyFiles(@GetUser() user: IJwtPayload) {
-    try {
-      this.logger.log(`Getting files for driver ID: ${user.userId}`);
-      return await this.driversService.getDriverFiles(user.userId);
-    } catch (error) {
-      this.logger.error(
-        `Error fetching driver files: ${error.message}`,
-        error.stack,
-      );
-      throw new HttpException(
-        error.response?.data || 'An error occurred while fetching driver files',
-        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-
   @Post('upload/:fileType')
   @UseInterceptors(FileInterceptor('file'))
   @ApiOperation({ summary: 'Dosya yükleme' })
@@ -109,7 +81,7 @@ export class DriversController {
   @ApiParam({
     name: 'fileType',
     enum: FileType,
-    description: 'Yüklenecek dosya türü',
+    description: 'File type',
     example: FileType.DRIVERS_LICENSE_FRONT,
   })
   @ApiBody({
@@ -141,7 +113,6 @@ export class DriversController {
       );
 
       if (fileExists) {
-        // Delete the existing file before uploading a new one
         const existingFileKey = await this.driversService.deleteFile(
           user.userId,
           fileType,
@@ -264,11 +235,6 @@ export class DriversController {
       }
 
       switch (fileType) {
-        case FileType.CRIMINAL_RECORD:
-          return await this.driversService.verifyCriminalRecord(
-            user.userId,
-            isVerified,
-          );
         case FileType.DRIVERS_LICENSE_FRONT:
           return await this.driversService.verifyDrivingLicenseFront(
             user.userId,

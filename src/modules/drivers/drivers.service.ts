@@ -56,13 +56,6 @@ export class DriversService {
     return this.driversClient.verifyFile(driverId, fileType, isVerified);
   }
 
-  async verifyCriminalRecord(
-    driverId: string,
-    isVerified: boolean,
-  ): Promise<any> {
-    return this.verifyFile(driverId, FileType.CRIMINAL_RECORD, isVerified);
-  }
-
   async verifyDrivingLicenseFront(
     driverId: string,
     isVerified: boolean,
@@ -79,10 +72,6 @@ export class DriversService {
     isVerified: boolean,
   ): Promise<any> {
     return this.verifyFile(driverId, FileType.DRIVERS_LICENSE_BACK, isVerified);
-  }
-
-  async getDriverFiles(driverId: string): Promise<DriverFilesStatusDto> {
-    return this.driversClient.getDriverFiles(driverId);
   }
 
   // Bank Information Methods

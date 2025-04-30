@@ -62,13 +62,10 @@ export class DriversClient {
     this.logger.log(
       `Notifying file upload for driver ${driverId}, file type ${fileType}`,
     );
-
-    // Use a longer timeout for this specific request
-    // The retry mechanism is now handled by ClientsService
     const { data } = await this.httpClient.post(
       `/drivers/${driverId}/files/notify`,
       notifyDto,
-      { timeout: 60000 }, // 60 seconds timeout for the first attempt
+      { timeout: 60000 },
     );
 
     this.logger.log(
@@ -86,11 +83,6 @@ export class DriversClient {
       `/drivers/${driverId}/files/${fileType}/verify`,
       { isVerified },
     );
-    return data;
-  }
-
-  async getDriverFiles(driverId: string): Promise<DriverFilesStatusDto> {
-    const { data } = await this.httpClient.get(`/drivers/${driverId}/files`);
     return data;
   }
 
