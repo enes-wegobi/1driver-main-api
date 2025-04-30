@@ -294,13 +294,26 @@
                 
                 logEvent('connect', `Connecting to ${serverUrl} with token`);
                 
-                // Create new socket connection
+                // Create new socket connection with more options for compatibility
                 socket = io(serverUrl, {
                     transports: ['websocket', 'polling'],
+                    path: '/socket.io', // Default Socket.IO path
                     auth: { token },
                     extraHeaders: {
                         Authorization: `Bearer ${token}`
-                    }
+                    },
+                    reconnection: true,
+                    reconnectionAttempts: 5,
+                    reconnectionDelay: 1000,
+                    timeout: 20000,
+                    forceNew: true
+                });
+                
+                // Log connection details for debugging
+                logEvent('debug', {
+                    url: serverUrl,
+                    path: '/socket.io',
+                    transports: ['websocket', 'polling']
                 });
                 
                 // Socket event handlers

@@ -6,11 +6,7 @@ import { DriversService } from './drivers.service';
 import { S3Module } from 'src/s3/s3.module';
 
 @Module({
-  imports: [
-    ClientsModule, 
-    JwtModule, 
-    S3Module,
-  ],
+  imports: [ClientsModule, JwtModule, S3Module],
   controllers: [DriversController],
   providers: [DriversService],
 })

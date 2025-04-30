@@ -67,7 +67,7 @@ export class WebSocketService {
       onlyAvailable,
     );
   }
-  
+
   async findNearbyAvailableDrivers(
     latitude: number,
     longitude: number,

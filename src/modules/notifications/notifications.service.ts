@@ -14,12 +14,14 @@ export class NotificationsService implements OnModuleInit {
   async onModuleInit() {
     try {
       const firebaseConfig = this.configService.firebase;
-      
+
       if (!firebaseConfig || !firebaseConfig.projectId) {
-        this.logger.warn('Firebase configuration not found. FCM notifications will be disabled.');
+        this.logger.warn(
+          'Firebase configuration not found. FCM notifications will be disabled.',
+        );
         return;
       }
-
+      //ExponentPushToken[Jp0VKuFEVFjRCrEe7CXfe3]
       // Initialize Firebase Admin SDK
       this.firebaseApp = admin.initializeApp({
         credential: admin.credential.cert({
@@ -32,7 +34,9 @@ export class NotificationsService implements OnModuleInit {
       this.fcmEnabled = true;
       this.logger.log('Firebase Admin SDK initialized successfully');
     } catch (error) {
-      this.logger.error(`Failed to initialize Firebase Admin SDK: ${error.message}`);
+      this.logger.error(
+        `Failed to initialize Firebase Admin SDK: ${error.message}`,
+      );
     }
   }
 
@@ -106,7 +110,7 @@ export class NotificationsService implements OnModuleInit {
       }
 
       // Filter out any empty tokens
-      const validTokens = tokens.filter(token => !!token);
+      const validTokens = tokens.filter((token) => !!token);
 
       if (validTokens.length === 0) {
         return { success: 0, failure: 0 };
@@ -146,7 +150,9 @@ export class NotificationsService implements OnModuleInit {
         failure: response.failureCount,
       };
     } catch (error) {
-      this.logger.error(`Error sending multicast notification: ${error.message}`);
+      this.logger.error(
+        `Error sending multicast notification: ${error.message}`,
+      );
       return { success: 0, failure: tokens.length };
     }
   }
@@ -252,7 +258,7 @@ export class NotificationsService implements OnModuleInit {
   ): Promise<boolean> {
     const title = 'New Trip Request';
     const body = `New trip request from ${pickupAddress} to ${dropoffAddress}`;
-    
+
     const data = {
       tripId,
       type: 'trip_request',
@@ -262,7 +268,7 @@ export class NotificationsService implements OnModuleInit {
       estimatedFare: estimatedFare.toString(),
       timestamp: new Date().toISOString(),
     };
-    
+
     return this.sendNotification({
       userId: driverId,
       fcmToken,
@@ -284,14 +290,14 @@ export class NotificationsService implements OnModuleInit {
   ): Promise<boolean> {
     const title = 'Trip Status Update';
     const body = message;
-    
+
     const data = {
       tripId,
       type: 'trip_status_update',
       status,
       timestamp: new Date().toISOString(),
     };
-    
+
     return this.sendNotification({
       userId,
       fcmToken,

@@ -7,7 +7,12 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { NotificationsService } from './notifications.service';
 import { SendNotificationDto } from './dto/send-notification.dto';
 import { UpdateFcmTokenDto } from './dto/update-fcm-token.dto';
@@ -33,14 +38,18 @@ export class NotificationsController {
     @GetUser() user: any,
   ) {
     // Only allow admins or the user themselves to send notifications
-    if (user.userType !== 'admin' && user.userId !== sendNotificationDto.userId) {
+    if (
+      user.userType !== 'admin' &&
+      user.userId !== sendNotificationDto.userId
+    ) {
       throw new HttpException(
         'You are not authorized to send notifications to this user',
         HttpStatus.FORBIDDEN,
       );
     }
 
-    const result = await this.notificationsService.sendNotification(sendNotificationDto);
+    const result =
+      await this.notificationsService.sendNotification(sendNotificationDto);
 
     if (!result) {
       throw new HttpException(
@@ -90,7 +99,10 @@ export class NotificationsController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Test sending a trip request notification' })
-  @ApiResponse({ status: 200, description: 'Test notification sent successfully' })
+  @ApiResponse({
+    status: 200,
+    description: 'Test notification sent successfully',
+  })
   async testTripRequestNotification(
     @Body()
     testDto: {

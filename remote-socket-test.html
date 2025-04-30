@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Remote WebSocket Test Client</title>
+    <!-- Using a newer Socket.IO client version for better compatibility -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select, button, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+        .connected {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .log-container {
+            height: 300px;
+            overflow-y: auto;
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        .log-entry {
+            margin-bottom: 5px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+        }
+        .log-time {
+            color: #666;
+            font-size: 0.8em;
+        }
+        .log-event {
+            font-weight: bold;
+            color: #007bff;
+        }
+        .log-data {
+            color: #333;
+        }
+        .tabs {
+            display: flex;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #ddd;
+        }
+        .tab {
+            padding: 10px 15px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            border-bottom: none;
+            border-radius: 4px 4px 0 0;
+            margin-right: 5px;
+        }
+        .tab.active {
+            background-color: #f5f5f5;
+            border-color: #ddd;
+            border-bottom-color: #f5f5f5;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <h1>Remote WebSocket Test Client</h1>
+    
+    <div class="tabs">
+        <div class="tab active" data-tab="connection">Connection</div>
+        <div class="tab" data-tab="driver">Driver Status</div>
+        <div class="tab" data-tab="location">Location</div>
+        <div class="tab" data-tab="advanced">Advanced</div>
+        <div class="tab" data-tab="logs">Logs</div>
+    </div>
+    
+    <div class="container">
+        <div class="tab-content active" id="connection-tab">
+            <div class="card">
+                <h2>Connection</h2>
+                <div class="form-group">
+                    <label for="serverUrl">Server URL:</label>
+                    <input type="text" id="serverUrl" value="https://1drive-dev.wegobitest.com" />
+                </div>
+                <div class="form-group">
+                    <label for="socketPath">Socket.IO Path:</label>
+                    <input type="text" id="socketPath" value="/socket.io" />
+                </div>
+                <div class="form-group">
+                    <label for="token">JWT Token:</label>
+                    <input type="text" id="token" placeholder="Enter your JWT token" />
+                </div>
+                <button id="connectBtn">Connect</button>
+                <button id="disconnectBtn" disabled>Disconnect</button>
+                <div id="connectionStatus" class="status disconnected">Disconnected</div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="driver-tab">
+            <div class="card">
+                <h2>Driver Status</h2>
+                <div class="form-group">
+                    <label for="driverStatus">Availability Status:</label>
+                    <select id="driverStatus" disabled>
+                        <option value="available">Available</option>
+                        <option value="busy">Busy</option>
+                        <option value="offline">Offline</option>
+                    </select>
+                </div>
+                <button id="updateStatusBtn" disabled>Update Status</button>
+            </div>
+        </div>
+
+        <div class="tab-content" id="location-tab">
+            <div class="card">
+                <h2>Location</h2>
+                <div class="form-group">
+                    <label for="latitude">Latitude:</label>
+                    <input type="number" id="latitude" value="41.0082" step="0.0001" disabled />
+                </div>
+                <div class="form-group">
+                    <label for="longitude">Longitude:</label>
+                    <input type="number" id="longitude" value="28.9784" step="0.0001" disabled />
+                </div>
+                <div class="form-group">
+                    <label for="accuracy">Accuracy (meters):</label>
+                    <input type="number" id="accuracy" value="10" disabled />
+                </div>
+                <div class="form-group">
+                    <label for="heading">Heading (degrees):</label>
+                    <input type="number" id="heading" value="90" disabled />
+                </div>
+                <div class="form-group">
+                    <label for="speed">Speed (m/s):</label>
+                    <input type="number" id="speed" value="5" disabled />
+                </div>
+                <button id="sendLocationBtn" disabled>Send Location Update</button>
+                <button id="useCurrentLocationBtn" disabled>Use Current Location</button>
+            </div>
+        </div>
+
+        <div class="tab-content" id="advanced-tab">
+            <div class="card">
+                <h2>Advanced Options</h2>
+                <div class="form-group">
+                    <label for="transportSelect">Transport:</label>
+                    <select id="transportSelect">
+                        <option value="['polling']">Polling Only</option>
+                        <option value="['websocket', 'polling']">WebSocket with Polling Fallback</option>
+                        <option value="['websocket']">WebSocket Only</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="timeoutInput">Connection Timeout (ms):</label>
+                    <input type="number" id="timeoutInput" value="20000" />
+                </div>
+                <div class="form-group">
+                    <label for="reconnectionCheckbox">Enable Reconnection:</label>
+                    <input type="checkbox" id="reconnectionCheckbox" checked style="width: auto;" />
+                </div>
+                <div class="form-group">
+                    <label for="reconnectionAttemptsInput">Reconnection Attempts:</label>
+                    <input type="number" id="reconnectionAttemptsInput" value="5" />
+                </div>
+                <div class="form-group">
+                    <label for="reconnectionDelayInput">Reconnection Delay (ms):</label>
+                    <input type="number" id="reconnectionDelayInput" value="1000" />
+                </div>
+                <div class="form-group">
+                    <label for="customHeaders">Custom Headers (JSON):</label>
+                    <textarea id="customHeaders" rows="4">{"Authorization": "Bearer "}</textarea>
+                </div>
+                <div class="form-group">
+                    <label for="customQuery">Custom Query Parameters (JSON):</label>
+                    <textarea id="customQuery" rows="4">{}</textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="logs-tab">
+            <div class="card">
+                <h2>Event Log</h2>
+                <div id="logContainer" class="log-container"></div>
+                <button id="clearLogBtn">Clear Log</button>
+                <button id="copyLogBtn">Copy Logs</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let socket = null;
+        let userId = null;
+        let userType = null;
+
+        // DOM Elements
+        const serverUrlInput = document.getElementById('serverUrl');
+        const socketPathInput = document.getElementById('socketPath');
+        const tokenInput = document.getElementById('token');
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const connectionStatus = document.getElementById('connectionStatus');
+        const driverStatusSelect = document.getElementById('driverStatus');
+        const updateStatusBtn = document.getElementById('updateStatusBtn');
+        const latitudeInput = document.getElementById('latitude');
+        const longitudeInput = document.getElementById('longitude');
+        const accuracyInput = document.getElementById('accuracy');
+        const headingInput = document.getElementById('heading');
+        const speedInput = document.getElementById('speed');
+        const sendLocationBtn = document.getElementById('sendLocationBtn');
+        const useCurrentLocationBtn = document.getElementById('useCurrentLocationBtn');
+        const logContainer = document.getElementById('logContainer');
+        const clearLogBtn = document.getElementById('clearLogBtn');
+        const copyLogBtn = document.getElementById('copyLogBtn');
+        
+        // Advanced options
+        const transportSelect = document.getElementById('transportSelect');
+        const timeoutInput = document.getElementById('timeoutInput');
+        const reconnectionCheckbox = document.getElementById('reconnectionCheckbox');
+        const reconnectionAttemptsInput = document.getElementById('reconnectionAttemptsInput');
+        const reconnectionDelayInput = document.getElementById('reconnectionDelayInput');
+        const customHeadersTextarea = document.getElementById('customHeaders');
+        const customQueryTextarea = document.getElementById('customQuery');
+
+        // Tab navigation
+        const tabs = document.querySelectorAll('.tab');
+        const tabContents = document.querySelectorAll('.tab-content');
+        
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabId = tab.getAttribute('data-tab');
+                
+                // Remove active class from all tabs and contents
+                tabs.forEach(t => t.classList.remove('active'));
+                tabContents.forEach(c => c.classList.remove('active'));
+                
+                // Add active class to clicked tab and corresponding content
+                tab.classList.add('active');
+                document.getElementById(`${tabId}-tab`).classList.add('active');
+            });
+        });
+
+        // Connect to WebSocket
+        connectBtn.addEventListener('click', () => {
+            const serverUrl = serverUrlInput.value.trim();
+            const socketPath = socketPathInput.value.trim();
+            const token = tokenInput.value.trim();
+            
+            if (!serverUrl) {
+                alert('Please enter a server URL');
+                return;
+            }
+            
+            if (!token) {
+                alert('Please enter a JWT token');
+                return;
+            }
+            
+            connectToSocket(serverUrl, socketPath, token);
+        });
+
+        // Disconnect from WebSocket
+        disconnectBtn.addEventListener('click', () => {
+            if (socket) {
+                socket.disconnect();
+                updateUIDisconnected();
+                logEvent('disconnect', 'Manually disconnected from server');
+            }
+        });
+
+        // Update driver status
+        updateStatusBtn.addEventListener('click', () => {
+            if (!socket || !socket.connected) {
+                alert('Not connected to server');
+                return;
+            }
+            
+            const status = driverStatusSelect.value;
+            socket.emit('updateDriverAvailability', { status }, (response) => {
+                logEvent('updateDriverAvailability', response);
+                if (response && response.success) {
+                    logEvent('status', `Driver status updated to: ${status}`);
+                } else {
+                    const errorMsg = response ? response.message : 'No response from server';
+                    logEvent('error', `Failed to update status: ${errorMsg}`);
+                }
+            });
+        });
+
+        // Send location update
+        sendLocationBtn.addEventListener('click', () => {
+            if (!socket || !socket.connected) {
+                alert('Not connected to server');
+                return;
+            }
+            
+            const locationData = {
+                latitude: parseFloat(latitudeInput.value),
+                longitude: parseFloat(longitudeInput.value),
+                accuracy: parseFloat(accuracyInput.value),
+                heading: parseFloat(headingInput.value),
+                speed: parseFloat(speedInput.value),
+                timestamp: new Date().toISOString()
+            };
+            
+            if (userType === 'driver') {
+                // For drivers, use the updateDriverLocation event
+                socket.emit('updateDriverLocation', {
+                    ...locationData,
+                    availabilityStatus: driverStatusSelect.value
+                }, (response) => {
+                    logEvent('updateDriverLocation', response || 'No response');
+                });
+            } else {
+                // For other users, use the updateLocation event
+                socket.emit('updateLocation', locationData, (response) => {
+                    logEvent('updateLocation', response || 'No response');
+                });
+            }
+        });
+
+        // Use current location
+        useCurrentLocationBtn.addEventListener('click', () => {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        latitudeInput.value = position.coords.latitude;
+                        longitudeInput.value = position.coords.longitude;
+                        accuracyInput.value = position.coords.accuracy || 10;
+                        headingInput.value = position.coords.heading || 0;
+                        speedInput.value = position.coords.speed || 0;
+                        
+                        logEvent('geolocation', 'Updated with current location');
+                    },
+                    (error) => {
+                        logEvent('error', `Geolocation error: ${error.message}`);
+                        alert(`Failed to get current location: ${error.message}`);
+                    }
+                );
+            } else {
+                alert('Geolocation is not supported by this browser');
+            }
+        });
+
+        // Clear log
+        clearLogBtn.addEventListener('click', () => {
+            logContainer.innerHTML = '';
+        });
+        
+        // Copy logs
+        copyLogBtn.addEventListener('click', () => {
+            const logText = Array.from(logContainer.children)
+                .map(entry => entry.textContent.trim())
+                .join('\n\n');
+                
+            navigator.clipboard.writeText(logText)
+                .then(() => {
+                    alert('Logs copied to clipboard');
+                })
+                .catch(err => {
+                    console.error('Failed to copy logs: ', err);
+                    alert('Failed to copy logs');
+                });
+        });
+
+        // Connect to Socket.IO server
+        function connectToSocket(serverUrl, socketPath, token) {
+            try {
+                // Disconnect existing socket if any
+                if (socket) {
+                    socket.disconnect();
+                }
+                
+                logEvent('connect', `Connecting to ${serverUrl} with path ${socketPath}`);
+                
+                // Parse advanced options
+                let transports;
+                try {
+                    transports = JSON.parse(transportSelect.value);
+                } catch (e) {
+                    transports = ['websocket', 'polling'];
+                }
+                
+                let customHeaders = {};
+                try {
+                    customHeaders = JSON.parse(customHeadersTextarea.value);
+                    // Add token to Authorization header if it exists
+                    if (customHeaders.Authorization === "Bearer ") {
+                        customHeaders.Authorization = `Bearer ${token}`;
+                    }
+                } catch (e) {
+                    logEvent('warning', `Invalid custom headers JSON: ${e.message}`);
+                    customHeaders = { Authorization: `Bearer ${token}` };
+                }
+                
+                let customQuery = {};
+                try {
+                    customQuery = JSON.parse(customQueryTextarea.value);
+                } catch (e) {
+                    logEvent('warning', `Invalid custom query JSON: ${e.message}`);
+                }
+                
+                // Create new socket connection with advanced options
+                const socketOptions = {
+                    transports: transports,
+                    path: socketPath,
+                    auth: { token },
+                    extraHeaders: customHeaders,
+                    reconnection: reconnectionCheckbox.checked,
+                    reconnectionAttempts: parseInt(reconnectionAttemptsInput.value, 10),
+                    reconnectionDelay: parseInt(reconnectionDelayInput.value, 10),
+                    timeout: parseInt(timeoutInput.value, 10),
+                    forceNew: true,
+                    query: customQuery
+                };
+                
+                // Log connection options for debugging
+                logEvent('debug', {
+                    url: serverUrl,
+                    options: socketOptions
+                });
+                
+                socket = io(serverUrl, socketOptions);
+                
+                // Socket event handlers
+                socket.on('connect', () => {
+                    logEvent('connect', 'Socket connected');
+                    logEvent('info', `Socket ID: ${socket.id}`);
+                });
+                
+                socket.on('connection', (data) => {
+                    logEvent('connection', data);
+                    
+                    if (data && data.status === 'connected') {
+                        userId = data.userId;
+                        userType = data.userType;
+                        
+                        updateUIConnected(data);
+                        
+                        // If this is a driver, update the status dropdown
+                        if (userType === 'driver' && data.availabilityStatus) {
+                            driverStatusSelect.value = data.availabilityStatus;
+                        }
+                    }
+                });
+                
+                socket.on('disconnect', (reason) => {
+                    logEvent('disconnect', `Socket disconnected: ${reason}`);
+                    updateUIDisconnected();
+                });
+                
+                socket.on('error', (error) => {
+                    logEvent('error', error);
+                    console.error('Socket error:', error);
+                });
+                
+                socket.on('locationUpdate', (data) => {
+                    logEvent('locationUpdate', data);
+                });
+                
+                socket.on('nearbyDriverUpdate', (data) => {
+                    logEvent('nearbyDriverUpdate', data);
+                });
+                
+                socket.on('connect_error', (error) => {
+                    logEvent('connect_error', `Connection error: ${error.message}`);
+                    console.error('Connection error:', error);
+                    updateUIDisconnected();
+                });
+                
+                // Additional debugging events
+                socket.io.on('reconnect', (attempt) => {
+                    logEvent('reconnect', `Reconnected after ${attempt} attempts`);
+                });
+                
+                socket.io.on('reconnect_attempt', (attempt) => {
+                    logEvent('reconnect_attempt', `Reconnection attempt: ${attempt}`);
+                });
+                
+                socket.io.on('reconnect_error', (error) => {
+                    logEvent('reconnect_error', `Reconnection error: ${error.message}`);
+                });
+                
+                socket.io.on('reconnect_failed', () => {
+                    logEvent('reconnect_failed', 'Failed to reconnect');
+                });
+                
+                socket.io.on('ping', () => {
+                    logEvent('ping', 'Ping sent to server');
+                });
+                
+                socket.io.on('pong', (latency) => {
+                    logEvent('pong', `Pong received from server (latency: ${latency}ms)`);
+                });
+            } catch (error) {
+                logEvent('error', `Failed to connect: ${error.message}`);
+                console.error('Connection setup error:', error);
+                alert(`Failed to connect: ${error.message}`);
+                updateUIDisconnected();
+            }
+        }
+
+        // Update UI when connected
+        function updateUIConnected(data) {
+            connectionStatus.textContent = `Connected (${data.userType || 'unknown'})`;
+            connectionStatus.className = 'status connected';
+            
+            connectBtn.disabled = true;
+            disconnectBtn.disabled = false;
+            
+            // Enable location inputs
+            latitudeInput.disabled = false;
+            longitudeInput.disabled = false;
+            accuracyInput.disabled = false;
+            headingInput.disabled = false;
+            speedInput.disabled = false;
+            sendLocationBtn.disabled = false;
+            useCurrentLocationBtn.disabled = false;
+            
+            // Enable driver status controls if user is a driver
+            if (data.userType === 'driver') {
+                driverStatusSelect.disabled = false;
+                updateStatusBtn.disabled = false;
+            }
+        }
+
+        // Update UI when disconnected
+        function updateUIDisconnected() {
+            connectionStatus.textContent = 'Disconnected';
+            connectionStatus.className = 'status disconnected';
+            
+            connectBtn.disabled = false;
+            disconnectBtn.disabled = true;
+            
+            // Disable all controls
+            driverStatusSelect.disabled = true;
+            updateStatusBtn.disabled = true;
+            latitudeInput.disabled = true;
+            longitudeInput.disabled = true;
+            accuracyInput.disabled = true;
+            headingInput.disabled = true;
+            speedInput.disabled = true;
+            sendLocationBtn.disabled = true;
+            useCurrentLocationBtn.disabled = true;
+            
+            // Reset user data
+            userId = null;
+            userType = null;
+        }
+
+        // Log events to the UI
+        function logEvent(event, data) {
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            
+            const time = new Date().toLocaleTimeString();
+            
+            let dataStr = '';
+            if (typeof data === 'object') {
+                try {
+                    dataStr = JSON.stringify(data, null, 2);
+                } catch (e) {
+                    dataStr = 'Error stringifying object: ' + e.message;
+                }
+            } else {
+                dataStr = String(data);
+            }
+            
+            logEntry.innerHTML = `
+                <span class="log-time">[${time}]</span>
+                <span class="log-event">${event}:</span>
+                <pre class="log-data">${dataStr}</pre>
+            `;
+            
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+            
+            // Also log to console for debugging
+            console.log(`[${event}]`, data);
+        }
+
+        // Initialize
+        updateUIDisconnected();
+        logEvent('init', 'Remote WebSocket Test Client initialized');
+        logEvent('info', 'This client is pre-configured for the remote server at https://1drive-dev.wegobitest.com');
+        logEvent('tip', 'Default transport is set to "Polling Only" which may work better with the remote server');
+        logEvent('tip', 'If connection still fails, try adjusting other parameters in the "Advanced" tab');
+    </script>
+</body>
+</html>

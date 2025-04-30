@@ -26,6 +26,10 @@ export class DriverFilesStatusDto {
   @ApiProperty({ type: [FileStatusDto] })
   files: FileStatusDto[];
 
-  @ApiProperty({ type: Boolean, description: 'Whether the driver can use the app based on document verification status' })
+  @ApiProperty({
+    type: Boolean,
+    description:
+      'Whether the driver can use the app based on document verification status',
+  })
   canUseApp: boolean;
 }

@@ -4,8 +4,14 @@ import { ClientsService } from '../clients.service';
 import { FileType } from 'src/modules/drivers/enum/file-type.enum';
 import { NotifyFileUploadedDto } from '../users/dto/notify-file-uploaded.dto';
 import { DriverFilesStatusDto } from 'src/modules/drivers/dto/file-status.dto';
-import { BankInformationDto, CreateBankInformationDto } from 'src/modules/drivers/dto/bank-information.dto';
-import { CompanyInformationDto, CreateCompanyInformationDto } from 'src/modules/drivers/dto/company-information.dto';
+import {
+  BankInformationDto,
+  CreateBankInformationDto,
+} from 'src/modules/drivers/dto/bank-information.dto';
+import {
+  CompanyInformationDto,
+  CreateCompanyInformationDto,
+} from 'src/modules/drivers/dto/company-information.dto';
 
 @Injectable()
 export class DriversClient {
@@ -53,17 +59,21 @@ export class DriversClient {
       fileName: fileName,
     };
 
-    this.logger.log(`Notifying file upload for driver ${driverId}, file type ${fileType}`);
-    
+    this.logger.log(
+      `Notifying file upload for driver ${driverId}, file type ${fileType}`,
+    );
+
     // Use a longer timeout for this specific request
     // The retry mechanism is now handled by ClientsService
     const { data } = await this.httpClient.post(
       `/drivers/${driverId}/files/notify`,
       notifyDto,
-      { timeout: 60000 } // 60 seconds timeout for the first attempt
+      { timeout: 60000 }, // 60 seconds timeout for the first attempt
     );
-    
-    this.logger.log(`Successfully notified file upload for driver ${driverId}, file type ${fileType}`);
+
+    this.logger.log(
+      `Successfully notified file upload for driver ${driverId}, file type ${fileType}`,
+    );
     return data;
   }
 
@@ -74,7 +84,7 @@ export class DriversClient {
   ): Promise<any> {
     const { data } = await this.httpClient.put(
       `/drivers/${driverId}/files/${fileType}/verify`,
-      { isVerified }
+      { isVerified },
     );
     return data;
   }
@@ -97,12 +107,16 @@ export class DriversClient {
   }
 
   async getBankInformation(driverId: string): Promise<BankInformationDto> {
-    const { data } = await this.httpClient.get(`/drivers/${driverId}/bank-info`);
+    const { data } = await this.httpClient.get(
+      `/drivers/${driverId}/bank-info`,
+    );
     return data;
   }
 
   async deleteBankInformation(driverId: string): Promise<any> {
-    const { data } = await this.httpClient.delete(`/drivers/${driverId}/bank-info`);
+    const { data } = await this.httpClient.delete(
+      `/drivers/${driverId}/bank-info`,
+    );
     return data;
   }
 
@@ -118,13 +132,19 @@ export class DriversClient {
     return data;
   }
 
-  async getCompanyInformation(driverId: string): Promise<CompanyInformationDto> {
-    const { data } = await this.httpClient.get(`/drivers/${driverId}/company-info`);
+  async getCompanyInformation(
+    driverId: string,
+  ): Promise<CompanyInformationDto> {
+    const { data } = await this.httpClient.get(
+      `/drivers/${driverId}/company-info`,
+    );
     return data;
   }
 
   async deleteCompanyInformation(driverId: string): Promise<any> {
-    const { data } = await this.httpClient.delete(`/drivers/${driverId}/company-info`);
+    const { data } = await this.httpClient.delete(
+      `/drivers/${driverId}/company-info`,
+    );
     return data;
   }
 }

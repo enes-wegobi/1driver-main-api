@@ -13,16 +13,18 @@ export class NearbyDriverDto {
   @ApiProperty({ description: 'Driver ID' })
   driverId: string;
 
-  @ApiProperty({ description: 'Distance from requested location in kilometers' })
+  @ApiProperty({
+    description: 'Distance from requested location in kilometers',
+  })
   distance: number;
 
   @ApiProperty({ description: 'Current driver location' })
   location: DriverLocationDto;
 
-  @ApiProperty({ 
+  @ApiProperty({
     description: 'Driver availability status',
     enum: DriverAvailabilityStatus,
-    example: DriverAvailabilityStatus.AVAILABLE
+    example: DriverAvailabilityStatus.AVAILABLE,
   })
   availabilityStatus: DriverAvailabilityStatus;
 
@@ -34,9 +36,9 @@ export class NearbyDriversResponseDto {
   @ApiProperty({ description: 'Total number of drivers found' })
   total: number;
 
-  @ApiProperty({ 
+  @ApiProperty({
     description: 'List of nearby drivers',
-    type: [NearbyDriverDto]
+    type: [NearbyDriverDto],
   })
   drivers: NearbyDriverDto[];
 }

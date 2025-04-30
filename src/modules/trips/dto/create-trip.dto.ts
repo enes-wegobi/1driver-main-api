@@ -22,14 +22,20 @@ export class LocationPointDto {
   @Max(180)
   longitude: number;
 
-  @ApiProperty({ description: 'Address description', example: 'Istanbul Airport' })
+  @ApiProperty({
+    description: 'Address description',
+    example: 'Istanbul Airport',
+  })
   @IsString()
   @IsNotEmpty()
   address: string;
 }
 
 export class CreateTripDto {
-  @ApiProperty({ description: 'Customer ID', example: '123e4567-e89b-12d3-a456-426614174000' })
+  @ApiProperty({
+    description: 'Customer ID',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
   @IsString()
   @IsNotEmpty()
   customerId: string;
@@ -44,7 +50,10 @@ export class CreateTripDto {
   @IsNotEmpty()
   dropoff: LocationPointDto;
 
-  @ApiProperty({ description: 'Estimated distance in kilometers', example: 15.5 })
+  @ApiProperty({
+    description: 'Estimated distance in kilometers',
+    example: 15.5,
+  })
   @IsNumber()
   @Min(0)
   estimatedDistanceKm: number;
@@ -59,12 +68,20 @@ export class CreateTripDto {
   @Min(0)
   estimatedFare: number;
 
-  @ApiProperty({ description: 'Payment method', example: 'CASH', enum: ['CASH', 'CREDIT_CARD', 'WALLET'] })
+  @ApiProperty({
+    description: 'Payment method',
+    example: 'CASH',
+    enum: ['CASH', 'CREDIT_CARD', 'WALLET'],
+  })
   @IsString()
   @IsNotEmpty()
   paymentMethod: string;
 
-  @ApiProperty({ description: 'Additional notes for the driver', example: 'Please call when you arrive', required: false })
+  @ApiProperty({
+    description: 'Additional notes for the driver',
+    example: 'Please call when you arrive',
+    required: false,
+  })
   @IsString()
   @IsOptional()
   notes?: string;

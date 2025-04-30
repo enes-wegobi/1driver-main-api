@@ -16,7 +16,15 @@ import {
   Get,
   Put,
 } from '@nestjs/common';
-import { ApiOperation, ApiTags, ApiBearerAuth, ApiConsumes, ApiBody, ApiParam, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiOperation,
+  ApiTags,
+  ApiBearerAuth,
+  ApiConsumes,
+  ApiBody,
+  ApiParam,
+  ApiResponse,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/jwt/jwt.guard';
 import { DriversService } from './drivers.service';
 import { GetUser } from 'src/jwt/user.decoretor';
@@ -26,8 +34,14 @@ import { FileInterceptor } from '@nest-lab/fastify-multer';
 import { S3Service } from 'src/s3/s3.service';
 import { FileType } from './enum/file-type.enum';
 import { DriverFilesStatusDto } from './dto/file-status.dto';
-import { BankInformationDto, CreateBankInformationDto } from './dto/bank-information.dto';
-import { CompanyInformationDto, CreateCompanyInformationDto } from './dto/company-information.dto';
+import {
+  BankInformationDto,
+  CreateBankInformationDto,
+} from './dto/bank-information.dto';
+import {
+  CompanyInformationDto,
+  CreateCompanyInformationDto,
+} from './dto/company-information.dto';
 
 @ApiTags('drivers')
 @ApiBearerAuth()
@@ -41,32 +55,35 @@ export class DriversController {
     private readonly s3Service: S3Service,
   ) {}
 
-    @Get('me')
-    @ApiBearerAuth()
-    @UseGuards(JwtAuthGuard)
-    async getProfile(@GetUser() user: IJwtPayload) {
-      try {
-        this.logger.log(`Getting profile for customer ID: ${user.userId}`);
-        return await this.driversService.findOne(user.userId);
-      } catch (error) {
-        this.logger.error(
-          `Error fetching profile: ${error.message}`,
-          error.stack,
-        );
-        throw new HttpException(
-          error.response?.data || 'An error occurred while fetching the profile',
-          error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
-        );
-      }
+  @Get('me')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  async getProfile(@GetUser() user: IJwtPayload) {
+    try {
+      this.logger.log(`Getting profile for customer ID: ${user.userId}`);
+      return await this.driversService.findOne(user.userId);
+    } catch (error) {
+      this.logger.error(
+        `Error fetching profile: ${error.message}`,
+        error.stack,
+      );
+      throw new HttpException(
+        error.response?.data || 'An error occurred while fetching the profile',
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
+  }
 
   @Get('me/files')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Get all files and their status for the current driver' })
+  @ApiOperation({
+    summary: 'Get all files and their status for the current driver',
+  })
   @ApiResponse({
     status: 200,
-    description: 'Returns all files with their status and whether the driver can use the app',
+    description:
+      'Returns all files with their status and whether the driver can use the app',
     type: DriverFilesStatusDto,
   })
   async getMyFiles(@GetUser() user: IJwtPayload) {
@@ -93,7 +110,7 @@ export class DriversController {
     name: 'fileType',
     enum: FileType,
     description: 'Yüklenecek dosya türü',
-    example: FileType.DRIVERS_LICENSE_FRONT
+    example: FileType.DRIVERS_LICENSE_FRONT,
   })
   @ApiBody({
     schema: {
@@ -132,7 +149,9 @@ export class DriversController {
         if (existingFileKey) {
           await this.s3Service.deleteFile(existingFileKey);
         }
-        this.logger.log(`Deleted existing file of type ${fileType} for user ${user.userId}`);
+        this.logger.log(
+          `Deleted existing file of type ${fileType} for user ${user.userId}`,
+        );
       }
 
       const fileKey = `${user.userId}/${fileType}/${uuidv4()}-${file.originalname}`;
@@ -168,7 +187,7 @@ export class DriversController {
     name: 'fileType',
     enum: FileType,
     description: 'Type of file to delete',
-    example: FileType.DRIVERS_LICENSE_FRONT
+    example: FileType.DRIVERS_LICENSE_FRONT,
   })
   async deleteFile(
     @Param('fileType') fileType: FileType,
@@ -215,7 +234,7 @@ export class DriversController {
     name: 'fileType',
     enum: FileType,
     description: 'Type of file to verify',
-    example: FileType.DRIVERS_LICENSE_FRONT
+    example: FileType.DRIVERS_LICENSE_FRONT,
   })
   @ApiBody({
     schema: {
@@ -287,15 +306,21 @@ export class DriversController {
     @GetUser() user: IJwtPayload,
   ) {
     try {
-      this.logger.log(`Creating/updating bank information for driver ID: ${user.userId}`);
-      return await this.driversService.createOrUpdateBankInformation(user.userId, bankInfoDto);
+      this.logger.log(
+        `Creating/updating bank information for driver ID: ${user.userId}`,
+      );
+      return await this.driversService.createOrUpdateBankInformation(
+        user.userId,
+        bankInfoDto,
+      );
     } catch (error) {
       this.logger.error(
         `Error creating/updating bank information: ${error.message}`,
         error.stack,
       );
       throw new HttpException(
-        error.response?.data || 'An error occurred while creating/updating bank information',
+        error.response?.data ||
+          'An error occurred while creating/updating bank information',
         error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
@@ -312,9 +337,7 @@ export class DriversController {
     description: 'Bank information retrieved successfully',
     type: BankInformationDto,
   })
-  async getBankInformation(
-    @GetUser() user: IJwtPayload,
-  ) {
+  async getBankInformation(@GetUser() user: IJwtPayload) {
     try {
       this.logger.log(`Getting bank information for driver ID: ${user.userId}`);
       return await this.driversService.getBankInformation(user.userId);
@@ -324,7 +347,8 @@ export class DriversController {
         error.stack,
       );
       throw new HttpException(
-        error.response?.data || 'An error occurred while fetching bank information',
+        error.response?.data ||
+          'An error occurred while fetching bank information',
         error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
@@ -340,11 +364,11 @@ export class DriversController {
     status: 200,
     description: 'Bank information deleted successfully',
   })
-  async deleteBankInformation(
-    @GetUser() user: IJwtPayload,
-  ) {
+  async deleteBankInformation(@GetUser() user: IJwtPayload) {
     try {
-      this.logger.log(`Deleting bank information for driver ID: ${user.userId}`);
+      this.logger.log(
+        `Deleting bank information for driver ID: ${user.userId}`,
+      );
       return await this.driversService.deleteBankInformation(user.userId);
     } catch (error) {
       this.logger.error(
@@ -352,7 +376,8 @@ export class DriversController {
         error.stack,
       );
       throw new HttpException(
-        error.response?.data || 'An error occurred while deleting bank information',
+        error.response?.data ||
+          'An error occurred while deleting bank information',
         error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
@@ -363,7 +388,8 @@ export class DriversController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Create or update company information',
-    description: 'Creates or updates company information for the current driver',
+    description:
+      'Creates or updates company information for the current driver',
   })
   @ApiBody({ type: CreateCompanyInformationDto })
   @ApiResponse({
@@ -376,15 +402,21 @@ export class DriversController {
     @GetUser() user: IJwtPayload,
   ) {
     try {
-      this.logger.log(`Creating/updating company information for driver ID: ${user.userId}`);
-      return await this.driversService.createOrUpdateCompanyInformation(user.userId, companyInfoDto);
+      this.logger.log(
+        `Creating/updating company information for driver ID: ${user.userId}`,
+      );
+      return await this.driversService.createOrUpdateCompanyInformation(
+        user.userId,
+        companyInfoDto,
+      );
     } catch (error) {
       this.logger.error(
         `Error creating/updating company information: ${error.message}`,
         error.stack,
       );
       throw new HttpException(
-        error.response?.data || 'An error occurred while creating/updating company information',
+        error.response?.data ||
+          'An error occurred while creating/updating company information',
         error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
@@ -401,11 +433,11 @@ export class DriversController {
     description: 'Company information retrieved successfully',
     type: CompanyInformationDto,
   })
-  async getCompanyInformation(
-    @GetUser() user: IJwtPayload,
-  ) {
+  async getCompanyInformation(@GetUser() user: IJwtPayload) {
     try {
-      this.logger.log(`Getting company information for driver ID: ${user.userId}`);
+      this.logger.log(
+        `Getting company information for driver ID: ${user.userId}`,
+      );
       return await this.driversService.getCompanyInformation(user.userId);
     } catch (error) {
       this.logger.error(
@@ -413,7 +445,8 @@ export class DriversController {
         error.stack,
       );
       throw new HttpException(
-        error.response?.data || 'An error occurred while fetching company information',
+        error.response?.data ||
+          'An error occurred while fetching company information',
         error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
@@ -429,11 +462,11 @@ export class DriversController {
     status: 200,
     description: 'Company information deleted successfully',
   })
-  async deleteCompanyInformation(
-    @GetUser() user: IJwtPayload,
-  ) {
+  async deleteCompanyInformation(@GetUser() user: IJwtPayload) {
     try {
-      this.logger.log(`Deleting company information for driver ID: ${user.userId}`);
+      this.logger.log(
+        `Deleting company information for driver ID: ${user.userId}`,
+      );
       return await this.driversService.deleteCompanyInformation(user.userId);
     } catch (error) {
       this.logger.error(
@@ -441,7 +474,8 @@ export class DriversController {
         error.stack,
       );
       throw new HttpException(
-        error.response?.data || 'An error occurred while deleting company information',
+        error.response?.data ||
+          'An error occurred while deleting company information',
         error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }

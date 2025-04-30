@@ -44,12 +44,12 @@ class FastifySocketIORedisAdapter extends IoAdapter {
     const server = this.httpServer;
     const io = super.createIOServer(port, {
       ...options,
-  cors: {
-    origin: "*", 
-    methods: ['GET', 'POST'],
-    credentials: true,
-    allowedHeaders: ['Authorization', 'Content-Type']
-  },
+      cors: {
+        origin: '*',
+        methods: ['GET', 'POST'],
+        credentials: true,
+        allowedHeaders: ['Authorization', 'Content-Type'],
+      },
       transports: ['websocket', 'polling'],
       serverFactory: (handler) => handler(server),
     });
@@ -67,20 +67,17 @@ class FastifySocketIORedisAdapter extends IoAdapter {
 async function bootstrap() {
   const fastifyAdapter = new FastifyAdapter();
 
-
   await fastifyAdapter.register(fastifyMultipart as any, {
     limits: {
       fileSize: 10 * 1024 * 1024, // 10MB
     },
   });
-  
+
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
     fastifyAdapter,
     { logger: ['error', 'warn', 'log', 'debug'] },
   );
-
-
 
   const configService = app.get(ConfigService);
   const redisUrl = configService.get<string>('redis.url', '0.0.0.0');
@@ -109,10 +106,16 @@ async function bootstrap() {
   SwaggerModule.setup('api/docs', app, document);
 
   await app.register(fastifyCors as any, {
-    origin: "*",
+    origin: '*',
     methods: ['GET', 'PUT', 'POST', 'DELETE', 'PATCH', 'OPTIONS'],
     credentials: true,
-    allowedHeaders: ['Authorization', 'Content-Type', 'Accept', 'Origin', 'X-Requested-With']
+    allowedHeaders: [
+      'Authorization',
+      'Content-Type',
+      'Accept',
+      'Origin',
+      'X-Requested-With',
+    ],
   });
 
   await app.register(fastifyHelmet as any, {
@@ -123,7 +126,15 @@ async function bootstrap() {
         fontSrc: [`'self'`, 'https://fonts.gstatic.com'],
         imgSrc: [`'self'`, 'data:', 'validator.swagger.io'],
         scriptSrc: [`'self'`, `'unsafe-inline'`, `'unsafe-eval'`],
-        connectSrc: [`'self'`, 'http://localhost:8080', 'http://127.0.0.1:8080', 'ws://localhost:8080', 'ws://127.0.0.1:8080', 'https://1drive-dev.wegobitest.com', 'wss://1drive-dev.wegobitest.com'],
+        connectSrc: [
+          `'self'`,
+          'http://localhost:8080',
+          'http://127.0.0.1:8080',
+          'ws://localhost:8080',
+          'ws://127.0.0.1:8080',
+          'https://1drive-dev.wegobitest.com',
+          'wss://1drive-dev.wegobitest.com',
+        ],
       },
     },
   });

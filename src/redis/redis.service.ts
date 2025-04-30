@@ -1,4 +1,9 @@
-import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  OnModuleInit,
+  OnModuleDestroy,
+  Logger,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient, RedisClientType } from 'redis';
 import { DriverAvailabilityStatus } from 'src/websocket/dto/driver-location.dto';
@@ -15,7 +20,9 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       url: this.configService.get<string>('redis.url'),
     });
 
-    this.client.on('error', (err) => this.logger.error('Redis Client Error', err));
+    this.client.on('error', (err) =>
+      this.logger.error('Redis Client Error', err),
+    );
   }
 
   async onModuleInit() {
@@ -53,12 +60,12 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       // If this is a driver, update active drivers set
       if (userType === 'driver') {
         await this.markDriverAsActive(userId);
-        
+
         // If availability status is provided, update it
         if (locationData.availabilityStatus) {
           await this.updateDriverAvailability(
-            userId, 
-            locationData.availabilityStatus
+            userId,
+            locationData.availabilityStatus,
           );
         }
       }
@@ -84,13 +91,16 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       const key = `driver:active:${driverId}`;
       await this.client.set(key, new Date().toISOString());
       await this.client.expire(key, this.ACTIVE_DRIVER_EXPIRY);
-      
+
       // Add to active drivers set
       await this.client.sAdd('drivers:active', driverId);
-      
+
       return true;
     } catch (error) {
-      this.logger.error(`Error marking driver ${driverId} as active:`, error.message);
+      this.logger.error(
+        `Error marking driver ${driverId} as active:`,
+        error.message,
+      );
       return false;
     }
   }
@@ -99,52 +109,71 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     try {
       const key = `driver:active:${driverId}`;
       await this.client.del(key);
-      
+
       // Remove from active drivers set
       await this.client.sRem('drivers:active', driverId);
-      
+
       // Update availability status to offline
-      await this.updateDriverAvailability(driverId, DriverAvailabilityStatus.OFFLINE);
-      
+      await this.updateDriverAvailability(
+        driverId,
+        DriverAvailabilityStatus.OFFLINE,
+      );
+
       return true;
     } catch (error) {
-      this.logger.error(`Error marking driver ${driverId} as inactive:`, error.message);
+      this.logger.error(
+        `Error marking driver ${driverId} as inactive:`,
+        error.message,
+      );
       return false;
     }
   }
 
-  async updateDriverAvailability(driverId: string, status: DriverAvailabilityStatus) {
+  async updateDriverAvailability(
+    driverId: string,
+    status: DriverAvailabilityStatus,
+  ) {
     try {
       const key = `driver:status:${driverId}`;
       await this.client.set(key, status);
       await this.client.expire(key, this.ACTIVE_DRIVER_EXPIRY);
-      
+
       // Update the status in the location data as well
       const locationKey = `location:user:${driverId}`;
       const locationData = await this.client.get(locationKey);
-      
+
       if (locationData) {
         const parsedData = JSON.parse(locationData);
         parsedData.availabilityStatus = status;
         await this.client.set(locationKey, JSON.stringify(parsedData));
         await this.client.expire(locationKey, this.DRIVER_LOCATION_EXPIRY);
       }
-      
+
       return true;
     } catch (error) {
-      this.logger.error(`Error updating driver ${driverId} availability:`, error.message);
+      this.logger.error(
+        `Error updating driver ${driverId} availability:`,
+        error.message,
+      );
       return false;
     }
   }
 
-  async getDriverAvailability(driverId: string): Promise<DriverAvailabilityStatus> {
+  async getDriverAvailability(
+    driverId: string,
+  ): Promise<DriverAvailabilityStatus> {
     try {
       const key = `driver:status:${driverId}`;
       const status = await this.client.get(key);
-      
-      return (status as DriverAvailabilityStatus) || DriverAvailabilityStatus.OFFLINE;
+
+      return (
+        (status as DriverAvailabilityStatus) || DriverAvailabilityStatus.OFFLINE
+      );
     } catch (error) {
-      this.logger.error(`Error getting driver ${driverId} availability:`, error.message);
+      this.logger.error(
+        `Error getting driver ${driverId} availability:`,
+        error.message,
+      );
       return DriverAvailabilityStatus.OFFLINE;
     }
   }
@@ -153,10 +182,13 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     try {
       const key = `driver:active:${driverId}`;
       const result = await this.client.exists(key);
-      
+
       return result === 1;
     } catch (error) {
-      this.logger.error(`Error checking if driver ${driverId} is active:`, error.message);
+      this.logger.error(
+        `Error checking if driver ${driverId} is active:`,
+        error.message,
+      );
       return false;
     }
   }
@@ -210,12 +242,13 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
             // Get additional user data if available
             const userData = await this.getUserLocation(userId);
-            
+
             // Skip if we only want available drivers and this one isn't available
             if (
-              onlyAvailable && 
-              userType === 'driver' && 
-              userData?.availabilityStatus !== DriverAvailabilityStatus.AVAILABLE
+              onlyAvailable &&
+              userType === 'driver' &&
+              userData?.availabilityStatus !==
+                DriverAvailabilityStatus.AVAILABLE
             ) {
               continue;
             }
@@ -247,7 +280,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       return [];
     }
   }
-  
+
   async findNearbyAvailableDrivers(
     latitude: number,
     longitude: number,

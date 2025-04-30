@@ -2,8 +2,14 @@ import { Injectable, Logger } from '@nestjs/common';
 import { DriversClient } from 'src/clients/driver/drivers.client';
 import { FileType } from './enum/file-type.enum';
 import { DriverFilesStatusDto } from './dto/file-status.dto';
-import { BankInformationDto, CreateBankInformationDto } from './dto/bank-information.dto';
-import { CompanyInformationDto, CreateCompanyInformationDto } from './dto/company-information.dto';
+import {
+  BankInformationDto,
+  CreateBankInformationDto,
+} from './dto/bank-information.dto';
+import {
+  CompanyInformationDto,
+  CreateCompanyInformationDto,
+} from './dto/company-information.dto';
 
 @Injectable()
 export class DriversService {
@@ -61,7 +67,11 @@ export class DriversService {
     driverId: string,
     isVerified: boolean,
   ): Promise<any> {
-    return this.verifyFile(driverId, FileType.DRIVERS_LICENSE_FRONT, isVerified);
+    return this.verifyFile(
+      driverId,
+      FileType.DRIVERS_LICENSE_FRONT,
+      isVerified,
+    );
   }
 
   async verifyDrivingLicenseBack(
@@ -80,7 +90,10 @@ export class DriversService {
     driverId: string,
     bankInfoDto: CreateBankInformationDto,
   ): Promise<BankInformationDto> {
-    return this.driversClient.createOrUpdateBankInformation(driverId, bankInfoDto);
+    return this.driversClient.createOrUpdateBankInformation(
+      driverId,
+      bankInfoDto,
+    );
   }
 
   async getBankInformation(driverId: string): Promise<BankInformationDto> {
@@ -96,10 +109,15 @@ export class DriversService {
     driverId: string,
     companyInfoDto: CreateCompanyInformationDto,
   ): Promise<CompanyInformationDto> {
-    return this.driversClient.createOrUpdateCompanyInformation(driverId, companyInfoDto);
+    return this.driversClient.createOrUpdateCompanyInformation(
+      driverId,
+      companyInfoDto,
+    );
   }
 
-  async getCompanyInformation(driverId: string): Promise<CompanyInformationDto> {
+  async getCompanyInformation(
+    driverId: string,
+  ): Promise<CompanyInformationDto> {
     return this.driversClient.getCompanyInformation(driverId);
   }
 

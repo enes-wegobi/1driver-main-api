@@ -10,7 +10,8 @@ export enum DriverAvailabilityStatus {
 export class DriverLocationDto extends LocationDto {
   @IsEnum(DriverAvailabilityStatus)
   @IsOptional()
-  availabilityStatus?: DriverAvailabilityStatus = DriverAvailabilityStatus.AVAILABLE;
+  availabilityStatus?: DriverAvailabilityStatus =
+    DriverAvailabilityStatus.AVAILABLE;
 
   @IsBoolean()
   @IsOptional()
