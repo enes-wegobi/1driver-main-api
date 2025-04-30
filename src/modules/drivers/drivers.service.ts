@@ -1,15 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { DriversClient } from 'src/clients/driver/drivers.client';
 import { FileType } from './enum/file-type.enum';
-import { DriverFilesStatusDto } from './dto/file-status.dto';
 import {
-  BankInformationDto,
   CreateBankInformationDto,
 } from './dto/bank-information.dto';
-import {
-  CompanyInformationDto,
-  CreateCompanyInformationDto,
-} from './dto/company-information.dto';
+import { InitiateEmailUpdateDto } from 'src/clients/customer/dto/initiate-email-update.dto';
+import { CompleteEmailUpdateDto } from 'src/clients/customer/dto/complete-email-update.dto';
+import { InitiatePhoneUpdateDto } from 'src/clients/customer/dto/initiate-phone-update.dto';
+import { CompletePhoneUpdateDto } from 'src/clients/customer/dto/complete-phone-update.dto';
 
 @Injectable()
 export class DriversService {
@@ -98,5 +96,34 @@ export class DriversService {
     bankInfoId: string,
   ): Promise<any> {
     return this.driversClient.setDefaultBankInformation(driverId, bankInfoId);
+  }
+
+  // Email and Phone Update Methods
+  async initiateEmailUpdate(
+    driverId: string,
+    dto: InitiateEmailUpdateDto,
+  ): Promise<any> {
+    return this.driversClient.initiateEmailUpdate(driverId, dto);
+  }
+
+  async completeEmailUpdate(
+    driverId: string,
+    dto: CompleteEmailUpdateDto,
+  ): Promise<any> {
+    return this.driversClient.completeEmailUpdate(driverId, dto);
+  }
+
+  async initiatePhoneUpdate(
+    driverId: string,
+    dto: InitiatePhoneUpdateDto,
+  ): Promise<any> {
+    return this.driversClient.initiatePhoneUpdate(driverId, dto);
+  }
+
+  async completePhoneUpdate(
+    driverId: string,
+    dto: CompletePhoneUpdateDto,
+  ): Promise<any> {
+    return this.driversClient.completePhoneUpdate(driverId, dto);
   }
 }

@@ -12,6 +12,10 @@ import {
   CompanyInformationDto,
   CreateCompanyInformationDto,
 } from 'src/modules/drivers/dto/company-information.dto';
+import { InitiateEmailUpdateDto } from 'src/clients/customer/dto/initiate-email-update.dto';
+import { CompleteEmailUpdateDto } from 'src/clients/customer/dto/complete-email-update.dto';
+import { InitiatePhoneUpdateDto } from 'src/clients/customer/dto/initiate-phone-update.dto';
+import { CompletePhoneUpdateDto } from 'src/clients/customer/dto/complete-phone-update.dto';
 
 @Injectable()
 export class DriversClient {
@@ -122,6 +126,51 @@ export class DriversClient {
     const { data } = await this.httpClient.put(
       `/drivers/${driverId}/bank-info/${bankInfoId}/set-default`,
       {},
+    );
+    return data;
+  }
+
+  // Email and Phone Update Methods
+  async initiateEmailUpdate(
+    driverId: string,
+    dto: InitiateEmailUpdateDto,
+  ): Promise<any> {
+    const { data } = await this.httpClient.post(
+      `/drivers/${driverId}/initiate-email-update`,
+      dto,
+    );
+    return data;
+  }
+
+  async completeEmailUpdate(
+    driverId: string,
+    dto: CompleteEmailUpdateDto,
+  ): Promise<any> {
+    const { data } = await this.httpClient.post(
+      `/drivers/${driverId}/complete-email-update`,
+      dto,
+    );
+    return data;
+  }
+
+  async initiatePhoneUpdate(
+    driverId: string,
+    dto: InitiatePhoneUpdateDto,
+  ): Promise<any> {
+    const { data } = await this.httpClient.post(
+      `/drivers/${driverId}/initiate-phone-update`,
+      dto,
+    );
+    return data;
+  }
+
+  async completePhoneUpdate(
+    driverId: string,
+    dto: CompletePhoneUpdateDto,
+  ): Promise<any> {
+    const { data } = await this.httpClient.post(
+      `/drivers/${driverId}/complete-phone-update`,
+      dto,
     );
     return data;
   }

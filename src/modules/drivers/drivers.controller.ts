@@ -33,15 +33,14 @@ import { v4 as uuidv4 } from 'uuid';
 import { FileInterceptor } from '@nest-lab/fastify-multer';
 import { S3Service } from 'src/s3/s3.service';
 import { FileType } from './enum/file-type.enum';
-import { DriverFilesStatusDto } from './dto/file-status.dto';
 import {
   BankInformationDto,
   CreateBankInformationDto,
 } from './dto/bank-information.dto';
-import {
-  CompanyInformationDto,
-  CreateCompanyInformationDto,
-} from './dto/company-information.dto';
+import { InitiateEmailUpdateDto } from 'src/clients/customer/dto/initiate-email-update.dto';
+import { CompleteEmailUpdateDto } from 'src/clients/customer/dto/complete-email-update.dto';
+import { InitiatePhoneUpdateDto } from 'src/clients/customer/dto/initiate-phone-update.dto';
+import { CompletePhoneUpdateDto } from 'src/clients/customer/dto/complete-phone-update.dto';
 
 @ApiTags('drivers')
 @ApiBearerAuth()
@@ -385,6 +384,125 @@ export class DriversController {
       throw new HttpException(
         error.response?.data ||
           'An error occurred while setting default bank information',
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  // Email and Phone Update Endpoints
+  @Post('initiate-email-update')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Initiate email update process' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'OTP sent to new email' })
+  @ApiResponse({
+    status: HttpStatus.CONFLICT,
+    description: 'Email already in use or same as current',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Invalid user ID',
+  })
+  async initiateEmailUpdate(
+    @GetUser() user: IJwtPayload,
+    @Body() dto: InitiateEmailUpdateDto,
+  ) {
+    try {
+      return await this.driversService.initiateEmailUpdate(user.userId, dto);
+    } catch (error) {
+      this.logger.error(
+        `Error initiating email update: ${error.message}`,
+        error.stack,
+      );
+      throw new HttpException(
+        error.response?.data || 'An error occurred while initiating email update',
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Post('complete-email-update')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Complete email update with OTP verification' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Email updated successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Invalid OTP or user ID',
+  })
+  async completeEmailUpdate(
+    @GetUser() user: IJwtPayload,
+    @Body() dto: CompleteEmailUpdateDto,
+  ) {
+    try {
+      return await this.driversService.completeEmailUpdate(user.userId, dto);
+    } catch (error) {
+      this.logger.error(
+        `Error completing email update: ${error.message}`,
+        error.stack,
+      );
+      throw new HttpException(
+        error.response?.data || 'An error occurred while completing email update',
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Post('initiate-phone-update')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Initiate phone update process' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'OTP sent to new phone' })
+  @ApiResponse({
+    status: HttpStatus.CONFLICT,
+    description: 'Phone already in use or same as current',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Invalid user ID',
+  })
+  async initiatePhoneUpdate(
+    @GetUser() user: IJwtPayload,
+    @Body() dto: InitiatePhoneUpdateDto,
+  ) {
+    try {
+      return await this.driversService.initiatePhoneUpdate(user.userId, dto);
+    } catch (error) {
+      this.logger.error(
+        `Error initiating phone update: ${error.message}`,
+        error.stack,
+      );
+      throw new HttpException(
+        error.response?.data || 'An error occurred while initiating phone update',
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Post('complete-phone-update')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Complete phone update with OTP verification' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Phone updated successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Invalid OTP or user ID',
+  })
+  async completePhoneUpdate(
+    @GetUser() user: IJwtPayload,
+    @Body() dto: CompletePhoneUpdateDto,
+  ) {
+    try {
+      return await this.driversService.completePhoneUpdate(user.userId, dto);
+    } catch (error) {
+      this.logger.error(
+        `Error completing phone update: ${error.message}`,
+        error.stack,
+      );
+      throw new HttpException(
+        error.response?.data || 'An error occurred while completing phone update',
         error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
