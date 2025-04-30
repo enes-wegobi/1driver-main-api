@@ -43,6 +43,8 @@ import { CompleteEmailUpdateDto } from 'src/clients/customer/dto/complete-email-
 import { InitiatePhoneUpdateDto } from 'src/clients/customer/dto/initiate-phone-update.dto';
 import { CompletePhoneUpdateDto } from 'src/clients/customer/dto/complete-phone-update.dto';
 import { UpdateNotificationPermissionsDto } from 'src/clients/driver/dto/update-notification-permissions.dto';
+import { UpdateDriverProfileDto } from './dto/update-driver-profile.dto';
+
 
 @ApiTags('drivers')
 @ApiBearerAuth()
@@ -540,6 +542,35 @@ export class DriversController {
         error.response?.data || 'An error occurred while updating notification permissions',
         error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
+    }
+  }
+
+  @Patch('me/profile')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Update driver profile information' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Driver profile updated successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Driver not found',
+  })
+  async updateProfile(
+    @GetUser() user: IJwtPayload,
+    @Body() updateProfileDto: UpdateDriverProfileDto,
+  ): Promise<any> {
+    try {
+      return await this.driversService.updateProfile(
+        user.userId,
+        updateProfileDto,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Error updating driver profile: ${error.message}`,
+        error.stack,
+      );
+      throw error;
     }
   }
 }
