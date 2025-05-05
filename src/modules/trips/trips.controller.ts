@@ -1,9 +1,7 @@
 import {
   Controller,
   Get,
-  Query,
   UseGuards,
-  ValidationPipe,
   Logger,
   Post,
   Body,
@@ -14,7 +12,6 @@ import {
 import {
   ApiTags,
   ApiOperation,
-  ApiQuery,
   ApiResponse,
   ApiBearerAuth,
   ApiParam,
@@ -22,47 +19,9 @@ import {
 import { TripsService } from './trips.service';
 import { JwtAuthGuard } from 'src/jwt/jwt.guard';
 import { GetUser } from 'src/jwt/user.decoretor';
-import { NearbyDriversResponseDto } from './dto/nearby-drivers-response.dto';
 import { CreateTripDto } from './dto/create-trip.dto';
 import { UpdateTripStatusDto } from './dto/update-trip-status.dto';
 import { TripStatus } from './enum/trip-status.enum';
-import { IsNotEmpty, IsNumber, IsOptional, Min, Max } from 'class-validator';
-import { Type } from 'class-transformer';
-
-export class NearbyDriversQueryDto {
-  @IsNotEmpty()
-  @IsNumber()
-  @Type(() => Number)
-  latitude: number;
-
-  @IsNotEmpty()
-  @IsNumber()
-  @Type(() => Number)
-  longitude: number;
-
-  @IsOptional()
-  @IsNumber()
-  @Min(0.1)
-  @Max(50)
-  @Type(() => Number)
-  radius?: number = 5;
-}
-
-export class SubscribeToNearbyDriversDto {
-  @IsNotEmpty()
-  @IsNumber()
-  latitude: number;
-
-  @IsNotEmpty()
-  @IsNumber()
-  longitude: number;
-
-  @IsOptional()
-  @IsNumber()
-  @Min(0.1)
-  @Max(50)
-  radius?: number = 5;
-}
 
 @ApiTags('trips')
 @Controller('trips')
@@ -70,104 +29,6 @@ export class TripsController {
   private readonly logger = new Logger(TripsController.name);
 
   constructor(private readonly tripsService: TripsService) {}
-
-  @Get('nearby-drivers')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get nearby available drivers for a trip' })
-  @ApiQuery({
-    name: 'latitude',
-    description: 'Latitude coordinate',
-    required: true,
-  })
-  @ApiQuery({
-    name: 'longitude',
-    description: 'Longitude coordinate',
-    required: true,
-  })
-  @ApiQuery({
-    name: 'radius',
-    description: 'Search radius in kilometers',
-    required: false,
-    default: 5,
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'List of nearby available drivers',
-    type: NearbyDriversResponseDto,
-  })
-  async getNearbyDrivers(
-    @Query(ValidationPipe) query: NearbyDriversQueryDto,
-    @GetUser() user: any,
-  ): Promise<NearbyDriversResponseDto> {
-    this.logger.debug(
-      `User ${user.userId} requested nearby drivers at [${query.latitude}, ${query.longitude}]`,
-    );
-
-    return this.tripsService.findNearbyDrivers(
-      query.latitude,
-      query.longitude,
-      query.radius,
-    );
-  }
-
-  @Post('subscribe-to-nearby-drivers')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Subscribe to real-time updates of nearby drivers' })
-  @ApiResponse({
-    status: 200,
-    description: 'Successfully subscribed to nearby driver updates',
-  })
-  async subscribeToNearbyDrivers(
-    @Body() subscribeDto: SubscribeToNearbyDriversDto,
-    @GetUser() user: any,
-  ) {
-    this.logger.debug(
-      `User ${user.userId} subscribed to nearby driver updates at [${subscribeDto.latitude}, ${subscribeDto.longitude}]`,
-    );
-
-    const success = await this.tripsService.subscribeToNearbyDriverUpdates(
-      user.userId,
-      subscribeDto.latitude,
-      subscribeDto.longitude,
-      subscribeDto.radius,
-    );
-
-    return {
-      success,
-      message: success
-        ? 'Successfully subscribed to nearby driver updates'
-        : 'Failed to subscribe to nearby driver updates',
-    };
-  }
-
-  @Post('unsubscribe-from-nearby-drivers')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({
-    summary: 'Unsubscribe from real-time updates of nearby drivers',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Successfully unsubscribed from nearby driver updates',
-  })
-  async unsubscribeFromNearbyDrivers(@GetUser() user: any) {
-    this.logger.debug(
-      `User ${user.userId} unsubscribed from nearby driver updates`,
-    );
-
-    const success = await this.tripsService.unsubscribeFromNearbyDriverUpdates(
-      user.userId,
-    );
-
-    return {
-      success,
-      message: success
-        ? 'Successfully unsubscribed from nearby driver updates'
-        : 'Failed to unsubscribe from nearby driver updates',
-    };
-  }
 
   @Post('create')
   @UseGuards(JwtAuthGuard)

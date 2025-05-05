@@ -59,40 +59,6 @@ export class TripsService {
   }
 
   /**
-   * Subscribe a client to nearby driver updates
-   */
-  async subscribeToNearbyDriverUpdates(
-    clientId: string,
-    latitude: number,
-    longitude: number,
-    radius: number = 5,
-  ): Promise<boolean> {
-    // Store the subscription parameters in Redis for later use
-    await this.redisService.getRedisClient().hSet(`subscription:${clientId}`, {
-      latitude: latitude.toString(),
-      longitude: longitude.toString(),
-      radius: radius.toString(),
-      createdAt: new Date().toISOString(),
-    });
-
-    // Set expiration for the subscription data (30 minutes)
-    await this.redisService
-      .getRedisClient()
-      .expire(`subscription:${clientId}`, 1800);
-
-    return true;
-  }
-
-  /**
-   * Unsubscribe a client from nearby driver updates
-   */
-  async unsubscribeFromNearbyDriverUpdates(clientId: string): Promise<boolean> {
-    // Remove the subscription data from Redis
-    await this.redisService.getRedisClient().del(`subscription:${clientId}`);
-    return true;
-  }
-
-  /**
    * Create a new trip request
    */
   async createTrip(createTripDto: CreateTripDto): Promise<any> {
