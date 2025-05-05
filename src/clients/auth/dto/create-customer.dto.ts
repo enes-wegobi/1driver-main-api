@@ -8,6 +8,7 @@ import {
   IsEnum,
   IsDateString,
   Matches,
+  IsPhoneNumber,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CreateVehicleDto } from './create-vehicle.dto';
@@ -34,7 +35,7 @@ export class CreateCustomerDto {
     example: '+905551234567',
     description: 'Phone number in international format',
   })
-  @IsString()
+  @IsPhoneNumber()
   @IsNotEmpty()
   phone: string;
 

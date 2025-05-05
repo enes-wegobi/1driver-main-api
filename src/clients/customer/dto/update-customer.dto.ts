@@ -7,6 +7,7 @@ import {
   IsDateString,
   IsEnum,
   IsEmail,
+  IsPhoneNumber,
 } from 'class-validator';
 import { Gender } from '../../auth/gender.enum';
 
@@ -18,7 +19,7 @@ export class UpdateCustomerDto {
 
   @ApiHideProperty()
   @IsOptional()
-  @IsString()
+  @IsPhoneNumber()
   phone?: string;
 
   @ApiHideProperty()

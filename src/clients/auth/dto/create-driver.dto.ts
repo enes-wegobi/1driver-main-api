@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsString, Matches } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString, Matches, IsPhoneNumber } from 'class-validator';
 
 export class CreateDriverDto {
   @ApiProperty({
@@ -22,7 +22,7 @@ export class CreateDriverDto {
     example: '+905551234567',
     description: 'Phone number in international format',
   })
-  @IsString()
+  @IsPhoneNumber()
   @IsNotEmpty()
   phone: string;
 
