@@ -67,9 +67,6 @@ export class TripsService {
     longitude: number,
     radius: number = 5,
   ): Promise<boolean> {
-    // Create a room for this client's nearby driver updates
-    const roomName = `nearby:${clientId}`;
-
     // Store the subscription parameters in Redis for later use
     await this.redisService.getRedisClient().hSet(`subscription:${clientId}`, {
       latitude: latitude.toString(),
