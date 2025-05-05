@@ -42,4 +42,13 @@ export class AuthService {
   async completeDriverSignin(validateOtpDto: ValidateOtpDto) {
     return this.authClient.completeDriverSignin(validateOtpDto);
   }
+
+  // Resend OTP Methods
+  async resendCustomerOtp(signinDto: SigninDto) {
+    return this.authClient.resendCustomerOtp(signinDto);
+  }
+
+  async resendDriverOtp(signinDto: SigninDto) {
+    return this.authClient.resendDriverOtp(signinDto);
+  }
 }

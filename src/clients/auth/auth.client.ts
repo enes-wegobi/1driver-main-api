@@ -81,4 +81,21 @@ export class AuthClient {
     );
     return data;
   }
+
+  // Resend OTP Methods
+  async resendCustomerOtp(signinDto: SigninDto): Promise<any> {
+    const { data } = await this.httpClient.post<any>(
+      '/auth/customer/resend-otp',
+      signinDto,
+    );
+    return data;
+  }
+
+  async resendDriverOtp(signinDto: SigninDto): Promise<any> {
+    const { data } = await this.httpClient.post<any>(
+      '/auth/driver/resend-otp',
+      signinDto,
+    );
+    return data;
+  }
 }

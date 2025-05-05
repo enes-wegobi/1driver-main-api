@@ -95,4 +95,23 @@ export class AuthCustomerController {
       );
     }
   }
+
+  @Post('resend-otp')
+  @ApiOperation({ summary: 'Resend OTP to customer' })
+  @ApiResponse({ status: 200, description: 'OTP resent successfully' })
+  @ApiResponse({ status: 404, description: 'Customer not found' })
+  async resendOtp(@Body() signinDto: SigninDto) {
+    try {
+      return await this.authService.resendCustomerOtp(signinDto);
+    } catch (error) {
+      this.logger.error(
+        `Customer resend OTP error: ${error.message}`,
+        error.stack,
+      );
+      throw new HttpException(
+        error.response?.data || 'An error occurred during OTP resend',
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 }
