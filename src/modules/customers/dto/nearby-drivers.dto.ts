@@ -15,13 +15,13 @@ export class NearbyDriversQueryDto {
   @Type(() => Number)
   longitude: number;
 
-  @ApiProperty({ 
-    description: 'Search radius in kilometers', 
+  @ApiProperty({
+    description: 'Search radius in kilometers',
     example: 5,
     required: false,
     default: 5,
     minimum: 0.1,
-    maximum: 50
+    maximum: 50,
   })
   @IsOptional()
   @IsNumber()
@@ -42,13 +42,13 @@ export class SubscribeToNearbyDriversDto {
   @IsNumber()
   longitude: number;
 
-  @ApiProperty({ 
-    description: 'Search radius in kilometers', 
+  @ApiProperty({
+    description: 'Search radius in kilometers',
     example: 5,
     required: false,
     default: 5,
     minimum: 0.1,
-    maximum: 50
+    maximum: 50,
   })
   @IsOptional()
   @IsNumber()

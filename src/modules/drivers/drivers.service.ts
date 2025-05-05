@@ -1,9 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { DriversClient } from 'src/clients/driver/drivers.client';
 import { FileType } from './enum/file-type.enum';
-import {
-  CreateBankInformationDto,
-} from './dto/bank-information.dto';
+import { CreateBankInformationDto } from './dto/bank-information.dto';
 import { InitiateEmailUpdateDto } from 'src/clients/customer/dto/initiate-email-update.dto';
 import { CompleteEmailUpdateDto } from 'src/clients/customer/dto/complete-email-update.dto';
 import { InitiatePhoneUpdateDto } from 'src/clients/customer/dto/initiate-phone-update.dto';
@@ -130,15 +128,18 @@ export class DriversService {
   }
 
   async updateNotificationPermissions(
-    driverId: string, 
-    permissionsDto: UpdateNotificationPermissionsDto
+    driverId: string,
+    permissionsDto: UpdateNotificationPermissionsDto,
   ): Promise<any> {
-    return this.driversClient.updateNotificationPermissions(driverId, permissionsDto);
+    return this.driversClient.updateNotificationPermissions(
+      driverId,
+      permissionsDto,
+    );
   }
 
   async updateProfile(
-    driverId: string, 
-    updateProfileDto: UpdateDriverProfileDto
+    driverId: string,
+    updateProfileDto: UpdateDriverProfileDto,
   ): Promise<any> {
     return this.driversClient.updateProfile(driverId, updateProfileDto);
   }

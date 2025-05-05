@@ -18,7 +18,7 @@ export class CustomersService {
   constructor(
     private readonly customersClient: CustomersClient,
     private readonly webSocketService: WebSocketService,
-    private readonly redisService: RedisService
+    private readonly redisService: RedisService,
   ) {}
 
   async findOne(id: string) {
@@ -58,10 +58,13 @@ export class CustomersService {
   }
 
   async updateNotificationPermissions(
-    userId: string, 
-    permissionsDto: UpdateNotificationPermissionsDto
+    userId: string,
+    permissionsDto: UpdateNotificationPermissionsDto,
   ) {
-    return this.customersClient.updateNotificationPermissions(userId, permissionsDto);
+    return this.customersClient.updateNotificationPermissions(
+      userId,
+      permissionsDto,
+    );
   }
 
   /**

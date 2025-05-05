@@ -33,7 +33,10 @@ import { GetUser } from 'src/jwt/user.decoretor';
 import { IJwtPayload } from 'src/jwt/jwt-payload.interface';
 import { UpdateNotificationPermissionsDto } from 'src/clients/customer/dto/update-notification-permissions.dto';
 import { NearbyDriversResponseDto } from 'src/modules/trips/dto/nearby-drivers-response.dto';
-import { NearbyDriversQueryDto, SubscribeToNearbyDriversDto } from './dto/nearby-drivers.dto';
+import {
+  NearbyDriversQueryDto,
+  SubscribeToNearbyDriversDto,
+} from './dto/nearby-drivers.dto';
 
 @ApiTags('customer')
 @ApiBearerAuth()
@@ -312,7 +315,9 @@ export class CustomersController {
     @Body() permissionsDto: UpdateNotificationPermissionsDto,
   ) {
     try {
-      this.logger.log(`Updating notification permissions for user ID: ${user.userId}`);
+      this.logger.log(
+        `Updating notification permissions for user ID: ${user.userId}`,
+      );
       return await this.customersService.updateNotificationPermissions(
         user.userId,
         permissionsDto,
@@ -323,7 +328,8 @@ export class CustomersController {
         error.stack,
       );
       throw new HttpException(
-        error.response?.data || 'An error occurred while updating notification permissions',
+        error.response?.data ||
+          'An error occurred while updating notification permissions',
         error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
@@ -372,7 +378,8 @@ export class CustomersController {
         error.stack,
       );
       throw new HttpException(
-        error.response?.data || 'An error occurred while finding nearby drivers',
+        error.response?.data ||
+          'An error occurred while finding nearby drivers',
         error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
@@ -393,12 +400,13 @@ export class CustomersController {
     );
 
     try {
-      const success = await this.customersService.subscribeToNearbyDriverUpdates(
-        user.userId,
-        subscribeDto.latitude,
-        subscribeDto.longitude,
-        subscribeDto.radius,
-      );
+      const success =
+        await this.customersService.subscribeToNearbyDriverUpdates(
+          user.userId,
+          subscribeDto.latitude,
+          subscribeDto.longitude,
+          subscribeDto.radius,
+        );
 
       return {
         success,
@@ -412,7 +420,8 @@ export class CustomersController {
         error.stack,
       );
       throw new HttpException(
-        error.response?.data || 'An error occurred while subscribing to nearby drivers',
+        error.response?.data ||
+          'An error occurred while subscribing to nearby drivers',
         error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
@@ -432,9 +441,10 @@ export class CustomersController {
     );
 
     try {
-      const success = await this.customersService.unsubscribeFromNearbyDriverUpdates(
-        user.userId,
-      );
+      const success =
+        await this.customersService.unsubscribeFromNearbyDriverUpdates(
+          user.userId,
+        );
 
       return {
         success,
@@ -448,7 +458,8 @@ export class CustomersController {
         error.stack,
       );
       throw new HttpException(
-        error.response?.data || 'An error occurred while unsubscribing from nearby drivers',
+        error.response?.data ||
+          'An error occurred while unsubscribing from nearby drivers',
         error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }

@@ -45,7 +45,6 @@ import { CompletePhoneUpdateDto } from 'src/clients/customer/dto/complete-phone-
 import { UpdateNotificationPermissionsDto } from 'src/clients/driver/dto/update-notification-permissions.dto';
 import { UpdateDriverProfileDto } from './dto/update-driver-profile.dto';
 
-
 @ApiTags('drivers')
 @ApiBearerAuth()
 @Controller('drivers')
@@ -418,7 +417,8 @@ export class DriversController {
         error.stack,
       );
       throw new HttpException(
-        error.response?.data || 'An error occurred while initiating email update',
+        error.response?.data ||
+          'An error occurred while initiating email update',
         error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
@@ -447,7 +447,8 @@ export class DriversController {
         error.stack,
       );
       throw new HttpException(
-        error.response?.data || 'An error occurred while completing email update',
+        error.response?.data ||
+          'An error occurred while completing email update',
         error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
@@ -477,7 +478,8 @@ export class DriversController {
         error.stack,
       );
       throw new HttpException(
-        error.response?.data || 'An error occurred while initiating phone update',
+        error.response?.data ||
+          'An error occurred while initiating phone update',
         error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
@@ -506,7 +508,8 @@ export class DriversController {
         error.stack,
       );
       throw new HttpException(
-        error.response?.data || 'An error occurred while completing phone update',
+        error.response?.data ||
+          'An error occurred while completing phone update',
         error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
@@ -528,7 +531,9 @@ export class DriversController {
     @Body() permissionsDto: UpdateNotificationPermissionsDto,
   ) {
     try {
-      this.logger.log(`Updating notification permissions for driver ID: ${user.userId}`);
+      this.logger.log(
+        `Updating notification permissions for driver ID: ${user.userId}`,
+      );
       return await this.driversService.updateNotificationPermissions(
         user.userId,
         permissionsDto,
@@ -539,7 +544,8 @@ export class DriversController {
         error.stack,
       );
       throw new HttpException(
-        error.response?.data || 'An error occurred while updating notification permissions',
+        error.response?.data ||
+          'An error occurred while updating notification permissions',
         error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
