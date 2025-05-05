@@ -113,10 +113,10 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       // Remove from active drivers set
       await this.client.sRem('drivers:active', driverId);
 
-      // Update availability status to offline
+      // Update availability status to busy when driver becomes inactive
       await this.updateDriverAvailability(
         driverId,
-        DriverAvailabilityStatus.OFFLINE,
+        DriverAvailabilityStatus.BUSY,
       );
 
       return true;
@@ -167,14 +167,14 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       const status = await this.client.get(key);
 
       return (
-        (status as DriverAvailabilityStatus) || DriverAvailabilityStatus.OFFLINE
+        (status as DriverAvailabilityStatus) || DriverAvailabilityStatus.BUSY
       );
     } catch (error) {
       this.logger.error(
         `Error getting driver ${driverId} availability:`,
         error.message,
       );
-      return DriverAvailabilityStatus.OFFLINE;
+      return DriverAvailabilityStatus.BUSY;
     }
   }
 

@@ -4,7 +4,6 @@ import { LocationDto } from './location.dto';
 export enum DriverAvailabilityStatus {
   AVAILABLE = 'available',
   BUSY = 'busy',
-  OFFLINE = 'offline',
 }
 
 export class DriverLocationDto extends LocationDto {
