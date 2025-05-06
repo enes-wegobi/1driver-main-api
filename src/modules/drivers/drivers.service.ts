@@ -143,4 +143,14 @@ export class DriversService {
   ): Promise<any> {
     return this.driversClient.updateProfile(driverId, updateProfileDto);
   }
+
+  async updatePhoto(driverId: string, photoKey: string): Promise<any> {
+    this.logger.log(`Updating photo for driver ${driverId}`);
+    return this.driversClient.updatePhoto(driverId, photoKey);
+  }
+
+  async deletePhoto(driverId: string): Promise<any> {
+    this.logger.log(`Deleting photo for driver ${driverId}`);
+    return this.driversClient.deletePhoto(driverId);
+  }
 }

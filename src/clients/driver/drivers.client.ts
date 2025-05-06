@@ -190,4 +190,23 @@ export class DriversClient {
     );
     return data;
   }
+
+  async updatePhoto(driverId: string, photoKey: string): Promise<any> {
+    this.logger.log(`Updating photo for driver ${driverId}`);
+    const { data } = await this.httpClient.put(
+      `/drivers/${driverId}/photo`,
+      { photoKey },
+    );
+    this.logger.log(`Successfully updated photo for driver ${driverId}`);
+    return data;
+  }
+
+  async deletePhoto(driverId: string): Promise<any> {
+    this.logger.log(`Deleting photo for driver ${driverId}`);
+    const { data } = await this.httpClient.delete(
+      `/drivers/${driverId}/photo`,
+    );
+    this.logger.log(`Successfully deleted photo for driver ${driverId}`);
+    return data;
+  }
 }

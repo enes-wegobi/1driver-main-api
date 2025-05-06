@@ -579,4 +579,90 @@ export class DriversController {
       throw error;
     }
   }
+
+  @Post('photo')
+  @UseInterceptors(FileInterceptor('photo'))
+  @ApiOperation({ summary: 'Upload profile photo' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        photo: {
+          type: 'string',
+          format: 'binary',
+          description: 'Profile photo (png, jpeg, jpg)',
+        },
+      },
+      required: ['photo'],
+    },
+  })
+  async uploadProfilePhoto(
+    @UploadedFile() file: Express.Multer.File,
+    @GetUser() user: IJwtPayload,
+  ) {
+    if (!file) {
+      throw new BadRequestException('Photo is required');
+    }
+
+    try {
+      const fileKey = `profile-photos/drivers/${user.userId}/${uuidv4()}-${file.originalname}`;
+      
+      await this.s3Service.uploadFileWithKey(file, fileKey);      
+      await this.driversService.updatePhoto(user.userId, fileKey);
+      
+      const photoUrl = await this.s3Service.getSignedUrl(fileKey, 604800);
+      
+      return {
+        message: 'Profile photo uploaded successfully',
+        photoKey: fileKey,
+        photoUrl,
+      };
+    } catch (error) {
+      this.logger.error('Profile photo upload failed:', error);
+      throw new BadRequestException('Profile photo upload failed.');
+    }
+  }
+
+  @Delete('photo')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Delete profile photo' })
+  async deleteProfilePhoto(@GetUser() user: IJwtPayload) {
+    try {
+      const result = await this.driversService.deletePhoto(user.userId);
+      return { message: 'Profile photo deleted successfully' };
+    } catch (error) {
+      this.logger.error(`Error deleting profile photo: ${error.message}`, error.stack);
+      throw new HttpException(
+        error.response?.data || 'An error occurred while deleting profile photo',
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Get('photo-url')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Get a fresh signed URL for profile photo' })
+  async getProfilePhotoUrl(@GetUser() user: IJwtPayload) {
+    try {
+      const driver = await this.driversService.findOne(user.userId);
+
+      if (!driver.photoKey) {
+        throw new NotFoundException('Profile photo not found');
+      }
+
+      const photoUrl = await this.s3Service.getSignedUrl(driver.photoKey, 604800);
+
+      return {
+        photoKey: driver.photoKey,
+        photoUrl,
+      };
+    } catch (error) {
+      this.logger.error(`Error getting profile photo URL: ${error.message}`, error.stack);
+      throw new HttpException(
+        error.response?.data || 'An error occurred while getting profile photo URL',
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 }

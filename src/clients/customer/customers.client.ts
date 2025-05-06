@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { AxiosInstance } from 'axios';
 import { ClientsService } from '../clients.service';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
@@ -11,6 +11,7 @@ import { UpdateNotificationPermissionsDto } from './dto/update-notification-perm
 
 @Injectable()
 export class CustomersClient {
+  private readonly logger = new Logger(CustomersClient.name);
   private readonly httpClient: AxiosInstance;
 
   constructor(private readonly clientsService: ClientsService) {
@@ -105,6 +106,25 @@ export class CustomersClient {
       `/customers/${userId}/notification-permissions`,
       permissionsDto,
     );
+    return data;
+  }
+
+  async updatePhoto(customerId: string, photoKey: string): Promise<any> {
+    this.logger.log(`Updating photo for customer ${customerId}`);
+    const { data } = await this.httpClient.put(
+      `/customers/${customerId}/photo`,
+      { photoKey },
+    );
+    this.logger.log(`Successfully updated photo for customer ${customerId}`);
+    return data;
+  }
+
+  async deletePhoto(customerId: string): Promise<any> {
+    this.logger.log(`Deleting photo for customer ${customerId}`);
+    const { data } = await this.httpClient.delete(
+      `/customers/${customerId}/photo`,
+    );
+    this.logger.log(`Successfully deleted photo for customer ${customerId}`);
     return data;
   }
 }

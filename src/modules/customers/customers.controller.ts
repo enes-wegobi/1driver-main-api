@@ -13,6 +13,10 @@ import {
   UseGuards,
   Query,
   ValidationPipe,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import {
   ApiOperation,
@@ -20,9 +24,14 @@ import {
   ApiTags,
   ApiBearerAuth,
   ApiQuery,
+  ApiConsumes,
+  ApiBody,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/jwt/jwt.guard';
 import { CustomersService } from './customers.service';
+import { FileInterceptor } from '@nest-lab/fastify-multer';
+import { S3Service } from 'src/s3/s3.service';
+import { v4 as uuidv4 } from 'uuid';
 import { UpdateCustomerDto } from 'src/clients/customer/dto/update-customer.dto';
 import { InitiateEmailUpdateDto } from 'src/clients/customer/dto/initiate-email-update.dto';
 import { CompleteEmailUpdateDto } from 'src/clients/customer/dto/complete-email-update.dto';
@@ -45,7 +54,9 @@ import {
 export class CustomersController {
   private readonly logger = new Logger(CustomersController.name);
 
-  constructor(private readonly customersService: CustomersService) {}
+  constructor(
+    private readonly customersService: CustomersService,
+  ) {}
 
   @Get('me')
   @ApiBearerAuth()

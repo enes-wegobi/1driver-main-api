@@ -133,4 +133,14 @@ export class CustomersService {
     await this.redisService.getRedisClient().del(`subscription:${clientId}`);
     return true;
   }
+
+  async updatePhoto(customerId: string, photoKey: string): Promise<any> {
+    this.logger.log(`Updating photo for customer ${customerId}`);
+    return this.customersClient.updatePhoto(customerId, photoKey);
+  }
+
+  async deletePhoto(customerId: string): Promise<any> {
+    this.logger.log(`Deleting photo for customer ${customerId}`);
+    return this.customersClient.deletePhoto(customerId);
+  }
 }
