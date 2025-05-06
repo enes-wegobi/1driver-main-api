@@ -35,6 +35,13 @@ export default () => ({
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
     s3BucketName: process.env.AWS_S3_BUCKET_NAME,
   },
+  spaces: {
+    region: process.env.SPACES_REGION,
+    endpoint: process.env.SPACES_ENDPOINT,
+    accessKeyId: process.env.SPACES_ACCESS_KEY_ID,
+    secretAccessKey: process.env.SPACES_SECRET_ACCESS_KEY,
+    bucketName: process.env.SPACES_BUCKET_NAME,
+  },
   firebase: {
     projectId: process.env.FIREBASE_PROJECT_ID,
     clientEmail: process.env.FIREBASE_CLIENT_EMAIL,

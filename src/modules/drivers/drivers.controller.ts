@@ -659,10 +659,7 @@ export class DriversController {
       };
     } catch (error) {
       this.logger.error(`Error getting profile photo URL: ${error.message}`, error.stack);
-      throw new HttpException(
-        error.response?.data || 'An error occurred while getting profile photo URL',
-        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      throw error;
     }
   }
 }

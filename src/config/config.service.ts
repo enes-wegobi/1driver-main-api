@@ -66,6 +66,26 @@ export class ConfigService {
     return this.configService.get<string>('aws.s3BucketName')!;
   }
 
+  get spacesRegion(): string {
+    return this.configService.get<string>('spaces.region')!;
+  }
+
+  get spacesEndpoint(): string {
+    return this.configService.get<string>('spaces.endpoint')!;
+  }
+
+  get spacesAccessKeyId(): string {
+    return this.configService.get<string>('spaces.accessKeyId')!;
+  }
+
+  get spacesSecretAccessKey(): string {
+    return this.configService.get<string>('spaces.secretAccessKey')!;
+  }
+
+  get spacesBucketName(): string {
+    return this.configService.get<string>('spaces.bucketName')!;
+  }
+
   get firebase() {
     const projectId = this.configService.get<string>('firebase.projectId');
     const clientEmail = this.configService.get<string>('firebase.clientEmail');
