@@ -56,16 +56,6 @@ export class CreateCustomerDto {
   vehicle: CreateVehicleDto;
 
   @ApiProperty({
-    example: '12345678901',
-    description: 'National identity number (11 digits)',
-    required: false,
-  })
-  @IsOptional()
-  @IsString()
-  @Matches(/^\d{11}$/, { message: 'Identity number must be 11 digits' })
-  identityNumber?: string;
-
-  @ApiProperty({
     example: '1993-06-17',
     description: 'Date of birth in ISO format',
     required: false,
