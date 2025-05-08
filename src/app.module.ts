@@ -10,6 +10,7 @@ import { S3Module } from './s3/s3.module';
 import { DriversModule } from './modules/drivers/drivers.module';
 import { TripsModule } from './modules/trips/trips.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { PromotionsModule } from './modules/promotions/promotions.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     DriversModule,
     TripsModule,
     NotificationsModule,
+    PromotionsModule,
   ],
 })
 export class AppModule {}

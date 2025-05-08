@@ -15,6 +15,12 @@ export default () => ({
       retryCount: parseInt(process.env.AUTH_SERVICE_RETRY_COUNT || '3', 10),
       retryDelay: parseInt(process.env.AUTH_SERVICE_RETRY_DELAY || '1000', 10),
     },
+    promotion: {
+      url: process.env.PROMOTION_SERVICE_URL || 'http://localhost:3002',
+      timeout: parseInt(process.env.PROMOTION_SERVICE_TIMEOUT || '5000', 10),
+      retryCount: parseInt(process.env.PROMOTION_SERVICE_RETRY_COUNT || '3', 10),
+      retryDelay: parseInt(process.env.PROMOTION_SERVICE_RETRY_DELAY || '1000', 10),
+    },
   },
   retry: {
     defaultCount: parseInt(process.env.DEFAULT_RETRY_COUNT || '3', 10),
