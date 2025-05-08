@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { AxiosInstance } from 'axios';
 import { ClientsService } from '../clients.service';
 import { PromotionResponseDto } from './dto/promotion-response.dto';
+import { CreatePromotionDto } from 'src/modules/promotions/dto/create-promotion.dto';
 
 @Injectable()
 export class PromotionClient {
@@ -52,6 +53,12 @@ export class PromotionClient {
   async usePromotion(id: string): Promise<PromotionResponseDto> {
     this.logger.log(`Using promotion with ID: ${id}`);
     const { data } = await this.httpClient.post(`/promotions/${id}/use`);
+    return data;
+  }
+
+  async createPromotion(createPromotionDto: CreatePromotionDto): Promise<PromotionResponseDto> {
+    this.logger.log(`Creating new promotion: ${createPromotionDto.name}`);
+    const { data } = await this.httpClient.post('/promotions', createPromotionDto);
     return data;
   }
 }

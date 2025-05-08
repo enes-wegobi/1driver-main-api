@@ -1,6 +1,8 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { CustomersClient } from 'src/clients/customer/customers.client';
 import { PromotionClient } from 'src/clients/promotion/promotion.client';
+import { CreatePromotionDto } from './dto/create-promotion.dto';
+import { S3Service } from 'src/s3/s3.service';
 
 @Injectable()
 export class PromotionsService {
@@ -9,6 +11,7 @@ export class PromotionsService {
   constructor(
     private readonly customersClient: CustomersClient,
     private readonly promotionClient: PromotionClient,
+    private readonly s3Service: S3Service,
   ) {}
 
   async getCustomerPromotions(customerId: string): Promise<any> {
@@ -37,5 +40,18 @@ export class PromotionsService {
       segments,
       promotions,
     };
+  }
+
+  async createPromotion(createPromotionDto: CreatePromotionDto): Promise<any> {
+    this.logger.log(`Creating new promotion: ${createPromotionDto.name}`);
+    
+    try {
+      const promotion = await this.promotionClient.createPromotion(createPromotionDto);
+      this.logger.log(`Promotion created successfully with ID: ${promotion.id}`);
+      return promotion;
+    } catch (error) {
+      this.logger.error(`Error creating promotion: ${error.message}`, error.stack);
+      throw error;
+    }
   }
 }
