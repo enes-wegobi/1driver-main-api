@@ -6,9 +6,10 @@ import { JwtModule } from 'src/jwt/jwt.modulte';
 import { WebSocketModule } from 'src/websocket/websocket.module';
 import { RedisModule } from 'src/redis/redis.module';
 import { S3Module } from 'src/s3/s3.module';
+import { SupportTicketsModule } from 'src/modules/support-tickets/support-tickets.module';
 
 @Module({
-  imports: [ClientsModule, JwtModule, WebSocketModule, RedisModule, S3Module],
+  imports: [ClientsModule, JwtModule, WebSocketModule, RedisModule, S3Module, SupportTicketsModule],
   controllers: [CustomersController],
   providers: [CustomersService],
 })

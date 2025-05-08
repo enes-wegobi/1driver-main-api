@@ -127,4 +127,21 @@ export class CustomersClient {
     this.logger.log(`Successfully deleted photo for customer ${customerId}`);
     return data;
   }
+
+  async createSupportTicket(
+    customerId: string,
+    subject: string,
+    description: string,
+    fileKey: string | null,
+  ): Promise<any> {
+    this.logger.log(`Creating support ticket for customer ${customerId}`);
+    const { data } = await this.httpClient.post(`/support`, {
+      userId: customerId,
+      subject,
+      description,
+      fileKey,
+    });
+    this.logger.log(`Successfully created support ticket for customer ${customerId}`);
+    return data;
+  }
 }
