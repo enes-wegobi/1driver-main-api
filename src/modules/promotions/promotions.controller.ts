@@ -10,6 +10,8 @@ import {
   UploadedFile,
   UseInterceptors,
   BadRequestException,
+  Param,
+  NotFoundException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/jwt/jwt.guard';
@@ -20,6 +22,7 @@ import { CreatePromotionDto } from './dto/create-promotion.dto';
 import { FileInterceptor } from '@nest-lab/fastify-multer';
 import { S3Service } from 'src/s3/s3.service';
 import { v4 as uuidv4 } from 'uuid';
+import { PromotionClient } from 'src/clients/promotion/promotion.client';
 
 @ApiTags('promotions')
 @Controller('promotions')
@@ -29,7 +32,43 @@ export class PromotionsController {
   constructor(
     private readonly promotionsService: PromotionsService,
     private readonly s3Service: S3Service,
+    private readonly promotionClient: PromotionClient,
   ) {}
+
+  @Get('all')
+  @ApiOperation({ summary: 'Get all promotions' })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns all available promotions',
+  })
+  async getAllPromotions() {
+    try {
+      this.logger.log('Getting all promotions');
+      const promotions = await this.promotionsService.getAllPromotions();
+      
+      // Add signed URLs for promotions with photos
+      const promotionsWithUrls = await Promise.all(
+        promotions.map(async (promotion) => {
+          if (promotion.photoKey) {
+            const photoUrl = await this.s3Service.getSignedUrl(promotion.photoKey, 604800);
+            return { ...promotion, photoUrl };
+          }
+          return promotion;
+        })
+      );
+      
+      return promotionsWithUrls;
+    } catch (error) {
+      this.logger.error(
+        `Error fetching all promotions: ${error.message}`,
+        error.stack,
+      );
+      throw new HttpException(
+        error.response?.data || 'An error occurred while fetching promotions',
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 
   @Get('me')
   @ApiBearerAuth()
@@ -46,7 +85,27 @@ export class PromotionsController {
   async getMyPromotions(@GetUser() user: IJwtPayload) {
     try {
       this.logger.log(`Getting promotions for customer ID: ${user.userId}`);
-      return await this.promotionsService.getCustomerPromotions(user.userId);
+      const result = await this.promotionsService.getCustomerPromotions(user.userId);
+      
+      // Add signed URLs for promotions with photos
+      if (result.promotions && result.promotions.length > 0) {
+        const promotionsWithUrls = await Promise.all(
+          result.promotions.map(async (promotion) => {
+            if (promotion.photoKey) {
+              const photoUrl = await this.s3Service.getSignedUrl(promotion.photoKey, 604800);
+              return { ...promotion, photoUrl };
+            }
+            return promotion;
+          })
+        );
+        
+        return {
+          ...result,
+          promotions: promotionsWithUrls,
+        };
+      }
+      
+      return result;
     } catch (error) {
       this.logger.error(
         `Error fetching promotions: ${error.message}`,
@@ -56,6 +115,42 @@ export class PromotionsController {
         error.response?.data || 'An error occurred while fetching promotions',
         error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
+    }
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Get a promotion by ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns the promotion with the specified ID',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Promotion not found',
+  })
+  async getPromotionById(@Param('id') id: string) {
+    try {
+      this.logger.log(`Getting promotion with ID: ${id}`);
+      
+      const promotion = await this.promotionClient.findById(id);
+      
+      if (!promotion) {
+        throw new NotFoundException(`Promotion with ID ${id} not found`);
+      }
+      
+      // If the promotion has a photo, generate a signed URL
+      if (promotion.photoKey) {
+        const photoUrl = await this.s3Service.getSignedUrl(promotion.photoKey, 604800);
+        return {
+          ...promotion,
+          photoUrl,
+        };
+      }
+      
+      return promotion;
+    } catch (error) {
+      this.logger.error(`Error getting promotion: ${error.message}`, error.stack);
+      throw error;
     }
   }
 
