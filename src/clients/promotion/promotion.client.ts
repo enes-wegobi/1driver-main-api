@@ -15,13 +15,17 @@ export class PromotionClient {
 
   async findBySegment(segment: string): Promise<PromotionResponseDto[]> {
     this.logger.log(`Finding promotions for segment: ${segment}`);
-    const { data } = await this.httpClient.get(`/promotions/segments/${segment}`);
+    const { data } = await this.httpClient.get(
+      `/promotions/segments/${segment}`,
+    );
     return data;
   }
 
   async findBySegments(segments: string[]): Promise<PromotionResponseDto[]> {
     this.logger.log(`Finding promotions for segments: ${segments.join(', ')}`);
-    const { data } = await this.httpClient.post('/promotions/segments', { segments });
+    const { data } = await this.httpClient.post('/promotions/segments', {
+      segments,
+    });
     return data;
   }
 
@@ -42,7 +46,9 @@ export class PromotionClient {
     promotionId: string,
     segments: string[],
   ): Promise<boolean> {
-    this.logger.log(`Checking if user ${userId} is eligible for promotion ${promotionId}`);
+    this.logger.log(
+      `Checking if user ${userId} is eligible for promotion ${promotionId}`,
+    );
     const segmentsParam = segments.join(',');
     const { data } = await this.httpClient.get(
       `/promotions/user/${userId}/eligible/${promotionId}?segments=${segmentsParam}`,
@@ -56,9 +62,14 @@ export class PromotionClient {
     return data;
   }
 
-  async createPromotion(createPromotionDto: CreatePromotionDto): Promise<PromotionResponseDto> {
+  async createPromotion(
+    createPromotionDto: CreatePromotionDto,
+  ): Promise<PromotionResponseDto> {
     this.logger.log(`Creating new promotion: ${createPromotionDto.name}`);
-    const { data } = await this.httpClient.post('/promotions', createPromotionDto);
+    const { data } = await this.httpClient.post(
+      '/promotions',
+      createPromotionDto,
+    );
     return data;
   }
 }

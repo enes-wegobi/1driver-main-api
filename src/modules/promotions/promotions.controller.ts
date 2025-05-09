@@ -13,7 +13,14 @@ import {
   Param,
   NotFoundException,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiConsumes,
+  ApiBody,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/jwt/jwt.guard';
 import { GetUser } from 'src/jwt/user.decoretor';
 import { IJwtPayload } from 'src/jwt/jwt-payload.interface';
@@ -45,18 +52,21 @@ export class PromotionsController {
     try {
       this.logger.log('Getting all promotions');
       const promotions = await this.promotionsService.getAllPromotions();
-      
+
       // Add signed URLs for promotions with photos
       const promotionsWithUrls = await Promise.all(
         promotions.map(async (promotion) => {
           if (promotion.photoKey) {
-            const photoUrl = await this.s3Service.getSignedUrl(promotion.photoKey, 604800);
+            const photoUrl = await this.s3Service.getSignedUrl(
+              promotion.photoKey,
+              604800,
+            );
             return { ...promotion, photoUrl };
           }
           return promotion;
-        })
+        }),
       );
-      
+
       return promotionsWithUrls;
     } catch (error) {
       this.logger.error(
@@ -85,26 +95,31 @@ export class PromotionsController {
   async getMyPromotions(@GetUser() user: IJwtPayload) {
     try {
       this.logger.log(`Getting promotions for customer ID: ${user.userId}`);
-      const result = await this.promotionsService.getCustomerPromotions(user.userId);
-      
+      const result = await this.promotionsService.getCustomerPromotions(
+        user.userId,
+      );
+
       // Add signed URLs for promotions with photos
       if (result.promotions && result.promotions.length > 0) {
         const promotionsWithUrls = await Promise.all(
           result.promotions.map(async (promotion) => {
             if (promotion.photoKey) {
-              const photoUrl = await this.s3Service.getSignedUrl(promotion.photoKey, 604800);
+              const photoUrl = await this.s3Service.getSignedUrl(
+                promotion.photoKey,
+                604800,
+              );
               return { ...promotion, photoUrl };
             }
             return promotion;
-          })
+          }),
         );
-        
+
         return {
           ...result,
           promotions: promotionsWithUrls,
         };
       }
-      
+
       return result;
     } catch (error) {
       this.logger.error(
@@ -131,25 +146,31 @@ export class PromotionsController {
   async getPromotionById(@Param('id') id: string) {
     try {
       this.logger.log(`Getting promotion with ID: ${id}`);
-      
+
       const promotion = await this.promotionClient.findById(id);
-      
+
       if (!promotion) {
         throw new NotFoundException(`Promotion with ID ${id} not found`);
       }
-      
+
       // If the promotion has a photo, generate a signed URL
       if (promotion.photoKey) {
-        const photoUrl = await this.s3Service.getSignedUrl(promotion.photoKey, 604800);
+        const photoUrl = await this.s3Service.getSignedUrl(
+          promotion.photoKey,
+          604800,
+        );
         return {
           ...promotion,
           photoUrl,
         };
       }
-      
+
       return promotion;
     } catch (error) {
-      this.logger.error(`Error getting promotion: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error getting promotion: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -170,31 +191,64 @@ export class PromotionsController {
       type: 'object',
       properties: {
         name: { type: 'string', description: 'Name of the promotion' },
-        description: { type: 'string', description: 'Description of the promotion' },
+        description: {
+          type: 'string',
+          description: 'Description of the promotion',
+        },
         code: { type: 'string', description: 'Unique code for the promotion' },
-        promotionType: { type: 'string', enum: ['percentage', 'direct'], description: 'Type of promotion' },
-        value: { type: 'number', description: 'Value of the promotion (percentage or direct amount)' },
-        userSegment: { 
-          type: 'string', 
-          enum: ['first_time_user', 'returning_user', 'vip_user', 'all_users'], 
-          description: 'User segment for the promotion' 
+        promotionType: {
+          type: 'string',
+          enum: ['percentage', 'direct'],
+          description: 'Type of promotion',
         },
-        startDate: { type: 'string', format: 'date-time', description: 'Start date of the promotion' },
-        endDate: { type: 'string', format: 'date-time', description: 'End date of the promotion' },
-        status: { 
-          type: 'string', 
-          enum: ['active', 'inactive', 'expired', 'upcoming', 'all'], 
-          description: 'Status of the promotion' 
+        value: {
+          type: 'number',
+          description: 'Value of the promotion (percentage or direct amount)',
         },
-        usageLimit: { type: 'number', description: 'Maximum number of times this promotion can be used' },
-        userUsageLimit: { type: 'number', description: 'Maximum number of times a user can use this promotion' },
+        userSegment: {
+          type: 'string',
+          enum: ['first_time_user', 'returning_user', 'vip_user', 'all_users'],
+          description: 'User segment for the promotion',
+        },
+        startDate: {
+          type: 'string',
+          format: 'date-time',
+          description: 'Start date of the promotion',
+        },
+        endDate: {
+          type: 'string',
+          format: 'date-time',
+          description: 'End date of the promotion',
+        },
+        status: {
+          type: 'string',
+          enum: ['active', 'inactive', 'expired', 'upcoming', 'all'],
+          description: 'Status of the promotion',
+        },
+        usageLimit: {
+          type: 'number',
+          description: 'Maximum number of times this promotion can be used',
+        },
+        userUsageLimit: {
+          type: 'number',
+          description: 'Maximum number of times a user can use this promotion',
+        },
         photo: {
           type: 'string',
           format: 'binary',
           description: 'Promotion image (png, jpeg, jpg)',
         },
       },
-      required: ['name', 'description', 'code', 'promotionType', 'value', 'userSegment', 'startDate', 'endDate'],
+      required: [
+        'name',
+        'description',
+        'code',
+        'promotionType',
+        'value',
+        'userSegment',
+        'startDate',
+        'endDate',
+      ],
     },
   })
   @UseInterceptors(FileInterceptor('photo'))
@@ -208,13 +262,15 @@ export class PromotionsController {
         ...body,
         value: body.value ? parseFloat(body.value) : undefined,
         usageLimit: body.usageLimit ? parseInt(body.usageLimit, 10) : undefined,
-        userUsageLimit: body.userUsageLimit ? parseInt(body.userUsageLimit, 10) : undefined,
+        userUsageLimit: body.userUsageLimit
+          ? parseInt(body.userUsageLimit, 10)
+          : undefined,
         startDate: body.startDate ? new Date(body.startDate) : undefined,
         endDate: body.endDate ? new Date(body.endDate) : undefined,
       };
-      
+
       this.logger.log(`Creating new promotion: ${createPromotionDto.name}`);
-      
+
       // If a file is provided, upload it to S3 and get the key
       if (file) {
         const fileKey = `promotions/${uuidv4()}-${file.originalname}`;
@@ -222,18 +278,22 @@ export class PromotionsController {
         createPromotionDto.photoKey = fileKey;
         this.logger.log(`Uploaded promotion image with key: ${fileKey}`);
       }
-      
-      const promotion = await this.promotionsService.createPromotion(createPromotionDto);
-      
+
+      const promotion =
+        await this.promotionsService.createPromotion(createPromotionDto);
+
       // If a photo was uploaded, generate a signed URL
       if (createPromotionDto.photoKey) {
-        const photoUrl = await this.s3Service.getSignedUrl(createPromotionDto.photoKey, 604800);
+        const photoUrl = await this.s3Service.getSignedUrl(
+          createPromotionDto.photoKey,
+          604800,
+        );
         return {
           ...promotion,
           photoUrl,
         };
       }
-      
+
       return promotion;
     } catch (error) {
       this.logger.error(
@@ -241,7 +301,8 @@ export class PromotionsController {
         error.stack,
       );
       throw new HttpException(
-        error.response?.data || 'An error occurred while creating the promotion',
+        error.response?.data ||
+          'An error occurred while creating the promotion',
         error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }

@@ -36,7 +36,6 @@ export class TripsController {
   @ApiOperation({ summary: 'Create a new trip request' })
   @ApiResponse({ status: 201, description: 'Trip created successfully' })
   async createTrip(@Body() createTripDto: CreateTripDto, @GetUser() user: any) {
-    // Ensure the customer ID in the DTO matches the authenticated user
     if (user.userType !== 'customer') {
       throw new HttpException(
         'Only customers can create trips',
@@ -148,10 +147,7 @@ export class TripsController {
 
     this.logger.debug(`Getting active trips for ${userType} ${user.userId}`);
 
-    const trips = await this.tripsService.getUserActiveTrips(
-      user.userId,
-      userType as 'customer' | 'driver',
-    );
+    const trips = await this.tripsService.getCustomerActiveTrip(user.userId);
 
     return {
       total: trips.length,

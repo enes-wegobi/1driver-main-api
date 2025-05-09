@@ -18,8 +18,20 @@ export default () => ({
     promotion: {
       url: process.env.PROMOTION_SERVICE_URL || 'http://localhost:3002',
       timeout: parseInt(process.env.PROMOTION_SERVICE_TIMEOUT || '5000', 10),
-      retryCount: parseInt(process.env.PROMOTION_SERVICE_RETRY_COUNT || '3', 10),
-      retryDelay: parseInt(process.env.PROMOTION_SERVICE_RETRY_DELAY || '1000', 10),
+      retryCount: parseInt(
+        process.env.PROMOTION_SERVICE_RETRY_COUNT || '3',
+        10,
+      ),
+      retryDelay: parseInt(
+        process.env.PROMOTION_SERVICE_RETRY_DELAY || '1000',
+        10,
+      ),
+    },
+    trip: {
+      url: process.env.TRIP_SERVICE_URL || 'http://localhost:3002',
+      timeout: parseInt(process.env.TRIP_SERVICE_TIMEOUT || '5000', 10),
+      retryCount: parseInt(process.env.TRIP_SERVICE_RETRY_COUNT || '3', 10),
+      retryDelay: parseInt(process.env.TRIP_SERVICE_RETRY_DELAY || '1000', 10),
     },
   },
   retry: {
@@ -34,12 +46,6 @@ export default () => ({
   },
   logging: {
     level: process.env.LOG_LEVEL || 'info',
-  },
-  aws: {
-    region: process.env.AWS_REGION,
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-    s3BucketName: process.env.AWS_S3_BUCKET_NAME,
   },
   spaces: {
     region: process.env.SPACES_REGION,

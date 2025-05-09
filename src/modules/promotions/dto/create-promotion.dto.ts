@@ -1,5 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsDate, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import {
+  IsDate,
+  IsEnum,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { PromotionType } from '../enum/promotion-type.enum';
 import { UserSegment } from '../enum/user-segment.enum';
@@ -21,18 +29,26 @@ export class CreatePromotionDto {
   @IsString()
   code: string;
 
-  @ApiProperty({ description: 'Type of promotion (percentage or direct)', enum: PromotionType })
+  @ApiProperty({
+    description: 'Type of promotion (percentage or direct)',
+    enum: PromotionType,
+  })
   @IsNotEmpty()
   @IsEnum(PromotionType)
   promotionType: PromotionType;
 
-  @ApiProperty({ description: 'Value of the promotion (percentage or direct amount)' })
+  @ApiProperty({
+    description: 'Value of the promotion (percentage or direct amount)',
+  })
   @IsNotEmpty()
   @IsNumber()
   @Min(0)
   value: number;
 
-  @ApiProperty({ description: 'User segment for the promotion', enum: UserSegment })
+  @ApiProperty({
+    description: 'User segment for the promotion',
+    enum: UserSegment,
+  })
   @IsNotEmpty()
   @IsEnum(UserSegment)
   userSegment: UserSegment;
@@ -49,23 +65,36 @@ export class CreatePromotionDto {
   @Type(() => Date)
   endDate: Date;
 
-  @ApiProperty({ description: 'Photo key for the promotion image', required: false })
+  @ApiProperty({
+    description: 'Photo key for the promotion image',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   photoKey?: string;
 
-  @ApiProperty({ description: 'Status of the promotion', enum: PromotionStatus, default: PromotionStatus.ACTIVE })
+  @ApiProperty({
+    description: 'Status of the promotion',
+    enum: PromotionStatus,
+    default: PromotionStatus.ACTIVE,
+  })
   @IsOptional()
   @IsEnum(PromotionStatus)
   status?: PromotionStatus;
 
-  @ApiProperty({ description: 'Maximum number of times this promotion can be used', default: 0 })
+  @ApiProperty({
+    description: 'Maximum number of times this promotion can be used',
+    default: 0,
+  })
   @IsOptional()
   @IsNumber()
   @Min(0)
   usageLimit?: number;
 
-  @ApiProperty({ description: 'Maximum number of times a user can use this promotion', default: 1 })
+  @ApiProperty({
+    description: 'Maximum number of times a user can use this promotion',
+    default: 1,
+  })
   @IsOptional()
   @IsNumber()
   @Min(1)

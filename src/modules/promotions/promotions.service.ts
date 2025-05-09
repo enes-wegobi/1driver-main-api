@@ -18,7 +18,7 @@ export class PromotionsService {
   async getCustomerPromotions(customerId: string): Promise<any> {
     this.logger.log(`Fetching customer data for ID: ${customerId}`);
     const customer = await this.customersClient.findOne(customerId);
-    
+
     if (!customer) {
       throw new NotFoundException(`Customer with ID ${customerId} not found`);
     }
@@ -28,14 +28,18 @@ export class PromotionsService {
     this.logger.log(`Customer segments: ${segments.join(', ')}`);
 
     let promotions: any[] = [];
-    
+
     try {
       promotions = await this.promotionClient.findBySegments(segments);
-      this.logger.log(`Found ${promotions.length} promotions for segments: ${segments.join(', ')}`);
+      this.logger.log(
+        `Found ${promotions.length} promotions for segments: ${segments.join(', ')}`,
+      );
     } catch (error) {
-      this.logger.error(`Error fetching promotions for segments: ${error.message}`);
+      this.logger.error(
+        `Error fetching promotions for segments: ${error.message}`,
+      );
     }
-    
+
     return {
       customerId,
       segments,
@@ -48,24 +52,35 @@ export class PromotionsService {
     try {
       // Since there's no direct method to get all promotions, we'll use the segments endpoint
       // with 'all_users' segment which should return all promotions
-      const promotions = await this.promotionClient.findBySegments(['all_users']);
+      const promotions = await this.promotionClient.findBySegments([
+        'all_users',
+      ]);
       this.logger.log(`Found ${promotions.length} promotions`);
       return promotions;
     } catch (error) {
-      this.logger.error(`Error fetching all promotions: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error fetching all promotions: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
 
   async createPromotion(createPromotionDto: CreatePromotionDto): Promise<any> {
     this.logger.log(`Creating new promotion: ${createPromotionDto.name}`);
-    
+
     try {
-      const promotion = await this.promotionClient.createPromotion(createPromotionDto);
-      this.logger.log(`Promotion created successfully with ID: ${promotion.id}`);
+      const promotion =
+        await this.promotionClient.createPromotion(createPromotionDto);
+      this.logger.log(
+        `Promotion created successfully with ID: ${promotion.id}`,
+      );
       return promotion;
     } catch (error) {
-      this.logger.error(`Error creating promotion: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error creating promotion: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }

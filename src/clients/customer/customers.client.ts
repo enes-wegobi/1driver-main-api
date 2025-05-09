@@ -141,7 +141,9 @@ export class CustomersClient {
       description,
       fileKey,
     });
-    this.logger.log(`Successfully created support ticket for customer ${customerId}`);
+    this.logger.log(
+      `Successfully created support ticket for customer ${customerId}`,
+    );
     return data;
   }
 }

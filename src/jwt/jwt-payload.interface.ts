@@ -1,7 +1,4 @@
-export enum UserType {
-  DRIVER = 'driver',
-  CUSTOMER = 'customer',
-}
+import { UserType } from 'src/common/user-type.enum';
 
 export interface IJwtPayload {
   userId: string;

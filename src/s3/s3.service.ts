@@ -20,8 +20,10 @@ export class S3Service {
     this.region = this.configService.spacesRegion;
     this.bucketName = this.configService.spacesBucketName;
 
-    this.logger.log(`Initializing S3 client with region: ${this.region}, bucket: ${this.bucketName}`);
-    
+    this.logger.log(
+      `Initializing S3 client with region: ${this.region}, bucket: ${this.bucketName}`,
+    );
+
     // Digital Ocean Spaces için S3Client konfigürasyonu
     this.s3Client = new S3Client({
       region: this.region,
@@ -33,7 +35,9 @@ export class S3Service {
       },
     });
 
-    this.logger.log(`S3 client initialized with endpoint: ${this.configService.spacesEndpoint}`);
+    this.logger.log(
+      `S3 client initialized with endpoint: ${this.configService.spacesEndpoint}`,
+    );
   }
 
   /**
@@ -57,8 +61,10 @@ export class S3Service {
     fileKey: string,
   ): Promise<void> {
     try {
-      this.logger.log(`Uploading file with key: ${fileKey} to bucket: ${this.bucketName}`);
-      
+      this.logger.log(
+        `Uploading file with key: ${fileKey} to bucket: ${this.bucketName}`,
+      );
+
       const command = new PutObjectCommand({
         Bucket: this.bucketName,
         Key: fileKey,
@@ -81,7 +87,7 @@ export class S3Service {
   ): Promise<string> {
     try {
       this.logger.log(`Getting signed URL for file with key: ${fileKey}`);
-      
+
       const command = new GetObjectCommand({
         Bucket: this.bucketName,
         Key: fileKey,
@@ -91,15 +97,20 @@ export class S3Service {
       this.logger.log(`Signed URL generated successfully for key: ${fileKey}`);
       return url;
     } catch (error) {
-      this.logger.error(`Error getting signed URL: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error getting signed URL: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
 
   async deleteFile(fileKey: string): Promise<void> {
     try {
-      this.logger.log(`Deleting file with key: ${fileKey} from bucket: ${this.bucketName}`);
-      
+      this.logger.log(
+        `Deleting file with key: ${fileKey} from bucket: ${this.bucketName}`,
+      );
+
       const command = new DeleteObjectCommand({
         Bucket: this.bucketName,
         Key: fileKey,

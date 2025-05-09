@@ -9,7 +9,14 @@ import { S3Module } from 'src/s3/s3.module';
 import { SupportTicketsModule } from 'src/modules/support-tickets/support-tickets.module';
 
 @Module({
-  imports: [ClientsModule, JwtModule, WebSocketModule, RedisModule, S3Module, SupportTicketsModule],
+  imports: [
+    ClientsModule,
+    JwtModule,
+    WebSocketModule,
+    RedisModule,
+    S3Module,
+    SupportTicketsModule,
+  ],
   controllers: [CustomersController],
   providers: [CustomersService],
 })

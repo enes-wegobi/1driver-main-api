@@ -607,12 +607,12 @@ export class DriversController {
 
     try {
       const fileKey = `profile-photos/drivers/${user.userId}/${uuidv4()}-${file.originalname}`;
-      
-      await this.s3Service.uploadFileWithKey(file, fileKey);      
+
+      await this.s3Service.uploadFileWithKey(file, fileKey);
       await this.driversService.updatePhoto(user.userId, fileKey);
-      
+
       const photoUrl = await this.s3Service.getSignedUrl(fileKey, 604800);
-      
+
       return {
         message: 'Profile photo uploaded successfully',
         photoKey: fileKey,
@@ -632,9 +632,13 @@ export class DriversController {
       const result = await this.driversService.deletePhoto(user.userId);
       return { message: 'Profile photo deleted successfully' };
     } catch (error) {
-      this.logger.error(`Error deleting profile photo: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error deleting profile photo: ${error.message}`,
+        error.stack,
+      );
       throw new HttpException(
-        error.response?.data || 'An error occurred while deleting profile photo',
+        error.response?.data ||
+          'An error occurred while deleting profile photo',
         error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
@@ -651,14 +655,20 @@ export class DriversController {
         throw new NotFoundException('Profile photo not found');
       }
 
-      const photoUrl = await this.s3Service.getSignedUrl(driver.photoKey, 604800);
+      const photoUrl = await this.s3Service.getSignedUrl(
+        driver.photoKey,
+        604800,
+      );
 
       return {
         photoKey: driver.photoKey,
         photoUrl,
       };
     } catch (error) {
-      this.logger.error(`Error getting profile photo URL: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error getting profile photo URL: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }

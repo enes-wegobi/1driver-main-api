@@ -47,8 +47,14 @@ export class SupportTicketsController {
     schema: {
       type: 'object',
       properties: {
-        subject: { type: 'string', description: 'Subject of the support ticket' },
-        description: { type: 'string', description: 'Description of the support ticket' },
+        subject: {
+          type: 'string',
+          description: 'Subject of the support ticket',
+        },
+        description: {
+          type: 'string',
+          description: 'Description of the support ticket',
+        },
         file: {
           type: 'string',
           format: 'binary',

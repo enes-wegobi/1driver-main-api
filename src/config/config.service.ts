@@ -28,28 +28,6 @@ export class ConfigService {
     );
   }
 
-  get usersServiceUrl(): string {
-    return this.configService.get<string>(
-      'services.users.url',
-      'http://localhost:3001',
-    );
-  }
-
-  get usersServiceTimeout(): number {
-    return this.configService.get<number>('services.users.timeout', 5000);
-  }
-
-  get authServiceUrl(): string {
-    return this.configService.get<string>(
-      'services.auth.url',
-      'http://localhost:3001',
-    );
-  }
-
-  get authServiceTimeout(): number {
-    return this.configService.get<number>('services.auth.timeout', 5000);
-  }
-
   get awsRegion(): string {
     return this.configService.get<string>('aws.region')!;
   }

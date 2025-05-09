@@ -6,6 +6,7 @@ import { AuthClient } from './auth/auth.client';
 import { CustomersClient } from './customer/customers.client';
 import { DriversClient } from './driver/drivers.client';
 import { PromotionClient } from './promotion/promotion.client';
+import { TripClient } from './trip/trip.client';
 
 @Module({
   imports: [ConfigModule],
@@ -16,6 +17,7 @@ import { PromotionClient } from './promotion/promotion.client';
     CustomersClient,
     DriversClient,
     PromotionClient,
+    TripClient,
   ],
   exports: [
     ClientsService,
@@ -24,6 +26,7 @@ import { PromotionClient } from './promotion/promotion.client';
     CustomersClient,
     DriversClient,
     PromotionClient,
+    TripClient,
   ],
 })
 export class ClientsModule {}
