@@ -10,7 +10,11 @@ import { CustomersTripsController } from './customer-trip.controller';
 
 @Module({
   imports: [ClientsModule, WebSocketModule, RedisModule, JwtModule],
-  controllers: [TripsController, DriversTripsController, CustomersTripsController],
+  controllers: [
+    TripsController,
+    DriversTripsController,
+    CustomersTripsController,
+  ],
   providers: [TripsService],
   exports: [TripsService],
 })

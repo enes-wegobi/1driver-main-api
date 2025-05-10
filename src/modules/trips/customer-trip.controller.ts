@@ -42,12 +42,9 @@ export class CustomersTripsController {
   @Get('active')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  async getTripById(
-    @GetUser() user: IJwtPayload,
-  ) {
+  async getTripById(@GetUser() user: IJwtPayload) {
     return await this.tripsService.getCustomerActiveTrip(user.userId);
   }
-
 }
 
 /*
