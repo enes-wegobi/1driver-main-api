@@ -2,10 +2,9 @@ import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { WebSocketService } from 'src/websocket/websocket.service';
 import { RedisService } from 'src/redis/redis.service';
 import { NearbyDriversResponseDto } from './dto/nearby-drivers-response.dto';
-import { CreateTripDto } from './dto/create-trip.dto';
+import { EstimateTripDto } from './dto/estimate-trip.dto';
 import { UpdateTripStatusDto } from './dto/update-trip-status.dto';
 import { TripClient } from 'src/clients/trip/trip.client';
-import { UserType } from 'src/common/user-type.enum';
 
 @Injectable()
 export class TripsService {
@@ -16,19 +15,6 @@ export class TripsService {
     private readonly redisService: RedisService,
     private readonly tripClient: TripClient,
   ) {}
-
-  async createTrip(createTripDto: CreateTripDto): Promise<any> {
-    const nearbyDrivers = await this.findNearbyDrivers(
-      createTripDto.pickup.latitude,
-      createTripDto.pickup.longitude,
-      5,
-    );
-
-    const trip = await this.tripClient.createTrip(createTripDto, nearbyDrivers);
-
-    // TODO: Send FCM notifications to nearby drivers
-    return trip;
-  }
 
   async getTripById(tripId: string): Promise<any> {
     const trip = await this.tripClient.getTripById(tripId);
@@ -50,9 +36,17 @@ export class TripsService {
     return trip;
   }
 
-  /**
-   * Create a trip room for real-time location sharing
-   */
+  async estimate(
+    estimateTripDto: EstimateTripDto,
+    customerId: string,
+  ): Promise<any> {
+    this.logger.debug(
+      `Estimating trip from [${estimateTripDto.origin.lat}, ${estimateTripDto.origin.lng}] to [${estimateTripDto.destination.lat}, ${estimateTripDto.destination.lng}]`,
+    );
+
+    return await this.tripClient.estimateTrip(estimateTripDto, customerId);
+  }
+
   async createTripRoom(tripId: string): Promise<boolean> {
     try {
       const trip = await this.getTripById(tripId);
@@ -71,6 +65,22 @@ export class TripsService {
     } catch (error) {
       this.logger.error(`Error creating trip room: ${error.message}`);
       return false;
+    }
+  }
+
+  async requestDriver(tripId: string, customerId: string): Promise<any> {
+    this.logger.debug(
+      `Customer ${customerId} requesting driver for trip ${tripId}`,
+    );
+
+    try {
+      const result = await this.tripClient.requestDriver(tripId, customerId);
+      return result;
+    } catch (error) {
+      this.logger.error(`Error requesting driver: ${error.message}`);
+      throw new BadRequestException(
+        error.response?.data?.message || 'Failed to request driver',
+      );
     }
   }
 

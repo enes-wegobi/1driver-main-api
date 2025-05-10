@@ -1,14 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AxiosInstance } from 'axios';
 import { ClientsService } from '../clients.service';
-import { CreateTripDto } from 'src/modules/trips/dto/create-trip.dto';
+import { EstimateTripDto } from 'src/modules/trips/dto/estimate-trip.dto';
 import { UpdateTripStatusDto } from 'src/modules/trips/dto/update-trip-status.dto';
 import { NearbyDriversResponseDto } from 'src/modules/trips/dto/nearby-drivers-response.dto';
-import {
-  TripResponseDto,
-  CreateTripResponseDto,
-  UpdateTripStatusResponseDto,
-} from './dto';
+import { TripResponseDto, UpdateTripStatusResponseDto } from './dto';
 
 @Injectable()
 export class TripClient {
@@ -17,17 +13,6 @@ export class TripClient {
 
   constructor(private readonly clientsService: ClientsService) {
     this.httpClient = this.clientsService.createHttpClient('trip');
-  }
-
-  async createTrip(
-    createTripDto: CreateTripDto,
-    nearbyDrivers: any,
-  ): Promise<CreateTripResponseDto> {
-    this.logger.log(
-      `Creating new trip for customer: ${createTripDto.customerId}`,
-    );
-    const { data } = await this.httpClient.post('/trips', createTripDto);
-    return data;
   }
 
   async getTripById(tripId: string): Promise<TripResponseDto> {
@@ -119,6 +104,31 @@ export class TripClient {
 
   async getCustomerActiveTrip(customer: string): Promise<any> {
     const { data } = await this.httpClient.post(`/trips/active/${customer}`);
+    return data;
+  }
+
+  async requestDriver(tripId: string, customerId: string): Promise<any> {
+    this.logger.log(
+      `Requesting driver for trip: ${tripId} by customer: ${customerId}`,
+    );
+    const { data } = await this.httpClient.post(
+      `/trips/${tripId}/request-driver`,
+      {
+        customerId,
+      },
+    );
+    return data;
+  }
+
+  async estimateTrip(
+    estimateTripDto: EstimateTripDto,
+    customerId: string,
+  ): Promise<any> {
+    this.logger.log(`Estimating trip for customer: ${customerId}`);
+    const { data } = await this.httpClient.post('/trips/estimate', {
+      ...estimateTripDto,
+      customerId,
+    });
     return data;
   }
 }

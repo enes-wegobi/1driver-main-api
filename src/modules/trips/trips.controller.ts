@@ -19,7 +19,6 @@ import {
 import { TripsService } from './trips.service';
 import { JwtAuthGuard } from 'src/jwt/jwt.guard';
 import { GetUser } from 'src/jwt/user.decoretor';
-import { CreateTripDto } from './dto/create-trip.dto';
 import { UpdateTripStatusDto } from './dto/update-trip-status.dto';
 import { TripStatus } from './enum/trip-status.enum';
 
@@ -29,36 +28,6 @@ export class TripsController {
   private readonly logger = new Logger(TripsController.name);
 
   constructor(private readonly tripsService: TripsService) {}
-
-  @Post('create')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Create a new trip request' })
-  @ApiResponse({ status: 201, description: 'Trip created successfully' })
-  async createTrip(@Body() createTripDto: CreateTripDto, @GetUser() user: any) {
-    if (user.userType !== 'customer') {
-      throw new HttpException(
-        'Only customers can create trips',
-        HttpStatus.FORBIDDEN,
-      );
-    }
-
-    if (user.userId !== createTripDto.customerId) {
-      throw new HttpException(
-        'You can only create trips for yourself',
-        HttpStatus.FORBIDDEN,
-      );
-    }
-
-    this.logger.debug(`Customer ${user.userId} created a new trip request`);
-
-    const result = await this.tripsService.createTrip(createTripDto);
-
-    return {
-      success: true,
-      ...result,
-    };
-  }
 
   @Get(':tripId')
   @UseGuards(JwtAuthGuard)

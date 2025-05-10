@@ -13,9 +13,7 @@ export class DriversTripsController {
   constructor(private readonly tripsService: TripsService) {}
 
   @Get('active')
-  async getTripById(
-    @GetUser() user: IJwtPayload,
-  ) {
+  async getTripById(@GetUser() user: IJwtPayload) {
     return await this.tripsService.getCustomerActiveTrip(user.userId);
   }
 
@@ -32,34 +30,19 @@ export class DriversTripsController {
   ) {}
 
   @Post('start-pickup')
-  async startPickup(
-    @Param('tripId') tripId: string,
-    @GetUser() user: IJwtPayload,
-  ) {}
+  async startPickup(@GetUser() user: IJwtPayload) {}
 
   @Post('reach-pickup')
-  async reachPickup(
-    @Param('tripId') tripId: string,
-    @GetUser() user: IJwtPayload,
-  ) {}
+  async reachPickup(@GetUser() user: IJwtPayload) {}
 
   @Post('begin-trip')
-  async beginPickup(
-    @Param('tripId') tripId: string,
-    @GetUser() user: IJwtPayload,
-  ) {}
+  async beginPickup(@GetUser() user: IJwtPayload) {}
 
   @Post('arrived-at-stop')
-  async arrivedStop(
-    @Param('tripId') tripId: string,
-    @GetUser() user: IJwtPayload,
-  ) {}
+  async arrivedStop(@GetUser() user: IJwtPayload) {}
 
   @Post('cancel')
-  async cancelTrip(
-    @Param('tripId') tripId: string,
-    @GetUser() user: IJwtPayload,
-  ) {}
+  async cancelTrip(@GetUser() user: IJwtPayload) {}
 
   /*
   @Post(':tripId/create-room')

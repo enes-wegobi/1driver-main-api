@@ -1,48 +1,42 @@
-import {
-  Controller,
-  Get,
-  UseGuards,
-  Post,
-  Body,
-  Param,
-  HttpException,
-  HttpStatus,
-} from '@nestjs/common';
-import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { Controller, Get, UseGuards, Post, Body, Param } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiBody } from '@nestjs/swagger';
 import { TripsService } from './trips.service';
 import { JwtAuthGuard } from 'src/jwt/jwt.guard';
 import { GetUser } from 'src/jwt/user.decoretor';
-import { CreateTripDto } from './dto/create-trip.dto';
-import { UserType } from 'src/common/user-type.enum';
+import { EstimateTripDto } from './dto/estimate-trip.dto';
 import { IJwtPayload } from 'src/jwt/jwt-payload.interface';
+import { RequestDriverDto } from './dto/request-driver.dto';
 
 @ApiTags('customer-trips')
 @Controller('customer-trips')
 export class CustomersTripsController {
   constructor(private readonly tripsService: TripsService) {}
 
-  @Post('create')
+  @Post('estimate')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  async createTrip(
-    @Body() createTripDto: CreateTripDto,
+  @ApiOperation({ summary: 'Estimate trip fare and duration' })
+  @ApiBody({ type: EstimateTripDto })
+  async estimate(
+    @Body() estimateTripDto: EstimateTripDto,
     @GetUser() user: IJwtPayload,
   ) {
-    if (user.userType !== UserType.CUSTOMER) {
-      throw new HttpException(
-        'Only customers can create trips',
-        HttpStatus.FORBIDDEN,
-      );
-    }
+    return await this.tripsService.estimate(estimateTripDto, user.userId);
+  }
 
-    if (user.userId !== createTripDto.customerId) {
-      throw new HttpException(
-        'You can only create trips for yourself',
-        HttpStatus.FORBIDDEN,
-      );
-    }
-
-    return await this.tripsService.createTrip(createTripDto);
+  @Post('request-driver')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Request a driver for a trip' })
+  @ApiBody({ type: RequestDriverDto })
+  async requestDriver(
+    @Body() requestDriverDto: { tripId: string },
+    @GetUser() user: IJwtPayload,
+  ) {
+    return await this.tripsService.requestDriver(
+      requestDriverDto.tripId,
+      user.userId,
+    );
   }
 
   @Get('active')
@@ -61,7 +55,9 @@ export class CustomersTripsController {
   async updateTripStatus(@GetUser() user: IJwtPayload) {
     //return await this.tripsService.updateTripStatus(user.userId);
   }
-  /*
+}
+
+/*
   @Post(':tripId/create-room')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
@@ -92,4 +88,3 @@ export class CustomersTripsController {
     };
   }
     */
-}
