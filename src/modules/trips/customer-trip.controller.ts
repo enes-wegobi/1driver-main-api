@@ -1,5 +1,19 @@
-import { Controller, Get, UseGuards, Post, Body, Param, Query } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiBody, ApiQuery } from '@nestjs/swagger';
+import {
+  Controller,
+  Get,
+  UseGuards,
+  Post,
+  Body,
+  Param,
+  Query,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiBearerAuth,
+  ApiOperation,
+  ApiBody,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { TripsService } from './trips.service';
 import { JwtAuthGuard } from 'src/jwt/jwt.guard';
 import { GetUser } from 'src/jwt/user.decoretor';
@@ -46,30 +60,33 @@ export class CustomersTripsController {
     return await this.tripsService.getCustomerActiveTrip(user.userId);
   }
 
-    @Get('/nearby-drivers')
-    @ApiOperation({ summary: 'Get available drivers near a specific location' })
-    @UseGuards(JwtAuthGuard)
-    @ApiBearerAuth()
-    @ApiQuery({
-      name: 'latitude',
-      description: 'Latitude coordinate',
-      required: true,
-    })
-    @ApiQuery({
-      name: 'longitude',
-      description: 'Longitude coordinate',
-      required: true,
-    })
-    async getNearbyAvailableDrivers(
-      @Query('latitude') latitude: number,
-      @Query('longitude') longitude: number,
-    ) {
-      const drivers = await this.tripsService.getNearbyAvailableDrivers(latitude, longitude);
-      return {
-        total: drivers.length,
-        drivers,
-      };
-    }
+  @Get('/nearby-drivers')
+  @ApiOperation({ summary: 'Get available drivers near a specific location' })
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiQuery({
+    name: 'latitude',
+    description: 'Latitude coordinate',
+    required: true,
+  })
+  @ApiQuery({
+    name: 'longitude',
+    description: 'Longitude coordinate',
+    required: true,
+  })
+  async getNearbyAvailableDrivers(
+    @Query('latitude') latitude: number,
+    @Query('longitude') longitude: number,
+  ) {
+    const drivers = await this.tripsService.getNearbyAvailableDrivers(
+      latitude,
+      longitude,
+    );
+    return {
+      total: drivers.length,
+      drivers,
+    };
+  }
 }
 
 /*

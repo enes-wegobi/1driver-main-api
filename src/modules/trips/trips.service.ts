@@ -110,8 +110,7 @@ export class TripsService {
     };
   }
 
-  async getNearbyAvailableDrivers( latitude: number,longitude: number
-  ) {
+  async getNearbyAvailableDrivers(latitude: number, longitude: number) {
     const drivers = await this.webSocketService
       .getRedisService()
       .findNearbyAvailableDrivers(latitude, longitude, 5);
