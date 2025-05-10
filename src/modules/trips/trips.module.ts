@@ -6,10 +6,11 @@ import { RedisModule } from 'src/redis/redis.module';
 import { JwtModule } from 'src/jwt/jwt.modulte';
 import { DriversTripsController } from './driver-trip.controller';
 import { ClientsModule } from 'src/clients/clients.module';
+import { CustomersTripsController } from './customer-trip.controller';
 
 @Module({
   imports: [ClientsModule, WebSocketModule, RedisModule, JwtModule],
-  controllers: [TripsController, DriversTripsController],
+  controllers: [TripsController, DriversTripsController, CustomersTripsController],
   providers: [TripsService],
   exports: [TripsService],
 })

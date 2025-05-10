@@ -43,18 +43,11 @@ export class CustomersTripsController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   async getTripById(
-    @Param('tripId') tripId: string,
     @GetUser() user: IJwtPayload,
   ) {
     return await this.tripsService.getCustomerActiveTrip(user.userId);
   }
 
-  @Post('status')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  async updateTripStatus(@GetUser() user: IJwtPayload) {
-    //return await this.tripsService.updateTripStatus(user.userId);
-  }
 }
 
 /*
