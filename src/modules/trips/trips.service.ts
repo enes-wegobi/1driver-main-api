@@ -40,10 +40,6 @@ export class TripsService {
     estimateTripDto: EstimateTripDto,
     customerId: string,
   ): Promise<any> {
-    this.logger.debug(
-      `Estimating trip from [${estimateTripDto.origin.lat}, ${estimateTripDto.origin.lng}] to [${estimateTripDto.destination.lat}, ${estimateTripDto.destination.lng}]`,
-    );
-
     return await this.tripClient.estimateTrip(estimateTripDto, customerId);
   }
 
