@@ -50,5 +50,5 @@ export class EstimateTripDto {
   @ArrayMinSize(2)
   @ValidateNested({ each: true })
   @Type(() => RoutePointDto)
-  routePoints: RoutePointDto[];
+  route: RoutePointDto[];
 }
