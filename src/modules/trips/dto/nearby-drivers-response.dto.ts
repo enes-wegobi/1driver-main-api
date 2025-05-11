@@ -1,11 +1,16 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { IsNotEmpty, IsNumber } from 'class-validator';
 import { DriverAvailabilityStatus } from 'src/websocket/dto/driver-location.dto';
 
-export class DriverLocationDto {
+export class LocationDto {
   @ApiProperty({ description: 'Latitude coordinate of the driver' })
+  @IsNotEmpty()
+  @IsNumber()
   latitude: number;
 
   @ApiProperty({ description: 'Longitude coordinate of the driver' })
+  @IsNotEmpty()
+  @IsNumber()
   longitude: number;
 }
 
@@ -19,7 +24,7 @@ export class NearbyDriverDto {
   distance: number;
 
   @ApiProperty({ description: 'Current driver location' })
-  location: DriverLocationDto;
+  location: LocationDto;
 
   @ApiProperty({
     description: 'Driver availability status',

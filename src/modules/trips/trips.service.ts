@@ -5,6 +5,9 @@ import { NearbyDriversResponseDto } from './dto/nearby-drivers-response.dto';
 import { EstimateTripDto } from './dto/estimate-trip.dto';
 import { UpdateTripStatusDto } from './dto/update-trip-status.dto';
 import { TripClient } from 'src/clients/trip/trip.client';
+import { UserType } from 'src/common/user-type.enum';
+import { NearbyDriverDto as RedisNearbyDriverDto } from 'src/redis/dto/nearby-user.dto';
+import { DriverAvailabilityStatus } from 'src/websocket/dto/driver-location.dto';
 
 @Injectable()
 export class TripsService {
@@ -64,13 +67,27 @@ export class TripsService {
     }
   }
 
-  async requestDriver(tripId: string, customerId: string): Promise<any> {
-    this.logger.debug(
-      `Customer ${customerId} requesting driver for trip ${tripId}`,
-    );
-
+  async requestDriver(
+    tripId: string,
+    lat: number,
+    lon: number,
+    customerId: string,
+  ): Promise<any> {
     try {
-      const result = await this.tripClient.requestDriver(tripId, customerId);
+      const drivers = await this.redisService.findNearbyAvailableDrivers(
+        lat,
+        lon,
+        5,
+      );
+
+      const typedDrivers = drivers as RedisNearbyDriverDto[];
+      const driverIds = typedDrivers.map((driver) => driver.userId);
+
+      const result = await this.tripClient.requestDriver(
+        tripId,
+        customerId,
+        driverIds,
+      );
       return result;
     } catch (error) {
       this.logger.error(`Error requesting driver: ${error.message}`);
@@ -95,25 +112,32 @@ export class TripsService {
       radius,
     );
 
+    const typedDrivers = drivers as RedisNearbyDriverDto[];
+
     return {
-      total: drivers.length,
-      drivers: drivers.map((driver) => ({
+      total: typedDrivers.length,
+      drivers: typedDrivers.map((driver) => ({
         driverId: driver.userId,
         distance: driver.distance,
         location: {
           latitude: driver.coordinates.latitude,
           longitude: driver.coordinates.longitude,
         },
-        availabilityStatus: driver.availabilityStatus,
+        availabilityStatus:
+          driver.availabilityStatus || DriverAvailabilityStatus.AVAILABLE,
         lastUpdated: driver.updatedAt,
       })),
     };
   }
 
   async getNearbyAvailableDrivers(latitude: number, longitude: number) {
-    const drivers = await this.webSocketService
-      .getRedisService()
-      .findNearbyAvailableDrivers(latitude, longitude, 5);
+    const drivers = this.redisService.findNearbyUsers(
+      UserType.DRIVER,
+      latitude,
+      longitude,
+      5,
+      true,
+    );
     return drivers;
   }
 }

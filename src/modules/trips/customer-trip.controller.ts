@@ -1,12 +1,4 @@
-import {
-  Controller,
-  Get,
-  UseGuards,
-  Post,
-  Body,
-  Param,
-  Query,
-} from '@nestjs/common';
+import { Controller, Get, UseGuards, Post, Body, Query } from '@nestjs/common';
 import {
   ApiTags,
   ApiBearerAuth,
@@ -44,11 +36,13 @@ export class CustomersTripsController {
   @ApiOperation({ summary: 'Request a driver for a trip' })
   @ApiBody({ type: RequestDriverDto })
   async requestDriver(
-    @Body() requestDriverDto: { tripId: string },
+    @Body() requestDriverDto: RequestDriverDto,
     @GetUser() user: IJwtPayload,
   ) {
     return await this.tripsService.requestDriver(
       requestDriverDto.tripId,
+      requestDriverDto.lat,
+      requestDriverDto.lon,
       user.userId,
     );
   }
@@ -60,7 +54,7 @@ export class CustomersTripsController {
     return await this.tripsService.getCustomerActiveTrip(user.userId);
   }
 
-  @Get('/nearby-drivers')
+  @Get('nearby-drivers')
   @ApiOperation({ summary: 'Get available drivers near a specific location' })
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()

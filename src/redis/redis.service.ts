@@ -7,6 +7,8 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { createClient, RedisClientType } from 'redis';
 import { DriverAvailabilityStatus } from 'src/websocket/dto/driver-location.dto';
+import { FindNearbyUsersResult } from './dto/nearby-user.dto';
+import { UserType } from 'src/common/user-type.enum';
 
 @Injectable()
 export class RedisService implements OnModuleInit, OnModuleDestroy {
@@ -203,12 +205,12 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   async findNearbyUsers(
-    userType: string,
+    userType: UserType,
     latitude: number,
     longitude: number,
     radius: number = 5,
     onlyAvailable: boolean = false,
-  ) {
+  ): Promise<FindNearbyUsersResult> {
     const geoKey = `location:${userType}:geo`;
 
     try {
@@ -285,7 +287,13 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     latitude: number,
     longitude: number,
     radius: number = 5,
-  ) {
-    return this.findNearbyUsers('driver', latitude, longitude, radius, true);
+  ): Promise<FindNearbyUsersResult> {
+    return this.findNearbyUsers(
+      UserType.DRIVER,
+      latitude,
+      longitude,
+      radius,
+      true,
+    );
   }
 }

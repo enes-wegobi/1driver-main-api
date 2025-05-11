@@ -5,6 +5,7 @@ import { EstimateTripDto } from 'src/modules/trips/dto/estimate-trip.dto';
 import { UpdateTripStatusDto } from 'src/modules/trips/dto/update-trip-status.dto';
 import { NearbyDriversResponseDto } from 'src/modules/trips/dto/nearby-drivers-response.dto';
 import { TripResponseDto, UpdateTripStatusResponseDto } from './dto';
+import { FindNearbyUsersResult } from 'src/redis/dto/nearby-user.dto';
 
 @Injectable()
 export class TripClient {
@@ -107,7 +108,11 @@ export class TripClient {
     return data;
   }
 
-  async requestDriver(tripId: string, customerId: string): Promise<any> {
+  async requestDriver(
+    tripId: string,
+    customerId: string,
+    drivers: string[],
+  ): Promise<any> {
     this.logger.log(
       `Requesting driver for trip: ${tripId} by customer: ${customerId}`,
     );
@@ -115,6 +120,7 @@ export class TripClient {
       `/trips/${tripId}/request-driver`,
       {
         customerId,
+        drivers,
       },
     );
     return data;

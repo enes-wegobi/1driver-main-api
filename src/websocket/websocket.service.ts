@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Server } from 'socket.io';
+import { UserType } from 'src/common/user-type.enum';
 import { RedisService } from 'src/redis/redis.service';
 
 @Injectable()
@@ -53,7 +54,7 @@ export class WebSocketService {
   }
 
   async findNearbyUsers(
-    userType: string,
+    userType: UserType,
     latitude: number,
     longitude: number,
     radius: number = 5,

@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsString } from 'class-validator';
 
 export class RequestDriverDto {
   @ApiProperty({
@@ -9,4 +9,14 @@ export class RequestDriverDto {
   @IsNotEmpty()
   @IsString()
   tripId: string;
+
+  @ApiProperty({ description: 'Latitude coordinate', example: 40.7128 })
+  @IsNotEmpty()
+  @IsNumber()
+  lat: number;
+
+  @ApiProperty({ description: 'Longitude coordinate', example: -74.006 })
+  @IsNotEmpty()
+  @IsNumber()
+  lon: number;
 }
