@@ -1,4 +1,6 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { RedisErrors } from 'src/common/redis-errors';
+import { RedisException } from 'src/common/redis.exception';
 import { WebSocketService } from 'src/websocket/websocket.service';
 import { RedisService } from 'src/redis/redis.service';
 import { NearbyDriversResponseDto } from './dto/nearby-drivers-response.dto';
@@ -6,7 +8,7 @@ import { EstimateTripDto } from './dto/estimate-trip.dto';
 import { UpdateTripStatusDto } from './dto/update-trip-status.dto';
 import { TripClient } from 'src/clients/trip/trip.client';
 import { UserType } from 'src/common/user-type.enum';
-import { NearbyDriverDto as RedisNearbyDriverDto } from 'src/redis/dto/nearby-user.dto';
+import { NearbyDriverDto as RedisNearbyDriverDto, FindNearbyUsersResult } from 'src/redis/dto/nearby-user.dto';
 import { DriverAvailabilityStatus } from 'src/websocket/dto/driver-location.dto';
 
 @Injectable()
@@ -74,11 +76,29 @@ export class TripsService {
     customerId: string,
   ): Promise<any> {
     try {
-      const drivers = await this.redisService.findNearbyAvailableDrivers(
-        lat,
-        lon,
-        5,
-      );
+      const searchRadii = [5, 7, 10];
+      let drivers: FindNearbyUsersResult = [];
+
+      for (const radius of searchRadii) {
+        this.logger.debug(`Searching for drivers within ${radius}km radius`);
+        drivers = await this.redisService.findNearbyAvailableDrivers(
+          lat,
+          lon,
+          radius,
+        );
+
+        if (drivers.length > 0) {
+          this.logger.debug(`Found ${drivers.length} drivers within ${radius}km radius`);
+          break;
+        }
+      }
+
+      if (drivers.length === 0) {
+        throw new RedisException(
+          RedisErrors.NO_DRIVERS_FOUND.code,
+          RedisErrors.NO_DRIVERS_FOUND.message,
+        );
+      }
 
       const typedDrivers = drivers as RedisNearbyDriverDto[];
       const driverIds = typedDrivers.map((driver) => driver.userId);
@@ -95,6 +115,9 @@ export class TripsService {
       return result;
     } catch (error) {
       this.logger.error(`Error requesting driver: ${error.message}`);
+      if (error instanceof RedisException) {
+        throw error;
+      }
       throw new BadRequestException(
         error.response?.data?.message || 'Failed to request driver',
       );
