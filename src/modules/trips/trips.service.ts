@@ -88,6 +88,10 @@ export class TripsService {
         customerId,
         driverIds,
       );
+
+      if (result.success) {
+        //TODO send notif to drivers
+      }
       return result;
     } catch (error) {
       this.logger.error(`Error requesting driver: ${error.message}`);
@@ -139,5 +143,17 @@ export class TripsService {
       true,
     );
     return drivers;
+  }
+
+  async cancelTrip(userId: string, userType: UserType): Promise<any> {
+    try {
+      this.logger.log(`Cancelling trip for ${userType} ${userId}`);
+      return await this.tripClient.cancelTrip(userId, userType);
+    } catch (error) {
+      this.logger.error(`Error cancelling trip: ${error.message}`);
+      throw new BadRequestException(
+        error.response?.data?.message || 'Failed to cancel trip',
+      );
+    }
   }
 }

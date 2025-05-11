@@ -18,35 +18,6 @@ import { RequestDriverDto } from './dto/request-driver.dto';
 export class CustomersTripsController {
   constructor(private readonly tripsService: TripsService) {}
 
-  @Post('estimate')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Estimate trip fare and duration' })
-  @ApiBody({ type: EstimateTripDto })
-  async estimate(
-    @Body() estimateTripDto: EstimateTripDto,
-    @GetUser() user: IJwtPayload,
-  ) {
-    return await this.tripsService.estimate(estimateTripDto, user.userId);
-  }
-
-  @Post('request-driver')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Request a driver for a trip' })
-  @ApiBody({ type: RequestDriverDto })
-  async requestDriver(
-    @Body() requestDriverDto: RequestDriverDto,
-    @GetUser() user: IJwtPayload,
-  ) {
-    return await this.tripsService.requestDriver(
-      requestDriverDto.tripId,
-      requestDriverDto.lat,
-      requestDriverDto.lon,
-      user.userId,
-    );
-  }
-
   @Get('active')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
@@ -80,6 +51,43 @@ export class CustomersTripsController {
       total: drivers.length,
       drivers,
     };
+  }
+
+  @Post('estimate')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Estimate trip fare and duration' })
+  @ApiBody({ type: EstimateTripDto })
+  async estimate(
+    @Body() estimateTripDto: EstimateTripDto,
+    @GetUser() user: IJwtPayload,
+  ) {
+    return await this.tripsService.estimate(estimateTripDto, user.userId);
+  }
+
+  @Post('request-driver')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Request a driver for a trip' })
+  @ApiBody({ type: RequestDriverDto })
+  async requestDriver(
+    @Body() requestDriverDto: RequestDriverDto,
+    @GetUser() user: IJwtPayload,
+  ) {
+    return await this.tripsService.requestDriver(
+      requestDriverDto.tripId,
+      requestDriverDto.lat,
+      requestDriverDto.lon,
+      user.userId,
+    );
+  }
+
+  @Post('cancel')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Cancel the active trip' })
+  async cancelTrip(@GetUser() user: IJwtPayload) {
+    return await this.tripsService.cancelTrip(user.userId, user.userType);
   }
 }
 

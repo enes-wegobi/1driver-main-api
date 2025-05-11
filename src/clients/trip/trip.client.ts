@@ -6,6 +6,7 @@ import { UpdateTripStatusDto } from 'src/modules/trips/dto/update-trip-status.dt
 import { NearbyDriversResponseDto } from 'src/modules/trips/dto/nearby-drivers-response.dto';
 import { TripResponseDto, UpdateTripStatusResponseDto } from './dto';
 import { FindNearbyUsersResult } from 'src/redis/dto/nearby-user.dto';
+import { UserType } from 'src/common/user-type.enum';
 
 @Injectable()
 export class TripClient {
@@ -83,17 +84,11 @@ export class TripClient {
     return data;
   }
 
-  async cancelTrip(
-    tripId: string,
-    userId: string,
-    userType: 'customer' | 'driver',
-    reason: string,
-  ): Promise<any> {
-    this.logger.log(`Cancelling trip ${tripId} by ${userType} ${userId}`);
-    const { data } = await this.httpClient.post(`/trips/${tripId}/cancel`, {
+  async cancelTrip(userId: string, userType: UserType): Promise<any> {
+    this.logger.log(`Cancelling active trip by ${userType} ${userId}`);
+    const { data } = await this.httpClient.post(`/trips/cancel`, {
       userId,
       userType,
-      reason,
     });
     return data;
   }
