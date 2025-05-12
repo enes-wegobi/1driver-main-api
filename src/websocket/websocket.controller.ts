@@ -102,7 +102,7 @@ export class WebSocketController {
     }
     return location;
   }
-
+/*
   @Get('location/nearby')
   @ApiOperation({ summary: 'Get users near a specific location' })
   @ApiQuery({
@@ -152,7 +152,7 @@ export class WebSocketController {
       users,
     };
   }
-
+*/
   @Get('location/nearby-drivers')
   @ApiOperation({ summary: 'Get available drivers near a specific location' })
   @ApiQuery({

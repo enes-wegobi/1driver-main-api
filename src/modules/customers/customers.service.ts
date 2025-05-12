@@ -69,7 +69,7 @@ export class CustomersService {
 
   /**
    * Find nearby available drivers for a customer
-   */
+
   async findNearbyDrivers(
     latitude: number,
     longitude: number,
@@ -99,7 +99,7 @@ export class CustomersService {
       })),
     };
   }
-
+   */
   /**
    * Subscribe a customer to nearby driver updates
    */

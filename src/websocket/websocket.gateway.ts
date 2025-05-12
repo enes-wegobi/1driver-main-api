@@ -89,7 +89,7 @@ export class WebSocketGateway
       client.join(`user:${payload.userId}`);
       client.join(`type:${userType}`);
 
-      // If this is a driver, mark them as active
+      // Mark user as active based on user type
       if (userType === 'driver') {
         await this.webSocketService
           .getRedisService()
@@ -107,7 +107,11 @@ export class WebSocketGateway
           availabilityStatus: status,
           message: 'Connection successful',
         });
-      } else {
+      } else if (userType === 'customer') {
+        await this.webSocketService
+          .getRedisService()
+          .markCustomerAsActive(payload.userId);
+          
         client.emit('connection', {
           status: 'connected',
           clientId: clientId,
@@ -132,12 +136,20 @@ export class WebSocketGateway
     const userId = client.data.userId;
     const userType = client.data.userType;
 
-    if (userId && userType === 'driver') {
-      // Mark driver as inactive when they disconnect
-      await this.webSocketService
-        .getRedisService()
-        .markDriverAsInactive(userId);
-      this.logger.log(`Driver ${userId} marked as inactive due to disconnect`);
+    if (userId) {
+      if (userType === 'driver') {
+        // Mark driver as inactive when they disconnect
+        await this.webSocketService
+          .getRedisService()
+          .markDriverAsInactive(userId);
+        this.logger.log(`Driver ${userId} marked as inactive due to disconnect`);
+      } else if (userType === 'customer') {
+        // Mark customer as inactive when they disconnect
+        await this.webSocketService
+          .getRedisService()
+          .markCustomerAsInactive(userId);
+        this.logger.log(`Customer ${userId} marked as inactive due to disconnect`);
+      }
     }
 
     this.logger.log(`Client disconnected: ${client.id}`);

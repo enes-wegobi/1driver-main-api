@@ -16,6 +16,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(RedisService.name);
   private readonly DRIVER_LOCATION_EXPIRY = 900; // 15 minutes
   private readonly ACTIVE_DRIVER_EXPIRY = 1800; // 30 minutes
+  private readonly ACTIVE_CUSTOMER_EXPIRY = 1800; // 30 minutes
 
   constructor(private configService: ConfigService) {
     this.client = createClient({
@@ -59,7 +60,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
         member: userId,
       });
 
-      // If this is a driver, update active drivers set
+      // Update active users set based on user type
       if (userType === 'driver') {
         await this.markDriverAsActive(userId);
 
@@ -70,6 +71,8 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
             locationData.availabilityStatus,
           );
         }
+      } else if (userType === 'customer') {
+        await this.markCustomerAsActive(userId);
       }
 
       return true;
@@ -192,6 +195,67 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
         error.message,
       );
       return false;
+    }
+  }
+
+  async markCustomerAsActive(customerId: string) {
+    try {
+      const key = `customer:active:${customerId}`;
+      await this.client.set(key, new Date().toISOString());
+      await this.client.expire(key, this.ACTIVE_CUSTOMER_EXPIRY);
+
+      // Add to active customers set
+      await this.client.sAdd('customers:active', customerId);
+
+      return true;
+    } catch (error) {
+      this.logger.error(
+        `Error marking customer ${customerId} as active:`,
+        error.message,
+      );
+      return false;
+    }
+  }
+
+  async markCustomerAsInactive(customerId: string) {
+    try {
+      const key = `customer:active:${customerId}`;
+      await this.client.del(key);
+
+      // Remove from active customers set
+      await this.client.sRem('customers:active', customerId);
+
+      return true;
+    } catch (error) {
+      this.logger.error(
+        `Error marking customer ${customerId} as inactive:`,
+        error.message,
+      );
+      return false;
+    }
+  }
+
+  async isCustomerActive(customerId: string): Promise<boolean> {
+    try {
+      const key = `customer:active:${customerId}`;
+      const result = await this.client.exists(key);
+
+      return result === 1;
+    } catch (error) {
+      this.logger.error(
+        `Error checking if customer ${customerId} is active:`,
+        error.message,
+      );
+      return false;
+    }
+  }
+
+  async getActiveCustomers(): Promise<string[]> {
+    try {
+      return await this.client.sMembers('customers:active');
+    } catch (error) {
+      this.logger.error('Error getting active customers:', error.message);
+      return [];
     }
   }
 

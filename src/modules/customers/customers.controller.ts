@@ -348,7 +348,7 @@ export class CustomersController {
       );
     }
   }
-
+/*
   @Get('nearby-drivers')
   @ApiOperation({ summary: 'Get nearby available drivers' })
   @ApiQuery({
@@ -398,7 +398,7 @@ export class CustomersController {
       );
     }
   }
-
+*/
   @Post('subscribe-to-nearby-drivers')
   @ApiOperation({ summary: 'Subscribe to real-time updates of nearby drivers' })
   @ApiResponse({
