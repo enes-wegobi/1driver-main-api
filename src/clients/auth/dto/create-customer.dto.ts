@@ -13,6 +13,7 @@ import {
 import { Type } from 'class-transformer';
 import { CreateVehicleDto } from './create-vehicle.dto';
 import { Gender } from '../gender.enum';
+import { DeviceInfoDto } from './device-info.dto';
 
 export class CreateCustomerDto {
   @ApiProperty({
@@ -74,4 +75,23 @@ export class CreateCustomerDto {
   @IsOptional()
   @IsEnum(Gender)
   gender?: Gender;
+
+  @ApiProperty({
+    example: 'ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]',
+    description: 'Expo push notification token',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  expoToken?: string;
+
+  @ApiProperty({
+    type: DeviceInfoDto,
+    description: 'Device information',
+    required: false,
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => DeviceInfoDto)
+  deviceInfo?: DeviceInfoDto;
 }

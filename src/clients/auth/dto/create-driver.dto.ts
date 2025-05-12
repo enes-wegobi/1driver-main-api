@@ -2,10 +2,14 @@ import { ApiProperty } from '@nestjs/swagger';
 import {
   IsEmail,
   IsNotEmpty,
+  IsOptional,
   IsString,
   Matches,
   IsPhoneNumber,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
+import { DeviceInfoDto } from './device-info.dto';
 
 export class CreateDriverDto {
   @ApiProperty({
@@ -48,4 +52,23 @@ export class CreateDriverDto {
   @IsNotEmpty()
   @Matches(/^\d{11}$/, { message: 'Identity number must be 11 digits' })
   identityNumber: string;
+
+  @ApiProperty({
+    example: 'ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]',
+    description: 'Expo push notification token',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  expoToken?: string;
+
+  @ApiProperty({
+    type: DeviceInfoDto,
+    description: 'Device information',
+    required: false,
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => DeviceInfoDto)
+  deviceInfo?: DeviceInfoDto;
 }
