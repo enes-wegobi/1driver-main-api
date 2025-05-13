@@ -25,6 +25,15 @@ export class DriversClient {
     return data;
   }
 
+  async findMany(driverIds: string[]): Promise<any[]> {
+    if (!driverIds || driverIds.length === 0) {
+      return [];
+    }
+    
+    const { data } = await this.httpClient.post('/drivers/batch', { driverIds });
+    return data;
+  }
+
   async checkFileExists(
     driverId: string,
     fileType: FileType,

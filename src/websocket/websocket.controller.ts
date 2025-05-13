@@ -102,57 +102,7 @@ export class WebSocketController {
     }
     return location;
   }
-/*
-  @Get('location/nearby')
-  @ApiOperation({ summary: 'Get users near a specific location' })
-  @ApiQuery({
-    name: 'latitude',
-    description: 'Latitude coordinate',
-    required: true,
-  })
-  @ApiQuery({
-    name: 'longitude',
-    description: 'Longitude coordinate',
-    required: true,
-  })
-  @ApiQuery({
-    name: 'radius',
-    description: 'Search radius in kilometers',
-    required: false,
-    default: 5,
-  })
-  @ApiQuery({
-    name: 'userType',
-    description: 'Type of users to find (driver or customer)',
-    required: false,
-    default: 'driver',
-  })
-  @ApiQuery({
-    name: 'onlyAvailable',
-    description: 'Only return available drivers',
-    required: false,
-    default: false,
-  })
-  async getNearbyUsers(
-    @Query('latitude') latitude: number,
-    @Query('longitude') longitude: number,
-    @Query('radius') radius: number = 5,
-    @Query('userType') userType: string = 'driver',
-    @Query('onlyAvailable') onlyAvailable: boolean = false,
-  ) {
-    const users = await this.webSocketService.findNearbyUsers(
-      userType,
-      latitude,
-      longitude,
-      radius,
-      onlyAvailable,
-    );
-    return {
-      total: users.length,
-      users,
-    };
-  }
-*/
+
   @Get('location/nearby-drivers')
   @ApiOperation({ summary: 'Get available drivers near a specific location' })
   @ApiQuery({

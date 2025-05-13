@@ -19,6 +19,11 @@ export class DriversService {
     return this.driversClient.findOne(id);
   }
 
+  async findMany(driverIds: string[]) {
+    this.logger.log(`Fetching information for ${driverIds.length} drivers`);
+    return this.driversClient.findMany(driverIds);
+  }
+
   async checkFileExists(
     driverId: string,
     fileType: FileType,

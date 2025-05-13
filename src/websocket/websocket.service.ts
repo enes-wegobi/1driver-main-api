@@ -80,4 +80,21 @@ export class WebSocketService {
       radius,
     );
   }
+
+  async broadcastTripRequest(event: any, activeDrivers: string[]): Promise<void> {
+    const roomName = `trip-request-${event._id}`;
+    const server = this.getServer();
+    
+    // Add drivers to the room
+    activeDrivers.forEach(driverId => {
+      server.in(`user:${driverId}`).socketsJoin(roomName);
+    });
+    
+    // Broadcast to the room
+    return new Promise<void>((resolve) => {
+      server.to(roomName).emit('trip:request', event);
+      this.logger.log(`Broadcasted trip request to ${activeDrivers.length} active drivers via WebSocket`);
+      resolve();
+    });
+  }
 }

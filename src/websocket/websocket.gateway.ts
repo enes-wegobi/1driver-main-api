@@ -481,9 +481,6 @@ export class WebSocketGateway
     }
   }
 
-  /**
-   * Calculate distance between two coordinates in kilometers using Haversine formula
-   */
   private calculateDistance(
     lat1: number,
     lon1: number,

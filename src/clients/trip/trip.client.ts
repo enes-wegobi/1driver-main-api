@@ -2,10 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { AxiosInstance } from 'axios';
 import { ClientsService } from '../clients.service';
 import { EstimateTripDto } from 'src/modules/trips/dto/estimate-trip.dto';
-import { UpdateTripStatusDto } from 'src/modules/trips/dto/update-trip-status.dto';
 import { NearbyDriversResponseDto } from 'src/modules/trips/dto/nearby-drivers-response.dto';
-import { TripResponseDto, UpdateTripStatusResponseDto } from './dto';
-import { FindNearbyUsersResult } from 'src/redis/dto/nearby-user.dto';
+import { TripResponseDto } from './dto';
 import { UserType } from 'src/common/user-type.enum';
 
 @Injectable()
@@ -20,19 +18,6 @@ export class TripClient {
   async getTripById(tripId: string): Promise<TripResponseDto> {
     this.logger.log(`Getting trip details for ID: ${tripId}`);
     const { data } = await this.httpClient.get(`/trips/${tripId}`);
-    return data;
-  }
-
-  async updateTripStatus(
-    updateDto: UpdateTripStatusDto,
-  ): Promise<UpdateTripStatusResponseDto> {
-    this.logger.log(
-      `Updating trip ${updateDto.tripId} status to ${updateDto.status}`,
-    );
-    const { data } = await this.httpClient.patch(
-      `/trips/${updateDto.tripId}/status`,
-      updateDto,
-    );
     return data;
   }
 

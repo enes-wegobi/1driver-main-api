@@ -12,7 +12,6 @@ export class ExpoNotificationsService implements OnModuleInit {
 
   async onModuleInit() {
     try {
-      // Initialize Expo SDK
       this.expo = new Expo();
       this.expoEnabled = true;
       this.logger.log('Expo SDK initialized successfully');
@@ -21,9 +20,6 @@ export class ExpoNotificationsService implements OnModuleInit {
     }
   }
 
-  /**
-   * Send a notification to a specific user via Expo
-   */
   async sendNotification(
     token: string,
     title: string,
@@ -77,9 +73,6 @@ export class ExpoNotificationsService implements OnModuleInit {
     }
   }
 
-  /**
-   * Send a notification to multiple users via Expo
-   */
   async sendMulticastNotification(
     tokens: string[],
     title: string,
@@ -135,89 +128,37 @@ export class ExpoNotificationsService implements OnModuleInit {
     }
   }
 
-  /**
-   * Check and handle receipts for notifications
-   * This should be called some time after sending notifications to check their delivery status
-   */
-  async checkNotificationReceipts(receiptIds: string[]): Promise<void> {
-    if (!this.expoEnabled) {
-      this.logger.warn('Expo is not enabled. Cannot check receipts.');
-      return;
+  async sendTripRequestNotificationsToInactiveDrivers(
+    driverInfos: any[],
+    event: any,
+  ): Promise<{ success: number; failure: number }> {
+    this.logger.log(`Sending trip request notifications to ${driverInfos.length} inactive drivers`);
+    
+    const validExpoTokens = driverInfos
+      .filter(info => info && info.expoToken)
+      .map(info => info.expoToken);
+    
+    if (validExpoTokens.length === 0) {
+      this.logger.warn('No valid Expo tokens found for inactive drivers');
+      return { success: 0, failure: 0 };
     }
-
-    try {
-      const receiptIdChunks = this.expo.chunkPushNotificationReceiptIds(receiptIds);
-
-      for (const chunk of receiptIdChunks) {
-        const receipts = await this.expo.getPushNotificationReceiptsAsync(chunk);
-
-        // Process each receipt
-        for (const [receiptId, receipt] of Object.entries(receipts)) {
-          if (receipt.status === 'ok') {
-            this.logger.debug(`Receipt ${receiptId}: Notification delivered successfully`);
-          } else if (receipt.status === 'error') {
-            const { details } = receipt;
-            if (details && details.error) {
-              this.logger.error(`Receipt ${receiptId}: ${details.error}`);
-            } else {
-              this.logger.error(`Receipt ${receiptId}: Unknown error`);
-            }
-          }
-        }
-      }
-    } catch (error) {
-      this.logger.error(`Error checking notification receipts: ${error.message}`);
-    }
-  }
-
-  /**
-   * Send a trip request notification to a driver via Expo
-   */
-  async sendTripRequestNotification(
-    driverId: string,
-    expoToken: string,
-    tripId: string,
-    pickupAddress: string,
-    dropoffAddress: string,
-    distanceKm: number,
-    estimatedFare: number,
-  ): Promise<boolean> {
+    
     const title = 'New Trip Request';
-    const body = `New trip request from ${pickupAddress} to ${dropoffAddress}`;
-
+    const body = `New trip request!`;
+    
     const data = {
-      tripId,
+      ...event,
       type: 'trip_request',
-      pickupAddress,
-      dropoffAddress,
-      distanceKm: distanceKm.toString(),
-      estimatedFare: estimatedFare.toString(),
       timestamp: new Date().toISOString(),
     };
-
-    return this.sendNotification(expoToken, title, body, data);
+    
+    const result = await this.sendMulticastNotification(
+      validExpoTokens,
+      title,
+      body,
+      data
+    );    
+    return result;
   }
 
-  /**
-   * Send a trip status update notification via Expo
-   */
-  async sendTripStatusUpdateNotification(
-    userId: string,
-    expoToken: string,
-    tripId: string,
-    status: string,
-    message: string,
-  ): Promise<boolean> {
-    const title = 'Trip Status Update';
-    const body = message;
-
-    const data = {
-      tripId,
-      type: 'trip_status_update',
-      status,
-      timestamp: new Date().toISOString(),
-    };
-
-    return this.sendNotification(expoToken, title, body, data);
-  }
 }

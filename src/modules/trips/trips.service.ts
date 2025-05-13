@@ -5,11 +5,11 @@ import { WebSocketService } from 'src/websocket/websocket.service';
 import { RedisService } from 'src/redis/redis.service';
 import { NearbyDriversResponseDto } from './dto/nearby-drivers-response.dto';
 import { EstimateTripDto } from './dto/estimate-trip.dto';
-import { UpdateTripStatusDto } from './dto/update-trip-status.dto';
 import { TripClient } from 'src/clients/trip/trip.client';
 import { UserType } from 'src/common/user-type.enum';
 import { NearbyDriverDto as RedisNearbyDriverDto, FindNearbyUsersResult } from 'src/redis/dto/nearby-user.dto';
 import { DriverAvailabilityStatus } from 'src/websocket/dto/driver-location.dto';
+import { EventService } from 'src/modules/event/event.service';
 
 @Injectable()
 export class TripsService {
@@ -19,15 +19,11 @@ export class TripsService {
     private readonly webSocketService: WebSocketService,
     private readonly redisService: RedisService,
     private readonly tripClient: TripClient,
+    private readonly eventService: EventService,
   ) {}
 
   async getTripById(tripId: string): Promise<any> {
     const trip = await this.tripClient.getTripById(tripId);
-    return trip;
-  }
-
-  async updateTripStatus(updateDto: UpdateTripStatusDto): Promise<any> {
-    const trip = await this.tripClient.updateTripStatus(updateDto);
     return trip;
   }
 
@@ -109,8 +105,9 @@ export class TripsService {
         driverIds,
       );
 
-      if (result.success) {
-        //TODO send notif to drivers
+      if (result.success && result.trip) {
+        await this.eventService.pushCallDriverEvent(result.trip, driverIds);
+        this.logger.log(`Sent trip request notifications to ${driverIds.length} drivers`);
       }
       return result;
     } catch (error) {
