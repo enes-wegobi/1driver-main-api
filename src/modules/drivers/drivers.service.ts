@@ -153,4 +153,14 @@ export class DriversService {
     this.logger.log(`Deleting photo for driver ${driverId}`);
     return this.driversClient.deletePhoto(driverId);
   }
+
+  async updateExpoToken(driverId: string, expoToken: string): Promise<any> {
+    this.logger.log(`Updating expo token for driver ${driverId}`);
+    return this.driversClient.updateExpoToken(driverId, expoToken);
+  }
+
+  async deleteExpoToken(driverId: string): Promise<any> {
+    this.logger.log(`Deleting expo token for driver ${driverId}`);
+    return this.driversClient.deleteExpoToken(driverId);
+  }
 }

@@ -48,6 +48,7 @@ import {
   SubscribeToNearbyDriversDto,
 } from './dto/nearby-drivers.dto';
 import { UpdatePhotoDto } from 'src/clients/customer/dto/update-photo.dto';
+import { UpdateCustomerExpoTokenDto } from './dto/update-customer-expo-token.dto';
 
 @ApiTags('customer')
 @ApiBearerAuth()
@@ -569,6 +570,74 @@ export class CustomersController {
         error.stack,
       );
       throw error;
+    }
+  }
+
+  @Put('expo-token')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Update customer expo token' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Expo token updated successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Customer not found',
+  })
+  async updateExpoToken(
+    @GetUser() user: IJwtPayload,
+    @Body() updateExpoTokenDto: UpdateCustomerExpoTokenDto,
+  ) {
+    try {
+      this.logger.log(`Updating expo token for user ID: ${user.userId}`);
+      await this.customersService.updateExpoToken(
+        user.userId,
+        updateExpoTokenDto.expoToken,
+      );
+      return {
+        success: true,
+        message: 'Expo token updated successfully',
+      };
+    } catch (error) {
+      this.logger.error(
+        `Error updating expo token: ${error.message}`,
+        error.stack,
+      );
+      throw new HttpException(
+        error.response?.data || 'An error occurred while updating expo token',
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Delete('expo-token')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Delete customer expo token' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Expo token deleted successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Customer not found',
+  })
+  async deleteExpoToken(@GetUser() user: IJwtPayload) {
+    try {
+      this.logger.log(`Deleting expo token for user ID: ${user.userId}`);
+      await this.customersService.deleteExpoToken(user.userId);
+      return {
+        success: true,
+        message: 'Expo token deleted successfully',
+      };
+    } catch (error) {
+      this.logger.error(
+        `Error deleting expo token: ${error.message}`,
+        error.stack,
+      );
+      throw new HttpException(
+        error.response?.data || 'An error occurred while deleting expo token',
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 }

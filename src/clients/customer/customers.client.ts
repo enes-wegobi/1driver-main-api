@@ -128,6 +128,25 @@ export class CustomersClient {
     return data;
   }
 
+  async updateExpoToken(customerId: string, expoToken: string): Promise<any> {
+    this.logger.log(`Updating expo token for customer ${customerId}`);
+    const { data } = await this.httpClient.put(
+      `/customers/${customerId}/expo-token`,
+      { expoToken },
+    );
+    this.logger.log(`Successfully updated expo token for customer ${customerId}`);
+    return data;
+  }
+
+  async deleteExpoToken(customerId: string): Promise<any> {
+    this.logger.log(`Deleting expo token for customer ${customerId}`);
+    const { data } = await this.httpClient.delete(
+      `/customers/${customerId}/expo-token`,
+    );
+    this.logger.log(`Successfully deleted expo token for customer ${customerId}`);
+    return data;
+  }
+
   async createSupportTicket(
     customerId: string,
     subject: string,

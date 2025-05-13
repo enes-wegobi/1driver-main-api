@@ -1,7 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, IsUUID, IsEnum, IsOptional, ValidateNested } from 'class-validator';
-import { Type } from 'class-transformer';
-import { DeviceInfoDto } from '../../../clients/auth/dto/device-info.dto';
+import { IsNotEmpty, IsString, IsUUID } from 'class-validator';
 
 export class UpdateExpoTokenDto {
   @ApiProperty({
@@ -19,24 +17,4 @@ export class UpdateExpoTokenDto {
   @IsString()
   @IsNotEmpty()
   expoToken: string;
-
-  @ApiProperty({
-    description: 'Device type',
-    example: 'android',
-    enum: ['android', 'ios', 'web'],
-  })
-  @IsString()
-  @IsEnum(['android', 'ios', 'web'])
-  @IsNotEmpty()
-  deviceType: 'android' | 'ios' | 'web';
-
-  @ApiProperty({
-    type: DeviceInfoDto,
-    description: 'Device information',
-    required: false,
-  })
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => DeviceInfoDto)
-  deviceInfo?: DeviceInfoDto;
 }

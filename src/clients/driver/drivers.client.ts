@@ -206,4 +206,23 @@ export class DriversClient {
     this.logger.log(`Successfully deleted photo for driver ${driverId}`);
     return data;
   }
+
+  async updateExpoToken(driverId: string, expoToken: string): Promise<any> {
+    this.logger.log(`Updating expo token for driver ${driverId}`);
+    const { data } = await this.httpClient.put(
+      `/drivers/${driverId}/expo-token`,
+      { expoToken },
+    );
+    this.logger.log(`Successfully updated expo token for driver ${driverId}`);
+    return data;
+  }
+
+  async deleteExpoToken(driverId: string): Promise<any> {
+    this.logger.log(`Deleting expo token for driver ${driverId}`);
+    const { data } = await this.httpClient.delete(
+      `/drivers/${driverId}/expo-token`,
+    );
+    this.logger.log(`Successfully deleted expo token for driver ${driverId}`);
+    return data;
+  }
 }

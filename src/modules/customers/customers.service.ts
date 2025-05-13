@@ -143,4 +143,14 @@ export class CustomersService {
     this.logger.log(`Deleting photo for customer ${customerId}`);
     return this.customersClient.deletePhoto(customerId);
   }
+
+  async updateExpoToken(customerId: string, expoToken: string): Promise<any> {
+    this.logger.log(`Updating expo token for customer ${customerId}`);
+    return this.customersClient.updateExpoToken(customerId, expoToken);
+  }
+
+  async deleteExpoToken(customerId: string): Promise<any> {
+    this.logger.log(`Deleting expo token for customer ${customerId}`);
+    return this.customersClient.deleteExpoToken(customerId);
+  }
 }

@@ -47,18 +47,6 @@ export class ExpoNotificationsController {
       );
     }
 
-    // In a real implementation, you would store the token in a database
-    // For now, we'll just log it
-    this.logger.log(
-      `Updated Expo token for user ${updateExpoTokenDto.userId}: ${
-        updateExpoTokenDto.expoToken
-      } (${updateExpoTokenDto.deviceType}) with device info: ${
-        updateExpoTokenDto.deviceInfo
-          ? JSON.stringify(updateExpoTokenDto.deviceInfo)
-          : 'none'
-      }`,
-    );
-
     return {
       success: true,
       message: 'Expo token updated successfully',

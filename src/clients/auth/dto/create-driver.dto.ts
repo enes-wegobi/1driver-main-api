@@ -9,7 +9,6 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { DeviceInfoDto } from './device-info.dto';
 
 export class CreateDriverDto {
   @ApiProperty({
@@ -45,12 +44,12 @@ export class CreateDriverDto {
   email: string;
 
   @ApiProperty({
-    example: '12345678901',
-    description: 'National identity number (11 digits)',
+    example: '123456789012345',
+    description: 'National identity number (15 digits)',
   })
   @IsString()
   @IsNotEmpty()
-  @Matches(/^\d{11}$/, { message: 'Identity number must be 11 digits' })
+  @Matches(/^\d{15}$/, { message: 'Identity number must be 15 digits' })
   identityNumber: string;
 
   @ApiProperty({
@@ -61,14 +60,4 @@ export class CreateDriverDto {
   @IsOptional()
   @IsString()
   expoToken?: string;
-
-  @ApiProperty({
-    type: DeviceInfoDto,
-    description: 'Device information',
-    required: false,
-  })
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => DeviceInfoDto)
-  deviceInfo?: DeviceInfoDto;
 }

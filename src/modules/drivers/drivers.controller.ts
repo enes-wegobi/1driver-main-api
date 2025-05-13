@@ -44,6 +44,7 @@ import { InitiatePhoneUpdateDto } from 'src/clients/customer/dto/initiate-phone-
 import { CompletePhoneUpdateDto } from 'src/clients/customer/dto/complete-phone-update.dto';
 import { UpdateNotificationPermissionsDto } from 'src/clients/driver/dto/update-notification-permissions.dto';
 import { UpdateDriverProfileDto } from './dto/update-driver-profile.dto';
+import { UpdateDriverExpoTokenDto } from './dto/update-driver-expo-token.dto';
 
 @ApiTags('drivers')
 @ApiBearerAuth()
@@ -670,6 +671,74 @@ export class DriversController {
         error.stack,
       );
       throw error;
+    }
+  }
+
+  @Put('expo-token')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Update driver expo token' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Expo token updated successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Driver not found',
+  })
+  async updateExpoToken(
+    @GetUser() user: IJwtPayload,
+    @Body() updateExpoTokenDto: UpdateDriverExpoTokenDto,
+  ) {
+    try {
+      this.logger.log(`Updating expo token for driver ID: ${user.userId}`);
+      await this.driversService.updateExpoToken(
+        user.userId,
+        updateExpoTokenDto.expoToken,
+      );
+      return {
+        success: true,
+        message: 'Expo token updated successfully',
+      };
+    } catch (error) {
+      this.logger.error(
+        `Error updating expo token: ${error.message}`,
+        error.stack,
+      );
+      throw new HttpException(
+        error.response?.data || 'An error occurred while updating expo token',
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Delete('expo-token')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Delete driver expo token' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Expo token deleted successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Driver not found',
+  })
+  async deleteExpoToken(@GetUser() user: IJwtPayload) {
+    try {
+      this.logger.log(`Deleting expo token for driver ID: ${user.userId}`);
+      await this.driversService.deleteExpoToken(user.userId);
+      return {
+        success: true,
+        message: 'Expo token deleted successfully',
+      };
+    } catch (error) {
+      this.logger.error(
+        `Error deleting expo token: ${error.message}`,
+        error.stack,
+      );
+      throw new HttpException(
+        error.response?.data || 'An error occurred while deleting expo token',
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
     }
   }
 }
