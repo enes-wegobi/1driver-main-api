@@ -14,14 +14,19 @@ import { UserType } from 'src/common/user-type.enum';
 export class RedisService implements OnModuleInit, OnModuleDestroy {
   private client: RedisClientType;
   private readonly logger = new Logger(RedisService.name);
-  private readonly DRIVER_LOCATION_EXPIRY = 900; // 15 minutes
-  private readonly ACTIVE_DRIVER_EXPIRY = 1800; // 30 minutes
-  private readonly ACTIVE_CUSTOMER_EXPIRY = 1800; // 30 minutes
+  private DRIVER_LOCATION_EXPIRY: number;
+  private ACTIVE_DRIVER_EXPIRY: number;
+  private ACTIVE_CUSTOMER_EXPIRY: number;
 
   constructor(private configService: ConfigService) {
     this.client = createClient({
       url: this.configService.get<string>('redis.url'),
     });
+
+    // Initialize expiry times from configuration with defaults
+    this.DRIVER_LOCATION_EXPIRY = this.configService.get<number>('redis.driverLocationExpiry', 900); // Default: 15 minutes
+    this.ACTIVE_DRIVER_EXPIRY = this.configService.get<number>('redis.activeDriverExpiry', 1800); // Default: 30 minutes
+    this.ACTIVE_CUSTOMER_EXPIRY = this.configService.get<number>('redis.activeCustomerExpiry', 1800); // Default: 30 minutes
 
     this.client.on('error', (err) =>
       this.logger.error('Redis Client Error', err),
