@@ -4,12 +4,14 @@ import { ClientsService } from '../clients.service';
 import { FileType } from 'src/modules/drivers/enum/file-type.enum';
 import { NotifyFileUploadedDto } from '../users/dto/notify-file-uploaded.dto';
 import { CreateBankInformationDto } from 'src/modules/drivers/dto/bank-information.dto';
-import { InitiateEmailUpdateDto } from 'src/clients/customer/dto/initiate-email-update.dto';
-import { CompleteEmailUpdateDto } from 'src/clients/customer/dto/complete-email-update.dto';
-import { InitiatePhoneUpdateDto } from 'src/clients/customer/dto/initiate-phone-update.dto';
-import { CompletePhoneUpdateDto } from 'src/clients/customer/dto/complete-phone-update.dto';
 import { UpdateNotificationPermissionsDto } from './dto/update-notification-permissions.dto';
 import { UpdateDriverProfileDto } from 'src/modules/drivers/dto/update-driver-profile.dto';
+import {
+  CompleteEmailUpdateDto,
+  CompletePhoneUpdateDto,
+  InitiateEmailUpdateDto,
+  InitiatePhoneUpdateDto,
+} from '../customer/dto';
 
 @Injectable()
 export class DriversClient {

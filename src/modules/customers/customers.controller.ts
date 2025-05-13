@@ -11,8 +11,6 @@ import {
   HttpException,
   Logger,
   UseGuards,
-  Query,
-  ValidationPipe,
   UseInterceptors,
   UploadedFile,
   BadRequestException,
@@ -24,7 +22,6 @@ import {
   ApiResponse,
   ApiTags,
   ApiBearerAuth,
-  ApiQuery,
   ApiConsumes,
   ApiBody,
 } from '@nestjs/swagger';
@@ -33,22 +30,19 @@ import { CustomersService } from './customers.service';
 import { FileInterceptor } from '@nest-lab/fastify-multer';
 import { S3Service } from 'src/s3/s3.service';
 import { v4 as uuidv4 } from 'uuid';
-import { UpdateCustomerDto } from 'src/clients/customer/dto/update-customer.dto';
-import { InitiateEmailUpdateDto } from 'src/clients/customer/dto/initiate-email-update.dto';
-import { CompleteEmailUpdateDto } from 'src/clients/customer/dto/complete-email-update.dto';
-import { InitiatePhoneUpdateDto } from 'src/clients/customer/dto/initiate-phone-update.dto';
-import { CompletePhoneUpdateDto } from 'src/clients/customer/dto/complete-phone-update.dto';
-import { CreateAddressDto } from 'src/clients/customer/dto/create-address.dto';
 import { GetUser } from 'src/jwt/user.decoretor';
 import { IJwtPayload } from 'src/jwt/jwt-payload.interface';
 import { UpdateNotificationPermissionsDto } from 'src/clients/customer/dto/update-notification-permissions.dto';
-import { NearbyDriversResponseDto } from 'src/modules/trips/dto/nearby-drivers-response.dto';
-import {
-  NearbyDriversQueryDto,
-  SubscribeToNearbyDriversDto,
-} from './dto/nearby-drivers.dto';
-import { UpdatePhotoDto } from 'src/clients/customer/dto/update-photo.dto';
+import { SubscribeToNearbyDriversDto } from './dto/nearby-drivers.dto';
 import { UpdateCustomerExpoTokenDto } from './dto/update-customer-expo-token.dto';
+import {
+  CompleteEmailUpdateDto,
+  CompletePhoneUpdateDto,
+  CreateAddressDto,
+  InitiateEmailUpdateDto,
+  InitiatePhoneUpdateDto,
+  UpdateCustomerDto,
+} from 'src/clients/customer/dto';
 
 @ApiTags('customer')
 @ApiBearerAuth()

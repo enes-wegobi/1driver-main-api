@@ -3,7 +3,6 @@ import { RedisErrors } from 'src/common/redis-errors';
 import { RedisException } from 'src/common/redis.exception';
 import { WebSocketService } from 'src/websocket/websocket.service';
 import { RedisService } from 'src/redis/redis.service';
-import { NearbyDriversResponseDto } from './dto/nearby-drivers-response.dto';
 import { EstimateTripDto } from './dto/estimate-trip.dto';
 import { TripClient } from 'src/clients/trip/trip.client';
 import { UserType } from 'src/common/user-type.enum';
@@ -13,6 +12,7 @@ import {
 } from 'src/redis/dto/nearby-user.dto';
 import { DriverAvailabilityStatus } from 'src/websocket/dto/driver-location.dto';
 import { EventService } from 'src/modules/event/event.service';
+import { NearbyDriversResponseDto } from './dto';
 
 @Injectable()
 export class TripsService {

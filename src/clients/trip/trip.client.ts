@@ -2,9 +2,9 @@ import { Injectable, Logger } from '@nestjs/common';
 import { AxiosInstance } from 'axios';
 import { ClientsService } from '../clients.service';
 import { EstimateTripDto } from 'src/modules/trips/dto/estimate-trip.dto';
-import { NearbyDriversResponseDto } from 'src/modules/trips/dto/nearby-drivers-response.dto';
 import { TripResponseDto } from './dto';
 import { UserType } from 'src/common/user-type.enum';
+import { NearbyDriversResponseDto } from 'src/modules/trips/dto';
 
 @Injectable()
 export class TripClient {

@@ -11,7 +11,7 @@ import { JwtAuthGuard } from 'src/jwt/jwt.guard';
 import { GetUser } from 'src/jwt/user.decoretor';
 import { EstimateTripDto } from './dto/estimate-trip.dto';
 import { IJwtPayload } from 'src/jwt/jwt-payload.interface';
-import { RequestDriverDto } from './dto/request-driver.dto';
+import { RequestDriverDto } from './dto';
 
 @ApiTags('customer-trips')
 @Controller('customer-trips')

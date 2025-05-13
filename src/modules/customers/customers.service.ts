@@ -9,7 +9,6 @@ import { UpdateCustomerDto } from 'src/clients/customer/dto/update-customer.dto'
 import { UpdateNotificationPermissionsDto } from 'src/clients/customer/dto/update-notification-permissions.dto';
 import { WebSocketService } from 'src/websocket/websocket.service';
 import { RedisService } from 'src/redis/redis.service';
-import { NearbyDriversResponseDto } from 'src/modules/trips/dto/nearby-drivers-response.dto';
 
 @Injectable()
 export class CustomersService {
