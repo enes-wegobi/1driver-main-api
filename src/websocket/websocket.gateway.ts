@@ -111,7 +111,7 @@ export class WebSocketGateway
         await this.webSocketService
           .getRedisService()
           .markCustomerAsActive(payload.userId);
-          
+
         client.emit('connection', {
           status: 'connected',
           clientId: clientId,
@@ -142,13 +142,17 @@ export class WebSocketGateway
         await this.webSocketService
           .getRedisService()
           .markDriverAsInactive(userId);
-        this.logger.log(`Driver ${userId} marked as inactive due to disconnect`);
+        this.logger.log(
+          `Driver ${userId} marked as inactive due to disconnect`,
+        );
       } else if (userType === 'customer') {
         // Mark customer as inactive when they disconnect
         await this.webSocketService
           .getRedisService()
           .markCustomerAsInactive(userId);
-        this.logger.log(`Customer ${userId} marked as inactive due to disconnect`);
+        this.logger.log(
+          `Customer ${userId} marked as inactive due to disconnect`,
+        );
       }
     }
 

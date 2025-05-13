@@ -134,7 +134,9 @@ export class CustomersClient {
       `/customers/${customerId}/expo-token`,
       { expoToken },
     );
-    this.logger.log(`Successfully updated expo token for customer ${customerId}`);
+    this.logger.log(
+      `Successfully updated expo token for customer ${customerId}`,
+    );
     return data;
   }
 
@@ -143,7 +145,9 @@ export class CustomersClient {
     const { data } = await this.httpClient.delete(
       `/customers/${customerId}/expo-token`,
     );
-    this.logger.log(`Successfully deleted expo token for customer ${customerId}`);
+    this.logger.log(
+      `Successfully deleted expo token for customer ${customerId}`,
+    );
     return data;
   }
 

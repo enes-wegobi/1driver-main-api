@@ -349,7 +349,7 @@ export class CustomersController {
       );
     }
   }
-/*
+  /*
   @Get('nearby-drivers')
   @ApiOperation({ summary: 'Get nearby available drivers' })
   @ApiQuery({

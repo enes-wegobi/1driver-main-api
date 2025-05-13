@@ -9,11 +9,14 @@ import { CustomersTripsController } from './customer-trip.controller';
 import { EventModule } from 'src/modules/event/event.module';
 
 @Module({
-  imports: [ClientsModule, WebSocketModule, RedisModule, JwtModule, EventModule],
-  controllers: [
-    DriversTripsController,
-    CustomersTripsController,
+  imports: [
+    ClientsModule,
+    WebSocketModule,
+    RedisModule,
+    JwtModule,
+    EventModule,
   ],
+  controllers: [DriversTripsController, CustomersTripsController],
   providers: [TripsService],
   exports: [TripsService],
 })

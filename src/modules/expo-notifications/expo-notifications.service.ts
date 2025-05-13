@@ -1,6 +1,11 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from 'src/config/config.service';
-import { Expo, ExpoPushMessage, ExpoPushTicket, ExpoPushReceipt } from 'expo-server-sdk';
+import {
+  Expo,
+  ExpoPushMessage,
+  ExpoPushTicket,
+  ExpoPushReceipt,
+} from 'expo-server-sdk';
 
 @Injectable()
 export class ExpoNotificationsService implements OnModuleInit {
@@ -58,14 +63,18 @@ export class ExpoNotificationsService implements OnModuleInit {
 
       if (ticket.status === 'error') {
         if (ticket.details && ticket.details.error) {
-          this.logger.error(`Error sending notification: ${ticket.details.error}`);
+          this.logger.error(
+            `Error sending notification: ${ticket.details.error}`,
+          );
         } else {
           this.logger.error('Unknown error sending notification');
         }
         return false;
       }
 
-      this.logger.debug(`Notification sent successfully: ${JSON.stringify(ticket)}`);
+      this.logger.debug(
+        `Notification sent successfully: ${JSON.stringify(ticket)}`,
+      );
       return true;
     } catch (error) {
       this.logger.error(`Error sending notification: ${error.message}`);
@@ -111,8 +120,12 @@ export class ExpoNotificationsService implements OnModuleInit {
       const tickets = await this.expo.sendPushNotificationsAsync(messages);
 
       // Count successes and failures
-      const successCount = tickets.filter((ticket) => ticket.status === 'ok').length;
-      const failureCount = tickets.filter((ticket) => ticket.status === 'error').length;
+      const successCount = tickets.filter(
+        (ticket) => ticket.status === 'ok',
+      ).length;
+      const failureCount = tickets.filter(
+        (ticket) => ticket.status === 'error',
+      ).length;
 
       this.logger.debug(
         `Multicast notification sent: ${successCount} successful, ${failureCount} failed`,
@@ -123,7 +136,9 @@ export class ExpoNotificationsService implements OnModuleInit {
         failure: failureCount,
       };
     } catch (error) {
-      this.logger.error(`Error sending multicast notification: ${error.message}`);
+      this.logger.error(
+        `Error sending multicast notification: ${error.message}`,
+      );
       return { success: 0, failure: tokens.length };
     }
   }
@@ -132,33 +147,34 @@ export class ExpoNotificationsService implements OnModuleInit {
     driverInfos: any[],
     event: any,
   ): Promise<{ success: number; failure: number }> {
-    this.logger.log(`Sending trip request notifications to ${driverInfos.length} inactive drivers`);
-    
+    this.logger.log(
+      `Sending trip request notifications to ${driverInfos.length} inactive drivers`,
+    );
+
     const validExpoTokens = driverInfos
-      .filter(info => info && info.expoToken)
-      .map(info => info.expoToken);
-    
+      .filter((info) => info && info.expoToken)
+      .map((info) => info.expoToken);
+
     if (validExpoTokens.length === 0) {
       this.logger.warn('No valid Expo tokens found for inactive drivers');
       return { success: 0, failure: 0 };
     }
-    
+
     const title = 'New Trip Request';
     const body = `New trip request!`;
-    
+
     const data = {
       ...event,
       type: 'trip_request',
       timestamp: new Date().toISOString(),
     };
-    
+
     const result = await this.sendMulticastNotification(
       validExpoTokens,
       title,
       body,
-      data
-    );    
+      data,
+    );
     return result;
   }
-
 }

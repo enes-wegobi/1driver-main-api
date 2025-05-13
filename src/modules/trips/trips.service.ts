@@ -7,7 +7,10 @@ import { NearbyDriversResponseDto } from './dto/nearby-drivers-response.dto';
 import { EstimateTripDto } from './dto/estimate-trip.dto';
 import { TripClient } from 'src/clients/trip/trip.client';
 import { UserType } from 'src/common/user-type.enum';
-import { NearbyDriverDto as RedisNearbyDriverDto, FindNearbyUsersResult } from 'src/redis/dto/nearby-user.dto';
+import {
+  NearbyDriverDto as RedisNearbyDriverDto,
+  FindNearbyUsersResult,
+} from 'src/redis/dto/nearby-user.dto';
 import { DriverAvailabilityStatus } from 'src/websocket/dto/driver-location.dto';
 import { EventService } from 'src/modules/event/event.service';
 
@@ -84,7 +87,9 @@ export class TripsService {
         );
 
         if (drivers.length > 0) {
-          this.logger.debug(`Found ${drivers.length} drivers within ${radius}km radius`);
+          this.logger.debug(
+            `Found ${drivers.length} drivers within ${radius}km radius`,
+          );
           break;
         }
       }
@@ -107,7 +112,9 @@ export class TripsService {
 
       if (result.success && result.trip) {
         await this.eventService.pushCallDriverEvent(result.trip, driverIds);
-        this.logger.log(`Sent trip request notifications to ${driverIds.length} drivers`);
+        this.logger.log(
+          `Sent trip request notifications to ${driverIds.length} drivers`,
+        );
       }
       return result;
     } catch (error) {

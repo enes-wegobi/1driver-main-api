@@ -29,8 +29,10 @@ export class DriversClient {
     if (!driverIds || driverIds.length === 0) {
       return [];
     }
-    
-    const { data } = await this.httpClient.post('/drivers/batch', { driverIds });
+
+    const { data } = await this.httpClient.post('/drivers/batch', {
+      driverIds,
+    });
     return data;
   }
 

@@ -268,28 +268,34 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async checkDriversActiveStatus(driverIds: string[]): Promise<{ driverId: string; isActive: boolean }[]> {
+  async checkDriversActiveStatus(
+    driverIds: string[],
+  ): Promise<{ driverId: string; isActive: boolean }[]> {
     try {
       if (driverIds.length === 0) {
         return [];
       }
-      
+
       // Use Redis SMISMEMBER command to check multiple members in a single operation
       const activeStatusArray = await this.client.sendCommand([
-        'SMISMEMBER', 
-        'drivers:active', 
-        ...driverIds
+        'SMISMEMBER',
+        'drivers:active',
+        ...driverIds,
       ]);
-      
+
       // Map results (1 = active, 0 = inactive)
       return driverIds.map((driverId, index) => {
         // Ensure we always return a boolean
-        const isActive = activeStatusArray ? activeStatusArray[index] === 1 : false;
+        const isActive = activeStatusArray
+          ? activeStatusArray[index] === 1
+          : false;
         return { driverId, isActive };
       });
     } catch (error) {
-      this.logger.error(`Error checking drivers active status: ${error.message}`);
-      return driverIds.map(driverId => ({ driverId, isActive: false }));
+      this.logger.error(
+        `Error checking drivers active status: ${error.message}`,
+      );
+      return driverIds.map((driverId) => ({ driverId, isActive: false }));
     }
   }
 
