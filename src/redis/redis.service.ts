@@ -48,6 +48,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
   async storeUserLocation(userId: string, userType: string, locationData: any) {
     try {
+      const pipeline = this.client.multi();
       const key = RedisKeyGenerator.userLocation(userId);
       const data = {
         ...locationData,
@@ -56,15 +57,17 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
         updatedAt: new Date().toISOString(),
       };
 
-      await this.client.set(key, JSON.stringify(data));
-      await this.client.expire(key, this.DRIVER_LOCATION_EXPIRY);
+      pipeline.set(key, JSON.stringify(data));
+      pipeline.expire(key, this.DRIVER_LOCATION_EXPIRY);
 
       const geoKey = RedisKeyGenerator.geoIndex(userType);
-      await this.client.geoAdd(geoKey, {
+      pipeline.geoAdd(geoKey, {
         longitude: locationData.longitude,
         latitude: locationData.latitude,
         member: userId,
       });
+      
+      await pipeline.exec();
 
       // Update active users set based on user type
       if (userType === 'driver') {
@@ -99,13 +102,14 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
   async markDriverAsActive(driverId: string) {
     try {
+      const pipeline = this.client.multi();
       const key = RedisKeyGenerator.driverActive(driverId);
-      await this.client.set(key, new Date().toISOString());
-      await this.client.expire(key, this.ACTIVE_DRIVER_EXPIRY);
-
-      // Add to active drivers set
-      await this.client.sAdd(RedisKeyGenerator.activeDriversSet(), driverId);
-
+      
+      pipeline.set(key, new Date().toISOString());
+      pipeline.expire(key, this.ACTIVE_DRIVER_EXPIRY);
+      pipeline.sAdd(RedisKeyGenerator.activeDriversSet(), driverId);
+      
+      await pipeline.exec();
       return true;
     } catch (error) {
       this.logger.error(
@@ -118,12 +122,14 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
   async markDriverAsInactive(driverId: string) {
     try {
+      const pipeline = this.client.multi();
       const key = RedisKeyGenerator.driverActive(driverId);
-      await this.client.del(key);
-
-      // Remove from active drivers set
-      await this.client.sRem(RedisKeyGenerator.activeDriversSet(), driverId);
-
+      
+      pipeline.del(key);
+      pipeline.sRem(RedisKeyGenerator.activeDriversSet(), driverId);
+      
+      await pipeline.exec();
+      
       // Update availability status to busy when driver becomes inactive
       await this.updateDriverAvailability(
         driverId,
@@ -145,9 +151,14 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     status: DriverAvailabilityStatus,
   ) {
     try {
+      // First set the status key
+      const pipeline1 = this.client.multi();
       const key = RedisKeyGenerator.driverStatus(driverId);
-      await this.client.set(key, status);
-      await this.client.expire(key, this.ACTIVE_DRIVER_EXPIRY);
+      
+      pipeline1.set(key, status);
+      pipeline1.expire(key, this.ACTIVE_DRIVER_EXPIRY);
+      
+      await pipeline1.exec();
 
       // Update the status in the location data as well
       const locationKey = RedisKeyGenerator.userLocation(driverId);
@@ -156,8 +167,13 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       if (locationData) {
         const parsedData = JSON.parse(locationData);
         parsedData.availabilityStatus = status;
-        await this.client.set(locationKey, JSON.stringify(parsedData));
-        await this.client.expire(locationKey, this.DRIVER_LOCATION_EXPIRY);
+        
+        // Use another pipeline for setting the updated location data
+        const pipeline2 = this.client.multi();
+        pipeline2.set(locationKey, JSON.stringify(parsedData));
+        pipeline2.expire(locationKey, this.DRIVER_LOCATION_EXPIRY);
+        
+        await pipeline2.exec();
       }
 
       return true;
@@ -206,13 +222,14 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
   async markCustomerAsActive(customerId: string) {
     try {
+      const pipeline = this.client.multi();
       const key = RedisKeyGenerator.customerActive(customerId);
-      await this.client.set(key, new Date().toISOString());
-      await this.client.expire(key, this.ACTIVE_CUSTOMER_EXPIRY);
-
-      // Add to active customers set
-      await this.client.sAdd(RedisKeyGenerator.activeCustomersSet(), customerId);
-
+      
+      pipeline.set(key, new Date().toISOString());
+      pipeline.expire(key, this.ACTIVE_CUSTOMER_EXPIRY);
+      pipeline.sAdd(RedisKeyGenerator.activeCustomersSet(), customerId);
+      
+      await pipeline.exec();
       return true;
     } catch (error) {
       this.logger.error(
@@ -225,12 +242,13 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
   async markCustomerAsInactive(customerId: string) {
     try {
+      const pipeline = this.client.multi();
       const key = RedisKeyGenerator.customerActive(customerId);
-      await this.client.del(key);
-
-      // Remove from active customers set
-      await this.client.sRem(RedisKeyGenerator.activeCustomersSet(), customerId);
-
+      
+      pipeline.del(key);
+      pipeline.sRem(RedisKeyGenerator.activeCustomersSet(), customerId);
+      
+      await pipeline.exec();
       return true;
     } catch (error) {
       this.logger.error(
