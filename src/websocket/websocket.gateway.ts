@@ -15,7 +15,9 @@ import {
   DriverLocationDto,
   DriverAvailabilityStatus,
 } from './dto/driver-location.dto';
-import { RedisClientType } from 'redis';
+import { DriverStatusService } from 'src/redis/services/driver-status.service';
+import { CustomerStatusService } from 'src/redis/services/customer-status.service';
+import { LocationService } from 'src/redis/services/location.service';
 
 const PING_INTERVAL = 25000;
 const PING_TIMEOUT = 10000;
@@ -38,6 +40,9 @@ export class WebSocketGateway
 
   constructor(
     private readonly webSocketService: WebSocketService,
+    private readonly driverStatusService: DriverStatusService,
+    private readonly customerStatusService: CustomerStatusService,
+    private readonly locationService: LocationService,
     private readonly jwtService: JwtService,
   ) {}
 
@@ -91,14 +96,12 @@ export class WebSocketGateway
 
       // Mark user as active based on user type
       if (userType === 'driver') {
-        await this.webSocketService
-          .getRedisService()
-          .markDriverAsActive(payload.userId);
+        await this.driverStatusService.markDriverAsActive(payload.userId);
 
         // Get current availability status
-        const status = await this.webSocketService
-          .getRedisService()
-          .getDriverAvailability(payload.userId);
+        const status = await this.driverStatusService.getDriverAvailability(
+          payload.userId,
+        );
 
         client.emit('connection', {
           status: 'connected',
@@ -108,9 +111,7 @@ export class WebSocketGateway
           message: 'Connection successful',
         });
       } else if (userType === 'customer') {
-        await this.webSocketService
-          .getRedisService()
-          .markCustomerAsActive(payload.userId);
+        await this.customerStatusService.markCustomerAsActive(payload.userId);
 
         client.emit('connection', {
           status: 'connected',
@@ -139,17 +140,13 @@ export class WebSocketGateway
     if (userId) {
       if (userType === 'driver') {
         // Mark driver as inactive when they disconnect
-        await this.webSocketService
-          .getRedisService()
-          .markDriverAsInactive(userId);
+        await this.driverStatusService.markDriverAsInactive(userId);
         this.logger.log(
           `Driver ${userId} marked as inactive due to disconnect`,
         );
       } else if (userType === 'customer') {
         // Mark customer as inactive when they disconnect
-        await this.webSocketService
-          .getRedisService()
-          .markCustomerAsInactive(userId);
+        await this.customerStatusService.markCustomerAsInactive(userId);
         this.logger.log(
           `Customer ${userId} marked as inactive due to disconnect`,
         );
@@ -169,7 +166,6 @@ export class WebSocketGateway
 
   @SubscribeMessage('updateLocation')
   handleLocationUpdate(client: Socket, payload: LocationDto) {
-    // Client must be connected and authenticated
     const userId = client.data.userId;
     const userType = client.data.userType;
 
@@ -182,10 +178,8 @@ export class WebSocketGateway
       `Location update from ${userType} ${userId}: ${JSON.stringify(payload)}`,
     );
 
-    // Store location to redis
     this.storeUserLocation(userId, userType, payload);
 
-    // If user is in a trip room, broadcast location to the room
     this.broadcastLocationToTripRoom(client, payload);
 
     return { success: true };
@@ -371,9 +365,10 @@ export class WebSocketGateway
     );
 
     try {
-      await this.webSocketService
-        .getRedisService()
-        .updateDriverAvailability(userId, payload.status);
+      await this.driverStatusService.updateDriverAvailability(
+        userId,
+        payload.status,
+      );
 
       return {
         success: true,
@@ -396,116 +391,11 @@ export class WebSocketGateway
     location: LocationDto,
   ) {
     try {
-      // Use Redis service to store location
-      await this.webSocketService
-        .getRedisService()
-        .storeUserLocation(userId, userType, location);
-
-      // If this is a driver, send updates to subscribed clients
-      if (userType === 'driver') {
-        await this.sendDriverLocationUpdatesToSubscribers(userId, location);
-      }
+      await this.locationService.storeUserLocation(userId, userType, location);
     } catch (error) {
       this.logger.error(
         `Error storing location for user ${userId}: ${error.message}`,
       );
     }
-  }
-
-  /**
-   * Send driver location updates to all subscribed clients
-   */
-  private async sendDriverLocationUpdatesToSubscribers(
-    driverId: string,
-    location: LocationDto,
-  ) {
-    try {
-      const redisClient: RedisClientType = this.webSocketService
-        .getRedisService()
-        .getRedisClient();
-
-      // Get driver details
-      const driverLocation = await this.webSocketService
-        .getRedisService()
-        .getUserLocation(driverId);
-      if (!driverLocation) return;
-
-      // Only send updates for available drivers
-      if (
-        driverLocation.availabilityStatus !== DriverAvailabilityStatus.AVAILABLE
-      ) {
-        return;
-      }
-
-      // Get all active subscriptions
-      const subscriptionKeys = await redisClient.keys('subscription:*');
-
-      for (const key of subscriptionKeys) {
-        const subscriptionData = await redisClient.hGetAll(key);
-        if (!subscriptionData) continue;
-
-        const clientId = key.split(':')[1];
-        const subLatitude = parseFloat(subscriptionData.latitude);
-        const subLongitude = parseFloat(subscriptionData.longitude);
-        const subRadius = parseFloat(subscriptionData.radius || '5');
-
-        // Calculate distance between driver and subscription center
-        const distance = this.calculateDistance(
-          subLatitude,
-          subLongitude,
-          location.latitude,
-          location.longitude,
-        );
-
-        // If driver is within radius, send update to the client
-        if (distance <= subRadius) {
-          const driverInfo = {
-            driverId,
-            distance,
-            location: {
-              latitude: location.latitude,
-              longitude: location.longitude,
-            },
-            availabilityStatus: driverLocation.availabilityStatus,
-            lastUpdated: new Date().toISOString(),
-          };
-
-          this.server
-            .to(`user:${clientId}`)
-            .emit('nearbyDriverUpdate', driverInfo);
-          this.logger.debug(
-            `Sent driver ${driverId} location update to client ${clientId}`,
-          );
-        }
-      }
-    } catch (error) {
-      this.logger.error(
-        `Error sending driver location updates: ${error.message}`,
-      );
-    }
-  }
-
-  private calculateDistance(
-    lat1: number,
-    lon1: number,
-    lat2: number,
-    lon2: number,
-  ): number {
-    const R = 6371; // Earth radius in kilometers
-    const dLat = this.deg2rad(lat2 - lat1);
-    const dLon = this.deg2rad(lon2 - lon1);
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(this.deg2rad(lat1)) *
-        Math.cos(this.deg2rad(lat2)) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const distance = R * c; // Distance in kilometers
-    return distance;
-  }
-
-  private deg2rad(deg: number): number {
-    return deg * (Math.PI / 180);
   }
 }

@@ -9,5 +9,6 @@ import { S3Module } from 'src/s3/s3.module';
   imports: [ClientsModule, JwtModule, S3Module],
   controllers: [DriversController],
   providers: [DriversService],
+  exports: [DriversService],
 })
 export class DriversModule {}

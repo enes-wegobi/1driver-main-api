@@ -1,6 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Server } from 'socket.io';
-import { UserType } from 'src/common/user-type.enum';
 import { RedisService } from 'src/redis/redis.service';
 
 @Injectable()
@@ -16,10 +15,6 @@ export class WebSocketService {
 
   getServer(): Server {
     return this.server;
-  }
-
-  getRedisService(): RedisService {
-    return this.redisService;
   }
 
   async sendToUser(userId: string, event: string, data: any) {
@@ -41,44 +36,8 @@ export class WebSocketService {
     this.server.to(`type:${userType}`).emit(event, data);
   }
 
-  async sendToDrivers(event: string, data: any) {
-    return this.sendToUserType('driver', event, data);
-  }
-
-  async sendToCustomers(event: string, data: any) {
-    return this.sendToUserType('customer', event, data);
-  }
-
   async getUserLocation(userId: string) {
     return this.redisService.getUserLocation(userId);
-  }
-
-  async findNearbyUsers(
-    userType: UserType,
-    latitude: number,
-    longitude: number,
-    radius: number = 5,
-    onlyAvailable: boolean = false,
-  ) {
-    return this.redisService.findNearbyUsers(
-      userType,
-      latitude,
-      longitude,
-      radius,
-      onlyAvailable,
-    );
-  }
-
-  async findNearbyAvailableDrivers(
-    latitude: number,
-    longitude: number,
-    radius: number = 5,
-  ) {
-    return this.redisService.findNearbyAvailableDrivers(
-      latitude,
-      longitude,
-      radius,
-    );
   }
 
   async broadcastTripRequest(

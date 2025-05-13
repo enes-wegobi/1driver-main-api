@@ -2,7 +2,6 @@ import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { RedisErrors } from 'src/common/redis-errors';
 import { RedisException } from 'src/common/redis.exception';
 import { WebSocketService } from 'src/websocket/websocket.service';
-import { RedisService } from 'src/redis/redis.service';
 import { EstimateTripDto } from './dto/estimate-trip.dto';
 import { TripClient } from 'src/clients/trip/trip.client';
 import { UserType } from 'src/common/user-type.enum';
@@ -13,6 +12,7 @@ import {
 import { DriverAvailabilityStatus } from 'src/websocket/dto/driver-location.dto';
 import { EventService } from 'src/modules/event/event.service';
 import { NearbyDriversResponseDto } from './dto';
+import { NearbySearchService } from 'src/redis/services/nearby-search.service';
 
 @Injectable()
 export class TripsService {
@@ -20,7 +20,7 @@ export class TripsService {
 
   constructor(
     private readonly webSocketService: WebSocketService,
-    private readonly redisService: RedisService,
+    private readonly nearbySearchService: NearbySearchService,
     private readonly tripClient: TripClient,
     private readonly eventService: EventService,
   ) {}
@@ -80,7 +80,7 @@ export class TripsService {
 
       for (const radius of searchRadii) {
         this.logger.debug(`Searching for drivers within ${radius}km radius`);
-        drivers = await this.redisService.findNearbyAvailableDrivers(
+        drivers = await this.nearbySearchService.findNearbyAvailableDrivers(
           lat,
           lon,
           radius,
@@ -137,7 +137,7 @@ export class TripsService {
       `Finding nearby drivers at [${latitude}, ${longitude}] with radius ${radius}km`,
     );
 
-    const drivers = await this.redisService.findNearbyAvailableDrivers(
+    const drivers = await this.nearbySearchService.findNearbyAvailableDrivers(
       latitude,
       longitude,
       radius,
@@ -162,7 +162,7 @@ export class TripsService {
   }
 
   async getNearbyAvailableDrivers(latitude: number, longitude: number) {
-    const drivers = this.redisService.findNearbyUsers(
+    const drivers = this.nearbySearchService.findNearbyUsers(
       UserType.DRIVER,
       latitude,
       longitude,

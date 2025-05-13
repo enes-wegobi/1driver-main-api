@@ -25,9 +25,18 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     });
 
     // Initialize expiry times from configuration with defaults
-    this.DRIVER_LOCATION_EXPIRY = this.configService.get<number>('redis.driverLocationExpiry', 900); // Default: 15 minutes
-    this.ACTIVE_DRIVER_EXPIRY = this.configService.get<number>('redis.activeDriverExpiry', 1800); // Default: 30 minutes
-    this.ACTIVE_CUSTOMER_EXPIRY = this.configService.get<number>('redis.activeCustomerExpiry', 1800); // Default: 30 minutes
+    this.DRIVER_LOCATION_EXPIRY = this.configService.get<number>(
+      'redis.driverLocationExpiry',
+      900,
+    ); // Default: 15 minutes
+    this.ACTIVE_DRIVER_EXPIRY = this.configService.get<number>(
+      'redis.activeDriverExpiry',
+      1800,
+    ); // Default: 30 minutes
+    this.ACTIVE_CUSTOMER_EXPIRY = this.configService.get<number>(
+      'redis.activeCustomerExpiry',
+      1800,
+    ); // Default: 30 minutes
 
     this.client.on('error', (err) =>
       this.logger.error('Redis Client Error', err),
@@ -66,7 +75,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
         latitude: locationData.latitude,
         member: userId,
       });
-      
+
       await pipeline.exec();
 
       // Update active users set based on user type
@@ -104,11 +113,11 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     try {
       const pipeline = this.client.multi();
       const key = RedisKeyGenerator.driverActive(driverId);
-      
+
       pipeline.set(key, new Date().toISOString());
       pipeline.expire(key, this.ACTIVE_DRIVER_EXPIRY);
       pipeline.sAdd(RedisKeyGenerator.activeDriversSet(), driverId);
-      
+
       await pipeline.exec();
       return true;
     } catch (error) {
@@ -124,12 +133,12 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     try {
       const pipeline = this.client.multi();
       const key = RedisKeyGenerator.driverActive(driverId);
-      
+
       pipeline.del(key);
       pipeline.sRem(RedisKeyGenerator.activeDriversSet(), driverId);
-      
+
       await pipeline.exec();
-      
+
       // Update availability status to busy when driver becomes inactive
       await this.updateDriverAvailability(
         driverId,
@@ -154,10 +163,10 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       // First set the status key
       const pipeline1 = this.client.multi();
       const key = RedisKeyGenerator.driverStatus(driverId);
-      
+
       pipeline1.set(key, status);
       pipeline1.expire(key, this.ACTIVE_DRIVER_EXPIRY);
-      
+
       await pipeline1.exec();
 
       // Update the status in the location data as well
@@ -167,12 +176,12 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       if (locationData) {
         const parsedData = JSON.parse(locationData);
         parsedData.availabilityStatus = status;
-        
+
         // Use another pipeline for setting the updated location data
         const pipeline2 = this.client.multi();
         pipeline2.set(locationKey, JSON.stringify(parsedData));
         pipeline2.expire(locationKey, this.DRIVER_LOCATION_EXPIRY);
-        
+
         await pipeline2.exec();
       }
 
@@ -224,11 +233,11 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     try {
       const pipeline = this.client.multi();
       const key = RedisKeyGenerator.customerActive(customerId);
-      
+
       pipeline.set(key, new Date().toISOString());
       pipeline.expire(key, this.ACTIVE_CUSTOMER_EXPIRY);
       pipeline.sAdd(RedisKeyGenerator.activeCustomersSet(), customerId);
-      
+
       await pipeline.exec();
       return true;
     } catch (error) {
@@ -244,10 +253,10 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     try {
       const pipeline = this.client.multi();
       const key = RedisKeyGenerator.customerActive(customerId);
-      
+
       pipeline.del(key);
       pipeline.sRem(RedisKeyGenerator.activeCustomersSet(), customerId);
-      
+
       await pipeline.exec();
       return true;
     } catch (error) {

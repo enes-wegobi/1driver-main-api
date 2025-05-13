@@ -20,6 +20,8 @@ import { WebSocketService } from './websocket.service';
 import { IsNotEmpty, IsObject, IsString, IsEnum } from 'class-validator';
 import { Type } from 'class-transformer';
 import { DriverAvailabilityStatus } from './dto/driver-location.dto';
+import { DriverStatusService } from 'src/redis/services/driver-status.service';
+import { NearbySearchService } from 'src/redis/services/nearby-search.service';
 
 class MessageDataDto {
   @ApiProperty({
@@ -69,7 +71,11 @@ class UpdateDriverAvailabilityDto {
 @ApiTags('websocket')
 @Controller('websocket')
 export class WebSocketController {
-  constructor(private readonly webSocketService: WebSocketService) {}
+  constructor(
+    private readonly webSocketService: WebSocketService,
+    private readonly driverStatusService: DriverStatusService,
+    private readonly nearbySearchService: NearbySearchService,
+  ) {}
 
   @Post('send/user/:userId')
   @ApiOperation({ summary: 'Send a message to a specific user' })
@@ -126,9 +132,11 @@ export class WebSocketController {
     @Query('longitude') longitude: number,
     @Query('radius') radius: number = 5,
   ) {
-    const drivers = await this.webSocketService
-      .getRedisService()
-      .findNearbyAvailableDrivers(latitude, longitude, radius);
+    const drivers = await this.nearbySearchService.findNearbyAvailableDrivers(
+      latitude,
+      longitude,
+      radius,
+    );
     return {
       total: drivers.length,
       drivers,
@@ -138,17 +146,14 @@ export class WebSocketController {
   @Get('drivers/active')
   @ApiOperation({ summary: 'Get all active drivers' })
   async getActiveDrivers() {
-    const driverIds = await this.webSocketService
-      .getRedisService()
-      .getActiveDrivers();
+    const driverIds = await this.driverStatusService.getActiveDrivers();
 
     // Get additional information for each driver
     const drivers = await Promise.all(
       driverIds.map(async (driverId) => {
         const location = await this.webSocketService.getUserLocation(driverId);
-        const status = await this.webSocketService
-          .getRedisService()
-          .getDriverAvailability(driverId);
+        const status =
+          await this.driverStatusService.getDriverAvailability(driverId);
 
         return {
           driverId,
@@ -172,9 +177,10 @@ export class WebSocketController {
     @Body() updateDto: UpdateDriverAvailabilityDto,
   ) {
     try {
-      await this.webSocketService
-        .getRedisService()
-        .updateDriverAvailability(driverId, updateDto.status);
+      await this.driverStatusService.updateDriverAvailability(
+        driverId,
+        updateDto.status,
+      );
 
       // Notify the driver about the status change
       await this.webSocketService.sendToUser(driverId, 'availabilityUpdated', {
@@ -242,9 +248,8 @@ export class WebSocketController {
     const clients = await Promise.all(
       sockets.map(async (socket) => {
         const userId = socket.data.userId;
-        const status = await this.webSocketService
-          .getRedisService()
-          .getDriverAvailability(userId);
+        const status =
+          await this.driverStatusService.getDriverAvailability(userId);
 
         return {
           id: socket.id,

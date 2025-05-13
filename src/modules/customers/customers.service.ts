@@ -7,18 +7,12 @@ import { InitiateEmailUpdateDto } from 'src/clients/customer/dto/initiate-email-
 import { InitiatePhoneUpdateDto } from 'src/clients/customer/dto/initiate-phone-update.dto';
 import { UpdateCustomerDto } from 'src/clients/customer/dto/update-customer.dto';
 import { UpdateNotificationPermissionsDto } from 'src/clients/customer/dto/update-notification-permissions.dto';
-import { WebSocketService } from 'src/websocket/websocket.service';
-import { RedisService } from 'src/redis/redis.service';
 
 @Injectable()
 export class CustomersService {
   private readonly logger = new Logger(CustomersService.name);
 
-  constructor(
-    private readonly customersClient: CustomersClient,
-    private readonly webSocketService: WebSocketService,
-    private readonly redisService: RedisService,
-  ) {}
+  constructor(private readonly customersClient: CustomersClient) {}
 
   async findOne(id: string) {
     return this.customersClient.findOne(id);
@@ -64,73 +58,6 @@ export class CustomersService {
       userId,
       permissionsDto,
     );
-  }
-
-  /**
-   * Find nearby available drivers for a customer
-
-  async findNearbyDrivers(
-    latitude: number,
-    longitude: number,
-    radius: number = 5,
-  ): Promise<NearbyDriversResponseDto> {
-    this.logger.debug(
-      `Finding nearby drivers at [${latitude}, ${longitude}] with radius ${radius}km`,
-    );
-
-    const drivers = await this.redisService.findNearbyAvailableDrivers(
-      latitude,
-      longitude,
-      radius,
-    );
-
-    return {
-      total: drivers.length,
-      drivers: drivers.map((driver) => ({
-        driverId: driver.userId,
-        distance: driver.distance,
-        location: {
-          latitude: driver.coordinates.latitude,
-          longitude: driver.coordinates.longitude,
-        },
-        availabilityStatus: driver.availabilityStatus,
-        lastUpdated: driver.updatedAt,
-      })),
-    };
-  }
-   */
-  /**
-   * Subscribe a customer to nearby driver updates
-   */
-  async subscribeToNearbyDriverUpdates(
-    clientId: string,
-    latitude: number,
-    longitude: number,
-    radius: number = 5,
-  ): Promise<boolean> {
-    // Store the subscription parameters in Redis for later use
-    await this.redisService.getRedisClient().hSet(`subscription:${clientId}`, {
-      latitude: latitude.toString(),
-      longitude: longitude.toString(),
-      radius: radius.toString(),
-      createdAt: new Date().toISOString(),
-    });
-
-    // Set expiration for the subscription data (30 minutes)
-    await this.redisService
-      .getRedisClient()
-      .expire(`subscription:${clientId}`, 1800);
-
-    return true;
-  }
-
-  /**
-   * Unsubscribe a customer from nearby driver updates
-   */
-  async unsubscribeFromNearbyDriverUpdates(clientId: string): Promise<boolean> {
-    // Remove the subscription data from Redis
-    await this.redisService.getRedisClient().del(`subscription:${clientId}`);
-    return true;
   }
 
   async updatePhoto(customerId: string, photoKey: string): Promise<any> {

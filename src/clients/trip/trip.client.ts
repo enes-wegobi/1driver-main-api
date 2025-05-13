@@ -100,7 +100,7 @@ export class TripClient {
       `/trips/${tripId}/request-driver`,
       {
         customerId,
-        drivers,
+        driverIds: drivers,
       },
     );
     return data;

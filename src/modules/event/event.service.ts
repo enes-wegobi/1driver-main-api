@@ -1,9 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { WebSocketService } from 'src/websocket/websocket.service';
-import { RedisService } from 'src/redis/redis.service';
 import { DriversService } from 'src/modules/drivers/drivers.service';
 import { ExpoNotificationsService } from 'src/modules/expo-notifications/expo-notifications.service';
-import { CallDriverEventDto } from './dto/call-driver-event.dto';
+import { DriverStatusService } from 'src/redis/services/driver-status.service';
 
 @Injectable()
 export class EventService {
@@ -11,7 +10,7 @@ export class EventService {
 
   constructor(
     private readonly webSocketService: WebSocketService,
-    private readonly redisService: RedisService,
+    private readonly driverStatusService: DriverStatusService,
     private readonly driversService: DriversService,
     private readonly expoNotificationsService: ExpoNotificationsService,
   ) {}
@@ -39,7 +38,7 @@ export class EventService {
   async pushCallDriverEvent(event: any, driverIds: string[]): Promise<void> {
     try {
       const driversStatus =
-        await this.redisService.checkDriversActiveStatus(driverIds);
+        await this.driverStatusService.checkDriversActiveStatus(driverIds);
 
       const { activeDrivers, inactiveDrivers } =
         this.categorizeDriversByStatus(driversStatus);
