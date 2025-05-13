@@ -21,6 +21,10 @@ export class ConfigService {
     return this.configService.get<string>('jwt.secret', 'supersecret');
   }
 
+  get jwtExpiresIn(): number {
+    return this.configService.get<number>('jwt.expiresIn', 36000);
+  }
+
   get redisUrl(): string {
     return this.configService.get<string>(
       'redis.url',
