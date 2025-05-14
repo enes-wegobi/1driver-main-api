@@ -46,19 +46,16 @@ export class WebSocketService {
     activeDrivers: string[],
     eventType: EventType = EventType.TRIP_REQUEST,
   ): Promise<void> {
-    const roomName = `event-${event._id}`;
     const server = this.getServer();
 
-    // Add drivers to the room
-    activeDrivers.forEach((driverId) => {
-      server.in(`user:${driverId}`).socketsJoin(roomName);
-    });
-
-    // Broadcast to the room
+    // Send message to each driver individually
     return new Promise<void>((resolve) => {
-      server.to(roomName).emit(eventType, event);
+      activeDrivers.forEach((driverId) => {
+        server.to(`user:${driverId}`).emit(eventType, event);
+      });
+      
       this.logger.log(
-        `Broadcasted ${eventType} to ${activeDrivers.length} active drivers via WebSocket`,
+        `Sent ${eventType} to ${activeDrivers.length} active drivers via WebSocket`,
       );
       resolve();
     });
