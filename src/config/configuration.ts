@@ -2,6 +2,7 @@ export default () => ({
   port: parseInt(process.env.PORT || '3000', 10),
   host: process.env.HOST || '0.0.0.0',
   corsOrigins: process.env.CORS_ORIGINS || '*',
+  googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY,
   services: {
     users: {
       url: process.env.USERS_SERVICE_URL || 'http://localhost:3001',

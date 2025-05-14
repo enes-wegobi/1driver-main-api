@@ -23,23 +23,29 @@ export class DriversTripsController {
     @GetUser() user: IJwtPayload,
   ) {
     const result = await this.tripsService.approveTrip(tripId, user.userId);
-    
+
     if (result.success && result.trip) {
       const remainingDriverIds = result.trip.calledDriverIds.filter(
-        (driverId) => !result.trip.rejectedDriverIds.includes(driverId)
+        (driverId) => !result.trip.rejectedDriverIds.includes(driverId),
       );
 
       if (remainingDriverIds.length > 0) {
-        await this.tripsService.notifyTripAlreadyTaken(result.trip, remainingDriverIds);
+        await this.tripsService.notifyTripAlreadyTaken(
+          result.trip,
+          remainingDriverIds,
+        );
       }
-      
+
       // Notify the customer that their trip has been approved
       const customerId = result.trip.customerId;
       if (customerId) {
-        await this.tripsService.notifyCustomerTripApproved(result.trip, customerId);
+        await this.tripsService.notifyCustomerTripApproved(
+          result.trip,
+          customerId,
+        );
       }
     }
-    
+
     return result;
   }
 

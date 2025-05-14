@@ -32,6 +32,13 @@ export class ConfigService {
     );
   }
 
+  get googleMapsApiKey(): string {
+    return this.configService.get<string>(
+      'GOOGLE_MAPS_API_KEY',
+      'googlemapssecretkey',
+    );
+  }
+
   get awsRegion(): string {
     return this.configService.get<string>('aws.region')!;
   }

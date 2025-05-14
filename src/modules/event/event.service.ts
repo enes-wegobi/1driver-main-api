@@ -25,26 +25,36 @@ export class EventService {
   }
 
   async notifyTripAlreadyTaken(trip: any, driverIds: string[]): Promise<void> {
-    await this.publishDriversEvent(trip, driverIds, EventType.TRIP_ALREADY_TAKEN);
+    await this.publishDriversEvent(
+      trip,
+      driverIds,
+      EventType.TRIP_ALREADY_TAKEN,
+    );
   }
 
-  async notifyCustomerTripApproved(trip: any, customerId: string): Promise<void> {
+  async notifyCustomerTripApproved(
+    trip: any,
+    customerId: string,
+  ): Promise<void> {
     try {
-      const isActive = await this.customerStatusService.isCustomerActive(customerId);
-      
+      const isActive =
+        await this.customerStatusService.isCustomerActive(customerId);
+
       if (isActive) {
         // Send WebSocket notification to active customer
         await this.webSocketService.sendToUser(
           customerId,
           EventType.TRIP_ACCEPTED,
-          trip
+          trip,
         );
-        this.logger.log(`Sent trip approval WebSocket notification to active customer ${customerId}`);
+        this.logger.log(
+          `Sent trip approval WebSocket notification to active customer ${customerId}`,
+        );
       } else {
         // Send push notification to inactive customer
         // We'll need to get the customer's info to get their Expo token
         const customerInfo = await this.customersService.findOne(customerId);
-        
+
         if (customerInfo && customerInfo.expoToken) {
           const result = await this.expoNotificationsService.sendNotification(
             customerInfo.expoToken,
@@ -54,18 +64,20 @@ export class EventService {
               ...trip,
               type: EventType.TRIP_ACCEPTED,
               timestamp: new Date().toISOString(),
-            }
+            },
           );
-          
+
           this.logger.log(
-            `Sent trip approval push notification to inactive customer ${customerId}: ${result ? 'success' : 'failed'}`
+            `Sent trip approval push notification to inactive customer ${customerId}: ${result ? 'success' : 'failed'}`,
           );
         } else {
           this.logger.warn(`No Expo token found for customer ${customerId}`);
         }
       }
     } catch (error) {
-      this.logger.error(`Error in notifyCustomerTripApproved: ${error.message}`);
+      this.logger.error(
+        `Error in notifyCustomerTripApproved: ${error.message}`,
+      );
     }
   }
 
@@ -89,7 +101,11 @@ export class EventService {
     );
   }
 
-  async publishDriversEvent(event: any, driverIds: string[], eventType: EventType = EventType.TRIP_REQUEST): Promise<void> {
+  async publishDriversEvent(
+    event: any,
+    driverIds: string[],
+    eventType: EventType = EventType.TRIP_REQUEST,
+  ): Promise<void> {
     try {
       const driversStatus =
         await this.driverStatusService.checkDriversActiveStatus(driverIds);
@@ -101,7 +117,11 @@ export class EventService {
 
       if (activeDrivers.length > 0) {
         promises.push(
-          this.webSocketService.broadcastTripRequest(event, activeDrivers, eventType),
+          this.webSocketService.broadcastTripRequest(
+            event,
+            activeDrivers,
+            eventType,
+          ),
         );
       }
 

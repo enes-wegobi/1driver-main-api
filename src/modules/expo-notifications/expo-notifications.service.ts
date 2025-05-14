@@ -165,7 +165,7 @@ export class ExpoNotificationsService implements OnModuleInit {
     // Determine title and body based on event type
     let title = 'New Notification';
     let body = 'You have a new notification';
-    
+
     if (eventType === EventType.TRIP_REQUEST) {
       title = 'New Trip Request';
       body = 'New trip request!';
