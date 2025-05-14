@@ -19,5 +19,6 @@ import { SupportTicketsModule } from 'src/modules/support-tickets/support-ticket
   ],
   controllers: [CustomersController],
   providers: [CustomersService],
+  exports: [CustomersService],
 })
 export class CustomersModule {}

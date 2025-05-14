@@ -40,6 +40,36 @@ export class TripsService {
     return trip;
   }
 
+  async approveTrip(tripId: string, driverId: string): Promise<any> {
+    try {
+      this.logger.log(`Driver ${driverId} approving trip ${tripId}`);
+      return await this.tripClient.approveTrip(tripId, driverId);
+    } catch (error) {
+      this.logger.error(`Error approving trip: ${error.message}`);
+      throw new BadRequestException(
+        error.response?.data?.message || 'Failed to approve trip',
+      );
+    }
+  }
+
+  async notifyTripAlreadyTaken(trip: any, driverIds: string[]): Promise<void> {
+    try {
+      this.logger.log(`Notifying ${driverIds.length} drivers that trip ${trip._id || trip.id} has been taken`);
+      await this.eventService.notifyTripAlreadyTaken(trip, driverIds);
+    } catch (error) {
+      this.logger.error(`Error notifying drivers: ${error.message}`);
+    }
+  }
+
+  async notifyCustomerTripApproved(trip: any, customerId: string): Promise<void> {
+    try {
+      this.logger.log(`Notifying customer ${customerId} that trip ${trip._id || trip.id} has been approved`);
+      await this.eventService.notifyCustomerTripApproved(trip, customerId);
+    } catch (error) {
+      this.logger.error(`Error notifying customer: ${error.message}`);
+    }
+  }
+
   async estimate(
     estimateTripDto: EstimateTripDto,
     customerId: string,
@@ -111,7 +141,7 @@ export class TripsService {
       );
 
       if (result.success && result.trip) {
-        await this.eventService.pushCallDriverEvent(result.trip, driverIds);
+        await this.eventService.notifyNewTripRequest(result.trip, driverIds);
         this.logger.log(
           `Sent trip request notifications to ${driverIds.length} drivers`,
         );

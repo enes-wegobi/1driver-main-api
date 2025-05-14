@@ -29,7 +29,7 @@ export default () => ({
     },
     trip: {
       url: process.env.TRIP_SERVICE_URL || 'http://localhost:3002',
-      timeout: parseInt(process.env.TRIP_SERVICE_TIMEOUT || '5000', 10),
+      timeout: parseInt(process.env.TRIP_SERVICE_TIMEOUT || '50000', 10),
       retryCount: parseInt(process.env.TRIP_SERVICE_RETRY_COUNT || '3', 10),
       retryDelay: parseInt(process.env.TRIP_SERVICE_RETRY_DELAY || '1000', 10),
     },

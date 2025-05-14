@@ -6,6 +6,7 @@ export enum EventType {
   // Trip related events
   TRIP_REQUEST = 'trip:request',
   TRIP_ACCEPTED = 'trip:accepted',
+  TRIP_ALREADY_TAKEN= 'trip:already_taken',
   TRIP_REJECTED = 'trip:rejected',
   TRIP_CANCELED = 'trip:canceled',
   TRIP_COMPLETED = 'trip:completed',

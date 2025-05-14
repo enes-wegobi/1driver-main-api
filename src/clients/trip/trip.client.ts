@@ -88,6 +88,14 @@ export class TripClient {
     return data;
   }
 
+  async approveTrip(tripId: string, driverId: string): Promise<any> {
+    this.logger.log(`Approving trip: ${tripId} by driver: ${driverId}`);
+    const { data } = await this.httpClient.post(`/trips/${tripId}/approve`, {
+      driverId,
+    });
+    return data;
+  }
+
   async requestDriver(
     tripId: string,
     customerId: string,
