@@ -26,7 +26,9 @@ export class DriversTripsController {
 
     if (result.success && result.trip) {
       const remainingDriverIds = result.trip.calledDriverIds.filter(
-        (driverId) => !result.trip.rejectedDriverIds.includes(driverId),
+        (driverId) =>
+          !result.trip.rejectedDriverIds.includes(driverId) &&
+          driverId !== user.userId,
       );
 
       if (remainingDriverIds.length > 0) {
