@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Server } from 'socket.io';
 import { RedisService } from 'src/redis/redis.service';
+import { EventType } from 'src/modules/event/enum/event-type.enum';
 
 @Injectable()
 export class WebSocketService {
@@ -43,8 +44,9 @@ export class WebSocketService {
   async broadcastTripRequest(
     event: any,
     activeDrivers: string[],
+    eventType: EventType = EventType.TRIP_REQUEST,
   ): Promise<void> {
-    const roomName = `trip-request-${event._id}`;
+    const roomName = `event-${event._id}`;
     const server = this.getServer();
 
     // Add drivers to the room
@@ -54,9 +56,9 @@ export class WebSocketService {
 
     // Broadcast to the room
     return new Promise<void>((resolve) => {
-      server.to(roomName).emit('trip:request', event);
+      server.to(roomName).emit(eventType, event);
       this.logger.log(
-        `Broadcasted trip request to ${activeDrivers.length} active drivers via WebSocket`,
+        `Broadcasted ${eventType} to ${activeDrivers.length} active drivers via WebSocket`,
       );
       resolve();
     });

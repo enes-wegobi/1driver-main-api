@@ -6,6 +6,7 @@ import {
   ExpoPushTicket,
   ExpoPushReceipt,
 } from 'expo-server-sdk';
+import { EventType } from 'src/modules/event/enum/event-type.enum';
 
 @Injectable()
 export class ExpoNotificationsService implements OnModuleInit {
@@ -146,9 +147,10 @@ export class ExpoNotificationsService implements OnModuleInit {
   async sendTripRequestNotificationsToInactiveDrivers(
     driverInfos: any[],
     event: any,
+    eventType: EventType = EventType.TRIP_REQUEST,
   ): Promise<{ success: number; failure: number }> {
     this.logger.log(
-      `Sending trip request notifications to ${driverInfos.length} inactive drivers`,
+      `Sending ${eventType} notifications to ${driverInfos.length} inactive drivers`,
     );
 
     const validExpoTokens = driverInfos
@@ -160,12 +162,18 @@ export class ExpoNotificationsService implements OnModuleInit {
       return { success: 0, failure: 0 };
     }
 
-    const title = 'New Trip Request';
-    const body = `New trip request!`;
+    // Determine title and body based on event type
+    let title = 'New Notification';
+    let body = 'You have a new notification';
+    
+    if (eventType === EventType.TRIP_REQUEST) {
+      title = 'New Trip Request';
+      body = 'New trip request!';
+    }
 
     const data = {
       ...event,
-      type: 'trip_request',
+      type: eventType,
       timestamp: new Date().toISOString(),
     };
 

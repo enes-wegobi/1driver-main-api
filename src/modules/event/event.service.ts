@@ -3,6 +3,7 @@ import { WebSocketService } from 'src/websocket/websocket.service';
 import { DriversService } from 'src/modules/drivers/drivers.service';
 import { ExpoNotificationsService } from 'src/modules/expo-notifications/expo-notifications.service';
 import { DriverStatusService } from 'src/redis/services/driver-status.service';
+import { EventType } from './enum/event-type.enum';
 
 @Injectable()
 export class EventService {
@@ -35,7 +36,7 @@ export class EventService {
     );
   }
 
-  async pushCallDriverEvent(event: any, driverIds: string[]): Promise<void> {
+  async publish(event: any, driverIds: string[], eventType: EventType = EventType.TRIP_REQUEST): Promise<void> {
     try {
       const driversStatus =
         await this.driverStatusService.checkDriversActiveStatus(driverIds);
@@ -49,7 +50,7 @@ export class EventService {
       // Send to active drivers via WebSocket
       if (activeDrivers.length > 0) {
         promises.push(
-          this.webSocketService.broadcastTripRequest(event, activeDrivers),
+          this.webSocketService.broadcastTripRequest(event, activeDrivers, eventType),
         );
       }
 
@@ -63,6 +64,7 @@ export class EventService {
           this.expoNotificationsService.sendTripRequestNotificationsToInactiveDrivers(
             driverInfos,
             event,
+            eventType,
           ),
         );
       }
@@ -71,10 +73,10 @@ export class EventService {
       await Promise.all(promises);
 
       this.logger.log(
-        `Completed sending trip requests to ${activeDrivers.length} active and ${inactiveDrivers.length} inactive drivers`,
+        `Completed sending ${eventType} to ${activeDrivers.length} active and ${inactiveDrivers.length} inactive drivers`,
       );
     } catch (error) {
-      this.logger.error(`Error in pushCallDriverEvent: ${error.message}`);
+      this.logger.error(`Error in publish: ${error.message}`);
     }
   }
 }
