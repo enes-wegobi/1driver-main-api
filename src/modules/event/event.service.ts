@@ -29,11 +29,11 @@ export class EventService {
   ) {}
 
   async notifyNewTripRequest(trip: any, driverIds: string[]): Promise<void> {
-    await this.publishDriversEvent(trip, driverIds, EventType.TRIP_REQUEST);
+    await this.notifyDriversWithDistanceInfo(trip, driverIds, EventType.TRIP_REQUEST);
   }
 
   async notifyTripAlreadyTaken(trip: any, driverIds: string[]): Promise<void> {
-    await this.publishDriversEvent1(
+    await this.broadcastEventToDrivers(
       trip,
       driverIds,
       EventType.TRIP_ALREADY_TAKEN,
@@ -183,21 +183,23 @@ export class EventService {
     }
   }
 
-  async publishDriversEvent(
+  /**
+   * Notifies drivers with enhanced trip data including distance information
+   * Sends individual notifications to each driver with personalized distance data
+   */
+  async notifyDriversWithDistanceInfo(
     trip: any,
     driverIds: string[],
     eventType: EventType,
   ): Promise<void> {
     try {
-      const driversStatus =
-        await this.driverStatusService.checkDriversActiveStatus(driverIds);
+      const { activeDrivers, inactiveDrivers } = 
+        await this.getDriversByActiveStatus(driverIds);
+      
       const distanceResults = await this.getDriversDistancesFromPoint(
         { lat: trip.route[0].lat, lon: trip.route[0].lon },
         driverIds,
       );
-
-      const { activeDrivers, inactiveDrivers } =
-        this.categorizeDriversByStatus(driversStatus);
 
       const promises: Promise<any>[] = [];
 
@@ -254,21 +256,22 @@ export class EventService {
         `Completed sending ${eventType} to ${activeDrivers.length} active and ${inactiveDrivers.length} inactive drivers`,
       );
     } catch (error) {
-      this.logger.error(`Error in publish: ${error.message}`);
+      this.logger.error(`Error in notifyDriversWithDistanceInfo: ${error.message}`);
     }
   }
 
-  async publishDriversEvent1(
+  /**
+   * Broadcasts the same event to multiple drivers
+   * Uses efficient broadcasting for active drivers and batch notifications for inactive drivers
+   */
+  async broadcastEventToDrivers(
     event: any,
     driverIds: string[],
     eventType: EventType = EventType.TRIP_REQUEST,
   ): Promise<void> {
     try {
-      const driversStatus =
-        await this.driverStatusService.checkDriversActiveStatus(driverIds);
-
-      const { activeDrivers, inactiveDrivers } =
-        this.categorizeDriversByStatus(driversStatus);
+      const { activeDrivers, inactiveDrivers } = 
+        await this.getDriversByActiveStatus(driverIds);
 
       const promises: Promise<any>[] = [];
 
@@ -297,10 +300,22 @@ export class EventService {
       await Promise.all(promises);
 
       this.logger.log(
-        `Completed sending ${eventType} to ${activeDrivers.length} active and ${inactiveDrivers.length} inactive drivers`,
+        `Completed broadcasting ${eventType} to ${activeDrivers.length} active and ${inactiveDrivers.length} inactive drivers`,
       );
     } catch (error) {
-      this.logger.error(`Error in publish: ${error.message}`);
+      this.logger.error(`Error in broadcastEventToDrivers: ${error.message}`);
     }
+  }
+
+  /**
+   * Gets drivers categorized by their active status
+   */
+  private async getDriversByActiveStatus(driverIds: string[]): Promise<{
+    activeDrivers: string[];
+    inactiveDrivers: string[];
+  }> {
+    const driversStatus =
+      await this.driverStatusService.checkDriversActiveStatus(driverIds);
+    return this.categorizeDriversByStatus(driversStatus);
   }
 }
