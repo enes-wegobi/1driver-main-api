@@ -15,8 +15,8 @@ export class DriversService {
 
   constructor(private readonly driversClient: DriversClient) {}
 
-  async findOne(id: string) {
-    return this.driversClient.findOne(id);
+  async findOne(id: string, fields?: string | string[]) {
+    return this.driversClient.findOne(id, fields);
   }
 
   async findMany(driverIds: string[]) {

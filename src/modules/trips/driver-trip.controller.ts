@@ -10,9 +10,7 @@ import { IJwtPayload } from 'src/jwt/jwt-payload.interface';
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class DriversTripsController {
-  constructor(
-    private readonly tripsService: TripsService,
-  ) {}
+  constructor(private readonly tripsService: TripsService) {}
 
   @Get('active')
   async getTripById(@GetUser() user: IJwtPayload) {
@@ -41,12 +39,11 @@ export class DriversTripsController {
       }
 
       const customerId = result.trip.customerId;
-      if (customerId) {
-        await this.tripsService.notifyCustomerTripApproved(
-          result.trip,
-          customerId,
-        );
-      }
+
+      await this.tripsService.notifyCustomerTripApproved(
+        result.trip,
+        customerId,
+      );
     }
 
     return result;

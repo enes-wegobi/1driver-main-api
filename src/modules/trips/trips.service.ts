@@ -13,6 +13,7 @@ import { DriverAvailabilityStatus } from 'src/websocket/dto/driver-location.dto'
 import { EventService } from 'src/modules/event/event.service';
 import { NearbyDriversResponseDto } from './dto';
 import { NearbySearchService } from 'src/redis/services/nearby-search.service';
+import { CustomersService } from '../customers/customers.service';
 
 @Injectable()
 export class TripsService {
@@ -43,7 +44,8 @@ export class TripsService {
   async approveTrip(tripId: string, driverId: string): Promise<any> {
     try {
       this.logger.log(`Driver ${driverId} approving trip ${tripId}`);
-      return await this.tripClient.approveTrip(tripId, driverId);
+      const result = await this.tripClient.approveTrip(tripId, driverId);
+      return result;
     } catch (error) {
       this.logger.error(`Error approving trip: ${error.message}`);
       throw new BadRequestException(

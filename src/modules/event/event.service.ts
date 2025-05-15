@@ -13,6 +13,12 @@ import {
 } from 'src/clients/maps/maps.interface';
 import { RedisService } from 'src/redis/redis.service';
 import { S3Service } from 'src/s3/s3.service';
+import {
+  CustomerData,
+  customerFields,
+  DriverData,
+  driverFields,
+} from './constants/trip.constant';
 
 @Injectable()
 export class EventService {
@@ -54,6 +60,38 @@ export class EventService {
       const isActive =
         await this.customerStatusService.isCustomerActive(customerId);
 
+      let dirverData: DriverData | null = null;
+      if (trip.driverId) {
+        try {
+          dirverData = await this.driversService.findOne(
+            trip.driverId,
+            driverFields,
+          );
+
+          // Generate photo URL if photoKey exists
+          if (dirverData && dirverData.photoKey) {
+            try {
+              const photoUrl = await this.s3Service.getSignedUrl(
+                dirverData.photoKey,
+              );
+              dirverData.photoUrl = photoUrl;
+              this.logger.log(
+                `Generated photo URL for customer ${trip.customerId}`,
+              );
+            } catch (photoError) {
+              this.logger.error(
+                `Error generating photo URL: ${photoError.message}`,
+              );
+            }
+          }
+
+          this.logger.log(`Fetched customer data for ${trip.customerId}`);
+        } catch (error) {
+          this.logger.error(`Error fetching customer data: ${error.message}`);
+        }
+      }
+
+      trip = { ...trip, driver: dirverData };
       if (isActive) {
         await this.webSocketService.sendToUser(
           customerId,
@@ -64,11 +102,11 @@ export class EventService {
           `Sent trip approval WebSocket notification to active customer ${customerId}`,
         );
       } else {
-        const customerInfo = await this.customersService.findOne(customerId);
-
-        if (customerInfo && customerInfo.expoToken) {
+        const customer = await this.customersService.findOne(customerId);
+        //TODO add driver data to expo notif
+        if (customer && customer.expoToken) {
           const result = await this.expoNotificationsService.sendNotification(
-            customerInfo.expoToken,
+            customer.expoToken,
             'Trip Approved',
             'A driver has approved your trip request!',
             {
@@ -204,29 +242,6 @@ export class EventService {
         driverIds,
       );
 
-      // Fetch customer data with specific fields
-      const customerFields = [
-        'name',
-        'surname',
-        'rate',
-        'vehicle.transmissionType',
-        'vehicle.licensePlate',
-        'photoKey',
-      ];
-
-      // Define customer data interface
-      interface CustomerData {
-        name?: string;
-        surname?: string;
-        rate?: number;
-        vehicle?: {
-          transmissionType?: string;
-          licensePlate?: string;
-        };
-        photoKey?: string;
-        photoUrl?: string;
-      }
-
       let customerData: CustomerData | null = null;
       if (trip.customerId) {
         try {
@@ -270,7 +285,7 @@ export class EventService {
               distance: driverDistanceInfo?.distance,
               duration: driverDistanceInfo?.duration,
             },
-            customer: customerData, // Add customer data to the trip
+            customer: customerData,
           };
 
           promises.push(
