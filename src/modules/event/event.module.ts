@@ -4,6 +4,7 @@ import { RedisModule } from 'src/redis/redis.module';
 import { DriversModule } from 'src/modules/drivers/drivers.module';
 import { CustomersModule } from 'src/modules/customers/customers.module';
 import { ExpoNotificationsModule } from 'src/modules/expo-notifications/expo-notifications.module';
+import { MapsModule } from 'src/clients/maps/maps.module';
 import { EventService } from './event.service';
 
 @Module({
@@ -13,6 +14,7 @@ import { EventService } from './event.service';
     DriversModule,
     CustomersModule,
     ExpoNotificationsModule,
+    MapsModule,
   ],
   providers: [EventService],
   exports: [EventService],

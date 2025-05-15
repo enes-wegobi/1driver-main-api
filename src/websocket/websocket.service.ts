@@ -37,6 +37,22 @@ export class WebSocketService {
     this.server.to(`type:${userType}`).emit(event, data);
   }
 
+  
+  
+  async sendTripRequest(
+    tripData: any,
+    driverId: string,
+    eventType: EventType,
+  ): Promise<void> {
+    const server = this.getServer();
+
+    return new Promise<void>((resolve) => {
+      server.to(`user:${driverId}`).emit(eventType, tripData);
+      this.logger.log(`Sent ${eventType} to driver ${driverId} via WebSocket`);
+      resolve();
+    });
+  }
+
   async getUserLocation(userId: string) {
     return this.redisService.getUserLocation(userId);
   }

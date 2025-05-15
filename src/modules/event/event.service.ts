@@ -6,6 +6,12 @@ import { ExpoNotificationsService } from 'src/modules/expo-notifications/expo-no
 import { DriverStatusService } from 'src/redis/services/driver-status.service';
 import { CustomerStatusService } from 'src/redis/services/customer-status.service';
 import { EventType } from './enum/event-type.enum';
+import { MapsService } from 'src/clients/maps/maps.service';
+import {
+  BatchDistanceRequest,
+  BatchDistanceResponse,
+} from 'src/clients/maps/maps.interface';
+import { RedisService } from 'src/redis/redis.service';
 
 @Injectable()
 export class EventService {
@@ -18,6 +24,8 @@ export class EventService {
     private readonly driversService: DriversService,
     private readonly customersService: CustomersService,
     private readonly expoNotificationsService: ExpoNotificationsService,
+    private readonly mapsService: MapsService,
+    private readonly redisService: RedisService,
   ) {}
 
   async notifyNewTripRequest(trip: any, driverIds: string[]): Promise<void> {
@@ -25,7 +33,7 @@ export class EventService {
   }
 
   async notifyTripAlreadyTaken(trip: any, driverIds: string[]): Promise<void> {
-    await this.publishDriversEvent(
+    await this.publishDriversEvent1(
       trip,
       driverIds,
       EventType.TRIP_ALREADY_TAKEN,
@@ -101,7 +109,157 @@ export class EventService {
     );
   }
 
+  async getDriversDistancesFromPoint(
+    referencePoint: { lat: number; lon: number },
+    driverIds: string[],
+  ): Promise<BatchDistanceResponse> {
+    try {
+      this.logger.log(
+        `Calculating distances from point (${referencePoint.lat},${referencePoint.lon}) to ${driverIds.length} drivers`,
+      );
+
+      // Get all driver locations in a single operation
+      const driverLocationsMap =
+        await this.redisService.getUserLocations(driverIds);
+
+      // Format driver locations for batch distance calculation
+      const driverLocations: Array<{
+        driverId: string;
+        coordinates: {
+          lat: number;
+          lon: number;
+        };
+      }> = [];
+
+      // Process the location map
+      Object.entries(driverLocationsMap).forEach(([driverId, location]) => {
+        if (location && location.latitude && location.longitude) {
+          driverLocations.push({
+            driverId,
+            coordinates: {
+              lat: location.latitude,
+              lon: location.longitude,
+            },
+          });
+        }
+      });
+
+      if (driverLocations.length === 0) {
+        this.logger.warn('No driver locations found');
+        return {
+          success: true,
+          referencePoint,
+          results: {},
+        };
+      }
+
+      // Prepare batch distance request
+      const batchDistanceRequest: BatchDistanceRequest = {
+        referencePoint,
+        driverLocations,
+      };
+
+      // Calculate distances in batch
+      this.logger.log(
+        `Calculating distances to ${driverLocations.length} driver locations`,
+      );
+      const distanceResults =
+        await this.mapsService.getBatchDistances(batchDistanceRequest);
+
+      this.logger.log(
+        `Batch distance calculation completed. Got distances for ${
+          Object.keys(distanceResults.results || {}).length
+        } drivers`,
+      );
+
+      return distanceResults;
+    } catch (error) {
+      this.logger.error(`Error calculating batch distances: ${error.message}`);
+      return {
+        success: false,
+        message: 'Error calculating distances',
+        error: error.message,
+      };
+    }
+  }
+
   async publishDriversEvent(
+    trip: any,
+    driverIds: string[],
+    eventType: EventType,
+  ): Promise<void> {
+    try {
+      const driversStatus =
+        await this.driverStatusService.checkDriversActiveStatus(driverIds);
+      const distanceResults = await this.getDriversDistancesFromPoint(
+        { lat: trip.route[0].lat, lon: trip.route[0].lon },
+        driverIds,
+      );
+
+      const { activeDrivers, inactiveDrivers } =
+        this.categorizeDriversByStatus(driversStatus);
+
+      const promises: Promise<any>[] = [];
+
+      if (activeDrivers.length > 0) {
+        for (const driverId of activeDrivers) {
+          const driverDistanceInfo = distanceResults.results?.[driverId];
+
+          const enhancedTripData = {
+            ...trip,
+            distance: driverDistanceInfo?.distance,
+            duration: driverDistanceInfo?.duration,
+          };
+
+          promises.push(
+            this.webSocketService.sendTripRequest(
+              enhancedTripData,
+              driverId,
+              eventType,
+            ),
+          );
+        }
+      }
+
+      if (inactiveDrivers.length > 0) {
+        const driverInfos = await this.driversService.findMany(inactiveDrivers);
+
+        for (let i = 0; i < inactiveDrivers.length; i++) {
+          const driverId = inactiveDrivers[i];
+          const driverInfo = driverInfos[i];
+
+          if (!driverInfo) continue;
+
+          const driverDistanceInfo = distanceResults.results?.[driverId];
+
+          const enhancedTripData = {
+            ...trip,
+            distance: driverDistanceInfo?.distance,
+            duration: driverDistanceInfo?.duration,
+          };
+
+          promises.push(
+            this.expoNotificationsService.sendTripRequestNotificationToInactiveDriver(
+              driverInfo,
+              enhancedTripData,
+              eventType,
+            ),
+          );
+        }
+      }
+
+      await Promise.all(promises);
+
+      this.logger.log(
+        `Completed sending ${eventType} to ${activeDrivers.length} active and ${inactiveDrivers.length} inactive drivers`,
+      );
+    } catch (error) {
+      this.logger.error(`Error in publish: ${error.message}`);
+    }
+  }
+
+  
+  async publishDriversEvent1(
     event: any,
     driverIds: string[],
     eventType: EventType = EventType.TRIP_REQUEST,

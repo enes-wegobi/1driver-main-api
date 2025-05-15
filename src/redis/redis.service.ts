@@ -109,6 +109,53 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     return locationData ? JSON.parse(locationData) : null;
   }
 
+  async getUserLocations(
+    userIds: string[],
+  ): Promise<{ [userId: string]: any }> {
+    try {
+      if (userIds.length === 0) {
+        return {};
+      }
+
+      // Create a pipeline to fetch all locations in a single operation
+      const pipeline = this.client.multi();
+
+      // Add get commands for each user location
+      for (const userId of userIds) {
+        const key = RedisKeyGenerator.userLocation(userId);
+        pipeline.get(key);
+      }
+
+      // Execute the pipeline
+      const results = await pipeline.exec();
+
+      // Process results into a map of userId -> location data
+      const locationMap: { [userId: string]: any } = {};
+
+      if (results) {
+        results.forEach((result, index) => {
+          const userId = userIds[index];
+          const locationData = result ? result.toString() : null;
+
+          if (locationData) {
+            try {
+              locationMap[userId] = JSON.parse(locationData);
+            } catch (e) {
+              this.logger.error(
+                `Error parsing location data for user ${userId}: ${e.message}`,
+              );
+            }
+          }
+        });
+      }
+
+      return locationMap;
+    } catch (error) {
+      this.logger.error(`Error getting user locations: ${error.message}`);
+      return {};
+    }
+  }
+
   async markDriverAsActive(driverId: string) {
     try {
       const pipeline = this.client.multi();

@@ -9,6 +9,28 @@ export interface RoutePoint {
   name: string;
 }
 
+export interface BatchDistanceRequest {
+  referencePoint: Coordinates;
+  driverLocations: {
+    driverId: string;
+    coordinates: Coordinates;
+  }[];
+}
+
+export interface BatchDistanceResponse {
+  success: boolean;
+  referencePoint?: Coordinates;
+  results?: {
+    [driverId: string]: {
+      coordinates: Coordinates;
+      distance?: number;
+      duration?: number;
+    };
+  };
+  message?: string;
+  error?: string;
+}
+
 export interface DistanceResponse {
   success: boolean;
   origin?: {

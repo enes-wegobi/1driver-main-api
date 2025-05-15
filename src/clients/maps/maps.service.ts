@@ -1,6 +1,12 @@
 import { Injectable, HttpStatus } from '@nestjs/common';
 import axios from 'axios';
-import { Coordinates, DistanceResponse, RoutePoint } from './maps.interface';
+import {
+  BatchDistanceRequest,
+  BatchDistanceResponse,
+  Coordinates,
+  DistanceResponse,
+  RoutePoint,
+} from './maps.interface';
 import { RedisErrors } from 'src/common/redis-errors';
 import { RedisException } from 'src/common/redis.exception';
 import { ConfigService } from 'src/config/config.service';
@@ -134,6 +140,91 @@ export class MapsService {
       }
 
       // Otherwise, wrap it in a TripException
+      throw new RedisException(
+        RedisErrors.INVALID_REQUEST.code,
+        RedisErrors.INVALID_REQUEST.message,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  async getBatchDistances(
+    request: BatchDistanceRequest,
+  ): Promise<BatchDistanceResponse> {
+    try {
+      // Validate input
+      if (
+        !request.referencePoint ||
+        !request.driverLocations ||
+        request.driverLocations.length === 0
+      ) {
+        throw new RedisException(
+          RedisErrors.INVALID_REQUEST.code,
+          RedisErrors.INVALID_REQUEST.message,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      // Format origin coordinates for Google Maps API
+      const originCoords = `${request.referencePoint.lat},${request.referencePoint.lon}`;
+
+      // Format destinations for Google Maps API
+      const destinations = request.driverLocations
+        .map((driver) => `${driver.coordinates.lat},${driver.coordinates.lon}`)
+        .join('|');
+
+      // Prepare request parameters
+      const params: any = {
+        origins: originCoords,
+        destinations: destinations,
+        key: this.configService.googleMapsApiKey,
+      };
+
+      // Send request to Google Distance Matrix API
+      const response = await axios.get(
+        'https://maps.googleapis.com/maps/api/distancematrix/json',
+        { params },
+      );
+
+      // Check API response
+      if (response.data.status !== 'OK') {
+        throw new RedisException(
+          RedisErrors.INVALID_REQUEST.code,
+          RedisErrors.INVALID_REQUEST.message,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      // Process results and map them to driver IDs
+      const results = {};
+      const elements = response.data.rows[0].elements;
+
+      request.driverLocations.forEach((driver, index) => {
+        const element = elements[index];
+
+        if (element.status === 'OK') {
+          results[driver.driverId] = {
+            coordinates: driver.coordinates,
+            distance: element.distance.value,
+            duration: element.duration.value,
+          };
+        }
+      });
+
+      return {
+        success: true,
+        referencePoint: request.referencePoint,
+        results: results,
+      };
+    } catch (error) {
+      console.error('Maps Service Batch Distance Error:', error.message);
+
+      // If it's already a RedisException, rethrow it
+      if (error instanceof RedisException) {
+        throw error;
+      }
+
+      // Otherwise, wrap it in a RedisException
       throw new RedisException(
         RedisErrors.INVALID_REQUEST.code,
         RedisErrors.INVALID_REQUEST.message,

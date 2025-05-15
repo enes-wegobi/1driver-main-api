@@ -32,7 +32,7 @@ export class DriversClient {
       return [];
     }
 
-    const { data } = await this.httpClient.post('/drivers/batch', {
+    const { data } = await this.httpClient.post('/drivers', {
       driverIds,
     });
     return data;

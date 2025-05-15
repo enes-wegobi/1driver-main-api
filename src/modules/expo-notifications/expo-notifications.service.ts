@@ -144,6 +144,39 @@ export class ExpoNotificationsService implements OnModuleInit {
     }
   }
 
+  async sendTripRequestNotificationToInactiveDriver(
+    driverInfo: any, // Single driver info
+    tripData: any, // Customized trip data for this specific driver
+    eventType: EventType = EventType.TRIP_REQUEST,
+  ): Promise<boolean> {
+    this.logger.log(
+      `Sending ${eventType} notification to inactive driver ${driverInfo._id || 'unknown'}`,
+    );
+
+    if (!driverInfo || !driverInfo.expoToken) {
+      this.logger.warn('No valid Expo token found for inactive driver');
+      return false;
+    }
+
+    // Determine title and body based on event type
+    let title = 'New Notification';
+    let body = 'You have a new notification';
+
+    if (eventType === EventType.TRIP_REQUEST) {
+      title = 'New Trip Request';
+      body = 'New trip request!';
+    }
+
+    const data = {
+      ...tripData,
+      type: eventType,
+      timestamp: new Date().toISOString(),
+    };
+
+    return this.sendNotification(driverInfo.expoToken, title, body, data);
+  }
+
+  // Keeping this method for backward compatibility
   async sendTripRequestNotificationsToInactiveDrivers(
     driverInfos: any[],
     event: any,

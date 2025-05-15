@@ -29,9 +29,11 @@ const PING_TIMEOUT = 10000;
     allowedHeaders: ['Authorization', 'Content-Type'],
   },
   namespace: '/',
-  transports: ['websocket', 'polling'],
+  transports: ['websocket'],
   pingInterval: PING_INTERVAL,
   pingTimeout: PING_TIMEOUT,
+  connectTimeout: 30000,
+  maxHttpBufferSize: 1e6,
 })
 export class WebSocketGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
