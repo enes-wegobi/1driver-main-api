@@ -12,6 +12,7 @@ import {
   BatchDistanceResponse,
 } from 'src/clients/maps/maps.interface';
 import { RedisService } from 'src/redis/redis.service';
+import { S3Service } from 'src/s3/s3.service';
 
 @Injectable()
 export class EventService {
@@ -26,10 +27,15 @@ export class EventService {
     private readonly expoNotificationsService: ExpoNotificationsService,
     private readonly mapsService: MapsService,
     private readonly redisService: RedisService,
+    private readonly s3Service: S3Service,
   ) {}
 
   async notifyNewTripRequest(trip: any, driverIds: string[]): Promise<void> {
-    await this.notifyDriversWithDistanceInfo(trip, driverIds, EventType.TRIP_REQUEST);
+    await this.notifyDriversWithDistanceInfo(
+      trip,
+      driverIds,
+      EventType.TRIP_REQUEST,
+    );
   }
 
   async notifyTripAlreadyTaken(trip: any, driverIds: string[]): Promise<void> {
@@ -49,7 +55,6 @@ export class EventService {
         await this.customerStatusService.isCustomerActive(customerId);
 
       if (isActive) {
-        // Send WebSocket notification to active customer
         await this.webSocketService.sendToUser(
           customerId,
           EventType.TRIP_ACCEPTED,
@@ -59,8 +64,6 @@ export class EventService {
           `Sent trip approval WebSocket notification to active customer ${customerId}`,
         );
       } else {
-        // Send push notification to inactive customer
-        // We'll need to get the customer's info to get their Expo token
         const customerInfo = await this.customersService.findOne(customerId);
 
         if (customerInfo && customerInfo.expoToken) {
@@ -193,13 +196,67 @@ export class EventService {
     eventType: EventType,
   ): Promise<void> {
     try {
-      const { activeDrivers, inactiveDrivers } = 
+      const { activeDrivers, inactiveDrivers } =
         await this.getDriversByActiveStatus(driverIds);
-      
+
       const distanceResults = await this.getDriversDistancesFromPoint(
         { lat: trip.route[0].lat, lon: trip.route[0].lon },
         driverIds,
       );
+
+      // Fetch customer data with specific fields
+      const customerFields = [
+        'name',
+        'surname',
+        'rate',
+        'vehicle.transmissionType',
+        'vehicle.licensePlate',
+        'photoKey',
+      ];
+
+      // Define customer data interface
+      interface CustomerData {
+        name?: string;
+        surname?: string;
+        rate?: number;
+        vehicle?: {
+          transmissionType?: string;
+          licensePlate?: string;
+        };
+        photoKey?: string;
+        photoUrl?: string;
+      }
+
+      let customerData: CustomerData | null = null;
+      if (trip.customerId) {
+        try {
+          customerData = await this.customersService.findOne(
+            trip.customerId,
+            customerFields,
+          );
+
+          // Generate photo URL if photoKey exists
+          if (customerData && customerData.photoKey) {
+            try {
+              const photoUrl = await this.s3Service.getSignedUrl(
+                customerData.photoKey,
+              );
+              customerData.photoUrl = photoUrl;
+              this.logger.log(
+                `Generated photo URL for customer ${trip.customerId}`,
+              );
+            } catch (photoError) {
+              this.logger.error(
+                `Error generating photo URL: ${photoError.message}`,
+              );
+            }
+          }
+
+          this.logger.log(`Fetched customer data for ${trip.customerId}`);
+        } catch (error) {
+          this.logger.error(`Error fetching customer data: ${error.message}`);
+        }
+      }
 
       const promises: Promise<any>[] = [];
 
@@ -211,6 +268,7 @@ export class EventService {
             ...trip,
             distance: driverDistanceInfo?.distance,
             duration: driverDistanceInfo?.duration,
+            customer: customerData, // Add customer data to the trip
           };
 
           promises.push(
@@ -238,6 +296,7 @@ export class EventService {
             ...trip,
             distance: driverDistanceInfo?.distance,
             duration: driverDistanceInfo?.duration,
+            customer: customerData, // Add customer data to the trip
           };
 
           promises.push(
@@ -256,7 +315,9 @@ export class EventService {
         `Completed sending ${eventType} to ${activeDrivers.length} active and ${inactiveDrivers.length} inactive drivers`,
       );
     } catch (error) {
-      this.logger.error(`Error in notifyDriversWithDistanceInfo: ${error.message}`);
+      this.logger.error(
+        `Error in notifyDriversWithDistanceInfo: ${error.message}`,
+      );
     }
   }
 
@@ -270,7 +331,7 @@ export class EventService {
     eventType: EventType = EventType.TRIP_REQUEST,
   ): Promise<void> {
     try {
-      const { activeDrivers, inactiveDrivers } = 
+      const { activeDrivers, inactiveDrivers } =
         await this.getDriversByActiveStatus(driverIds);
 
       const promises: Promise<any>[] = [];

@@ -5,6 +5,7 @@ import { DriversModule } from 'src/modules/drivers/drivers.module';
 import { CustomersModule } from 'src/modules/customers/customers.module';
 import { ExpoNotificationsModule } from 'src/modules/expo-notifications/expo-notifications.module';
 import { MapsModule } from 'src/clients/maps/maps.module';
+import { S3Module } from 'src/s3/s3.module';
 import { EventService } from './event.service';
 
 @Module({
@@ -15,6 +16,7 @@ import { EventService } from './event.service';
     CustomersModule,
     ExpoNotificationsModule,
     MapsModule,
+    S3Module,
   ],
   providers: [EventService],
   exports: [EventService],

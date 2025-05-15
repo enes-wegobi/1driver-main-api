@@ -4,8 +4,6 @@ import { TripsService } from './trips.service';
 import { JwtAuthGuard } from 'src/jwt/jwt.guard';
 import { GetUser } from 'src/jwt/user.decoretor';
 import { IJwtPayload } from 'src/jwt/jwt-payload.interface';
-import { EventService } from 'src/modules/event/event.service';
-import { RedisService } from 'src/redis/redis.service';
 
 @ApiTags('driver-trips')
 @Controller('driver-trips')
@@ -14,8 +12,6 @@ import { RedisService } from 'src/redis/redis.service';
 export class DriversTripsController {
   constructor(
     private readonly tripsService: TripsService,
-    private readonly eventService: EventService,
-    private readonly redisService: RedisService,
   ) {}
 
   @Get('active')
@@ -76,5 +72,4 @@ export class DriversTripsController {
 
   @Post('cancel')
   async cancelTrip(@GetUser() user: IJwtPayload) {}
-
 }

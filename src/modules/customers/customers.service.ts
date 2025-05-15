@@ -14,8 +14,8 @@ export class CustomersService {
 
   constructor(private readonly customersClient: CustomersClient) {}
 
-  async findOne(id: string) {
-    return this.customersClient.findOne(id);
+  async findOne(id: string, fields?: string | string[]) {
+    return this.customersClient.findOne(id, fields);
   }
 
   async updateProfile(id: string, profileData: UpdateCustomerDto) {
