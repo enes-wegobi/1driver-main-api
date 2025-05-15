@@ -37,8 +37,6 @@ export class WebSocketService {
     this.server.to(`type:${userType}`).emit(event, data);
   }
 
-  
-  
   async sendTripRequest(
     tripData: any,
     driverId: string,
@@ -69,7 +67,7 @@ export class WebSocketService {
       activeDrivers.forEach((driverId) => {
         server.to(`user:${driverId}`).emit(eventType, event);
       });
-      
+
       this.logger.log(
         `Sent ${eventType} to ${activeDrivers.length} active drivers via WebSocket`,
       );

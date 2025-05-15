@@ -258,7 +258,6 @@ export class EventService {
     }
   }
 
-  
   async publishDriversEvent1(
     event: any,
     driverIds: string[],
