@@ -266,8 +266,10 @@ export class EventService {
 
           const enhancedTripData = {
             ...trip,
-            distance: driverDistanceInfo?.distance,
-            duration: driverDistanceInfo?.duration,
+            driverDistanceInfo: {
+              distance: driverDistanceInfo?.distance,
+              duration: driverDistanceInfo?.duration,
+            },
             customer: customerData, // Add customer data to the trip
           };
 
@@ -294,9 +296,11 @@ export class EventService {
 
           const enhancedTripData = {
             ...trip,
-            distance: driverDistanceInfo?.distance,
-            duration: driverDistanceInfo?.duration,
-            customer: customerData, // Add customer data to the trip
+            driverDistanceInfo: {
+              distance: driverDistanceInfo?.distance,
+              duration: driverDistanceInfo?.duration,
+            },
+            customer: customerData,
           };
 
           promises.push(
