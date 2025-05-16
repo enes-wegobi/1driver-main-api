@@ -128,7 +128,7 @@ export class EventService {
           const result = await this.expoNotificationsService.sendNotification(
             customer.expoToken,
             'No Drivers Available',
-            'We couldn\'t find any available drivers for your trip.',
+            "We couldn't find any available drivers for your trip.",
             {
               ...trip,
               type: EventType.DRIVER_NOT_FOUND,

@@ -130,16 +130,15 @@ export class DriversController {
 
       const fileKey = `${user.userId}/${fileType}/${uuidv4()}-${file.originalname}`;
       await this.s3Service.uploadFileWithKey(file, fileKey);
-
+      const fileUrl = this.s3Service.getPublicUrl(fileKey);
       await this.driversService.notifyFileUploaded(
         user.userId,
         fileType,
-        fileKey,
+        fileUrl,
         file.mimetype,
         file.originalname,
       );
 
-      const fileUrl = await this.s3Service.getSignedUrl(fileKey, 3600);
       return {
         message: 'File uploaded successfully',
         fileKey,
@@ -610,9 +609,8 @@ export class DriversController {
       const fileKey = `profile-photos/drivers/${user.userId}/${uuidv4()}-${file.originalname}`;
 
       await this.s3Service.uploadFileWithKey(file, fileKey);
-      await this.driversService.updatePhoto(user.userId, fileKey);
-
-      const photoUrl = await this.s3Service.getSignedUrl(fileKey, 604800);
+      const photoUrl = this.s3Service.getPublicUrl(fileKey);
+      await this.driversService.updatePhoto(user.userId, photoUrl);
 
       return {
         message: 'Profile photo uploaded successfully',
@@ -642,35 +640,6 @@ export class DriversController {
           'An error occurred while deleting profile photo',
         error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
-    }
-  }
-
-  @Get('photo-url')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Get a fresh signed URL for profile photo' })
-  async getProfilePhotoUrl(@GetUser() user: IJwtPayload) {
-    try {
-      const driver = await this.driversService.findOne(user.userId);
-
-      if (!driver.photoKey) {
-        throw new NotFoundException('Profile photo not found');
-      }
-
-      const photoUrl = await this.s3Service.getSignedUrl(
-        driver.photoKey,
-        604800,
-      );
-
-      return {
-        photoKey: driver.photoKey,
-        photoUrl,
-      };
-    } catch (error) {
-      this.logger.error(
-        `Error getting profile photo URL: ${error.message}`,
-        error.stack,
-      );
-      throw error;
     }
   }
 

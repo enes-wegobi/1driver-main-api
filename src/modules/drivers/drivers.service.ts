@@ -149,9 +149,9 @@ export class DriversService {
     return this.driversClient.updateProfile(driverId, updateProfileDto);
   }
 
-  async updatePhoto(driverId: string, photoKey: string): Promise<any> {
+  async updatePhoto(driverId: string, photoUrl: string): Promise<any> {
     this.logger.log(`Updating photo for driver ${driverId}`);
-    return this.driversClient.updatePhoto(driverId, photoKey);
+    return this.driversClient.updatePhoto(driverId, photoUrl);
   }
 
   async deletePhoto(driverId: string): Promise<any> {

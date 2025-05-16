@@ -55,15 +55,21 @@ export class DriversTripsController {
     @GetUser() user: IJwtPayload,
   ) {
     const result = await this.tripsService.declineTrip(tripId, user.userId);
-    
+
     if (result.success && result.trip) {
       // Check if all called drivers have rejected the trip
-      if (result.trip.calledDriverIds.length === result.trip.rejectedDriverIds.length) {
+      if (
+        result.trip.calledDriverIds.length ===
+        result.trip.rejectedDriverIds.length
+      ) {
         const customerId = result.trip.customer.id;
-        await this.tripsService.notifyCustomerDriverNotFound(result.trip, customerId);
+        await this.tripsService.notifyCustomerDriverNotFound(
+          result.trip,
+          customerId,
+        );
       }
     }
-    
+
     return result;
   }
 

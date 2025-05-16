@@ -22,6 +22,7 @@ const envSchema = z.object({
   SPACES_ACCESS_KEY_ID: z.string().optional(),
   SPACES_SECRET_ACCESS_KEY: z.string().optional(),
   SPACES_BUCKET_NAME: z.string().optional(),
+  SPACES_CND_ENDPOINT: z.string().optional(),
   FIREBASE_PROJECT_ID: z.string().optional(),
   FIREBASE_CLIENT_EMAIL: z.string().optional(),
   FIREBASE_PRIVATE_KEY: z.string().optional(),

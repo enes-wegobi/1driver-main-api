@@ -211,10 +211,10 @@ export class DriversClient {
     return data;
   }
 
-  async updatePhoto(driverId: string, photoKey: string): Promise<any> {
+  async updatePhoto(driverId: string, photoUrl: string): Promise<any> {
     this.logger.log(`Updating photo for driver ${driverId}`);
     const { data } = await this.httpClient.put(`/drivers/${driverId}/photo`, {
-      photoKey,
+      photoUrl,
     });
     this.logger.log(`Successfully updated photo for driver ${driverId}`);
     return data;

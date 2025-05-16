@@ -117,11 +117,11 @@ export class CustomersClient {
     return data;
   }
 
-  async updatePhoto(customerId: string, photoKey: string): Promise<any> {
+  async updatePhoto(customerId: string, photoUrl: string): Promise<any> {
     this.logger.log(`Updating photo for customer ${customerId}`);
     const { data } = await this.httpClient.put(
       `/customers/${customerId}/photo`,
-      { photoKey },
+      { photoUrl },
     );
     this.logger.log(`Successfully updated photo for customer ${customerId}`);
     return data;
@@ -193,7 +193,9 @@ export class CustomersClient {
     const { data } = await this.httpClient.delete(
       `/customers/${customerId}/active-trip`,
     );
-    this.logger.log(`Successfully removed active trip for customer ${customerId}`);
+    this.logger.log(
+      `Successfully removed active trip for customer ${customerId}`,
+    );
     return data;
   }
 }

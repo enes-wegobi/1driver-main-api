@@ -79,12 +79,16 @@ export class TripClient {
   }
 
   async getDriverActiveTrip(driverId: string): Promise<any> {
-    const { data } = await this.httpClient.post(`/trips/active/drivers/${driverId}`);
+    const { data } = await this.httpClient.post(
+      `/trips/active/drivers/${driverId}`,
+    );
     return data;
   }
 
   async getCustomerActiveTrip(customer: string): Promise<any> {
-    const { data } = await this.httpClient.post(`/trips/active/customers/${customer}`);
+    const { data } = await this.httpClient.post(
+      `/trips/active/customers/${customer}`,
+    );
     return data;
   }
 

@@ -54,6 +54,7 @@ export default () => ({
     accessKeyId: process.env.SPACES_ACCESS_KEY_ID,
     secretAccessKey: process.env.SPACES_SECRET_ACCESS_KEY,
     bucketName: process.env.SPACES_BUCKET_NAME,
+    cdnEndpoint: process.env.SPACES_CND_ENDPOINT,
   },
   firebase: {
     projectId: process.env.FIREBASE_PROJECT_ID,

@@ -178,9 +178,10 @@ export class TripsService {
         driverIds,
       );
 
-
       if (result.success && result.trip) {
-        await this.customersClient.setActiveTrip(customerId, {tripId: result.trip._id});
+        await this.customersClient.setActiveTrip(customerId, {
+          tripId: result.trip._id,
+        });
 
         await this.eventService.notifyNewTripRequest(result.trip, driverIds);
         this.logger.log(

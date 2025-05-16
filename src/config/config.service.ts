@@ -63,6 +63,10 @@ export class ConfigService {
     return this.configService.get<string>('spaces.endpoint')!;
   }
 
+  get spacesCdnEndpoint(): string {
+    return this.configService.get<string>('spaces.cdnEndpoint')!;
+  }
+
   get spacesAccessKeyId(): string {
     return this.configService.get<string>('spaces.accessKeyId')!;
   }

@@ -421,11 +421,11 @@ export class CustomersController {
 
     try {
       const fileKey = `profile-photos/customers/${user.userId}/${uuidv4()}-${file.originalname}`;
-
+      const photoUrl = this.s3Service.getPublicUrl(fileKey);
       await this.s3Service.uploadFileWithKey(file, fileKey);
-      await this.customersService.updatePhoto(user.userId, fileKey);
+      await this.customersService.updatePhoto(user.userId, photoUrl);
 
-      const photoUrl = await this.s3Service.getSignedUrl(fileKey, 604800);
+      // Get both signed URL (for backward compatibility) and permanent public URL
 
       return {
         message: 'Profile photo uploaded successfully',
@@ -455,35 +455,6 @@ export class CustomersController {
           'An error occurred while deleting profile photo',
         error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
-    }
-  }
-
-  @Get('photo-url')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Get a fresh signed URL for profile photo' })
-  async getProfilePhotoUrl(@GetUser() user: IJwtPayload) {
-    try {
-      const customer = await this.customersService.findOne(user.userId);
-
-      if (!customer.photoKey) {
-        throw new NotFoundException('Profile photo not found');
-      }
-
-      const photoUrl = await this.s3Service.getSignedUrl(
-        customer.photoKey,
-        604800,
-      );
-
-      return {
-        photoKey: customer.photoKey,
-        photoUrl,
-      };
-    } catch (error) {
-      this.logger.error(
-        `Error getting profile photo URL: ${error.message}`,
-        error.stack,
-      );
-      throw error;
     }
   }
 

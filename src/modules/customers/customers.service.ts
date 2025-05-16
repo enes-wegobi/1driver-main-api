@@ -60,9 +60,9 @@ export class CustomersService {
     );
   }
 
-  async updatePhoto(customerId: string, photoKey: string): Promise<any> {
+  async updatePhoto(customerId: string, photoUrl: string): Promise<any> {
     this.logger.log(`Updating photo for customer ${customerId}`);
-    return this.customersClient.updatePhoto(customerId, photoKey);
+    return this.customersClient.updatePhoto(customerId, photoUrl);
   }
 
   async deletePhoto(customerId: string): Promise<any> {

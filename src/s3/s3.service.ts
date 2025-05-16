@@ -70,7 +70,7 @@ export class S3Service {
         Key: fileKey,
         Body: file.buffer,
         ContentType: file.mimetype,
-        ACL: 'public-read', // Digital Ocean Spaces için gerekli
+        ACL: 'public-read',
       });
 
       await this.s3Client.send(command);
@@ -103,6 +103,22 @@ export class S3Service {
       );
       throw error;
     }
+  }
+
+  /**
+   * Generates a permanent public URL for a file in S3.
+   * @param fileKey The key of the file in S3.
+   * @returns The permanent public URL.
+   */
+  getPublicUrl(fileKey: string): string {
+    this.logger.log(`Generating public URL for file with key: ${fileKey}`);
+    // Using the endpoint from config to construct the URL
+    // Format: https://<bucket-name>.<region>.digitaloceanspaces.com/<file-key>
+    const endpoint = this.configService.spacesCdnEndpoint;
+    // Remove the https:// prefix if it exists
+    const cleanEndpoint = endpoint.replace(/^https?:\/\//, '');
+
+    return `https://${cleanEndpoint}/${fileKey}`;
   }
 
   async deleteFile(fileKey: string): Promise<void> {
