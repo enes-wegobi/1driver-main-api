@@ -14,6 +14,7 @@ import { EventService } from 'src/modules/event/event.service';
 import { NearbyDriversResponseDto } from './dto';
 import { NearbySearchService } from 'src/redis/services/nearby-search.service';
 import { CustomersService } from '../customers/customers.service';
+import { CustomersClient } from 'src/clients/customer/customers.client';
 
 @Injectable()
 export class TripsService {
@@ -24,6 +25,7 @@ export class TripsService {
     private readonly nearbySearchService: NearbySearchService,
     private readonly tripClient: TripClient,
     private readonly eventService: EventService,
+    private readonly customersClient: CustomersClient,
   ) {}
 
   async getTripById(tripId: string): Promise<any> {
@@ -176,7 +178,10 @@ export class TripsService {
         driverIds,
       );
 
+
       if (result.success && result.trip) {
+        await this.customersClient.setActiveTrip(customerId, {tripId: result.trip._id});
+
         await this.eventService.notifyNewTripRequest(result.trip, driverIds);
         this.logger.log(
           `Sent trip request notifications to ${driverIds.length} drivers`,
