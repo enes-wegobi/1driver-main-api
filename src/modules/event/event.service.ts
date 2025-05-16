@@ -13,12 +13,7 @@ import {
 } from 'src/clients/maps/maps.interface';
 import { RedisService } from 'src/redis/redis.service';
 import { S3Service } from 'src/s3/s3.service';
-import {
-  CustomerData,
-  customerFields,
-  DriverData,
-  driverFields,
-} from './constants/trip.constant';
+import { CustomerData, DriverData } from './constants/trip.constant';
 
 @Injectable()
 export class EventService {
@@ -61,33 +56,13 @@ export class EventService {
         await this.customerStatusService.isCustomerActive(customerId);
 
       let dirverData: DriverData | null = null;
-      if (trip.driverId) {
-        try {
-          dirverData = await this.driversService.findOne(
-            trip.driverId,
-            driverFields,
+      if (trip.driver) {
+        dirverData = trip.driver;
+        if (dirverData && dirverData.photoKey) {
+          const photoUrl = await this.s3Service.getSignedUrl(
+            dirverData.photoKey,
           );
-
-          // Generate photo URL if photoKey exists
-          if (dirverData && dirverData.photoKey) {
-            try {
-              const photoUrl = await this.s3Service.getSignedUrl(
-                dirverData.photoKey,
-              );
-              dirverData.photoUrl = photoUrl;
-              this.logger.log(
-                `Generated photo URL for customer ${trip.customerId}`,
-              );
-            } catch (photoError) {
-              this.logger.error(
-                `Error generating photo URL: ${photoError.message}`,
-              );
-            }
-          }
-
-          this.logger.log(`Fetched customer data for ${trip.customerId}`);
-        } catch (error) {
-          this.logger.error(`Error fetching customer data: ${error.message}`);
+          dirverData.photoUrl = photoUrl;
         }
       }
 
@@ -243,33 +218,15 @@ export class EventService {
       );
 
       let customerData: CustomerData | null = null;
-      if (trip.customerId) {
-        try {
-          customerData = await this.customersService.findOne(
-            trip.customerId,
-            customerFields,
+      if (trip.customer) {
+        customerData = trip.customer;
+
+        // Generate photo URL if photoKey exists
+        if (customerData && customerData.photoKey) {
+          const photoUrl = await this.s3Service.getSignedUrl(
+            customerData.photoKey,
           );
-
-          // Generate photo URL if photoKey exists
-          if (customerData && customerData.photoKey) {
-            try {
-              const photoUrl = await this.s3Service.getSignedUrl(
-                customerData.photoKey,
-              );
-              customerData.photoUrl = photoUrl;
-              this.logger.log(
-                `Generated photo URL for customer ${trip.customerId}`,
-              );
-            } catch (photoError) {
-              this.logger.error(
-                `Error generating photo URL: ${photoError.message}`,
-              );
-            }
-          }
-
-          this.logger.log(`Fetched customer data for ${trip.customerId}`);
-        } catch (error) {
-          this.logger.error(`Error fetching customer data: ${error.message}`);
+          customerData.photoUrl = photoUrl || undefined;
         }
       }
 

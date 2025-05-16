@@ -38,7 +38,7 @@ export class DriversTripsController {
         );
       }
 
-      const customerId = result.trip.customerId;
+      const customerId = result.trip.customer.id;
 
       await this.tripsService.notifyCustomerTripApproved(
         result.trip,
