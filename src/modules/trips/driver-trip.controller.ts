@@ -53,7 +53,19 @@ export class DriversTripsController {
   async declineTrip(
     @Param('tripId') tripId: string,
     @GetUser() user: IJwtPayload,
-  ) {}
+  ) {
+    const result = await this.tripsService.declineTrip(tripId, user.userId);
+    
+    if (result.success && result.trip) {
+      // Check if all called drivers have rejected the trip
+      if (result.trip.calledDriverIds.length === result.trip.rejectedDriverIds.length) {
+        const customerId = result.trip.customer.id;
+        await this.tripsService.notifyCustomerDriverNotFound(result.trip, customerId);
+      }
+    }
+    
+    return result;
+  }
 
   @Post('start-pickup')
   async startPickup(@GetUser() user: IJwtPayload) {}

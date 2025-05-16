@@ -105,6 +105,51 @@ export class EventService {
     }
   }
 
+  async notifyCustomerDriverNotFound(
+    trip: any,
+    customerId: string,
+  ): Promise<void> {
+    try {
+      const isActive =
+        await this.customerStatusService.isCustomerActive(customerId);
+
+      if (isActive) {
+        await this.webSocketService.sendToUser(
+          customerId,
+          EventType.DRIVER_NOT_FOUND,
+          trip,
+        );
+        this.logger.log(
+          `Sent driver not found WebSocket notification to active customer ${customerId}`,
+        );
+      } else {
+        const customer = await this.customersService.findOne(customerId);
+        if (customer && customer.expoToken) {
+          const result = await this.expoNotificationsService.sendNotification(
+            customer.expoToken,
+            'No Drivers Available',
+            'We couldn\'t find any available drivers for your trip.',
+            {
+              ...trip,
+              type: EventType.DRIVER_NOT_FOUND,
+              timestamp: new Date().toISOString(),
+            },
+          );
+
+          this.logger.log(
+            `Sent driver not found push notification to inactive customer ${customerId}: ${result ? 'success' : 'failed'}`,
+          );
+        } else {
+          this.logger.warn(`No Expo token found for customer ${customerId}`);
+        }
+      }
+    } catch (error) {
+      this.logger.error(
+        `Error in notifyCustomerDriverNotFound: ${error.message}`,
+      );
+    }
+  }
+
   private categorizeDriversByStatus(driversStatus: any[]): {
     activeDrivers: string[];
     inactiveDrivers: string[];

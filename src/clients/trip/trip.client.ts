@@ -79,18 +79,26 @@ export class TripClient {
   }
 
   async getDriverActiveTrip(driverId: string): Promise<any> {
-    const { data } = await this.httpClient.post(`/trips/active/${driverId}`);
+    const { data } = await this.httpClient.post(`/trips/active/drivers/${driverId}`);
     return data;
   }
 
   async getCustomerActiveTrip(customer: string): Promise<any> {
-    const { data } = await this.httpClient.post(`/trips/active/${customer}`);
+    const { data } = await this.httpClient.post(`/trips/active/customers/${customer}`);
     return data;
   }
 
   async approveTrip(tripId: string, driverId: string): Promise<any> {
     this.logger.log(`Approving trip: ${tripId} by driver: ${driverId}`);
     const { data } = await this.httpClient.post(`/trips/${tripId}/approve`, {
+      driverId,
+    });
+    return data;
+  }
+
+  async declineTrip(tripId: string, driverId: string): Promise<any> {
+    this.logger.log(`Declining trip: ${tripId} by driver: ${driverId}`);
+    const { data } = await this.httpClient.post(`/trips/${tripId}/decline`, {
       driverId,
     });
     return data;

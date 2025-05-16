@@ -12,6 +12,7 @@ export enum EventType {
   TRIP_COMPLETED = 'trip:completed',
   TRIP_STARTED = 'trip:started',
   TRIP_ARRIVED = 'trip:arrived',
+  DRIVER_NOT_FOUND = 'trip:driver_not_found',
 
   // Driver related events
   DRIVER_LOCATION_UPDATED = 'driver:location_updated',

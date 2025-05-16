@@ -54,6 +54,19 @@ export class TripsService {
     }
   }
 
+  async declineTrip(tripId: string, driverId: string): Promise<any> {
+    try {
+      this.logger.log(`Driver ${driverId} declining trip ${tripId}`);
+      const result = await this.tripClient.declineTrip(tripId, driverId);
+      return result;
+    } catch (error) {
+      this.logger.error(`Error declining trip: ${error.message}`);
+      throw new BadRequestException(
+        error.response?.data?.message || 'Failed to decline trip',
+      );
+    }
+  }
+
   async notifyTripAlreadyTaken(trip: any, driverIds: string[]): Promise<void> {
     try {
       this.logger.log(
@@ -74,6 +87,20 @@ export class TripsService {
         `Notifying customer ${customerId} that trip ${trip._id || trip.id} has been approved`,
       );
       await this.eventService.notifyCustomerTripApproved(trip, customerId);
+    } catch (error) {
+      this.logger.error(`Error notifying customer: ${error.message}`);
+    }
+  }
+
+  async notifyCustomerDriverNotFound(
+    trip: any,
+    customerId: string,
+  ): Promise<void> {
+    try {
+      this.logger.log(
+        `Notifying customer ${customerId} that no drivers were found for trip ${trip._id || trip.id}`,
+      );
+      await this.eventService.notifyCustomerDriverNotFound(trip, customerId);
     } catch (error) {
       this.logger.error(`Error notifying customer: ${error.message}`);
     }
