@@ -14,7 +14,7 @@ export class DriversTripsController {
 
   @Get('active')
   async getTripById(@GetUser() user: IJwtPayload) {
-    return await this.tripsService.getCustomerActiveTrip(user.userId);
+    return await this.tripsService.getDriverActiveTrip(user.userId);
   }
 
   @Post('approve/:tripId')
