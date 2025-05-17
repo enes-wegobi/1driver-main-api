@@ -137,4 +137,28 @@ export class TripClient {
     });
     return data;
   }
+
+  async startPickup(tripId: string, driverId: string): Promise<any> {
+    this.logger.log(`Starting pickup for trip: ${tripId} by driver: ${driverId}`);
+    const { data } = await this.httpClient.post(`/trips/${tripId}/start-pickup`, {
+      driverId,
+    });
+    return data;
+  }
+
+  async reachPickup(tripId: string, driverId: string): Promise<any> {
+    this.logger.log(`Driver reached pickup for trip: ${tripId} by driver: ${driverId}`);
+    const { data } = await this.httpClient.post(`/trips/${tripId}/reach-pickup`, {
+      driverId,
+    });
+    return data;
+  }
+
+  async beginTrip(tripId: string, driverId: string): Promise<any> {
+    this.logger.log(`Beginning trip: ${tripId} by driver: ${driverId}`);
+    const { data } = await this.httpClient.post(`/trips/${tripId}/begin-trip`, {
+      driverId,
+    });
+    return data;
+  }
 }

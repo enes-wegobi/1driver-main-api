@@ -11,9 +11,9 @@ import {
 } from 'src/redis/dto/nearby-user.dto';
 import { DriverAvailabilityStatus } from 'src/websocket/dto/driver-location.dto';
 import { EventService } from 'src/modules/event/event.service';
+import { EventType } from 'src/modules/event/enum/event-type.enum';
 import { NearbyDriversResponseDto } from './dto';
 import { NearbySearchService } from 'src/redis/services/nearby-search.service';
-import { CustomersService } from '../customers/customers.service';
 import { CustomersClient } from 'src/clients/customer/customers.client';
 
 @Injectable()
@@ -253,6 +253,90 @@ export class TripsService {
       throw new BadRequestException(
         error.response?.data?.message || 'Failed to cancel trip',
       );
+    }
+  }
+
+  async startPickup(tripId: string, driverId: string): Promise<any> {
+    try {
+      this.logger.log(`Driver ${driverId} starting pickup for trip ${tripId}`);
+      const result = await this.tripClient.startPickup(tripId, driverId);
+      return result;
+    } catch (error) {
+      this.logger.error(`Error starting pickup: ${error.message}`);
+      throw new BadRequestException(
+        error.response?.data?.message || 'Failed to start pickup',
+      );
+    }
+  }
+
+  async reachPickup(tripId: string, driverId: string): Promise<any> {
+    try {
+      this.logger.log(`Driver ${driverId} reached pickup for trip ${tripId}`);
+      const result = await this.tripClient.reachPickup(tripId, driverId);
+      return result;
+    } catch (error) {
+      this.logger.error(`Error reaching pickup: ${error.message}`);
+      throw new BadRequestException(
+        error.response?.data?.message || 'Failed to update pickup reached status',
+      );
+    }
+  }
+
+  async beginTrip(tripId: string, driverId: string): Promise<any> {
+    try {
+      this.logger.log(`Driver ${driverId} beginning trip ${tripId}`);
+      const result = await this.tripClient.beginTrip(tripId, driverId);
+      return result;
+    } catch (error) {
+      this.logger.error(`Error beginning trip: ${error.message}`);
+      throw new BadRequestException(
+        error.response?.data?.message || 'Failed to begin trip',
+      );
+    }
+  }
+
+  async notifyCustomerTripStarted(trip: any, customerId: string): Promise<void> {
+    try {
+      this.logger.log(
+        `Notifying customer ${customerId} that driver is on the way for trip ${trip._id || trip.id}`,
+      );
+      await this.eventService.notifyDriversWithDistanceInfo(
+        trip,
+        [customerId],
+        EventType.TRIP_STARTED,
+      );
+    } catch (error) {
+      this.logger.error(`Error notifying customer: ${error.message}`);
+    }
+  }
+
+  async notifyCustomerDriverArrived(trip: any, customerId: string): Promise<void> {
+    try {
+      this.logger.log(
+        `Notifying customer ${customerId} that driver has arrived for trip ${trip._id || trip.id}`,
+      );
+      await this.eventService.notifyDriversWithDistanceInfo(
+        trip,
+        [customerId],
+        EventType.TRIP_ARRIVED,
+      );
+    } catch (error) {
+      this.logger.error(`Error notifying customer: ${error.message}`);
+    }
+  }
+
+  async notifyCustomerTripBegun(trip: any, customerId: string): Promise<void> {
+    try {
+      this.logger.log(
+        `Notifying customer ${customerId} that trip ${trip._id || trip.id} has begun`,
+      );
+      await this.eventService.notifyDriversWithDistanceInfo(
+        trip,
+        [customerId],
+        EventType.TRIP_STARTED,
+      );
+    } catch (error) {
+      this.logger.error(`Error notifying customer: ${error.message}`);
     }
   }
 }
