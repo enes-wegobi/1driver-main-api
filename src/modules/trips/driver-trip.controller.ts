@@ -25,8 +25,8 @@ export class DriversTripsController {
     return await this.tripsService.getDriverActiveTrip(user.userId);
   }
 
-  @Post('approve/:tripId')
-  async approveTrip(
+  @Post('accept/:tripId')
+  async acceptTrip(
     @Param('tripId') tripId: string,
     @GetUser() user: IJwtPayload,
   ) {
@@ -48,7 +48,7 @@ export class DriversTripsController {
 
       const customerId = result.trip.customer.id;
 
-      await this.tripsService.notifyCustomerTripApproved(
+      await this.tripsService.notifyCustomerDriverAccepted(
         result.trip,
         customerId,
       );
@@ -81,8 +81,8 @@ export class DriversTripsController {
     return result;
   }
 
-  @Post('start-pickup')
-  async startPickup(@GetUser() user: IJwtPayload) {
+  @Post('start-en-route')
+  async startEnRoute(@GetUser() user: IJwtPayload) {
     const { success, trip } = await this.tripsService.getDriverActiveTrip(
       user.userId,
     );
@@ -97,7 +97,7 @@ export class DriversTripsController {
 
     if (result.success && result.trip) {
       const customerId = result.trip.customer.id;
-      await this.tripsService.notifyCustomerTripStarted(
+      await this.tripsService.notifyCustomerDriverEnRoute(
         result.trip,
         customerId,
       );
@@ -106,8 +106,8 @@ export class DriversTripsController {
     return result;
   }
 
-  @Post('reach-pickup')
-  async reachPickup(@GetUser() user: IJwtPayload) {
+  @Post('arrive-at-pickup')
+  async arriveAtPickup(@GetUser() user: IJwtPayload) {
     const { success, trip } = await this.tripsService.getDriverActiveTrip(
       user.userId,
     );
@@ -131,8 +131,8 @@ export class DriversTripsController {
     return result;
   }
 
-  @Post('begin-trip')
-  async beginTrip(@GetUser() user: IJwtPayload) {
+  @Post('start-trip')
+  async startTrip(@GetUser() user: IJwtPayload) {
     const { success, trip } = await this.tripsService.getDriverActiveTrip(
       user.userId,
     );
@@ -147,7 +147,7 @@ export class DriversTripsController {
 
     if (result.success && result.trip) {
       const customerId = result.trip.customer.id;
-      await this.tripsService.notifyCustomerTripBegun(result.trip, customerId);
+      await this.tripsService.notifyCustomerTripStarted(result.trip, customerId);
     }
 
     return result;

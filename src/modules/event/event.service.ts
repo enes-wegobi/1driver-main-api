@@ -35,7 +35,7 @@ export class EventService {
     await this.notifyDriversWithDistanceInfo(
       trip,
       driverIds,
-      EventType.TRIP_REQUEST,
+      EventType.TRIP_REQUESTED,
     );
   }
 
@@ -70,7 +70,7 @@ export class EventService {
             'A driver has approved your trip request!',
             {
               ...trip,
-              type: EventType.TRIP_ACCEPTED,
+              type: EventType.TRIP_DRIVER_ASSIGNED,
               timestamp: new Date().toISOString(),
             },
           );
@@ -100,7 +100,7 @@ export class EventService {
       if (isActive) {
         await this.webSocketService.sendToUser(
           customerId,
-          EventType.DRIVER_NOT_FOUND,
+          EventType.TRIP_DRIVER_NOT_FOUND,
           trip,
         );
         this.logger.log(
@@ -115,7 +115,7 @@ export class EventService {
             "We couldn't find any available drivers for your trip.",
             {
               ...trip,
-              type: EventType.DRIVER_NOT_FOUND,
+              type: EventType.TRIP_DRIVER_NOT_FOUND,
               timestamp: new Date().toISOString(),
             },
           );
@@ -333,7 +333,7 @@ export class EventService {
   async broadcastEventToDrivers(
     event: any,
     driverIds: string[],
-    eventType: EventType = EventType.TRIP_REQUEST,
+    eventType: EventType = EventType.TRIP_REQUESTED,
   ): Promise<void> {
     try {
       const { activeDrivers, inactiveDrivers } =

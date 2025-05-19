@@ -80,7 +80,7 @@ export class TripsService {
     }
   }
 
-  async notifyCustomerTripApproved(
+  async notifyCustomerDriverAccepted(
     trip: any,
     customerId: string,
   ): Promise<void> {
@@ -91,7 +91,7 @@ export class TripsService {
       await this.eventService.notifyCustomer(
         trip,
         customerId,
-        EventType.TRIP_ACCEPTED,
+        EventType.TRIP_DRIVER_ASSIGNED,
       );
     } catch (error) {
       this.logger.error(`Error notifying customer: ${error.message}`);
@@ -300,7 +300,7 @@ export class TripsService {
     }
   }
 
-  async notifyCustomerTripStarted(
+  async notifyCustomerDriverEnRoute(
     trip: any,
     customerId: string,
   ): Promise<void> {
@@ -311,7 +311,7 @@ export class TripsService {
       await this.eventService.notifyCustomer(
         trip,
         customerId,
-        EventType.TRIP_STARTED,
+        EventType.TRIP_DRIVER_EN_ROUTE,
       );
     } catch (error) {
       this.logger.error(`Error notifying customer: ${error.message}`);
@@ -329,14 +329,14 @@ export class TripsService {
       await this.eventService.notifyCustomer(
         trip,
         customerId,
-        EventType.TRIP_ARRIVED,
+        EventType.TRIP_DRIVER_ARRIVED,
       );
     } catch (error) {
       this.logger.error(`Error notifying customer: ${error.message}`);
     }
   }
 
-  async notifyCustomerTripBegun(trip: any, customerId: string): Promise<void> {
+  async notifyCustomerTripStarted(trip: any, customerId: string): Promise<void> {
     try {
       this.logger.log(
         `Notifying customer ${customerId} that trip ${trip._id || trip.id} has begun`,

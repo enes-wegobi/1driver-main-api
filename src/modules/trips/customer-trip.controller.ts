@@ -53,12 +53,12 @@ export class CustomersTripsController {
     };
   }
 
-  @Post('estimate')
+  @Post('create-draft')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Estimate trip fare and duration' })
+  @ApiOperation({ summary: 'Create a draft trip with fare and duration estimate' })
   @ApiBody({ type: EstimateTripDto })
-  async estimate(
+  async createDraft(
     @Body() estimateTripDto: EstimateTripDto,
     @GetUser() user: IJwtPayload,
   ) {

@@ -1,18 +1,14 @@
-/**
- * Enum defining standardized event types used across the application
- * These event types are used for both WebSocket events and Expo push notifications
- */
 export enum EventType {
-  // Trip related events
-  TRIP_REQUEST = 'trip:request',
-  TRIP_ACCEPTED = 'trip:accepted',
+  TRIP_REQUESTED = 'trip:requested',             // TRIP_REQUEST = 'trip:request',
+  TRIP_DRIVER_ASSIGNED = 'trip:driver_assigned', // TRIP_ACCEPTED = 'trip:accepted',
   TRIP_ALREADY_TAKEN = 'trip:already_taken',
   TRIP_REJECTED = 'trip:rejected',
-  TRIP_CANCELED = 'trip:canceled',
+  TRIP_CANCELLED = 'trip:cancelled',
   TRIP_COMPLETED = 'trip:completed',
+  TRIP_DRIVER_EN_ROUTE = 'trip:driver_en_route',
+  TRIP_DRIVER_ARRIVED = 'trip:driver_arrived',
   TRIP_STARTED = 'trip:started',
-  TRIP_ARRIVED = 'trip:arrived',
-  DRIVER_NOT_FOUND = 'trip:driver_not_found',
+  TRIP_DRIVER_NOT_FOUND = 'trip:driver_not_found',
 
   // Driver related events
   DRIVER_LOCATION_UPDATED = 'driver:location_updated',
