@@ -139,18 +139,28 @@ export class TripClient {
   }
 
   async startPickup(tripId: string, driverId: string): Promise<any> {
-    this.logger.log(`Starting pickup for trip: ${tripId} by driver: ${driverId}`);
-    const { data } = await this.httpClient.post(`/trips/${tripId}/start-pickup`, {
-      driverId,
-    });
+    this.logger.log(
+      `Starting pickup for trip: ${tripId} by driver: ${driverId}`,
+    );
+    const { data } = await this.httpClient.post(
+      `/trips/${tripId}/start-pickup`,
+      {
+        driverId,
+      },
+    );
     return data;
   }
 
   async reachPickup(tripId: string, driverId: string): Promise<any> {
-    this.logger.log(`Driver reached pickup for trip: ${tripId} by driver: ${driverId}`);
-    const { data } = await this.httpClient.post(`/trips/${tripId}/reach-pickup`, {
-      driverId,
-    });
+    this.logger.log(
+      `Driver reached pickup for trip: ${tripId} by driver: ${driverId}`,
+    );
+    const { data } = await this.httpClient.post(
+      `/trips/${tripId}/reach-pickup`,
+      {
+        driverId,
+      },
+    );
     return data;
   }
 

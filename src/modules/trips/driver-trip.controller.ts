@@ -1,4 +1,12 @@
-import { Controller, Get, UseGuards, Post, Param, Query, BadRequestException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  UseGuards,
+  Post,
+  Param,
+  Query,
+  BadRequestException,
+} from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { TripsService } from './trips.service';
 import { JwtAuthGuard } from 'src/jwt/jwt.guard';
@@ -75,52 +83,73 @@ export class DriversTripsController {
 
   @Post('start-pickup')
   async startPickup(@GetUser() user: IJwtPayload) {
-    const trip = await this.tripsService.getDriverActiveTrip(user.userId);
-    if (!trip) {
+    const { success, trip } = await this.tripsService.getDriverActiveTrip(
+      user.userId,
+    );
+    if (!success || !trip) {
       throw new BadRequestException('No active trip found');
     }
-    
-    const result = await this.tripsService.startPickup(trip._id || trip.id, user.userId);
-    
+
+    const result = await this.tripsService.startPickup(
+      trip._id || trip.id,
+      user.userId,
+    );
+
     if (result.success && result.trip) {
       const customerId = result.trip.customer.id;
-      await this.tripsService.notifyCustomerTripStarted(result.trip, customerId);
+      await this.tripsService.notifyCustomerTripStarted(
+        result.trip,
+        customerId,
+      );
     }
-    
+
     return result;
   }
 
   @Post('reach-pickup')
   async reachPickup(@GetUser() user: IJwtPayload) {
-    const trip = await this.tripsService.getDriverActiveTrip(user.userId);
-    if (!trip) {
+    const { success, trip } = await this.tripsService.getDriverActiveTrip(
+      user.userId,
+    );
+    if (!success || !trip) {
       throw new BadRequestException('No active trip found');
     }
-    
-    const result = await this.tripsService.reachPickup(trip._id || trip.id, user.userId);
-    
+
+    const result = await this.tripsService.reachPickup(
+      trip._id || trip.id,
+      user.userId,
+    );
+
     if (result.success && result.trip) {
       const customerId = result.trip.customer.id;
-      await this.tripsService.notifyCustomerDriverArrived(result.trip, customerId);
+      await this.tripsService.notifyCustomerDriverArrived(
+        result.trip,
+        customerId,
+      );
     }
-    
+
     return result;
   }
 
   @Post('begin-trip')
   async beginTrip(@GetUser() user: IJwtPayload) {
-    const trip = await this.tripsService.getDriverActiveTrip(user.userId);
-    if (!trip) {
+    const { success, trip } = await this.tripsService.getDriverActiveTrip(
+      user.userId,
+    );
+    if (!success || !trip) {
       throw new BadRequestException('No active trip found');
     }
-    
-    const result = await this.tripsService.beginTrip(trip._id || trip.id, user.userId);
-    
+
+    const result = await this.tripsService.beginTrip(
+      trip._id || trip.id,
+      user.userId,
+    );
+
     if (result.success && result.trip) {
       const customerId = result.trip.customer.id;
       await this.tripsService.notifyCustomerTripBegun(result.trip, customerId);
     }
-    
+
     return result;
   }
 

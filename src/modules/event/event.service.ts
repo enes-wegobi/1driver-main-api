@@ -47,32 +47,16 @@ export class EventService {
     );
   }
 
-  async notifyCustomerTripApproved(
+  async notifyCustomer(
     trip: any,
     customerId: string,
+    eventType: EventType,
   ): Promise<void> {
     try {
       const isActive =
         await this.customerStatusService.isCustomerActive(customerId);
-
-      let dirverData: DriverData | null = null;
-      if (trip.driver) {
-        dirverData = trip.driver;
-        if (dirverData && dirverData.photoKey) {
-          const photoUrl = await this.s3Service.getSignedUrl(
-            dirverData.photoKey,
-          );
-          dirverData.photoUrl = photoUrl;
-        }
-      }
-
-      trip = { ...trip, driver: dirverData };
       if (isActive) {
-        await this.webSocketService.sendToUser(
-          customerId,
-          EventType.TRIP_ACCEPTED,
-          trip,
-        );
+        await this.webSocketService.sendToUser(customerId, eventType, trip);
         this.logger.log(
           `Sent trip approval WebSocket notification to active customer ${customerId}`,
         );

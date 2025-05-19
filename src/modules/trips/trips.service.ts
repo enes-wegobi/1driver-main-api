@@ -88,7 +88,11 @@ export class TripsService {
       this.logger.log(
         `Notifying customer ${customerId} that trip ${trip._id || trip.id} has been approved`,
       );
-      await this.eventService.notifyCustomerTripApproved(trip, customerId);
+      await this.eventService.notifyCustomer(
+        trip,
+        customerId,
+        EventType.TRIP_ACCEPTED,
+      );
     } catch (error) {
       this.logger.error(`Error notifying customer: ${error.message}`);
     }
@@ -277,7 +281,8 @@ export class TripsService {
     } catch (error) {
       this.logger.error(`Error reaching pickup: ${error.message}`);
       throw new BadRequestException(
-        error.response?.data?.message || 'Failed to update pickup reached status',
+        error.response?.data?.message ||
+          'Failed to update pickup reached status',
       );
     }
   }
@@ -295,14 +300,17 @@ export class TripsService {
     }
   }
 
-  async notifyCustomerTripStarted(trip: any, customerId: string): Promise<void> {
+  async notifyCustomerTripStarted(
+    trip: any,
+    customerId: string,
+  ): Promise<void> {
     try {
       this.logger.log(
         `Notifying customer ${customerId} that driver is on the way for trip ${trip._id || trip.id}`,
       );
-      await this.eventService.notifyDriversWithDistanceInfo(
+      await this.eventService.notifyCustomer(
         trip,
-        [customerId],
+        customerId,
         EventType.TRIP_STARTED,
       );
     } catch (error) {
@@ -310,14 +318,17 @@ export class TripsService {
     }
   }
 
-  async notifyCustomerDriverArrived(trip: any, customerId: string): Promise<void> {
+  async notifyCustomerDriverArrived(
+    trip: any,
+    customerId: string,
+  ): Promise<void> {
     try {
       this.logger.log(
         `Notifying customer ${customerId} that driver has arrived for trip ${trip._id || trip.id}`,
       );
-      await this.eventService.notifyDriversWithDistanceInfo(
+      await this.eventService.notifyCustomer(
         trip,
-        [customerId],
+        customerId,
         EventType.TRIP_ARRIVED,
       );
     } catch (error) {
@@ -330,9 +341,9 @@ export class TripsService {
       this.logger.log(
         `Notifying customer ${customerId} that trip ${trip._id || trip.id} has begun`,
       );
-      await this.eventService.notifyDriversWithDistanceInfo(
+      await this.eventService.notifyCustomer(
         trip,
-        [customerId],
+        customerId,
         EventType.TRIP_STARTED,
       );
     } catch (error) {
