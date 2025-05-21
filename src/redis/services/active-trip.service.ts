@@ -13,6 +13,10 @@ export class ActiveTripService extends BaseRedisService {
     super(configService);
   }
 
+  /*
+    in this redis we can store trip id with connected driver and customer ids
+  */
+
   @WithErrorHandling()
   async setUserActiveTripId(
     userId: string,
@@ -29,7 +33,10 @@ export class ActiveTripService extends BaseRedisService {
   }
 
   @WithErrorHandling(null)
-  async getUserActiveTripIfExists(userId: string, userType: UserType): Promise<string | null> {
+  async getUserActiveTripIfExists(
+    userId: string,
+    userType: UserType,
+  ): Promise<string | null> {
     const key = RedisKeyGenerator.userActiveTrip(userId, userType);
     const tripId = await this.client.get(key);
     return tripId;
@@ -53,13 +60,15 @@ export class ActiveTripService extends BaseRedisService {
   ): Promise<boolean> {
     const key = RedisKeyGenerator.userActiveTrip(userId, userType);
     const exists = await this.client.exists(key);
-    
+
     if (exists === 1) {
-      this.serviceLogger.debug(`Refreshing TTL for active trip of ${userType} ${userId}`);
+      this.serviceLogger.debug(
+        `Refreshing TTL for active trip of ${userType} ${userId}`,
+      );
       await this.client.expire(key, this.ACTIVE_TRIP_EXPIRY);
       return true;
     }
-    
+
     return false;
   }
 
@@ -71,10 +80,10 @@ export class ActiveTripService extends BaseRedisService {
     if (!tripId || typeof tripId !== 'string' || tripId.trim() === '') {
       return false;
     }
-    
+
     // Add additional validation if needed, e.g., for MongoDB ObjectId format:
     // return /^[0-9a-fA-F]{24}$/.test(tripId);
-    
+
     return true;
   }
 }

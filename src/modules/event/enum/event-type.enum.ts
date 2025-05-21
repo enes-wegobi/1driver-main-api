@@ -1,5 +1,5 @@
 export enum EventType {
-  TRIP_REQUESTED = 'trip:requested',             // TRIP_REQUEST = 'trip:request',
+  TRIP_REQUESTED = 'trip:requested', // TRIP_REQUEST = 'trip:request',
   TRIP_DRIVER_ASSIGNED = 'trip:driver_assigned', // TRIP_ACCEPTED = 'trip:accepted',
   TRIP_ALREADY_TAKEN = 'trip:already_taken',
   TRIP_REJECTED = 'trip:rejected',

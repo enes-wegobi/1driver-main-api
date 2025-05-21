@@ -15,6 +15,8 @@ import { NearbyDriversResponseDto } from './dto';
 import { NearbySearchService } from 'src/redis/services/nearby-search.service';
 import { CustomersClient } from 'src/clients/customer/customers.client';
 import { ActiveTripService } from 'src/redis/services/active-trip.service';
+import { WebSocketService } from 'src/websocket/websocket.service';
+import { LocationService } from 'src/redis/services/location.service';
 
 @Injectable()
 export class TripsService {
@@ -26,6 +28,8 @@ export class TripsService {
     private readonly eventService: EventService,
     private readonly customersClient: CustomersClient,
     private readonly activeTripService: ActiveTripService,
+    private readonly webSocketService: WebSocketService,
+    private readonly locationService: LocationService,
   ) {}
 
   async getTripById(tripId: string): Promise<any> {
@@ -33,24 +37,31 @@ export class TripsService {
     return trip;
   }
 
-  private async getUserActiveTrip(userId: string, userType: UserType): Promise<any> {
+  private async getUserActiveTrip(
+    userId: string,
+    userType: UserType,
+  ): Promise<any> {
     try {
       // Get trip ID from Redis in a single operation
       const tripId = await this.activeTripService.getUserActiveTripIfExists(
         userId,
         userType,
       );
-      
+
       const userTypeStr = userType === UserType.DRIVER ? 'driver' : 'customer';
-      
+
       if (tripId) {
-        this.logger.debug(`Found active trip ID for ${userTypeStr} ${userId} in Redis cache: ${tripId}`);
-        
+        this.logger.debug(
+          `Found active trip ID for ${userTypeStr} ${userId} in Redis cache: ${tripId}`,
+        );
+
         // Validate the trip ID format
         if (!this.activeTripService.isValidTripId(tripId)) {
-          this.logger.warn(`Invalid trip ID format in Redis for ${userTypeStr} ${userId}: ${tripId}`);
+          this.logger.warn(
+            `Invalid trip ID format in Redis for ${userTypeStr} ${userId}: ${tripId}`,
+          );
           await this.activeTripService.removeUserActiveTrip(userId, userType);
-          
+
           // Fall back to API call based on user type
           if (userType === UserType.DRIVER) {
             return await this.tripClient.getDriverActiveTrip(userId);
@@ -58,16 +69,22 @@ export class TripsService {
             return await this.tripClient.getCustomerActiveTrip(userId);
           }
         }
-        
+
         try {
           // Get the full trip details from the API using the trip ID
           const trip = await this.tripClient.getTripById(tripId);
-          
+
           // Check if trip exists and is still active
-          if (!trip || trip.status === 'COMPLETED' || trip.status === 'CANCELLED') {
-            this.logger.warn(`Trip ${tripId} for ${userTypeStr} ${userId} is no longer active or doesn't exist`);
+          if (
+            !trip ||
+            trip.status === 'COMPLETED' ||
+            trip.status === 'CANCELLED'
+          ) {
+            this.logger.warn(
+              `Trip ${tripId} for ${userTypeStr} ${userId} is no longer active or doesn't exist`,
+            );
             await this.activeTripService.removeUserActiveTrip(userId, userType);
-            
+
             // Fall back to API call based on user type
             if (userType === UserType.DRIVER) {
               return await this.tripClient.getDriverActiveTrip(userId);
@@ -75,15 +92,20 @@ export class TripsService {
               return await this.tripClient.getCustomerActiveTrip(userId);
             }
           }
-          
+
           // Refresh the TTL since the trip is still active
-          await this.activeTripService.refreshUserActiveTripExpiry(userId, userType);
-          
+          await this.activeTripService.refreshUserActiveTripExpiry(
+            userId,
+            userType,
+          );
+
           return { success: true, trip };
         } catch (apiError) {
-          this.logger.error(`Error fetching trip ${tripId} from API: ${apiError.message}`);
+          this.logger.error(
+            `Error fetching trip ${tripId} from API: ${apiError.message}`,
+          );
           await this.activeTripService.removeUserActiveTrip(userId, userType);
-          
+
           // Fall back to API call based on user type
           if (userType === UserType.DRIVER) {
             return await this.tripClient.getDriverActiveTrip(userId);
@@ -110,15 +132,20 @@ export class TripsService {
             userType,
             tripId,
           );
-          this.logger.debug(`Cached active trip ID for ${userTypeStr} ${userId} in Redis: ${tripId}`);
+          this.logger.debug(
+            `Cached active trip ID for ${userTypeStr} ${userId} in Redis: ${tripId}`,
+          );
         }
       }
 
       return result;
     } catch (error) {
-      const userTypeLabel = userType === UserType.DRIVER ? 'driver' : 'customer';
-      this.logger.error(`Error getting ${userTypeLabel} active trip: ${error.message}`);
-      
+      const userTypeLabel =
+        userType === UserType.DRIVER ? 'driver' : 'customer';
+      this.logger.error(
+        `Error getting ${userTypeLabel} active trip: ${error.message}`,
+      );
+
       // Fall back to API call if Redis fails
       if (userType === UserType.DRIVER) {
         return await this.tripClient.getDriverActiveTrip(userId);
@@ -138,31 +165,49 @@ export class TripsService {
 
   async approveTrip(tripId: string, driverId: string): Promise<any> {
     try {
-      this.logger.log(`Driver ${driverId} approving trip ${tripId}`);
       const result = await this.tripClient.approveTrip(tripId, driverId);
-      
-      // If successful, cache the trip ID for the driver
+
       if (result.success && result.trip) {
         const tripId = result.trip._id || result.trip.id;
-        
-        // Set the trip ID for the driver
+
         await this.activeTripService.setUserActiveTripId(
           driverId,
           UserType.DRIVER,
           tripId,
         );
-        this.logger.debug(`Cached active trip ID for driver ${driverId} in Redis: ${tripId}`);
-        
-        // Also refresh the customer's active trip TTL
-        if (result.trip.customerId) {
-          await this.activeTripService.refreshUserActiveTripExpiry(
-            result.trip.customerId,
-            UserType.CUSTOMER
-          );
-          this.logger.debug(`Refreshed TTL for active trip of customer ${result.trip.customerId}`);
+
+
+        await this.activeTripService.refreshUserActiveTripExpiry(
+          result.trip.customerId,
+          UserType.CUSTOMER,
+        );
+
+        //notify other drivers
+        const remainingDriverIds = result.trip.calledDriverIds.filter(
+          (driverId) =>
+            !result.trip.rejectedDriverIds.includes(driverId) &&
+            driverId !== driverId,
+        );
+
+        if (remainingDriverIds.length > 0) {
+          await this.notifyTripAlreadyTaken(result.trip, remainingDriverIds);
+        }
+        //notify other drivers
+        const customerId = result.trip.customer.id;
+        await this.notifyCustomerDriverAccepted(result.trip, customerId);
+
+        const driverLocation =
+          await this.locationService.getUserLocation(driverId);
+
+        if (driverLocation) {
+          this.webSocketService.sendToUser(customerId, 'driverLocation', {
+            tripId,
+            driverId,
+            location: driverLocation,
+            timestamp: new Date().toISOString(),
+          });
         }
       }
-      
       return result;
     } catch (error) {
       this.logger.error(`Error approving trip: ${error.message}`);
@@ -176,6 +221,13 @@ export class TripsService {
     try {
       this.logger.log(`Driver ${driverId} declining trip ${tripId}`);
       const result = await this.tripClient.declineTrip(tripId, driverId);
+      if (
+        result.trip.calledDriverIds.length ===
+        result.trip.rejectedDriverIds.length
+      ) {
+        const customerId = result.trip.customer.id;
+        await this.notifyCustomerDriverNotFound(result.trip, customerId);
+      }
       return result;
     } catch (error) {
       this.logger.error(`Error declining trip: ${error.message}`);
@@ -289,7 +341,9 @@ export class TripsService {
           UserType.CUSTOMER,
           tripId,
         );
-        this.logger.debug(`Cached active trip ID for customer ${customerId} in Redis: ${tripId}`);
+        this.logger.debug(
+          `Cached active trip ID for customer ${customerId} in Redis: ${tripId}`,
+        );
 
         await this.eventService.notifyNewTripRequest(result.trip, driverIds);
         this.logger.log(
@@ -356,18 +410,22 @@ export class TripsService {
     try {
       this.logger.log(`Cancelling trip for ${userType} ${userId}`);
       const result = await this.tripClient.cancelTrip(userId, userType);
-      
+
       // If successful, remove the active trip from Redis
       if (result.success) {
         try {
           await this.activeTripService.removeUserActiveTrip(userId, userType);
-          this.logger.debug(`Removed active trip for ${userType} ${userId} from Redis`);
+          this.logger.debug(
+            `Removed active trip for ${userType} ${userId} from Redis`,
+          );
         } catch (redisError) {
-          this.logger.error(`Error removing active trip from Redis: ${redisError.message}`);
+          this.logger.error(
+            `Error removing active trip from Redis: ${redisError.message}`,
+          );
           // Continue even if Redis operation fails
         }
       }
-      
+
       return result;
     } catch (error) {
       this.logger.error(`Error cancelling trip: ${error.message}`);
@@ -377,26 +435,34 @@ export class TripsService {
     }
   }
 
-  async startPickup(tripId: string, driverId: string): Promise<any> {
+  async startPickup(driverId: string): Promise<any> {
     try {
-      this.logger.log(`Driver ${driverId} starting pickup for trip ${tripId}`);
+      const { success, trip } = await this.getDriverActiveTrip(driverId);
+      if (!success || !trip) {
+        throw new BadRequestException('No active trip found');
+      }
+      const tripId = trip._id || trip.id;
       const result = await this.tripClient.startPickup(tripId, driverId);
-      
-      // If successful, refresh the TTL for the driver's active trip
+
       if (result.success && result.trip) {
-        await this.activeTripService.refreshUserActiveTripExpiry(driverId, UserType.DRIVER);
-        
-        // Also refresh the customer's active trip TTL
+        await this.activeTripService.refreshUserActiveTripExpiry(
+          driverId,
+          UserType.DRIVER,
+        );
+
         if (result.trip.customerId) {
           await this.activeTripService.refreshUserActiveTripExpiry(
             result.trip.customerId,
-            UserType.CUSTOMER
+            UserType.CUSTOMER,
           );
         }
-        
-        this.logger.debug(`Refreshed TTL for active trip of driver ${driverId}`);
+
+        await this.notifyCustomerDriverEnRoute(
+          result.trip,
+          result.trip.customer.id,
+        );
       }
-      
+
       return result;
     } catch (error) {
       this.logger.error(`Error starting pickup: ${error.message}`);
@@ -406,26 +472,33 @@ export class TripsService {
     }
   }
 
-  async reachPickup(tripId: string, driverId: string): Promise<any> {
+  async reachPickup(driverId: string): Promise<any> {
     try {
-      this.logger.log(`Driver ${driverId} reached pickup for trip ${tripId}`);
+      const { success, trip } = await this.getDriverActiveTrip(driverId);
+      if (!success || !trip) {
+        throw new BadRequestException('No active trip found');
+      }
+
+      const tripId = trip._id || trip.id;
       const result = await this.tripClient.reachPickup(tripId, driverId);
-      
-      // If successful, refresh the TTL for the driver's active trip
+
       if (result.success && result.trip) {
-        await this.activeTripService.refreshUserActiveTripExpiry(driverId, UserType.DRIVER);
-        
-        // Also refresh the customer's active trip TTL
+        await this.activeTripService.refreshUserActiveTripExpiry(
+          driverId,
+          UserType.DRIVER,
+        );
+
         if (result.trip.customerId) {
           await this.activeTripService.refreshUserActiveTripExpiry(
             result.trip.customerId,
-            UserType.CUSTOMER
+            UserType.CUSTOMER,
           );
         }
-        
-        this.logger.debug(`Refreshed TTL for active trip of driver ${driverId}`);
+
+        const customerId = result.trip.customer.id;
+        await this.notifyCustomerDriverArrived(result.trip, customerId);
       }
-      
+
       return result;
     } catch (error) {
       this.logger.error(`Error reaching pickup: ${error.message}`);
@@ -436,26 +509,34 @@ export class TripsService {
     }
   }
 
-  async beginTrip(tripId: string, driverId: string): Promise<any> {
+  async beginTrip(driverId: string): Promise<any> {
     try {
-      this.logger.log(`Driver ${driverId} beginning trip ${tripId}`);
+      const { success, trip } = await this.getDriverActiveTrip(driverId);
+      if (!success || !trip) {
+        throw new BadRequestException('No active trip found');
+      }
+      const tripId = trip._id || trip.id;
       const result = await this.tripClient.beginTrip(tripId, driverId);
-      
-      // If successful, refresh the TTL for the driver's active trip
+
       if (result.success && result.trip) {
-        await this.activeTripService.refreshUserActiveTripExpiry(driverId, UserType.DRIVER);
-        
-        // Also refresh the customer's active trip TTL
+        await this.activeTripService.refreshUserActiveTripExpiry(
+          driverId,
+          UserType.DRIVER,
+        );
+
         if (result.trip.customerId) {
           await this.activeTripService.refreshUserActiveTripExpiry(
             result.trip.customerId,
-            UserType.CUSTOMER
+            UserType.CUSTOMER,
           );
         }
-        
-        this.logger.debug(`Refreshed TTL for active trip of driver ${driverId}`);
+
+        await this.notifyCustomerTripStarted(
+          result.trip,
+          result.trip.customer.id,
+        );
       }
-      
+
       return result;
     } catch (error) {
       this.logger.error(`Error beginning trip: ${error.message}`);
@@ -465,27 +546,46 @@ export class TripsService {
     }
   }
 
-  async completeTrip(tripId: string, driverId: string): Promise<any> {
+  async completeTrip(driverId: string): Promise<any> {
     try {
-      this.logger.log(`Driver ${driverId} completing trip ${tripId}`);
+      const { success, trip } = await this.getDriverActiveTrip(driverId);
+      if (!success || !trip) {
+        throw new BadRequestException('No active trip found');
+      }
+      const tripId = trip._id || trip.id;
       const result = await this.tripClient.completeTrip(tripId, driverId);
-      
+
       // If successful, remove the active trip from Redis for both driver and customer
       if (result.success && result.trip) {
         // Remove driver's active trip
-        await this.activeTripService.removeUserActiveTrip(driverId, UserType.DRIVER);
-        this.logger.debug(`Removed active trip for driver ${driverId} from Redis`);
-        
+        await this.activeTripService.removeUserActiveTrip(
+          driverId,
+          UserType.DRIVER,
+        );
+        this.logger.debug(
+          `Removed active trip for driver ${driverId} from Redis`,
+        );
+
         // Also remove customer's active trip
         if (result.trip.customerId) {
           await this.activeTripService.removeUserActiveTrip(
             result.trip.customerId,
-            UserType.CUSTOMER
+            UserType.CUSTOMER,
           );
-          this.logger.debug(`Removed active trip for customer ${result.trip.customerId} from Redis`);
+          this.logger.debug(
+            `Removed active trip for customer ${result.trip.customerId} from Redis`,
+          );
         }
+
+        const customerId = result.trip.customer.id;
+        // You could add a notification here if needed
+        this.webSocketService.sendToUser(customerId, 'tripCompleted', {
+          tripId,
+          driverId,
+          timestamp: new Date().toISOString(),
+        });
       }
-      
+
       return result;
     } catch (error) {
       this.logger.error(`Error completing trip: ${error.message}`);
@@ -531,7 +631,10 @@ export class TripsService {
     }
   }
 
-  async notifyCustomerTripStarted(trip: any, customerId: string): Promise<void> {
+  async notifyCustomerTripStarted(
+    trip: any,
+    customerId: string,
+  ): Promise<void> {
     try {
       this.logger.log(
         `Notifying customer ${customerId} that trip ${trip._id || trip.id} has begun`,

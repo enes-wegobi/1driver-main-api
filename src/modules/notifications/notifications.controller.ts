@@ -94,5 +94,4 @@ export class NotificationsController {
       message: 'FCM token updated successfully',
     };
   }
-
 }

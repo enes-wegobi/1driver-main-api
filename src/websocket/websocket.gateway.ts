@@ -18,7 +18,6 @@ import {
 import { DriverStatusService } from 'src/redis/services/driver-status.service';
 import { CustomerStatusService } from 'src/redis/services/customer-status.service';
 import { LocationService } from 'src/redis/services/location.service';
-import { TripsService } from 'src/modules/trips/trips.service';
 
 const PING_INTERVAL = 25000;
 const PING_TIMEOUT = 10000;
@@ -263,7 +262,8 @@ export class WebSocketGateway
 
     return { success: true };
   }
-
+  /*
+//TODO check
   @SubscribeMessage('joinTripRoom')
   handleJoinTripRoom(client: Socket, payload: { tripId: string }) {
     const userId = client.data.userId;
@@ -339,6 +339,7 @@ export class WebSocketGateway
       message: `Left trip room for trip ${payload.tripId}`,
     };
   }
+  */
 
   @SubscribeMessage('updateDriverAvailability')
   async handleDriverAvailabilityUpdate(
