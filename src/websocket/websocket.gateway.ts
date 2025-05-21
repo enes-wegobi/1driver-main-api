@@ -18,6 +18,7 @@ import {
 import { DriverStatusService } from 'src/redis/services/driver-status.service';
 import { CustomerStatusService } from 'src/redis/services/customer-status.service';
 import { LocationService } from 'src/redis/services/location.service';
+import { TripsService } from 'src/modules/trips/trips.service';
 
 const PING_INTERVAL = 25000;
 const PING_TIMEOUT = 10000;
@@ -231,7 +232,7 @@ export class WebSocketGateway
   }
 
   @SubscribeMessage('updateDriverLocation')
-  handleDriverLocationUpdate(client: Socket, payload: DriverLocationDto) {
+  async handleDriverLocationUpdate(client: Socket, payload: DriverLocationDto) {
     const userId = client.data.userId;
     const userType = client.data.userType;
 

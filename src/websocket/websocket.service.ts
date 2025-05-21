@@ -23,20 +23,6 @@ export class WebSocketService {
     this.server.to(`user:${userId}`).emit(event, data);
   }
 
-  broadcast(event: string, data: any, exceptSocketId?: string) {
-    this.logger.debug(`Broadcasting: ${event}`);
-    if (exceptSocketId) {
-      this.server.except(exceptSocketId).emit(event, data);
-    } else {
-      this.server.emit(event, data);
-    }
-  }
-
-  async sendToUserType(userType: string, event: string, data: any) {
-    this.logger.debug(`Sending to ${userType}s`);
-    this.server.to(`type:${userType}`).emit(event, data);
-  }
-
   async sendTripRequest(
     tripData: any,
     driverId: string,
@@ -58,7 +44,7 @@ export class WebSocketService {
   async broadcastTripRequest(
     event: any,
     activeDrivers: string[],
-    eventType: EventType = EventType.TRIP_REQUEST,
+    eventType: EventType,
   ): Promise<void> {
     const server = this.getServer();
 

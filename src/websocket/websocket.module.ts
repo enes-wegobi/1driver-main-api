@@ -5,6 +5,7 @@ import { ConnectionStatusService } from './connection-status.service';
 import { JwtModule } from 'src/jwt/jwt.modulte';
 import { WebSocketController } from './websocket.controller';
 import { RedisModule } from '../redis/redis.module';
+import { TripsModule } from 'src/modules/trips/trips.module';
 
 @Module({
   imports: [JwtModule, RedisModule],

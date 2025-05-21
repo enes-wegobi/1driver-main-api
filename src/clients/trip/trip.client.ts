@@ -171,4 +171,12 @@ export class TripClient {
     });
     return data;
   }
+
+  async completeTrip(tripId: string, driverId: string): Promise<any> {
+    this.logger.log(`Completing trip: ${tripId} by driver: ${driverId}`);
+    const { data } = await this.httpClient.post(`/trips/${tripId}/complete`, {
+      driverId,
+    });
+    return data;
+  }
 }

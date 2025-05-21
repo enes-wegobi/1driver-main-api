@@ -6,6 +6,7 @@ import { LocationService } from './services/location.service';
 import { DriverStatusService } from './services/driver-status.service';
 import { CustomerStatusService } from './services/customer-status.service';
 import { NearbySearchService } from './services/nearby-search.service';
+import { ActiveTripService } from './services/active-trip.service';
 
 @Module({
   imports: [ConfigModule],
@@ -15,6 +16,7 @@ import { NearbySearchService } from './services/nearby-search.service';
     DriverStatusService,
     CustomerStatusService,
     NearbySearchService,
+    ActiveTripService,
     RedisService,
   ],
   exports: [
@@ -22,6 +24,7 @@ import { NearbySearchService } from './services/nearby-search.service';
     DriverStatusService,
     CustomerStatusService,
     NearbySearchService,
+    ActiveTripService,
     RedisService,
   ],
 })

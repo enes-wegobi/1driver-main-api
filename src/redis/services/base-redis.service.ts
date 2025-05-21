@@ -14,6 +14,7 @@ export class BaseRedisService implements OnModuleInit, OnModuleDestroy {
   protected DRIVER_LOCATION_EXPIRY: number;
   protected ACTIVE_DRIVER_EXPIRY: number;
   protected ACTIVE_CUSTOMER_EXPIRY: number;
+  protected ACTIVE_TRIP_EXPIRY: number;
 
   constructor(protected configService: ConfigService) {
     this.client = createClient({
@@ -33,6 +34,10 @@ export class BaseRedisService implements OnModuleInit, OnModuleDestroy {
       'redis.activeCustomerExpiry',
       1800,
     ); // Default: 30 minutes
+    this.ACTIVE_TRIP_EXPIRY = this.configService.get<number>(
+      'redis.activeTripExpiry',
+      3600,
+    ); // Default: 60 minutes
 
     this.client.on('error', (err) =>
       this.logger.error('Redis Client Error', err),

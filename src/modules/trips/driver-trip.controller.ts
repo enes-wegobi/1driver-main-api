@@ -12,13 +12,19 @@ import { TripsService } from './trips.service';
 import { JwtAuthGuard } from 'src/jwt/jwt.guard';
 import { GetUser } from 'src/jwt/user.decoretor';
 import { IJwtPayload } from 'src/jwt/jwt-payload.interface';
+import { WebSocketService } from 'src/websocket/websocket.service';
+import { LocationService } from 'src/redis/services/location.service';
 
 @ApiTags('driver-trips')
 @Controller('driver-trips')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class DriversTripsController {
-  constructor(private readonly tripsService: TripsService) {}
+  constructor(
+    private readonly tripsService: TripsService,
+    private readonly webSocketService: WebSocketService,
+    private readonly locationService: LocationService,
+  ) {}
 
   @Get('active')
   async getTripById(@GetUser() user: IJwtPayload) {
@@ -48,10 +54,23 @@ export class DriversTripsController {
 
       const customerId = result.trip.customer.id;
 
+      // Sürücünün mevcut konumunu al
+      const driverLocation = await this.locationService.getUserLocation(user.userId);
+
       await this.tripsService.notifyCustomerDriverAccepted(
         result.trip,
         customerId,
       );
+      
+      // Eğer sürücü konumu varsa, WebSocket ile müşteriye gönder
+      if (driverLocation) {
+        this.webSocketService.sendToUser(customerId, 'driverLocation', {
+          tripId,
+          driverId: user.userId,
+          location: driverLocation,
+          timestamp: new Date().toISOString()
+        });
+      }
     }
 
     return result;
@@ -156,6 +175,35 @@ export class DriversTripsController {
   @Post('arrived-at-stop')
   async arrivedStop(@GetUser() user: IJwtPayload) {}
 
+  @Post('complete-trip')
+  async completeTrip(@GetUser() user: IJwtPayload) {
+    const { success, trip } = await this.tripsService.getDriverActiveTrip(
+      user.userId,
+    );
+    if (!success || !trip) {
+      throw new BadRequestException('No active trip found');
+    }
+
+    const result = await this.tripsService.completeTrip(
+      trip._id || trip.id,
+      user.userId,
+    );
+
+    if (result.success && result.trip) {
+      const customerId = result.trip.customer.id;
+      // You could add a notification here if needed
+      this.webSocketService.sendToUser(customerId, 'tripCompleted', {
+        tripId: trip._id || trip.id,
+        driverId: user.userId,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    return result;
+  }
+
   @Post('cancel')
-  async cancelTrip(@GetUser() user: IJwtPayload) {}
+  async cancelTrip(@GetUser() user: IJwtPayload) {
+    return await this.tripsService.cancelTrip(user.userId, user.userType);
+  }
 }

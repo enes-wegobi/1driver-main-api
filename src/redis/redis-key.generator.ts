@@ -6,6 +6,11 @@ import { UserType } from 'src/common/user-type.enum';
  * throughout the application.
  */
 export class RedisKeyGenerator {
+  // Active trip keys
+  static userActiveTrip(userId: string, userType: UserType): string {
+    return `${userType}:active-trip:${userId}`;
+  }
+
   // User location keys
   static userLocation(userId: string): string {
     return `location:user:${userId}`;

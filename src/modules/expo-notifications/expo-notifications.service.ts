@@ -147,7 +147,7 @@ export class ExpoNotificationsService implements OnModuleInit {
   async sendTripRequestNotificationToInactiveDriver(
     driverInfo: any, // Single driver info
     tripData: any, // Customized trip data for this specific driver
-    eventType: EventType = EventType.TRIP_REQUEST,
+    eventType: EventType,
   ): Promise<boolean> {
     this.logger.log(
       `Sending ${eventType} notification to inactive driver ${driverInfo._id || 'unknown'}`,
@@ -162,7 +162,7 @@ export class ExpoNotificationsService implements OnModuleInit {
     let title = 'New Notification';
     let body = 'You have a new notification';
 
-    if (eventType === EventType.TRIP_REQUEST) {
+    if (eventType === EventType.TRIP_REQUESTED) {
       title = 'New Trip Request';
       body = 'New trip request!';
     }
@@ -180,7 +180,7 @@ export class ExpoNotificationsService implements OnModuleInit {
   async sendTripRequestNotificationsToInactiveDrivers(
     driverInfos: any[],
     event: any,
-    eventType: EventType = EventType.TRIP_REQUEST,
+    eventType: EventType = EventType.TRIP_REQUESTED,
   ): Promise<{ success: number; failure: number }> {
     this.logger.log(
       `Sending ${eventType} notifications to ${driverInfos.length} inactive drivers`,
@@ -199,7 +199,7 @@ export class ExpoNotificationsService implements OnModuleInit {
     let title = 'New Notification';
     let body = 'You have a new notification';
 
-    if (eventType === EventType.TRIP_REQUEST) {
+    if (eventType === EventType.TRIP_REQUESTED) {
       title = 'New Trip Request';
       body = 'New trip request!';
     }

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
 import { WebSocketService } from 'src/websocket/websocket.service';
 import { DriversService } from 'src/modules/drivers/drivers.service';
 import { CustomersService } from 'src/modules/customers/customers.service';
@@ -333,7 +333,7 @@ export class EventService {
   async broadcastEventToDrivers(
     event: any,
     driverIds: string[],
-    eventType: EventType = EventType.TRIP_REQUESTED,
+    eventType: EventType,
   ): Promise<void> {
     try {
       const { activeDrivers, inactiveDrivers } =
