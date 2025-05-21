@@ -1,28 +1,16 @@
-import {
-  Controller,
-  Get,
-  UseGuards,
-  Post,
-  Param,
-  Query,
-  BadRequestException,
-} from '@nestjs/common';
+import { Controller, Get, UseGuards, Post, Param } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { TripsService } from './trips.service';
 import { JwtAuthGuard } from 'src/jwt/jwt.guard';
 import { GetUser } from 'src/jwt/user.decoretor';
 import { IJwtPayload } from 'src/jwt/jwt-payload.interface';
-import { WebSocketService } from 'src/websocket/websocket.service';
 
 @ApiTags('driver-trips')
 @Controller('driver-trips')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class DriversTripsController {
-  constructor(
-    private readonly tripsService: TripsService,
-    private readonly webSocketService: WebSocketService,
-  ) {}
+  constructor(private readonly tripsService: TripsService) {}
 
   @Get('active')
   async getTripById(@GetUser() user: IJwtPayload) {
@@ -47,26 +35,17 @@ export class DriversTripsController {
 
   @Post('start-en-route')
   async startEnRoute(@GetUser() user: IJwtPayload) {
-    const result = await this.tripsService.startPickup(user.userId);
-
-    return result;
+    return await this.tripsService.startPickup(user.userId);
   }
 
   @Post('arrive-at-pickup')
   async arriveAtPickup(@GetUser() user: IJwtPayload) {
-    const result = await this.tripsService.reachPickup(user.userId);
-
-    if (result.success && result.trip) {
-    }
-
-    return result;
+    return await this.tripsService.reachPickup(user.userId);
   }
 
   @Post('start-trip')
   async startTrip(@GetUser() user: IJwtPayload) {
-    const result = await this.tripsService.beginTrip(user.userId);
-
-    return result;
+    return await this.tripsService.beginTrip(user.userId);
   }
 
   @Post('arrived-at-stop')
@@ -74,9 +53,7 @@ export class DriversTripsController {
 
   @Post('complete-trip')
   async completeTrip(@GetUser() user: IJwtPayload) {
-    const result = await this.tripsService.completeTrip(user.userId);
-
-    return result;
+    return await this.tripsService.completeTrip(user.userId);
   }
 
   @Post('cancel')
