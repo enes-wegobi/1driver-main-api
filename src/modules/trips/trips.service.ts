@@ -533,7 +533,7 @@ export class TripsService {
     }
   }
 
-  async completeTrip(driverId: string): Promise<any> {
+  async arrivedAtStop(driverId: string): Promise<any> {
     try {
       const tripId = await this.getUserActiveTripId(driverId, UserType.DRIVER);
       const result = await this.tripClient.completeTrip(tripId, driverId);
@@ -562,6 +562,80 @@ export class TripsService {
       this.logger.error(`Error completing trip: ${error.message}`);
       throw new BadRequestException(
         error.response?.data?.message || 'Failed to complete trip',
+      );
+    }
+  }
+
+  async arriveAtDestination(driverId: string): Promise<any> {
+    try {
+      // Get driver's active trip ID
+      const tripId = await this.getUserActiveTripId(driverId, UserType.DRIVER);
+      
+      // Get trip details
+      const tripDetails = await this.tripClient.getTripById(tripId);
+      
+      // Validate trip details
+      if (!tripDetails.success || !tripDetails.trip) {
+        throw new BadRequestException('Failed to retrieve trip details');
+      }
+      
+      // Get destination location coordinates (second point in the route)
+      const destinationLocation = tripDetails.trip.route && tripDetails.trip.route.length > 1 
+        ? tripDetails.trip.route[1] 
+        : null;
+      
+      if (!destinationLocation || !destinationLocation.lat || !destinationLocation.lon) {
+        throw new BadRequestException('Destination location not found in trip details');
+      }
+      
+      // Verify driver is at destination location
+      await this.verifyDriverLocation(
+        driverId,
+        { lat: destinationLocation.lat, lon: destinationLocation.lon },
+        100, // 100 meters radius
+        'You are too far from the destination location'
+      );
+      
+      // Update trip status to arrived at destination
+      const result = await this.tripClient.completeTrip(tripId, driverId);
+
+      if (result.success && result.trip) {
+        // Remove active trip from Redis for driver as it's now completed
+        await this.activeTripService.removeUserActiveTrip(
+          driverId,
+          UserType.DRIVER,
+        );
+        
+        const customerId = result.trip.customer.id;
+        
+        // Keep customer's active trip for payment processing
+        await this.activeTripService.refreshUserActiveTripExpiry(
+          customerId,
+          UserType.CUSTOMER,
+        );
+
+        // Trigger payment screen event for the customer
+        await this.eventService.notifyCustomer(
+          result.trip,
+          customerId,
+          EventType.TRIP_COMPLETED
+        );
+        
+        // Also send a direct websocket message to trigger the payment screen
+        this.webSocketService.sendToUser(customerId, 'showPaymentScreen', {
+          tripId,
+          driverId,
+          trip: result.trip,
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      return result;
+    } catch (error) {
+      this.logger.error(`Error arriving at destination: ${error.message}`);
+      throw new BadRequestException(
+        error.response?.data?.message ||
+          'Failed to update arrival at destination status'
       );
     }
   }

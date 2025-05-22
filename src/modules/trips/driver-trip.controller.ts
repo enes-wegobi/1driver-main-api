@@ -49,11 +49,13 @@ export class DriversTripsController {
   }
 
   @Post('arrived-at-stop')
-  async arrivedStop(@GetUser() user: IJwtPayload) {}
+  async arrivedStop(@GetUser() user: IJwtPayload) {
+    return await this.tripsService.arrivedAtStop(user.userId);
+  }
 
-  @Post('complete-trip')
-  async completeTrip(@GetUser() user: IJwtPayload) {
-    return await this.tripsService.completeTrip(user.userId);
+  @Post('arrive-at-destination')
+  async arriveAtDestination(@GetUser() user: IJwtPayload) {
+    return await this.tripsService.arriveAtDestination(user.userId);
   }
 
   @Post('cancel')
