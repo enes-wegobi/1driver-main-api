@@ -250,6 +250,17 @@ export class TripService {
     return driverIds;
   }
 
+  async getNearbyAvailableDrivers(latitude: number, longitude: number) {
+    const drivers = this.nearbySearchService.findNearbyUsers(
+      UserType.DRIVER,
+      latitude,
+      longitude,
+      5,
+      true,
+    );
+    return drivers;
+  }
+
   async getCustomerActiveTrip(customerId: string): Promise<any> {
     return this.getUserActiveTrip(customerId, UserType.CUSTOMER);
   }
@@ -263,7 +274,7 @@ export class TripService {
     if (userType === UserType.DRIVER) {
       result = await this.findActiveByDriverId(userId);
     } else {
-      result = await this.tripClient.getCustomerActiveTrip(userId);
+      result = await this.findActiveByCustomerId(userId);
     }
     if (result.success && result.trip) {
       const tripId = result.trip._id || result.trip.id;
@@ -293,17 +304,6 @@ export class TripService {
     return this.getUserActiveTripIdFromDb(userId, userType);
   }
 
-  async getNearbyAvailableDrivers(latitude: number, longitude: number) {
-    const drivers = this.nearbySearchService.findNearbyUsers(
-      UserType.DRIVER,
-      latitude,
-      longitude,
-      5,
-      true,
-    );
-    return drivers;
-  }
-
   private async getUserActiveTrip(
     userId: string,
     userType: UserType,
@@ -330,8 +330,8 @@ export class TripService {
           //TODO trip statusları buraya taşıyabilirsin
           if (
             !tripDetails ||
-            tripDetails.status === 'COMPLETED' ||
-            tripDetails.status === 'CANCELLED'
+            tripDetails.status === TripStatus.COMPLETED ||
+            tripDetails.status === TripStatus.CANCELLED
           ) {
             await this.activeTripService.removeUserActiveTrip(userId, userType);
 
@@ -391,22 +391,62 @@ export class TripService {
 
   async declineTrip(tripId: string, driverId: string): Promise<any> {
     try {
-      this.logger.log(`Driver ${driverId} declining trip ${tripId}`);
-      const result = await this.rejectDriver(tripId, driverId);
+      const trip = await this.findById(tripId);
+      if (!trip) {
+        return { success: false, message: TripErrors.TRIP_NOT_FOUND.message };
+      }
 
-      if (result.success && result.trip) {
-        if (
-          result.trip.calledDriverIds.length ===
-          result.trip.rejectedDriverIds.length
-        ) {
-          const customerId = result.trip.customer.id;
-          await this.eventService.notifyCustomerDriverNotFound(
-            result.trip,
-            customerId,
-          );
+      const statusValidation = this.tripStateService.validateStatus(
+        trip.status,
+        TripStatus.WAITING_FOR_DRIVER,
+      );
+      if (!statusValidation.valid) {
+        return {
+          success: false,
+          message:
+            statusValidation.message || TripErrors.TRIP_INVALID_STATUS.message,
+        };
+      }
+
+      const rejectedDriverIds = trip.rejectedDriverIds || [];
+
+      if (!rejectedDriverIds.includes(driverId)) {
+        rejectedDriverIds.push(driverId);
+      }
+
+      // Check if all called drivers are now rejected
+      let newStatus = trip.status;
+      if (trip.calledDriverIds && trip.calledDriverIds.length > 0) {
+        const allDriversRejected = trip.calledDriverIds.every((id) =>
+          rejectedDriverIds.includes(id),
+        );
+
+        if (allDriversRejected) {
+          newStatus = TripStatus.DRIVER_NOT_FOUND;
         }
       }
-      return result;
+
+      const updatedTrip = await this.tripRepository.findByIdAndUpdate(tripId, {
+        rejectedDriverIds,
+        status: newStatus,
+      });
+
+      if (!updatedTrip) {
+        return { success: false, message: 'Failed to update trip' };
+      }
+
+      if (
+        updatedTrip.calledDriverIds.length ===
+        updatedTrip.rejectedDriverIds.length
+      ) {
+        const customerId = updatedTrip.customer.id;
+        await this.eventService.notifyCustomerDriverNotFound(
+          updatedTrip,
+          customerId,
+        );
+      }
+
+      return { success: true, trip: updatedTrip };
     } catch (error) {
       this.logger.error(`Error declining trip: ${error.message}`);
       throw new BadRequestException(
@@ -417,10 +457,6 @@ export class TripService {
 
   async findById(tripId: string) {
     return this.tripRepository.findById(tripId);
-  }
-
-  async findLatestPendingByCustomerId(customerId: string) {
-    return this.tripRepository.findLatestPendingByCustomerId(customerId);
   }
 
   async findActiveByCustomerId(customerId: string) {
@@ -517,40 +553,15 @@ export class TripService {
     );
   }
 
-  async startPickup1(tripId: string) {
-    const result = await this.updateTripStatus(
-      tripId,
-      TripStatus.DRIVER_ON_WAY_TO_PICKUP,
-    );
-
-    if (!result.success || !result.trip) {
-      return {
-        success: false,
-        message:
-          result.message || 'Failed to update trip status to driver on way',
-      };
-    }
-
-    return {
-      success: true,
-      trip: result.trip,
-    };
-  }
-
-  async reachPickup(driverId: string): Promise<any> {
+  async arrivePickup(driverId: string): Promise<any> {
     try {
-      // Get driver's active trip ID
       const tripId = await this.getUserActiveTripId(driverId, UserType.DRIVER);
-
-      // Get trip details
       const tripDetails = await this.findById(tripId);
 
-      // Validate trip details
       if (!tripDetails) {
         throw new BadRequestException('Failed to retrieve trip details');
       }
 
-      // Get pickup location coordinates
       const pickupLocation =
         tripDetails.route && tripDetails.route.length > 0
           ? tripDetails.route[0]
@@ -562,7 +573,6 @@ export class TripService {
         );
       }
 
-      // Verify driver is at pickup location
       await this.verifyDriverLocation(
         driverId,
         { lat: pickupLocation.lat, lon: pickupLocation.lon },
@@ -570,22 +580,14 @@ export class TripService {
         'You are too far from the pickup location',
       );
 
-      // Update trip status
-      const result = await this.reachPickup1(tripId);
+      const result = await this.updateTripStatus(
+        tripId,
+        TripStatus.ARRIVED_AT_PICKUP,
+      );
 
       if (result.success && result.trip) {
-        await this.activeTripService.refreshUserActiveTripExpiry(
-          driverId,
-          UserType.DRIVER,
-        );
-
         const customerId = result.trip.customer.id;
-
-        await this.activeTripService.refreshUserActiveTripExpiry(
-          customerId,
-          UserType.CUSTOMER,
-        );
-
+        await this.refreshUsersTripExpiry(driverId, customerId);
         await this.eventService.notifyCustomer(
           result.trip,
           customerId,
@@ -601,6 +603,17 @@ export class TripService {
           'Failed to update pickup reached status',
       );
     }
+  }
+
+  async refreshUsersTripExpiry(driverId: string, customerId: string) {
+    await this.activeTripService.refreshUserActiveTripExpiry(
+      driverId,
+      UserType.DRIVER,
+    );
+    await this.activeTripService.refreshUserActiveTripExpiry(
+      customerId,
+      UserType.CUSTOMER,
+    );
   }
 
   async reachPickup1(tripId: string) {
@@ -676,28 +689,23 @@ export class TripService {
   async startPickup(driverId: string): Promise<any> {
     try {
       const tripId = await this.getUserActiveTripId(driverId, UserType.DRIVER);
-      const result = await this.startPickup1(tripId);
+      const updatedTripResult = await this.updateTripStatus(
+        tripId,
+        TripStatus.DRIVER_ON_WAY_TO_PICKUP,
+      );
 
-      if (result.success && result.trip) {
-        await this.activeTripService.refreshUserActiveTripExpiry(
-          driverId,
-          UserType.DRIVER,
-        );
-        const customerId = result.trip.customer.id;
-
-        await this.activeTripService.refreshUserActiveTripExpiry(
-          customerId,
-          UserType.CUSTOMER,
-        );
+      if (updatedTripResult.success && updatedTripResult.trip) {
+        const customerId = updatedTripResult.trip.customer.id;
+        await this.refreshUsersTripExpiry(driverId, customerId);
 
         await this.eventService.notifyCustomer(
-          result.trip,
+          updatedTripResult.trip,
           customerId,
           EventType.TRIP_DRIVER_EN_ROUTE,
         );
       }
 
-      return result;
+      return updatedTripResult;
     } catch (error) {
       this.logger.error(`Error starting pickup: ${error.message}`);
       throw new BadRequestException(
@@ -757,91 +765,32 @@ export class TripService {
     return { success: true, trip: updatedTrip };
   }
 
-  async approveTrip1(tripId: string, driverId: string): Promise<any> {
+  async approveTrip(tripId: string, driverId: string): Promise<any> {
     try {
-      const result = await this.approveTrip(tripId, driverId);
-
-      if (result.success && result.trip) {
-        const tripId = result.trip._id || result.trip.id;
-
-        await this.activeTripService.setUserActiveTripId(
-          driverId,
-          UserType.DRIVER,
-          tripId,
-        );
-
-        await this.activeTripService.refreshUserActiveTripExpiry(
-          result.trip.customer.id,
-          UserType.CUSTOMER,
-        );
-
-        //notify other drivers
-        const remainingDriverIds = result.trip.calledDriverIds.filter(
-          (driverId) =>
-            !result.trip.rejectedDriverIds.includes(driverId) &&
-            driverId !== driverId,
-        );
-
-        if (remainingDriverIds.length > 0) {
-          await this.eventService.notifyTripAlreadyTaken(
-            result.trip,
-            remainingDriverIds,
-          );
-        }
-        //notify other drivers
-        const customerId = result.trip.customer.id;
-        await this.eventService.notifyCustomer(
-          result.trip,
-          customerId,
-          EventType.TRIP_DRIVER_ASSIGNED,
-        );
-        const driverLocation =
-          await this.locationService.getUserLocation(driverId);
-
-        if (driverLocation) {
-          this.webSocketService.sendToUser(customerId, 'driverLocation', {
-            tripId,
-            driverId,
-            location: driverLocation,
-            timestamp: new Date().toISOString(),
-          });
-        }
+      const trip = await this.findById(tripId);
+      if (!trip) {
+        return { success: false, message: TripErrors.TRIP_NOT_FOUND.message };
       }
-      return result;
-    } catch (error) {
-      this.logger.error(`Error approving trip: ${error.message}`);
-      throw new BadRequestException(
-        error.response?.data?.message || 'Failed to approve trip',
+      const driver = await this.driversClient.findOne(driverId, [
+        'name',
+        'surname',
+        'rate',
+        'photoUrl',
+      ]);
+
+      const transitionValidation = this.tripStateService.canTransition(
+        trip.status,
+        TripStatus.APPROVED,
       );
-    }
-  }
-  async approveTrip(
-    tripId: string,
-    driverId: string,
-  ): Promise<{ success: boolean; trip?: TripDocument; message?: string }> {
-    const trip = await this.findById(tripId);
-    if (!trip) {
-      return { success: false, message: TripErrors.TRIP_NOT_FOUND.message };
-    }
-    const driver = await this.driversClient.findOne(driverId, [
-      'name',
-      'surname',
-      'rate',
-      'photoUrl',
-    ]);
-    const transitionValidation = this.tripStateService.canTransition(
-      trip.status,
-      TripStatus.APPROVED,
-    );
-    if (!transitionValidation.valid) {
-      return {
-        success: false,
-        message:
-          transitionValidation.message ||
-          TripErrors.TRIP_INVALID_STATUS.message,
-      };
-    }
-    /*
+      if (!transitionValidation.valid) {
+        return {
+          success: false,
+          message:
+            transitionValidation.message ||
+            TripErrors.TRIP_INVALID_STATUS.message,
+        };
+      }
+      /*
     const driverActiveTripResult = await this.findActiveByDriverId(driverId);
     if (driverActiveTripResult.trip) {
       return {
@@ -850,26 +799,77 @@ export class TripService {
       };
     }
     */
-    const updatedTrip = await this.tripRepository.findByIdAndUpdate(tripId, {
-      driver: {
-        id: driver._id,
-        name: driver.name,
-        surname: driver.surname,
-        photoUrl: driver.photoUrl,
-        rate: driver.rate,
-      },
-      status: TripStatus.APPROVED,
-      tripStartTime: new Date(), // Set the start time when trip is approved
-    });
+      const updatedTrip = await this.tripRepository.findByIdAndUpdate(tripId, {
+        driver: {
+          id: driver._id,
+          name: driver.name,
+          surname: driver.surname,
+          photoUrl: driver.photoUrl,
+          rate: driver.rate,
+        },
+        status: TripStatus.APPROVED,
+        tripStartTime: new Date(),
+      });
 
-    if (!updatedTrip) {
-      return { success: false, message: 'Failed to approve trip' };
+      if (!updatedTrip) {
+        return { success: false, message: 'Failed to approve trip' };
+      }
+
+      await this.driversClient.setActiveTrip(driverId, {
+        tripId: updatedTrip._id,
+      });
+
+      await this.activeTripService.setUserActiveTripId(
+        driverId,
+        UserType.DRIVER,
+        tripId,
+      );
+
+      const customerId = updatedTrip.customer.id;
+
+      await this.activeTripService.refreshUserActiveTripExpiry(
+        customerId,
+        UserType.CUSTOMER,
+      );
+
+      //notify other drivers
+      const remainingDriverIds = updatedTrip.calledDriverIds.filter(
+        (driverId) =>
+          !updatedTrip.rejectedDriverIds.includes(driverId) &&
+          driverId !== driverId,
+      );
+
+      if (remainingDriverIds.length > 0) {
+        await this.eventService.notifyTripAlreadyTaken(
+          updatedTrip,
+          remainingDriverIds,
+        );
+      }
+
+      await this.eventService.notifyCustomer(
+        updatedTrip,
+        customerId,
+        EventType.TRIP_DRIVER_ASSIGNED,
+      );
+      const driverLocation =
+        await this.locationService.getUserLocation(driverId);
+
+      if (driverLocation) {
+        this.webSocketService.sendToUser(customerId, 'driverLocation', {
+          tripId,
+          driverId,
+          location: driverLocation,
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      return { success: true, trip: updatedTrip };
+    } catch (error) {
+      this.logger.error(`Error approving trip: ${error.message}`);
+      throw new BadRequestException(
+        error.response?.data?.message || 'Failed to approve trip',
+      );
     }
-    await this.driversClient.setActiveTrip(driverId, {
-      tripId: updatedTrip._id,
-    });
-
-    return { success: true, trip: updatedTrip };
   }
 
   /**
@@ -941,41 +941,19 @@ export class TripService {
 
     return { success: true, trip: updatedTrip };
   }
-  async beginTrip1(tripId: string): Promise<any> {
-    const result = await this.updateTripStatus(
-      tripId,
-      TripStatus.TRIP_IN_PROGRESS,
-    );
 
-    if (!result.success || !result.trip) {
-      return {
-        success: false,
-        message:
-          result.message || 'Failed to update trip status to in progress',
-      };
-    }
-
-    return {
-      success: true,
-      trip: result.trip,
-    };
-  }
-
-  async beginTrip(driverId: string): Promise<any> {
+  async startTrip(driverId: string): Promise<any> {
     try {
       const tripId = await this.getUserActiveTripId(driverId, UserType.DRIVER);
-      const result = await this.beginTrip1(tripId);
+      const result = await this.updateTripStatus(
+        tripId,
+        TripStatus.TRIP_IN_PROGRESS,
+      );
 
       if (result.success && result.trip) {
-        await this.activeTripService.refreshUserActiveTripExpiry(
-          driverId,
-          UserType.DRIVER,
-        );
         const customerId = result.trip.customer.id;
-        await this.activeTripService.refreshUserActiveTripExpiry(
-          customerId,
-          UserType.CUSTOMER,
-        );
+        await this.refreshUsersTripExpiry(driverId, customerId);
+
         await this.eventService.notifyCustomer(
           result.trip,
           customerId,
@@ -991,26 +969,11 @@ export class TripService {
       );
     }
   }
-  async completeTrip(tripId: string): Promise<any> {
-    const result = await this.updateTripStatus(tripId, TripStatus.COMPLETED);
 
-    if (!result.success || !result.trip) {
-      return {
-        success: false,
-        message: result.message || 'Failed to update trip status to completed',
-      };
-    }
-
-    return {
-      success: true,
-      trip: result.trip,
-    };
-  }
-
-  async arrivedAtStop(driverId: string): Promise<any> {
+  async arrivedStop(driverId: string): Promise<any> {
     try {
       const tripId = await this.getUserActiveTripId(driverId, UserType.DRIVER);
-      const result = await this.completeTrip(tripId);
+      const result = await this.updateTripStatus(tripId, TripStatus.COMPLETED);
 
       if (result.success && result.trip) {
         await this.activeTripService.removeUserActiveTrip(

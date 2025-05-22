@@ -69,4 +69,9 @@ export class TripRepository {
       })
       .exec();
   }
+
+  async findTripStatusById(id: string): Promise<TripStatus | null> {
+    const trip = await this.tripModel.findById(id).select('status').exec();
+    return trip ? trip.status : null;
+  }
 }

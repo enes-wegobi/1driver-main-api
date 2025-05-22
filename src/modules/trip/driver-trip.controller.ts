@@ -27,7 +27,7 @@ export class DriversTripsController {
     @Param('tripId') tripId: string,
     @GetUser() user: IJwtPayload,
   ) {
-    return await this.tripService.approveTrip1(tripId, user.userId);
+    return await this.tripService.approveTrip(tripId, user.userId);
   }
 
   @Post('decline/:tripId')
@@ -45,17 +45,17 @@ export class DriversTripsController {
 
   @Post('arrive-at-pickup')
   async arriveAtPickup(@GetUser() user: IJwtPayload) {
-    return await this.tripService.reachPickup(user.userId);
+    return await this.tripService.arrivePickup(user.userId);
   }
 
   @Post('start-trip')
   async startTrip(@GetUser() user: IJwtPayload) {
-    return await this.tripService.beginTrip(user.userId);
+    return await this.tripService.startTrip(user.userId);
   }
 
   @Post('arrived-at-stop')
   async arrivedStop(@GetUser() user: IJwtPayload) {
-    return await this.tripsService.arrivedAtStop(user.userId);
+    return await this.tripService.arrivedStop(user.userId);
   }
 
   @Post('arrive-at-destination')
