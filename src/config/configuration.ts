@@ -49,6 +49,25 @@ export default () => ({
   },
   redis: {
     url: process.env.REDIS_URL || 'redis://localhost:6379',
+    driverLocationExpiry: parseInt(
+      process.env.REDIS_DRIVER_LOCATION_EXPIRY || '900',
+      10,
+    ),
+    activeDriverExpiry: parseInt(
+      process.env.REDIS_ACTIVE_DRIVER_EXPIRY || '1800',
+      10,
+    ),
+    activeCustomerExpiry: parseInt(
+      process.env.REDIS_ACTIVE_CUSTOMER_EXPIRY || '1800',
+      10,
+    ),
+  },
+  valkey: {
+    host: process.env.VALKEY_HOST || 'localhost',
+    port: parseInt(process.env.VALKEY_PORT || '6379', 10),
+    username: process.env.VALKEY_USERNAME || '',
+    password: process.env.VALKEY_PASSWORD || '',
+    tls: process.env.VALKEY_TLS === 'true',
   },
   logging: {
     level: process.env.LOG_LEVEL || 'info',
@@ -65,5 +84,10 @@ export default () => ({
     projectId: process.env.FIREBASE_PROJECT_ID,
     clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
     privateKey: process.env.FIREBASE_PRIVATE_KEY,
+  },
+  trip: {
+    mongoUser: process.env.TRIP_MONGODB_USER,
+    mongoUrl: process.env.TRIP_MONGODB_URI,
+    mongoPassword: process.env.TRIP_MONGODB_PASSWORD,
   },
 });

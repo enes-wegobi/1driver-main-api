@@ -17,7 +17,7 @@ export class CustomerStatusService extends BaseRedisService {
 
     pipeline.set(key, new Date().toISOString());
     pipeline.expire(key, this.ACTIVE_CUSTOMER_EXPIRY);
-    pipeline.sAdd(RedisKeyGenerator.activeCustomersSet(), customerId);
+    pipeline.sadd(RedisKeyGenerator.activeCustomersSet(), customerId);
 
     await pipeline.exec();
     return true;
@@ -29,7 +29,7 @@ export class CustomerStatusService extends BaseRedisService {
     const key = RedisKeyGenerator.customerActive(customerId);
 
     pipeline.del(key);
-    pipeline.sRem(RedisKeyGenerator.activeCustomersSet(), customerId);
+    pipeline.srem(RedisKeyGenerator.activeCustomersSet(), customerId);
 
     await pipeline.exec();
     return true;
@@ -45,6 +45,6 @@ export class CustomerStatusService extends BaseRedisService {
 
   @WithErrorHandling([])
   async getActiveCustomers(): Promise<string[]> {
-    return await this.client.sMembers(RedisKeyGenerator.activeCustomersSet());
+    return await this.client.smembers(RedisKeyGenerator.activeCustomersSet());
   }
 }

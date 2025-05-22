@@ -25,11 +25,12 @@ export class LocationService extends BaseRedisService {
     pipeline.expire(key, this.DRIVER_LOCATION_EXPIRY);
 
     const geoKey = RedisKeyGenerator.geoIndex(userType);
-    pipeline.geoAdd(geoKey, {
-      longitude: locationData.longitude,
-      latitude: locationData.latitude,
-      member: userId,
-    });
+    pipeline.geoadd(
+      geoKey,
+      locationData.longitude,
+      locationData.latitude,
+      userId,
+    );
 
     await pipeline.exec();
     return true;

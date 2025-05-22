@@ -269,10 +269,14 @@ export class WebSocketGateway
       if (tripId) {
         // Get trip details to find customer ID
         const tripDetails = await this.tripClient.getTripById(tripId);
-        
-        if (tripDetails.success && tripDetails.trip.customer && tripDetails.trip.customer.id) {
+
+        if (
+          tripDetails.success &&
+          tripDetails.trip.customer &&
+          tripDetails.trip.customer.id
+        ) {
           const customerId = tripDetails.trip.customer.id;
-          
+
           // Send location update directly to customer
           this.webSocketService.sendToUser(customerId, 'driverLocation', {
             tripId,
@@ -280,7 +284,7 @@ export class WebSocketGateway
             location: payload,
             timestamp: new Date().toISOString(),
           });
-          
+
           this.logger.debug(
             `Driver ${userId} location sent to customer ${customerId} for trip ${tripId}`,
           );

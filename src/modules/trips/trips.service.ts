@@ -228,7 +228,7 @@ export class TripsService {
     try {
       this.logger.log(`Driver ${driverId} declining trip ${tripId}`);
       const result = await this.tripClient.declineTrip(tripId, driverId);
-      
+
       if (result.success && result.trip) {
         if (
           result.trip.calledDriverIds.length ===
@@ -406,15 +406,17 @@ export class TripsService {
     driverId: string,
     targetLocation: { lat: number; lon: number },
     maxDistance: number = 100, // Default 100 meters
-    errorMessage: string = 'You are too far from the target location'
+    errorMessage: string = 'You are too far from the target location',
   ): Promise<void> {
     // Get driver's current location
     const driverLocation = await this.locationService.getUserLocation(driverId);
-    
+
     if (!driverLocation) {
-      throw new BadRequestException('Driver location not found. Please ensure your location is enabled.');
+      throw new BadRequestException(
+        'Driver location not found. Please ensure your location is enabled.',
+      );
     }
-    
+
     // Calculate distance between driver and target location
     const distanceRequest: BatchDistanceRequest = {
       referencePoint: targetLocation,
@@ -423,20 +425,22 @@ export class TripsService {
           driverId: driverId,
           coordinates: {
             lat: driverLocation.latitude,
-            lon: driverLocation.longitude
-          }
-        }
-      ]
+            lon: driverLocation.longitude,
+          },
+        },
+      ],
     };
-    
-    const distanceResult = await this.mapsService.getBatchDistances(distanceRequest);
-    
+
+    const distanceResult =
+      await this.mapsService.getBatchDistances(distanceRequest);
+
     // Check if driver is close enough to target location
-    const driverDistance = distanceResult.results?.[driverId]?.distance ?? Infinity;
-    
+    const driverDistance =
+      distanceResult.results?.[driverId]?.distance ?? Infinity;
+
     if (driverDistance > maxDistance) {
       throw new BadRequestException(
-        `${errorMessage} (${Math.round(driverDistance)}m). You must be within ${maxDistance}m.`
+        `${errorMessage} (${Math.round(driverDistance)}m). You must be within ${maxDistance}m.`,
       );
     }
   }
@@ -445,30 +449,35 @@ export class TripsService {
     try {
       // Get driver's active trip ID
       const tripId = await this.getUserActiveTripId(driverId, UserType.DRIVER);
-      
+
       // Get trip details
       const tripDetails = await this.tripClient.getTripById(tripId);
-      
+
       // Validate trip details
       if (!tripDetails.success || !tripDetails.trip) {
         throw new BadRequestException('Failed to retrieve trip details');
       }
-      
+
       // Get pickup location coordinates
-      const pickupLocation = tripDetails.trip.route && tripDetails.trip.route.length > 0 ? tripDetails.trip.route[0] : null;
-      
+      const pickupLocation =
+        tripDetails.trip.route && tripDetails.trip.route.length > 0
+          ? tripDetails.trip.route[0]
+          : null;
+
       if (!pickupLocation || !pickupLocation.lat || !pickupLocation.lon) {
-        throw new BadRequestException('Pickup location not found in trip details');
+        throw new BadRequestException(
+          'Pickup location not found in trip details',
+        );
       }
-      
+
       // Verify driver is at pickup location
       await this.verifyDriverLocation(
         driverId,
         { lat: pickupLocation.lat, lon: pickupLocation.lon },
         100,
-        'You are too far from the pickup location'
+        'You are too far from the pickup location',
       );
-      
+
       // Update trip status
       const result = await this.tripClient.reachPickup(tripId, driverId);
 
@@ -570,32 +579,39 @@ export class TripsService {
     try {
       // Get driver's active trip ID
       const tripId = await this.getUserActiveTripId(driverId, UserType.DRIVER);
-      
+
       // Get trip details
       const tripDetails = await this.tripClient.getTripById(tripId);
-      
+
       // Validate trip details
       if (!tripDetails.success || !tripDetails.trip) {
         throw new BadRequestException('Failed to retrieve trip details');
       }
-      
+
       // Get destination location coordinates (second point in the route)
-      const destinationLocation = tripDetails.trip.route && tripDetails.trip.route.length > 1 
-        ? tripDetails.trip.route[1] 
-        : null;
-      
-      if (!destinationLocation || !destinationLocation.lat || !destinationLocation.lon) {
-        throw new BadRequestException('Destination location not found in trip details');
+      const destinationLocation =
+        tripDetails.trip.route && tripDetails.trip.route.length > 1
+          ? tripDetails.trip.route[1]
+          : null;
+
+      if (
+        !destinationLocation ||
+        !destinationLocation.lat ||
+        !destinationLocation.lon
+      ) {
+        throw new BadRequestException(
+          'Destination location not found in trip details',
+        );
       }
-      
+
       // Verify driver is at destination location
       await this.verifyDriverLocation(
         driverId,
         { lat: destinationLocation.lat, lon: destinationLocation.lon },
         100, // 100 meters radius
-        'You are too far from the destination location'
+        'You are too far from the destination location',
       );
-      
+
       // Update trip status to arrived at destination
       const result = await this.tripClient.completeTrip(tripId, driverId);
 
@@ -605,9 +621,9 @@ export class TripsService {
           driverId,
           UserType.DRIVER,
         );
-        
+
         const customerId = result.trip.customer.id;
-        
+
         // Keep customer's active trip for payment processing
         await this.activeTripService.refreshUserActiveTripExpiry(
           customerId,
@@ -618,9 +634,9 @@ export class TripsService {
         await this.eventService.notifyCustomer(
           result.trip,
           customerId,
-          EventType.TRIP_COMPLETED
+          EventType.TRIP_COMPLETED,
         );
-        
+
         // Also send a direct websocket message to trigger the payment screen
         this.webSocketService.sendToUser(customerId, 'showPaymentScreen', {
           tripId,
@@ -635,7 +651,7 @@ export class TripsService {
       this.logger.error(`Error arriving at destination: ${error.message}`);
       throw new BadRequestException(
         error.response?.data?.message ||
-          'Failed to update arrival at destination status'
+          'Failed to update arrival at destination status',
       );
     }
   }

@@ -14,26 +14,29 @@ export class PaymentsService {
   /**
    * Create a Stripe customer when a customer is created in the system
    */
-  async createStripeCustomer(customerId: string, customerData: {
-    name: string;
-    email: string;
-    phone?: string;
-  }): Promise<any> {
+  async createStripeCustomer(
+    customerId: string,
+    customerData: {
+      name: string;
+      email: string;
+      phone?: string;
+    },
+  ): Promise<any> {
     this.logger.log(`Creating Stripe customer for user ${customerId}`);
-    
+
     const stripeCustomer = await this.stripeService.createCustomer({
       name: customerData.name,
       email: customerData.email,
       phone: customerData.phone,
       metadata: { customerId },
     });
-    
+
     // Update the customer record with the Stripe customer ID
     await this.customersService.updateStripeCustomerId(
-      customerId, 
-      stripeCustomer.id
+      customerId,
+      stripeCustomer.id,
     );
-    
+
     return stripeCustomer;
   }
 
@@ -44,20 +47,25 @@ export class PaymentsService {
     customerId: string,
     paymentMethodId: string,
   ): Promise<any> {
-    this.logger.log(`Adding payment method ${paymentMethodId} for customer ${customerId}`);
-    
+    this.logger.log(
+      `Adding payment method ${paymentMethodId} for customer ${customerId}`,
+    );
+
     // Get the Stripe customer ID from the customer record
-    const customer = await this.customersService.findOne(customerId, 'stripeCustomerId');
-    
+    const customer = await this.customersService.findOne(
+      customerId,
+      'stripeCustomerId',
+    );
+
     if (!customer.stripeCustomerId) {
       throw new Error('Customer does not have a Stripe account');
     }
-    
+
     const paymentMethod = await this.stripeService.addPaymentMethod(
       customer.stripeCustomerId,
       paymentMethodId,
     );
-    
+
     return paymentMethod;
   }
 
@@ -66,13 +74,16 @@ export class PaymentsService {
    */
   async getPaymentMethods(customerId: string): Promise<any> {
     this.logger.log(`Getting payment methods for customer ${customerId}`);
-    
-    const customer = await this.customersService.findOne(customerId, 'stripeCustomerId');
-    
+
+    const customer = await this.customersService.findOne(
+      customerId,
+      'stripeCustomerId',
+    );
+
     if (!customer.stripeCustomerId) {
       throw new Error('Customer does not have a Stripe account');
     }
-    
+
     return this.stripeService.getPaymentMethods(customer.stripeCustomerId);
   }
 
@@ -83,16 +94,22 @@ export class PaymentsService {
     customerId: string,
     paymentMethodId: string,
   ): Promise<any> {
-    this.logger.log(`Deleting payment method ${paymentMethodId} for customer ${customerId}`);
-    
+    this.logger.log(
+      `Deleting payment method ${paymentMethodId} for customer ${customerId}`,
+    );
+
     // Verify the customer owns this payment method
     const paymentMethods = await this.getPaymentMethods(customerId);
-    const paymentMethodExists = paymentMethods.some(pm => pm.id === paymentMethodId);
-    
+    const paymentMethodExists = paymentMethods.some(
+      (pm) => pm.id === paymentMethodId,
+    );
+
     if (!paymentMethodExists) {
-      throw new Error('Payment method not found or does not belong to this customer');
+      throw new Error(
+        'Payment method not found or does not belong to this customer',
+      );
     }
-    
+
     return this.stripeService.deletePaymentMethod(paymentMethodId);
   }
 
@@ -106,14 +123,19 @@ export class PaymentsService {
     paymentMethodId?: string,
     metadata?: Record<string, string>,
   ): Promise<any> {
-    this.logger.log(`Processing payment of ${amount} ${currency} for customer ${customerId}`);
-    
-    const customer = await this.customersService.findOne(customerId, 'stripeCustomerId');
-    
+    this.logger.log(
+      `Processing payment of ${amount} ${currency} for customer ${customerId}`,
+    );
+
+    const customer = await this.customersService.findOne(
+      customerId,
+      'stripeCustomerId',
+    );
+
     if (!customer.stripeCustomerId) {
       throw new Error('Customer does not have a Stripe account');
     }
-    
+
     return this.stripeService.createPaymentIntent(
       amount,
       currency,
@@ -128,7 +150,7 @@ export class PaymentsService {
    */
   async getPaymentIntent(paymentIntentId: string): Promise<any> {
     this.logger.log(`Getting payment intent ${paymentIntentId}`);
-    
+
     return this.stripeService.getPaymentIntent(paymentIntentId);
   }
 }

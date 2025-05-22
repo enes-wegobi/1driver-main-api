@@ -80,8 +80,14 @@ export class CustomersService {
     return this.customersClient.deleteExpoToken(customerId);
   }
 
-  async updateStripeCustomerId(customerId: string, stripeCustomerId: string): Promise<any> {
+  async updateStripeCustomerId(
+    customerId: string,
+    stripeCustomerId: string,
+  ): Promise<any> {
     this.logger.log(`Updating Stripe customer ID for customer ${customerId}`);
-    return this.customersClient.updateStripeCustomerId(customerId, stripeCustomerId);
+    return this.customersClient.updateStripeCustomerId(
+      customerId,
+      stripeCustomerId,
+    );
   }
 }

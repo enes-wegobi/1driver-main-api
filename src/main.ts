@@ -13,31 +13,55 @@ import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { IoAdapter } from '@nestjs/platform-socket.io';
 import { ServerOptions } from 'socket.io';
-import { createClient } from 'redis';
+import Redis from 'ioredis';
 import { createAdapter } from '@socket.io/redis-adapter';
 
 class FastifySocketIORedisAdapter extends IoAdapter {
-  private pubClient: any;
-  private subClient: any;
+  private pubClient: Redis;
+  private subClient: Redis;
+  private readonly app: any;
 
-  constructor(app) {
+  constructor(app: any) {
     super(app);
+    this.app = app;
   }
 
   async connectToRedis(redisUrl: string) {
-    this.pubClient = createClient({ url: redisUrl });
-    this.subClient = this.pubClient.duplicate();
+    // Extract connection details from URL
+    const configService = this.app.get(ConfigService);
 
-    await Promise.all([this.pubClient.connect(), this.subClient.connect()]);
+    this.pubClient = new Redis({
+      host: configService.get('valkey.host', 'localhost'),
+      port: configService.get('valkey.port', 6379),
+      username: configService.get('valkey.username', ''),
+      password: configService.get('valkey.password', ''),
+      tls: configService.get('valkey.tls', false) ? {} : undefined,
+    });
+
+    this.subClient = new Redis({
+      host: configService.get('valkey.host', 'localhost'),
+      port: configService.get('valkey.port', 6379),
+      username: configService.get('valkey.username', ''),
+      password: configService.get('valkey.password', ''),
+      tls: configService.get('valkey.tls', false) ? {} : undefined,
+    });
 
     this.pubClient.on('error', (err) =>
-      console.error('Redis Pub Client Error', err),
+      console.error('Valkey Pub Client Error', err),
     );
     this.subClient.on('error', (err) =>
-      console.error('Redis Sub Client Error', err),
+      console.error('Valkey Sub Client Error', err),
     );
 
-    console.log('Redis adapter clients connected');
+    this.pubClient.on('connect', () => {
+      console.log('Valkey Pub Client connected');
+    });
+
+    this.subClient.on('connect', () => {
+      console.log('Valkey Sub Client connected');
+    });
+
+    console.log('Valkey adapter clients initialized');
   }
 
   createIOServer(port: number, options?: ServerOptions) {
@@ -80,7 +104,7 @@ async function bootstrap() {
   );
 
   const configService = app.get(ConfigService);
-  const redisUrl = configService.get<string>('redis.url', '0.0.0.0');
+  const redisUrl = configService.get('redis.url', '0.0.0.0');
   const socketIOAdapter = new FastifySocketIORedisAdapter(app);
   await socketIOAdapter.connectToRedis(redisUrl);
   app.useWebSocketAdapter(socketIOAdapter);
@@ -143,8 +167,8 @@ async function bootstrap() {
     encodings: ['gzip', 'deflate'],
   });
 
-  const port = configService.get<number>('PORT', 3000);
-  const host = configService.get<string>('HOST', '0.0.0.0');
+  const port = configService.get('PORT', 3000);
+  const host = configService.get('HOST', '0.0.0.0');
 
   await app.listen(port, host);
   console.log(`API Gateway started: ${await app.getUrl()}`);

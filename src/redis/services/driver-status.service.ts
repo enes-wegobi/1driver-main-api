@@ -18,7 +18,7 @@ export class DriverStatusService extends BaseRedisService {
 
     pipeline.set(key, new Date().toISOString());
     pipeline.expire(key, this.ACTIVE_DRIVER_EXPIRY);
-    pipeline.sAdd(RedisKeyGenerator.activeDriversSet(), driverId);
+    pipeline.sadd(RedisKeyGenerator.activeDriversSet(), driverId);
 
     await pipeline.exec();
     return true;
@@ -30,7 +30,7 @@ export class DriverStatusService extends BaseRedisService {
     const key = RedisKeyGenerator.driverActive(driverId);
 
     pipeline.del(key);
-    pipeline.sRem(RedisKeyGenerator.activeDriversSet(), driverId);
+    pipeline.srem(RedisKeyGenerator.activeDriversSet(), driverId);
 
     await pipeline.exec();
 
@@ -98,7 +98,7 @@ export class DriverStatusService extends BaseRedisService {
 
   @WithErrorHandling([])
   async getActiveDrivers(): Promise<string[]> {
-    return await this.client.sMembers(RedisKeyGenerator.activeDriversSet());
+    return await this.client.smembers(RedisKeyGenerator.activeDriversSet());
   }
 
   @WithErrorHandling([])
@@ -110,11 +110,11 @@ export class DriverStatusService extends BaseRedisService {
     }
 
     // Use Redis SMISMEMBER command to check multiple members in a single operation
-    const activeStatusArray = await this.client.sendCommand([
+    const activeStatusArray = await this.client.call(
       'SMISMEMBER',
       RedisKeyGenerator.activeDriversSet(),
       ...driverIds,
-    ]);
+    );
 
     // Map results (1 = active, 0 = inactive)
     return driverIds.map((driverId, index) => {

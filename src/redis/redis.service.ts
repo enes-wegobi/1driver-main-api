@@ -5,7 +5,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { createClient, RedisClientType } from 'redis';
+import Redis from 'ioredis';
 import { DriverAvailabilityStatus } from 'src/websocket/dto/driver-location.dto';
 import { FindNearbyUsersResult } from './dto/nearby-user.dto';
 import { UserType } from 'src/common/user-type.enum';
@@ -13,15 +13,22 @@ import { RedisKeyGenerator } from './redis-key.generator';
 
 @Injectable()
 export class RedisService implements OnModuleInit, OnModuleDestroy {
-  private client: RedisClientType;
+  private client: Redis;
   private readonly logger = new Logger(RedisService.name);
   private DRIVER_LOCATION_EXPIRY: number;
   private ACTIVE_DRIVER_EXPIRY: number;
   private ACTIVE_CUSTOMER_EXPIRY: number;
 
   constructor(private configService: ConfigService) {
-    this.client = createClient({
-      url: this.configService.get<string>('redis.url'),
+    // Initialize with Valkey connection parameters
+    this.client = new Redis({
+      host: this.configService.get<string>('valkey.host', 'localhost'),
+      port: this.configService.get<number>('valkey.port', 6379),
+      username: this.configService.get<string>('valkey.username', ''),
+      password: this.configService.get<string>('valkey.password', ''),
+      tls: this.configService.get<boolean>('valkey.tls', false)
+        ? {}
+        : undefined,
     });
 
     // Initialize expiry times from configuration with defaults
@@ -39,19 +46,23 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     ); // Default: 30 minutes
 
     this.client.on('error', (err) =>
-      this.logger.error('Redis Client Error', err),
+      this.logger.error('Valkey Client Error', err),
     );
+
+    this.client.on('connect', () => {
+      this.logger.log('Valkey connection successful');
+    });
   }
 
   async onModuleInit() {
-    await this.client.connect();
+    // ioredis automatically connects, no need to explicitly connect
   }
 
   async onModuleDestroy() {
-    await this.client.disconnect();
+    await this.client.quit();
   }
 
-  getRedisClient(): RedisClientType {
+  getRedisClient(): Redis {
     return this.client;
   }
 
@@ -70,11 +81,12 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       pipeline.expire(key, this.DRIVER_LOCATION_EXPIRY);
 
       const geoKey = RedisKeyGenerator.geoIndex(userType);
-      pipeline.geoAdd(geoKey, {
-        longitude: locationData.longitude,
-        latitude: locationData.latitude,
-        member: userId,
-      });
+      pipeline.geoadd(
+        geoKey,
+        locationData.longitude,
+        locationData.latitude,
+        userId,
+      );
 
       await pipeline.exec();
 
@@ -135,7 +147,8 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       if (results) {
         results.forEach((result, index) => {
           const userId = userIds[index];
-          const locationData = result ? result.toString() : null;
+          // ioredis returns [err, result] array for each command
+          const locationData = result[1] ? result[1].toString() : null;
 
           if (locationData) {
             try {
@@ -163,7 +176,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
       pipeline.set(key, new Date().toISOString());
       pipeline.expire(key, this.ACTIVE_DRIVER_EXPIRY);
-      pipeline.sAdd(RedisKeyGenerator.activeDriversSet(), driverId);
+      pipeline.sadd(RedisKeyGenerator.activeDriversSet(), driverId);
 
       await pipeline.exec();
       return true;
@@ -182,7 +195,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       const key = RedisKeyGenerator.driverActive(driverId);
 
       pipeline.del(key);
-      pipeline.sRem(RedisKeyGenerator.activeDriversSet(), driverId);
+      pipeline.srem(RedisKeyGenerator.activeDriversSet(), driverId);
 
       await pipeline.exec();
 
@@ -283,7 +296,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
       pipeline.set(key, new Date().toISOString());
       pipeline.expire(key, this.ACTIVE_CUSTOMER_EXPIRY);
-      pipeline.sAdd(RedisKeyGenerator.activeCustomersSet(), customerId);
+      pipeline.sadd(RedisKeyGenerator.activeCustomersSet(), customerId);
 
       await pipeline.exec();
       return true;
@@ -302,7 +315,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       const key = RedisKeyGenerator.customerActive(customerId);
 
       pipeline.del(key);
-      pipeline.sRem(RedisKeyGenerator.activeCustomersSet(), customerId);
+      pipeline.srem(RedisKeyGenerator.activeCustomersSet(), customerId);
 
       await pipeline.exec();
       return true;
@@ -332,7 +345,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
   async getActiveCustomers(): Promise<string[]> {
     try {
-      return await this.client.sMembers(RedisKeyGenerator.activeCustomersSet());
+      return await this.client.smembers(RedisKeyGenerator.activeCustomersSet());
     } catch (error) {
       this.logger.error('Error getting active customers:', error.message);
       return [];
@@ -341,7 +354,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
   async getActiveDrivers(): Promise<string[]> {
     try {
-      return await this.client.sMembers(RedisKeyGenerator.activeDriversSet());
+      return await this.client.smembers(RedisKeyGenerator.activeDriversSet());
     } catch (error) {
       this.logger.error('Error getting active drivers:', error.message);
       return [];
@@ -357,11 +370,10 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       }
 
       // Use Redis SMISMEMBER command to check multiple members in a single operation
-      const activeStatusArray = await this.client.sendCommand([
-        'SMISMEMBER',
+      const activeStatusArray = await this.client.smismember(
         RedisKeyGenerator.activeDriversSet(),
         ...driverIds,
-      ]);
+      );
 
       // Map results (1 = active, 0 = inactive)
       return driverIds.map((driverId, index) => {
@@ -389,16 +401,15 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     const geoKey = RedisKeyGenerator.nearbyUsers(userType);
 
     try {
-      const results = await this.client.sendCommand([
-        'GEORADIUS',
+      const results = await this.client.georadius(
         geoKey,
-        longitude.toString(),
-        latitude.toString(),
-        radius.toString(),
+        longitude,
+        latitude,
+        radius,
         'km',
         'WITHDIST',
         'WITHCOORD',
-      ]);
+      );
 
       // Process results to get more information about each user
       const enhancedResults: any[] = [];
@@ -470,5 +481,29 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       radius,
       true,
     );
+  }
+
+  // Basic Redis operations
+  async set(key: string, value: string, ttl?: number): Promise<boolean> {
+    if (ttl) {
+      return (await this.client.set(key, value, 'PX', ttl)) === 'OK';
+    }
+    return (await this.client.set(key, value)) === 'OK';
+  }
+
+  async get(key: string): Promise<string | null> {
+    return this.client.get(key);
+  }
+
+  async del(key: string): Promise<number> {
+    return this.client.del(key);
+  }
+
+  async ttl(key: string): Promise<number> {
+    return this.client.ttl(key);
+  }
+
+  async pttl(key: string): Promise<number> {
+    return this.client.pttl(key);
   }
 }

@@ -32,27 +32,43 @@ export class ConfigService {
     );
   }
 
+  get driverLocationExpiry(): number {
+    return this.configService.get<number>('redis.driverLocationExpiry', 900);
+  }
+
+  get activeDriverExpiry(): number {
+    return this.configService.get<number>('redis.activeDriverExpiry', 1800);
+  }
+
+  get activeCustomerExpiry(): number {
+    return this.configService.get<number>('redis.activeCustomerExpiry', 1800);
+  }
+
+  get valkeyHost(): string {
+    return this.configService.get<string>('valkey.host', 'localhost');
+  }
+
+  get valkeyPort(): number {
+    return this.configService.get<number>('valkey.port', 6379);
+  }
+
+  get valkeyUsername(): string {
+    return this.configService.get<string>('valkey.username', '');
+  }
+
+  get valkeyPassword(): string {
+    return this.configService.get<string>('valkey.password', '');
+  }
+
+  get valkeyTls(): boolean {
+    return this.configService.get<boolean>('valkey.tls', false);
+  }
+
   get googleMapsApiKey(): string {
     return this.configService.get<string>(
       'GOOGLE_MAPS_API_KEY',
       'googlemapssecretkey',
     );
-  }
-
-  get awsRegion(): string {
-    return this.configService.get<string>('aws.region')!;
-  }
-
-  get awsAccessKeyId(): string {
-    return this.configService.get<string>('aws.accessKeyId')!;
-  }
-
-  get awsSecretAccessKey(): string {
-    return this.configService.get<string>('aws.secretAccessKey')!;
-  }
-
-  get awsS3BucketName(): string {
-    return this.configService.get<string>('aws.s3BucketName')!;
   }
 
   get spacesRegion(): string {
@@ -85,6 +101,18 @@ export class ConfigService {
 
   get stripeApiVersion(): string {
     return this.configService.get<string>('stripe.apiVersion')!;
+  }
+
+  get tripMongoUser(): string {
+    return this.configService.get('trip.mongoUser')!;
+  }
+
+  get tripMongoUri(): string {
+    return this.configService.get('trip.mongoUrl')!;
+  }
+
+  get tripMongoPassword(): string {
+    return this.configService.get('trip.mongoPassword')!;
   }
 
   get firebase() {

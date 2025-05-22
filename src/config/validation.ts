@@ -27,6 +27,15 @@ const envSchema = z.object({
   FIREBASE_CLIENT_EMAIL: z.string().optional(),
   FIREBASE_PRIVATE_KEY: z.string().optional(),
   GOOGLE_MAPS_API_KEY: z.string().min(1),
+
+  VALKEY_HOST: z.string().optional().default('localhost'),
+  VALKEY_PORT: z.coerce.number().int().positive().optional().default(6379),
+  VALKEY_PASSWORD: z.string().optional(),
+  VALKEY_USERNAME: z.string().optional(),
+  VALKEY_TLS: z.string().optional().default('false'),
+  TRIP_MONGODB_URI: z.string().url(),
+  TRIP_MONGODB_USER: z.string().min(1),
+  TRIP_MONGODB_PASSWORD: z.string().min(1),
 });
 
 export type EnvironmentVariables = z.infer<typeof envSchema>;

@@ -5,11 +5,11 @@ import {
   Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { createClient, RedisClientType } from 'redis';
+import Redis from 'ioredis';
 
 @Injectable()
 export class BaseRedisService implements OnModuleInit, OnModuleDestroy {
-  protected client: RedisClientType;
+  protected client: Redis;
   protected readonly logger = new Logger(BaseRedisService.name);
   protected DRIVER_LOCATION_EXPIRY: number;
   protected ACTIVE_DRIVER_EXPIRY: number;
@@ -17,8 +17,15 @@ export class BaseRedisService implements OnModuleInit, OnModuleDestroy {
   protected ACTIVE_TRIP_EXPIRY: number;
 
   constructor(protected configService: ConfigService) {
-    this.client = createClient({
-      url: this.configService.get<string>('redis.url'),
+    // Initialize with Valkey connection parameters
+    this.client = new Redis({
+      host: this.configService.get<string>('valkey.host', 'localhost'),
+      port: this.configService.get<number>('valkey.port', 6379),
+      username: this.configService.get<string>('valkey.username', ''),
+      password: this.configService.get<string>('valkey.password', ''),
+      tls: this.configService.get<boolean>('valkey.tls', false)
+        ? {}
+        : undefined,
     });
 
     // Initialize expiry times from configuration with defaults
@@ -40,19 +47,23 @@ export class BaseRedisService implements OnModuleInit, OnModuleDestroy {
     ); // Default: 60 minutes
 
     this.client.on('error', (err) =>
-      this.logger.error('Redis Client Error', err),
+      this.logger.error('Valkey Client Error', err),
     );
+
+    this.client.on('connect', () => {
+      this.logger.log('Valkey connection successful');
+    });
   }
 
   async onModuleInit() {
-    await this.client.connect();
+    // ioredis automatically connects, no need to explicitly connect
   }
 
   async onModuleDestroy() {
-    await this.client.disconnect();
+    await this.client.quit();
   }
 
-  getRedisClient(): RedisClientType {
+  getRedisClient(): Redis {
     return this.client;
   }
 }

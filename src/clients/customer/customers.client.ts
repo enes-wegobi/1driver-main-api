@@ -199,13 +199,18 @@ export class CustomersClient {
     return data;
   }
 
-  async updateStripeCustomerId(customerId: string, stripeCustomerId: string): Promise<any> {
+  async updateStripeCustomerId(
+    customerId: string,
+    stripeCustomerId: string,
+  ): Promise<any> {
     this.logger.log(`Updating Stripe customer ID for customer ${customerId}`);
     const { data } = await this.httpClient.patch(
       `/customers/${customerId}/stripe-customer-id`,
       { stripeCustomerId },
     );
-    this.logger.log(`Successfully updated Stripe customer ID for customer ${customerId}`);
+    this.logger.log(
+      `Successfully updated Stripe customer ID for customer ${customerId}`,
+    );
     return data;
   }
 }

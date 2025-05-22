@@ -11,7 +11,12 @@ import {
   Delete,
   HttpException,
 } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/jwt/jwt.guard';
 import { GetUser } from 'src/jwt/user.decoretor';
 import { IJwtPayload } from 'src/jwt/jwt-payload.interface';
@@ -30,9 +35,18 @@ export class PaymentsController {
   @Post('payment-methods')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Add a payment method to the customer' })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Payment method added successfully' })
-  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid payment method ID' })
-  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Customer not found or does not have a Stripe account' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Payment method added successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Invalid payment method ID',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Customer not found or does not have a Stripe account',
+  })
   async addPaymentMethod(
     @GetUser() user: IJwtPayload,
     @Body() body: AddPaymentMethodDto,
@@ -43,7 +57,10 @@ export class PaymentsController {
         body.paymentMethodId,
       );
     } catch (error) {
-      this.logger.error(`Error adding payment method: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error adding payment method: ${error.message}`,
+        error.stack,
+      );
       throw new HttpException(
         error.message || 'An error occurred while adding payment method',
         HttpStatus.BAD_REQUEST,
@@ -54,13 +71,22 @@ export class PaymentsController {
   @Get('payment-methods')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Get customer payment methods' })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Payment methods retrieved successfully' })
-  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Customer not found or does not have a Stripe account' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Payment methods retrieved successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Customer not found or does not have a Stripe account',
+  })
   async getPaymentMethods(@GetUser() user: IJwtPayload) {
     try {
       return await this.paymentsService.getPaymentMethods(user.userId);
     } catch (error) {
-      this.logger.error(`Error getting payment methods: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error getting payment methods: ${error.message}`,
+        error.stack,
+      );
       throw new HttpException(
         error.message || 'An error occurred while getting payment methods',
         HttpStatus.BAD_REQUEST,
@@ -71,9 +97,18 @@ export class PaymentsController {
   @Delete('payment-methods/:paymentMethodId')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Delete a payment method' })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Payment method deleted successfully' })
-  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid payment method ID' })
-  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Payment method not found' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Payment method deleted successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Invalid payment method ID',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Payment method not found',
+  })
   async deletePaymentMethod(
     @GetUser() user: IJwtPayload,
     @Param('paymentMethodId') paymentMethodId: string,
@@ -84,7 +119,10 @@ export class PaymentsController {
         paymentMethodId,
       );
     } catch (error) {
-      this.logger.error(`Error deleting payment method: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error deleting payment method: ${error.message}`,
+        error.stack,
+      );
       throw new HttpException(
         error.message || 'An error occurred while deleting payment method',
         HttpStatus.BAD_REQUEST,
@@ -95,9 +133,18 @@ export class PaymentsController {
   @Post('payment-intent')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Create a payment intent' })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Payment intent created successfully' })
-  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid payment data' })
-  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Customer not found or does not have a Stripe account' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Payment intent created successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Invalid payment data',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Customer not found or does not have a Stripe account',
+  })
   async createPaymentIntent(
     @GetUser() user: IJwtPayload,
     @Body() body: CreatePaymentIntentDto,
@@ -111,7 +158,10 @@ export class PaymentsController {
         body.metadata,
       );
     } catch (error) {
-      this.logger.error(`Error creating payment intent: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error creating payment intent: ${error.message}`,
+        error.stack,
+      );
       throw new HttpException(
         error.message || 'An error occurred while creating payment intent',
         HttpStatus.BAD_REQUEST,
@@ -122,9 +172,18 @@ export class PaymentsController {
   @Get('payment-intent/:paymentIntentId')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Get payment intent details' })
-  @ApiResponse({ status: HttpStatus.OK, description: 'Payment intent retrieved successfully' })
-  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid payment intent ID' })
-  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Payment intent not found' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Payment intent retrieved successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Invalid payment intent ID',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Payment intent not found',
+  })
   async getPaymentIntent(
     @GetUser() user: IJwtPayload,
     @Param('paymentIntentId') paymentIntentId: string,
@@ -132,7 +191,10 @@ export class PaymentsController {
     try {
       return await this.paymentsService.getPaymentIntent(paymentIntentId);
     } catch (error) {
-      this.logger.error(`Error getting payment intent: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error getting payment intent: ${error.message}`,
+        error.stack,
+      );
       throw new HttpException(
         error.message || 'An error occurred while getting payment intent',
         HttpStatus.BAD_REQUEST,

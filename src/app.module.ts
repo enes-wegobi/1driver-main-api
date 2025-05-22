@@ -12,7 +12,6 @@ import { TripsModule } from './modules/trips/trips.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { PromotionsModule } from './modules/promotions/promotions.module';
 import { ExpoNotificationsModule } from './modules/expo-notifications/expo-notifications.module';
-import { PaymentsModule } from './modules/payments/payments.module';
 
 @Module({
   imports: [
@@ -29,7 +28,6 @@ import { PaymentsModule } from './modules/payments/payments.module';
     NotificationsModule,
     PromotionsModule,
     ExpoNotificationsModule,
-    PaymentsModule,
   ],
 })
 export class AppModule {}
