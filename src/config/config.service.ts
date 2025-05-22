@@ -100,7 +100,14 @@ export class ConfigService {
   }
 
   get stripeApiVersion(): string {
-    return this.configService.get<string>('stripe.apiVersion')!;
+    return this.configService.get<string>(
+      'stripe.apiVersion',
+      '2025-04-30.basil',
+    )!;
+  }
+
+  get stripeWebhookSecret(): string {
+    return this.configService.get<string>('stripe.webhookSecret')!;
   }
 
   get tripMongoUser(): string {
@@ -108,29 +115,12 @@ export class ConfigService {
   }
 
   get tripMongoUri(): string {
-    return this.configService.get('trip.mongoUrl')!;
+    return this.configService.get('trip.mongoUrl')!; // Consistent with TRIP_MONGODB_URI env var
   }
 
   get tripMongoPassword(): string {
     return this.configService.get('trip.mongoPassword')!;
   }
-
-  get firebase() {
-    const projectId = this.configService.get<string>('firebase.projectId');
-    const clientEmail = this.configService.get<string>('firebase.clientEmail');
-    const privateKey = this.configService.get<string>('firebase.privateKey');
-
-    if (!projectId || !clientEmail || !privateKey) {
-      return null;
-    }
-
-    return {
-      projectId,
-      clientEmail,
-      privateKey,
-    };
-  }
-
   get tripCostPerMinute(): number {
     return this.configService.get('tripCostPerMinute', 1);
   }

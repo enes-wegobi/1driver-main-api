@@ -33,12 +33,6 @@ export default () => ({
         10,
       ),
     },
-    trip: {
-      url: process.env.TRIP_SERVICE_URL || 'http://localhost:3002',
-      timeout: parseInt(process.env.TRIP_SERVICE_TIMEOUT || '50000', 10),
-      retryCount: parseInt(process.env.TRIP_SERVICE_RETRY_COUNT || '3', 10),
-      retryDelay: parseInt(process.env.TRIP_SERVICE_RETRY_DELAY || '1000', 10),
-    },
   },
   retry: {
     defaultCount: parseInt(process.env.DEFAULT_RETRY_COUNT || '3', 10),
@@ -46,6 +40,7 @@ export default () => ({
   },
   jwt: {
     secret: process.env.JWT_SECRET || 'supersecret',
+    expiresIn: parseInt(process.env.JWT_EXPIRES_IN || '36000', 10),
   },
   redis: {
     url: process.env.REDIS_URL || 'redis://localhost:6379',
@@ -78,12 +73,7 @@ export default () => ({
     accessKeyId: process.env.SPACES_ACCESS_KEY_ID,
     secretAccessKey: process.env.SPACES_SECRET_ACCESS_KEY,
     bucketName: process.env.SPACES_BUCKET_NAME,
-    cdnEndpoint: process.env.SPACES_CND_ENDPOINT,
-  },
-  firebase: {
-    projectId: process.env.FIREBASE_PROJECT_ID,
-    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-    privateKey: process.env.FIREBASE_PRIVATE_KEY,
+    cdnEndpoint: process.env.SPACES_CDN_ENDPOINT,
   },
   trip: {
     mongoUser: process.env.TRIP_MONGODB_USER,

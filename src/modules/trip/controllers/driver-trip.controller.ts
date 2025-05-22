@@ -11,9 +11,7 @@ import { TripService } from '../services/trip.service';
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class DriversTripsController {
-  constructor(
-    private readonly tripService: TripService,
-  ) {}
+  constructor(private readonly tripService: TripService) {}
 
   @Get('active')
   async getTripById(@GetUser() user: IJwtPayload) {
@@ -58,7 +56,7 @@ export class DriversTripsController {
 
   @Post('arrive-at-destination')
   async arriveAtDestination(@GetUser() user: IJwtPayload) {
-   // return await this.tripService.arriveDestination(user.userId);
+    // return await this.tripService.arriveDestination(user.userId);
   }
 
   @Post('cancel')

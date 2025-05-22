@@ -8,7 +8,12 @@ import { ClientsModule } from '../clients/clients.module';
 import { TripModule } from 'src/modules/trip/trip.module';
 
 @Module({
-  imports: [JwtModule, RedisModule, ClientsModule, forwardRef(() => TripModule)],
+  imports: [
+    JwtModule,
+    RedisModule,
+    ClientsModule,
+    forwardRef(() => TripModule),
+  ],
   controllers: [WebSocketController],
   providers: [WebSocketGateway, WebSocketService],
   exports: [WebSocketService],

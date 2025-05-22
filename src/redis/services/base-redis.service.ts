@@ -11,7 +11,7 @@ import Redis from 'ioredis';
 export class BaseRedisService implements OnModuleInit, OnModuleDestroy {
   // Static Redis client instance shared across all instances of this service
   private static redisClient: Redis | null = null;
-  
+
   // Protected accessor for the static client
   protected get client(): Redis {
     if (!BaseRedisService.redisClient) {
@@ -19,7 +19,7 @@ export class BaseRedisService implements OnModuleInit, OnModuleDestroy {
     }
     return BaseRedisService.redisClient;
   }
-  
+
   protected readonly logger = new Logger(BaseRedisService.name);
   protected DRIVER_LOCATION_EXPIRY: number;
   protected ACTIVE_DRIVER_EXPIRY: number;
@@ -38,7 +38,7 @@ export class BaseRedisService implements OnModuleInit, OnModuleDestroy {
           ? {}
           : undefined,
       });
-      
+
       // Set up event listeners only once
       BaseRedisService.redisClient.on('error', (err) =>
         this.logger.error('Valkey Client Error', err),

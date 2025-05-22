@@ -17,7 +17,7 @@ export class RedisService {
 
   constructor(
     private configService: ConfigService,
-    private baseRedisService: BaseRedisService
+    private baseRedisService: BaseRedisService,
   ) {
     // Use the Redis client from BaseRedisService instead of creating a new one
     this.client = this.baseRedisService.getRedisClient();

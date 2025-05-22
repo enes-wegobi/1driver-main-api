@@ -8,7 +8,6 @@ import { WebSocketModule } from './websocket/websocket.module';
 import { RedisModule } from './redis/redis.module';
 import { S3Module } from './s3/s3.module';
 import { DriversModule } from './modules/drivers/drivers.module';
-import { NotificationsModule } from './modules/notifications/notifications.module';
 import { PromotionsModule } from './modules/promotions/promotions.module';
 import { ExpoNotificationsModule } from './modules/expo-notifications/expo-notifications.module';
 import { TripModule } from './modules/trip/trip.module';
@@ -25,7 +24,6 @@ import { TripModule } from './modules/trip/trip.module';
     S3Module,
     DriversModule,
     TripModule,
-    NotificationsModule,
     PromotionsModule,
     ExpoNotificationsModule,
   ],

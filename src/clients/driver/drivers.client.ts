@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { AxiosInstance } from 'axios';
 import { ClientsService } from '../clients.service';
 import { FileType } from 'src/modules/drivers/enum/file-type.enum';
-import { NotifyFileUploadedDto } from '../users/dto/notify-file-uploaded.dto';
+import { NotifyFileUploadedDto } from './dto/notify-file-uploaded.dto';
 import { CreateBankInformationDto } from 'src/modules/drivers/dto/bank-information.dto';
 import { UpdateNotificationPermissionsDto, SetActiveTripDto } from './dto';
 import { UpdateDriverProfileDto } from 'src/modules/drivers/dto/update-driver-profile.dto';

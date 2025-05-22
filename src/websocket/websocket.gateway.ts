@@ -270,11 +270,7 @@ export class WebSocketGateway
         // Get trip details to find customer ID
         const tripDetails = await this.tripService.findById(tripId);
 
-        if (
-          tripDetails &&
-          tripDetails.customer &&
-          tripDetails.customer.id
-        ) {
+        if (tripDetails && tripDetails.customer && tripDetails.customer.id) {
           const customerId = tripDetails.customer.id;
 
           // Send location update directly to customer
