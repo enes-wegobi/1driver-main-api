@@ -50,6 +50,7 @@ export class PaymentsService {
   async addPaymentMethod(
     customerId: string,
     paymentMethodId: string,
+    setAsDefault: boolean = true,
   ): Promise<any> {
     this.logger.log(
       `Adding payment method ${paymentMethodId} for customer ${customerId}`,
@@ -70,7 +71,95 @@ export class PaymentsService {
       paymentMethodId,
     );
 
+    // If this is the first payment method or setAsDefault is true, set it as default
+    if (setAsDefault) {
+      await this.setDefaultPaymentMethod(customerId, paymentMethodId);
+    }
+
     return paymentMethod;
+  }
+
+  /**
+   * Set a payment method as default for a customer
+   */
+  async setDefaultPaymentMethod(
+    customerId: string,
+    paymentMethodId: string,
+  ): Promise<any> {
+    this.logger.log(
+      `Setting payment method ${paymentMethodId} as default for customer ${customerId}`,
+    );
+
+    // Verify the customer owns this payment method
+    const paymentMethods = await this.getPaymentMethods(customerId);
+    const paymentMethodExists = paymentMethods.some(
+      (pm) => pm.id === paymentMethodId,
+    );
+
+    if (!paymentMethodExists) {
+      throw new Error(
+        'Payment method not found or does not belong to this customer',
+      );
+    }
+
+    // Get the Stripe customer ID from the customer record
+    const customer = await this.customersService.findOne(
+      customerId,
+      'stripeCustomerId',
+    );
+
+    if (!customer.stripeCustomerId) {
+      throw new Error('Customer does not have a Stripe account');
+    }
+
+    // Update Stripe's default payment method
+    await this.stripeService.setDefaultPaymentMethod(
+      customer.stripeCustomerId,
+      paymentMethodId,
+    );
+
+    // Update our database record of the default payment method
+    await this.customersService.updateDefaultPaymentMethod(
+      customerId,
+      paymentMethodId,
+    );
+
+    return { success: true, defaultPaymentMethodId: paymentMethodId };
+  }
+
+  /**
+   * Get the default payment method for a customer
+   */
+  async getDefaultPaymentMethod(customerId: string): Promise<any> {
+    this.logger.log(`Getting default payment method for customer ${customerId}`);
+
+    // Get the customer with the default payment method ID
+    const customer = await this.customersService.findOne(
+      customerId,
+      ['stripeCustomerId', 'defaultPaymentMethodId'],
+    );
+
+    if (!customer.stripeCustomerId) {
+      throw new Error('Customer does not have a Stripe account');
+    }
+
+    if (!customer.defaultPaymentMethodId) {
+      return null; // No default payment method set
+    }
+
+    // Get the payment method details from Stripe
+    try {
+      const paymentMethod = await this.stripeService.getPaymentMethod(
+        customer.defaultPaymentMethodId,
+      );
+      return paymentMethod;
+    } catch (error) {
+      this.logger.error(
+        `Error retrieving default payment method: ${error.message}`,
+        error.stack,
+      );
+      return null;
+    }
   }
 
   /**
@@ -131,20 +220,28 @@ export class PaymentsService {
       `Processing payment of ${amount} ${currency} for customer ${customerId}`,
     );
 
+    // Get the customer with stripe ID and default payment method ID
     const customer = await this.customersService.findOne(
       customerId,
-      'stripeCustomerId',
+      ['stripeCustomerId', 'defaultPaymentMethodId'],
     );
 
     if (!customer.stripeCustomerId) {
       throw new Error('Customer does not have a Stripe account');
     }
 
+    // If no payment method is specified, use the default one
+    let methodToUse = paymentMethodId;
+    if (!methodToUse && customer.defaultPaymentMethodId) {
+      this.logger.log(`Using default payment method ${customer.defaultPaymentMethodId}`);
+      methodToUse = customer.defaultPaymentMethodId;
+    }
+
     return this.stripeService.createPaymentIntent(
       amount,
       currency,
       customer.stripeCustomerId,
-      paymentMethodId,
+      methodToUse,
       metadata,
     );
   }
@@ -171,14 +268,21 @@ export class PaymentsService {
   ): Promise<any> {
     this.logger.log(`Creating payment record for customer ${customerId}`);
 
-    // Get the Stripe customer ID
+    // Get the customer with stripe ID and default payment method ID
     const customer = await this.customersService.findOne(
       customerId,
-      'stripeCustomerId',
+      ['stripeCustomerId', 'defaultPaymentMethodId'],
     );
 
     if (!customer.stripeCustomerId) {
       throw new Error('Customer does not have a Stripe account');
+    }
+
+    // If no payment method is specified, use the default one
+    let methodToUse = paymentMethodId;
+    if (!methodToUse && customer.defaultPaymentMethodId) {
+      this.logger.log(`Using default payment method ${customer.defaultPaymentMethodId}`);
+      methodToUse = customer.defaultPaymentMethodId;
     }
 
     // Create payment intent in Stripe
@@ -186,7 +290,7 @@ export class PaymentsService {
       amount,
       currency,
       customer.stripeCustomerId,
-      paymentMethodId,
+      methodToUse,
       metadata,
     );
 
@@ -196,7 +300,7 @@ export class PaymentsService {
       tripId,
       amount,
       currency,
-      paymentMethodId,
+      paymentMethodId: methodToUse, // Use the selected payment method
       stripePaymentIntentId: paymentIntent.id,
       status: PaymentStatus.PENDING,
       metadata,

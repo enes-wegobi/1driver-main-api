@@ -90,4 +90,15 @@ export class CustomersService {
       stripeCustomerId,
     );
   }
+
+  async updateDefaultPaymentMethod(
+    customerId: string,
+    defaultPaymentMethodId: string,
+  ): Promise<any> {
+    this.logger.log(`Updating default payment method for customer ${customerId}`);
+    return this.customersClient.updateDefaultPaymentMethod(
+      customerId,
+      defaultPaymentMethodId,
+    );
+  }
 }

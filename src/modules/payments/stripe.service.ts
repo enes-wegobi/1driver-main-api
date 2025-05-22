@@ -48,13 +48,27 @@ export class StripeService {
     });
 
     // Set as default payment method
-    await this.stripe.customers.update(customerId, {
+    await this.setDefaultPaymentMethod(customerId, paymentMethodId);
+
+    return this.stripe.paymentMethods.retrieve(paymentMethodId);
+  }
+
+  /**
+   * Set a payment method as the default for a customer
+   */
+  async setDefaultPaymentMethod(
+    customerId: string,
+    paymentMethodId: string,
+  ): Promise<Stripe.Customer> {
+    this.logger.log(
+      `Setting payment method ${paymentMethodId} as default for customer ${customerId}`,
+    );
+
+    return this.stripe.customers.update(customerId, {
       invoice_settings: {
         default_payment_method: paymentMethodId,
       },
     });
-
-    return this.stripe.paymentMethods.retrieve(paymentMethodId);
   }
 
   /**
@@ -72,6 +86,17 @@ export class StripeService {
     });
 
     return paymentMethods.data;
+  }
+
+  /**
+   * Get a specific payment method
+   */
+  async getPaymentMethod(
+    paymentMethodId: string,
+  ): Promise<Stripe.PaymentMethod> {
+    this.logger.log(`Getting payment method ${paymentMethodId}`);
+
+    return this.stripe.paymentMethods.retrieve(paymentMethodId);
   }
 
   /**

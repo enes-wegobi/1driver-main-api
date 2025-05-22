@@ -213,4 +213,19 @@ export class CustomersClient {
     );
     return data;
   }
+
+  async updateDefaultPaymentMethod(
+    customerId: string,
+    defaultPaymentMethodId: string,
+  ): Promise<any> {
+    this.logger.log(`Updating default payment method for customer ${customerId}`);
+    const { data } = await this.httpClient.patch(
+      `/customers/${customerId}/default-payment-method`,
+      { defaultPaymentMethodId },
+    );
+    this.logger.log(
+      `Successfully updated default payment method for customer ${customerId}`,
+    );
+    return data;
+  }
 }
