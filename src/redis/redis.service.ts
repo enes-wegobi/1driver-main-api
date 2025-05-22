@@ -1,35 +1,26 @@
-import {
-  Injectable,
-  OnModuleInit,
-  OnModuleDestroy,
-  Logger,
-} from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 import { DriverAvailabilityStatus } from 'src/websocket/dto/driver-location.dto';
 import { FindNearbyUsersResult } from './dto/nearby-user.dto';
 import { UserType } from 'src/common/user-type.enum';
 import { RedisKeyGenerator } from './redis-key.generator';
+import { BaseRedisService } from './services/base-redis.service';
 
 @Injectable()
-export class RedisService implements OnModuleInit, OnModuleDestroy {
+export class RedisService {
   private client: Redis;
   private readonly logger = new Logger(RedisService.name);
   private DRIVER_LOCATION_EXPIRY: number;
   private ACTIVE_DRIVER_EXPIRY: number;
   private ACTIVE_CUSTOMER_EXPIRY: number;
 
-  constructor(private configService: ConfigService) {
-    // Initialize with Valkey connection parameters
-    this.client = new Redis({
-      host: this.configService.get<string>('valkey.host', 'localhost'),
-      port: this.configService.get<number>('valkey.port', 6379),
-      username: this.configService.get<string>('valkey.username', ''),
-      password: this.configService.get<string>('valkey.password', ''),
-      tls: this.configService.get<boolean>('valkey.tls', false)
-        ? {}
-        : undefined,
-    });
+  constructor(
+    private configService: ConfigService,
+    private baseRedisService: BaseRedisService
+  ) {
+    // Use the Redis client from BaseRedisService instead of creating a new one
+    this.client = this.baseRedisService.getRedisClient();
 
     // Initialize expiry times from configuration with defaults
     this.DRIVER_LOCATION_EXPIRY = this.configService.get<number>(
@@ -44,22 +35,6 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       'redis.activeCustomerExpiry',
       1800,
     ); // Default: 30 minutes
-
-    this.client.on('error', (err) =>
-      this.logger.error('Valkey Client Error', err),
-    );
-
-    this.client.on('connect', () => {
-      this.logger.log('Valkey connection successful');
-    });
-  }
-
-  async onModuleInit() {
-    // ioredis automatically connects, no need to explicitly connect
-  }
-
-  async onModuleDestroy() {
-    await this.client.quit();
   }
 
   getRedisClient(): Redis {
