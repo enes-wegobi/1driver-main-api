@@ -9,7 +9,7 @@ export class StripeService {
 
   constructor(private readonly configService: ConfigService) {
     this.stripe = new Stripe(this.configService.stripeSecretKey, {
-      apiVersion: '2025-04-30.basil',
+      apiVersion: this.configService.stripeApiVersion as any,
     });
   }
 
@@ -124,5 +124,73 @@ export class StripeService {
     this.logger.log(`Getting payment intent ${paymentIntentId}`);
 
     return this.stripe.paymentIntents.retrieve(paymentIntentId);
+  }
+
+  /**
+   * Handle Stripe webhook events
+   */
+  async handleWebhookEvent(
+    signature: string,
+    payload: Buffer,
+  ): Promise<Stripe.Event> {
+    this.logger.log('Processing Stripe webhook event');
+
+    try {
+      const event = this.stripe.webhooks.constructEvent(
+        payload,
+        signature,
+        this.configService.stripeWebhookSecret,
+      );
+
+      this.logger.log(`Webhook event type: ${event.type}`);
+      return event;
+    } catch (error) {
+      this.logger.error(`Webhook error: ${error.message}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * Update a payment intent
+   */
+  async updatePaymentIntent(
+    paymentIntentId: string,
+    updateData: Stripe.PaymentIntentUpdateParams,
+  ): Promise<Stripe.PaymentIntent> {
+    this.logger.log(`Updating payment intent ${paymentIntentId}`);
+
+    return this.stripe.paymentIntents.update(paymentIntentId, updateData);
+  }
+
+  /**
+   * Confirm a payment intent
+   */
+  async confirmPaymentIntent(
+    paymentIntentId: string,
+    paymentMethodId?: string,
+  ): Promise<Stripe.PaymentIntent> {
+    this.logger.log(`Confirming payment intent ${paymentIntentId}`);
+
+    const confirmParams: Stripe.PaymentIntentConfirmParams = {};
+    
+    if (paymentMethodId) {
+      confirmParams.payment_method = paymentMethodId;
+    }
+
+    return this.stripe.paymentIntents.confirm(paymentIntentId, confirmParams);
+  }
+
+  /**
+   * Cancel a payment intent
+   */
+  async cancelPaymentIntent(
+    paymentIntentId: string,
+    cancellationReason?: string,
+  ): Promise<Stripe.PaymentIntent> {
+    this.logger.log(`Cancelling payment intent ${paymentIntentId}`);
+
+    return this.stripe.paymentIntents.cancel(paymentIntentId, {
+      cancellation_reason: cancellationReason as any,
+    });
   }
 }

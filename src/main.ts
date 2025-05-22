@@ -16,6 +16,21 @@ import { WebSocketModule } from './websocket/websocket.module';
 async function bootstrap() {
   const fastifyAdapter = new FastifyAdapter();
 
+  // Configure Fastify to handle raw body for Stripe webhooks
+  fastifyAdapter.getInstance().addContentTypeParser('application/json', {
+    parseAs: 'string',
+  }, (req, body, done) => {
+    try {
+      // For Stripe webhook routes, preserve the raw body
+      if (req.url && req.url.includes('/webhooks/stripe')) {
+        (req as any).rawBody = body;
+      }
+      done(null, JSON.parse(body as string));
+    } catch (err) {
+      done(err as Error, undefined);
+    }
+  });
+
   await fastifyAdapter.register(fastifyMultipart as any, {
     limits: {
       fileSize: 10 * 1024 * 1024, // 10MB

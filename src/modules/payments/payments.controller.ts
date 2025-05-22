@@ -10,6 +10,7 @@ import {
   Param,
   Delete,
   HttpException,
+  Query,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -198,6 +199,117 @@ export class PaymentsController {
       throw new HttpException(
         error.message || 'An error occurred while getting payment intent',
         HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  @Post('record')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Create a payment record with tracking' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Payment record created successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Invalid payment data',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Customer not found or does not have a Stripe account',
+  })
+  async createPaymentRecord(
+    @GetUser() user: IJwtPayload,
+    @Body() body: CreatePaymentIntentDto,
+    @Query('tripId') tripId?: string,
+  ) {
+    try {
+      return await this.paymentsService.createPaymentRecord(
+        user.userId,
+        body.amount,
+        body.currency,
+        body.paymentMethodId,
+        tripId,
+        body.metadata,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Error creating payment record: ${error.message}`,
+        error.stack,
+      );
+      throw new HttpException(
+        error.message || 'An error occurred while creating payment record',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  @Get('history')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Get customer payment history' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Payment history retrieved successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Error retrieving payment history',
+  })
+  async getPaymentHistory(@GetUser() user: IJwtPayload) {
+    try {
+      return await this.paymentsService.getPaymentHistory(user.userId);
+    } catch (error) {
+      this.logger.error(
+        `Error getting payment history: ${error.message}`,
+        error.stack,
+      );
+      throw new HttpException(
+        error.message || 'An error occurred while getting payment history',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  @Get(':paymentId')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Get payment details by ID' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Payment details retrieved successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Invalid payment ID',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Payment not found',
+  })
+  async getPaymentById(
+    @GetUser() user: IJwtPayload,
+    @Param('paymentId') paymentId: string,
+  ) {
+    try {
+      const payment = await this.paymentsService.getPaymentById(paymentId);
+      
+      if (!payment) {
+        throw new HttpException('Payment not found', HttpStatus.NOT_FOUND);
+      }
+      
+      // Ensure the user can only access their own payments
+      if (payment.customerId !== user.userId) {
+        throw new HttpException('Unauthorized', HttpStatus.UNAUTHORIZED);
+      }
+      
+      return payment;
+    } catch (error) {
+      this.logger.error(
+        `Error getting payment details: ${error.message}`,
+        error.stack,
+      );
+      throw new HttpException(
+        error.message || 'An error occurred while getting payment details',
+        error instanceof HttpException ? error.getStatus() : HttpStatus.BAD_REQUEST,
       );
     }
   }
