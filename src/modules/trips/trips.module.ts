@@ -7,6 +7,7 @@ import { DriversTripsController } from './driver-trip.controller';
 import { ClientsModule } from 'src/clients/clients.module';
 import { CustomersTripsController } from './customer-trip.controller';
 import { EventModule } from 'src/modules/event/event.module';
+import { MapsModule } from 'src/clients/maps/maps.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { EventModule } from 'src/modules/event/event.module';
     RedisModule,
     JwtModule,
     EventModule,
+    MapsModule,
   ],
   controllers: [DriversTripsController, CustomersTripsController],
   providers: [TripsService],

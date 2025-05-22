@@ -2,7 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { AxiosInstance } from 'axios';
 import { ClientsService } from '../clients.service';
 import { EstimateTripDto } from 'src/modules/trips/dto/estimate-trip.dto';
-import { TripResponseDto } from './dto';
 import { UserType } from 'src/common/user-type.enum';
 import { NearbyDriversResponseDto } from 'src/modules/trips/dto';
 
@@ -15,7 +14,7 @@ export class TripClient {
     this.httpClient = this.clientsService.createHttpClient('trip');
   }
 
-  async getTripById(tripId: string): Promise<TripResponseDto> {
+  async getTripById(tripId: string): Promise<any> {
     this.logger.log(`Getting trip details for ID: ${tripId}`);
     const { data } = await this.httpClient.get(`/trips/${tripId}`);
     return data;
@@ -24,7 +23,7 @@ export class TripClient {
   async getUserActiveTrips(
     userId: string,
     userType: 'customer' | 'driver',
-  ): Promise<{ total: number; trips: TripResponseDto[] }> {
+  ): Promise<{ total: number; trips: any[] }> {
     this.logger.log(`Getting active trips for ${userType} ${userId}`);
     const { data } = await this.httpClient.get(
       `/trips/${userType}/${userId}/active`,
@@ -37,7 +36,7 @@ export class TripClient {
     userType: 'customer' | 'driver',
     page: number = 1,
     limit: number = 10,
-  ): Promise<{ total: number; trips: TripResponseDto[] }> {
+  ): Promise<{ total: number; trips: any[] }> {
     this.logger.log(
       `Getting trips for ${userType} ${userId}, page ${page}, limit ${limit}`,
     );

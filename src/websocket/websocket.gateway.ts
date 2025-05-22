@@ -18,6 +18,9 @@ import {
 import { DriverStatusService } from 'src/redis/services/driver-status.service';
 import { CustomerStatusService } from 'src/redis/services/customer-status.service';
 import { LocationService } from 'src/redis/services/location.service';
+import { ActiveTripService } from 'src/redis/services/active-trip.service';
+import { TripClient } from 'src/clients/trip/trip.client';
+import { UserType } from 'src/common/user-type.enum';
 
 const PING_INTERVAL = 25000;
 const PING_TIMEOUT = 10000;
@@ -46,6 +49,8 @@ export class WebSocketGateway
     private readonly customerStatusService: CustomerStatusService,
     private readonly locationService: LocationService,
     private readonly jwtService: JwtService,
+    private readonly activeTripService: ActiveTripService,
+    private readonly tripClient: TripClient,
   ) {}
 
   @WebSocketServer()
@@ -254,13 +259,47 @@ export class WebSocketGateway
       `Driver location update from ${userId}: ${JSON.stringify(payload)}`,
     );
 
-    // Store location to redis
-    this.storeUserLocation(userId, userType, payload);
+    try {
+      // Get driver's active trip ID
+      const tripId = await this.activeTripService.getUserActiveTripIfExists(
+        userId,
+        UserType.DRIVER,
+      );
 
-    // Broadcast location to trip room if driver is in an active trip
-    this.broadcastLocationToTripRoom(client, payload);
+      if (tripId) {
+        // Get trip details to find customer ID
+        const tripDetails = await this.tripClient.getTripById(tripId);
+        
+        if (tripDetails.success && tripDetails.trip.customer && tripDetails.trip.customer.id) {
+          const customerId = tripDetails.trip.customer.id;
+          
+          // Send location update directly to customer
+          this.webSocketService.sendToUser(customerId, 'driverLocation', {
+            tripId,
+            driverId: userId,
+            location: payload,
+            timestamp: new Date().toISOString(),
+          });
+          
+          this.logger.debug(
+            `Driver ${userId} location sent to customer ${customerId} for trip ${tripId}`,
+          );
+        }
+      }
 
-    return { success: true };
+      // Store location to redis
+      this.storeUserLocation(userId, userType, payload);
+
+      // Broadcast location to trip room if driver is in an active trip
+      this.broadcastLocationToTripRoom(client, payload);
+
+      return { success: true };
+    } catch (error) {
+      this.logger.error(
+        `Error processing driver location update: ${error.message}`,
+      );
+      return { success: false, message: 'Failed to process location update' };
+    }
   }
   /*
 //TODO check
