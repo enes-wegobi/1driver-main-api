@@ -6,6 +6,7 @@ import { WebSocketController } from './websocket.controller';
 import { RedisModule } from '../redis/redis.module';
 import { ClientsModule } from '../clients/clients.module';
 import { TripModule } from 'src/modules/trip/trip.module';
+import { SocketIORedisAdapter } from './adapters/socket-io-redis.adapter';
 
 @Module({
   imports: [
@@ -15,7 +16,12 @@ import { TripModule } from 'src/modules/trip/trip.module';
     forwardRef(() => TripModule),
   ],
   controllers: [WebSocketController],
-  providers: [WebSocketGateway, WebSocketService],
-  exports: [WebSocketService],
+  providers: [WebSocketGateway, WebSocketService, SocketIORedisAdapter],
+  exports: [WebSocketService, SocketIORedisAdapter],
 })
-export class WebSocketModule {}
+export class WebSocketModule {
+  static getSocketIOAdapter(app: any) {
+    const adapter = new SocketIORedisAdapter(app);
+    return adapter;
+  }
+}

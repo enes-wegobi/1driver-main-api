@@ -15,7 +15,6 @@ const envSchema = z.object({
   PROMOTION_SERVICE_TIMEOUT: z.coerce.number().optional().default(5000),
   JWT_SECRET: z.string().optional().default('supersecret'),
   JWT_EXPIRES_IN: z.coerce.number().optional().default(36000),
-  REDIS_URL: z.string().optional().default('redis://localhost:6379'),
   SPACES_REGION: z.string().optional(),
   SPACES_ENDPOINT: z.string().optional(),
   SPACES_ACCESS_KEY_ID: z.string().optional(),

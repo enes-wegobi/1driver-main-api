@@ -163,14 +163,6 @@ export class WebSocketGateway
     this.logger.log(`Client disconnected: ${client.id}`);
   }
 
-  @SubscribeMessage('message')
-  handleMessage(client: Socket, payload: any) {
-    this.logger.debug(
-      `Message received [${client.id}]: ${JSON.stringify(payload)}`,
-    );
-    return { event: 'message', data: payload };
-  }
-
   @SubscribeMessage('updateLocation')
   handleLocationUpdate(client: Socket, payload: LocationDto) {
     const userId = client.data.userId;
@@ -186,53 +178,7 @@ export class WebSocketGateway
     );
 
     this.storeUserLocation(userId, userType, payload);
-
-    this.broadcastLocationToTripRoom(client, payload);
-
     return { success: true };
-  }
-
-  /**
-   * Broadcast location updates to trip room if user is in an active trip
-   */
-  private async broadcastLocationToTripRoom(
-    client: Socket,
-    location: LocationDto,
-  ) {
-    try {
-      const userId = client.data.userId;
-      const userType = client.data.userType;
-
-      if (!userId) return;
-
-      // Check if user is in any trip rooms
-      const rooms = Array.from(client.rooms);
-      const tripRooms = rooms.filter((room) => room.startsWith('trip:'));
-
-      if (tripRooms.length === 0) return;
-
-      // Broadcast location to all trip rooms the user is in
-      for (const room of tripRooms) {
-        const tripId = room.split(':')[1];
-
-        // Broadcast to the room except the sender
-        client.to(room).emit('locationUpdate', {
-          tripId,
-          userId,
-          userType,
-          location,
-          timestamp: new Date().toISOString(),
-        });
-
-        this.logger.debug(
-          `Broadcasted ${userType} location to trip room ${room}`,
-        );
-      }
-    } catch (error) {
-      this.logger.error(
-        `Error broadcasting location to trip room: ${error.message}`,
-      );
-    }
   }
 
   @SubscribeMessage('updateDriverLocation')
@@ -290,9 +236,6 @@ export class WebSocketGateway
       // Store location to redis
       this.storeUserLocation(userId, userType, payload);
 
-      // Broadcast location to trip room if driver is in an active trip
-      this.broadcastLocationToTripRoom(client, payload);
-
       return { success: true };
     } catch (error) {
       this.logger.error(
@@ -301,84 +244,6 @@ export class WebSocketGateway
       return { success: false, message: 'Failed to process location update' };
     }
   }
-  /*
-//TODO check
-  @SubscribeMessage('joinTripRoom')
-  handleJoinTripRoom(client: Socket, payload: { tripId: string }) {
-    const userId = client.data.userId;
-    const userType = client.data.userType;
-
-    if (!userId) {
-      client.emit('error', { message: 'User not authenticated' });
-      return { success: false, message: 'User not authenticated' };
-    }
-
-    if (!payload.tripId) {
-      client.emit('error', { message: 'Trip ID is required' });
-      return { success: false, message: 'Trip ID is required' };
-    }
-
-    const roomName = `trip:${payload.tripId}`;
-
-    // Join the room
-    client.join(roomName);
-
-    this.logger.debug(
-      `User ${userId} (${userType}) joined trip room ${roomName}`,
-    );
-
-    // Notify the room that a user has joined
-    client.to(roomName).emit('userJoinedTrip', {
-      userId,
-      userType,
-      tripId: payload.tripId,
-      timestamp: new Date().toISOString(),
-    });
-
-    return {
-      success: true,
-      message: `Joined trip room for trip ${payload.tripId}`,
-    };
-  }
-
-  @SubscribeMessage('leaveTripRoom')
-  handleLeaveTripRoom(client: Socket, payload: { tripId: string }) {
-    const userId = client.data.userId;
-    const userType = client.data.userType;
-
-    if (!userId) {
-      client.emit('error', { message: 'User not authenticated' });
-      return { success: false, message: 'User not authenticated' };
-    }
-
-    if (!payload.tripId) {
-      client.emit('error', { message: 'Trip ID is required' });
-      return { success: false, message: 'Trip ID is required' };
-    }
-
-    const roomName = `trip:${payload.tripId}`;
-
-    // Leave the room
-    client.leave(roomName);
-
-    this.logger.debug(
-      `User ${userId} (${userType}) left trip room ${roomName}`,
-    );
-
-    // Notify the room that a user has left
-    client.to(roomName).emit('userLeftTrip', {
-      userId,
-      userType,
-      tripId: payload.tripId,
-      timestamp: new Date().toISOString(),
-    });
-
-    return {
-      success: true,
-      message: `Left trip room for trip ${payload.tripId}`,
-    };
-  }
-  */
 
   @SubscribeMessage('updateDriverAvailability')
   async handleDriverAvailabilityUpdate(

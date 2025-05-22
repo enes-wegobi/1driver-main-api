@@ -11,82 +11,7 @@ import fastifyMultipart from '@fastify/multipart';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { IoAdapter } from '@nestjs/platform-socket.io';
-import { ServerOptions } from 'socket.io';
-import Redis from 'ioredis';
-import { createAdapter } from '@socket.io/redis-adapter';
-
-class FastifySocketIORedisAdapter extends IoAdapter {
-  private pubClient: Redis;
-  private subClient: Redis;
-  private readonly app: any;
-
-  constructor(app: any) {
-    super(app);
-    this.app = app;
-  }
-
-  async connectToRedis(redisUrl: string) {
-    // Extract connection details from URL
-    const configService = this.app.get(ConfigService);
-
-    this.pubClient = new Redis({
-      host: configService.get('valkey.host', 'localhost'),
-      port: configService.get('valkey.port', 6379),
-      username: configService.get('valkey.username', ''),
-      password: configService.get('valkey.password', ''),
-      tls: configService.get('valkey.tls', false) ? {} : undefined,
-    });
-
-    this.subClient = new Redis({
-      host: configService.get('valkey.host', 'localhost'),
-      port: configService.get('valkey.port', 6379),
-      username: configService.get('valkey.username', ''),
-      password: configService.get('valkey.password', ''),
-      tls: configService.get('valkey.tls', false) ? {} : undefined,
-    });
-
-    this.pubClient.on('error', (err) =>
-      console.error('Valkey Pub Client Error', err),
-    );
-    this.subClient.on('error', (err) =>
-      console.error('Valkey Sub Client Error', err),
-    );
-
-    this.pubClient.on('connect', () => {
-      console.log('Valkey Pub Client connected');
-    });
-
-    this.subClient.on('connect', () => {
-      console.log('Valkey Sub Client connected');
-    });
-
-    console.log('Valkey adapter clients initialized');
-  }
-
-  createIOServer(port: number, options?: ServerOptions) {
-    const server = this.httpServer;
-    const io = super.createIOServer(port, {
-      ...options,
-      cors: {
-        origin: '*',
-        methods: ['GET', 'POST'],
-        credentials: true,
-        allowedHeaders: ['Authorization', 'Content-Type'],
-      },
-      transports: ['websocket', 'polling'],
-      serverFactory: (handler) => handler(server),
-    });
-
-    if (this.pubClient && this.subClient) {
-      const redisAdapter = createAdapter(this.pubClient, this.subClient);
-      io.adapter(redisAdapter);
-      console.log('Redis adapter applied to Socket.IO server');
-    }
-
-    return io;
-  }
-}
+import { WebSocketModule } from './websocket/websocket.module';
 
 async function bootstrap() {
   const fastifyAdapter = new FastifyAdapter();
@@ -104,9 +29,8 @@ async function bootstrap() {
   );
 
   const configService = app.get(ConfigService);
-  const redisUrl = configService.get('redis.url', '0.0.0.0');
-  const socketIOAdapter = new FastifySocketIORedisAdapter(app);
-  await socketIOAdapter.connectToRedis(redisUrl);
+  const socketIOAdapter = WebSocketModule.getSocketIOAdapter(app);
+  await socketIOAdapter.connectToRedis();
   app.useWebSocketAdapter(socketIOAdapter);
 
   app.setGlobalPrefix('api');

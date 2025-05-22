@@ -43,7 +43,6 @@ export default () => ({
     expiresIn: parseInt(process.env.JWT_EXPIRES_IN || '36000', 10),
   },
   redis: {
-    url: process.env.REDIS_URL || 'redis://localhost:6379',
     driverLocationExpiry: parseInt(
       process.env.REDIS_DRIVER_LOCATION_EXPIRY || '900',
       10,

@@ -25,13 +25,6 @@ export class ConfigService {
     return this.configService.get<number>('jwt.expiresIn', 36000);
   }
 
-  get redisUrl(): string {
-    return this.configService.get<string>(
-      'redis.url',
-      'redis://localhost:6379',
-    );
-  }
-
   get driverLocationExpiry(): number {
     return this.configService.get<number>('redis.driverLocationExpiry', 900);
   }
