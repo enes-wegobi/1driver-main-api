@@ -90,4 +90,5 @@ export default () => ({
     mongoUrl: process.env.TRIP_MONGODB_URI,
     mongoPassword: process.env.TRIP_MONGODB_PASSWORD,
   },
+  tripCostPerMinute: parseFloat(process.env.TRIP_COST_PER_MINUTE || '1'),
 });

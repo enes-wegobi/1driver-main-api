@@ -2,7 +2,6 @@ import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { RedisErrors } from 'src/common/redis-errors';
 import { RedisException } from 'src/common/redis.exception';
 import { EstimateTripDto } from './dto/estimate-trip.dto';
-import { TripClient } from 'src/clients/trip/trip.client';
 import { UserType } from 'src/common/user-type.enum';
 import {
   NearbyDriverDto as RedisNearbyDriverDto,
@@ -24,7 +23,6 @@ export class TripsService {
 
   constructor(
     private readonly nearbySearchService: NearbySearchService,
-    private readonly tripClient: TripClient,
     private readonly eventService: EventService,
     private readonly customersClient: CustomersClient,
     private readonly activeTripService: ActiveTripService,

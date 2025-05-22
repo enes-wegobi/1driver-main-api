@@ -130,4 +130,8 @@ export class ConfigService {
       privateKey,
     };
   }
+
+  get tripCostPerMinute(): number {
+    return this.configService.get('tripCostPerMinute', 1);
+  }
 }

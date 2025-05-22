@@ -245,4 +245,14 @@ export class DriversClient {
     this.logger.log(`Successfully deleted expo token for driver ${driverId}`);
     return data;
   }
+
+  async setActiveTrip(driverId: string, dto: SetActiveTripDto): Promise<any> {
+    this.logger.log(`Setting active trip for driver ${driverId}`);
+    const { data } = await this.httpClient.put(
+      `/drivers/${driverId}/active-trip`,
+      dto,
+    );
+    this.logger.log(`Successfully set active trip for driver ${driverId}`);
+    return data;
+  }
 }
