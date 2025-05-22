@@ -3,6 +3,11 @@ export default () => ({
   host: process.env.HOST || '0.0.0.0',
   corsOrigins: process.env.CORS_ORIGINS || '*',
   googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY,
+  stripe: {
+    secretKey: process.env.STRIPE_SECRET_KEY,
+    webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
+    apiVersion: '2025-04-30.basil', // Updated to match Stripe's expected version format
+  },
   services: {
     users: {
       url: process.env.USERS_SERVICE_URL || 'http://localhost:3001',

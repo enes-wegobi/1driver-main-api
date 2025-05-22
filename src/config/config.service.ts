@@ -79,6 +79,14 @@ export class ConfigService {
     return this.configService.get<string>('spaces.bucketName')!;
   }
 
+  get stripeSecretKey(): string {
+    return this.configService.get<string>('stripe.secretKey')!;
+  }
+
+  get stripeApiVersion(): string {
+    return this.configService.get<string>('stripe.apiVersion')!;
+  }
+
   get firebase() {
     const projectId = this.configService.get<string>('firebase.projectId');
     const clientEmail = this.configService.get<string>('firebase.clientEmail');

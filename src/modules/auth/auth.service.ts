@@ -1,13 +1,19 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { AuthClient } from '../../clients/auth/auth.client';
 import { CreateCustomerDto } from '../../clients/auth/dto/create-customer.dto';
 import { CreateDriverDto } from '../../clients/auth/dto/create-driver.dto';
 import { ValidateOtpDto } from '../../clients/auth/dto/validate-otp.dto';
 import { SigninDto } from '../../clients/auth/dto/signin.dto';
+import { PaymentsService } from '../payments/payments.service';
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly authClient: AuthClient) {}
+  private readonly logger = new Logger(AuthService.name);
+
+  constructor(
+    private readonly authClient: AuthClient,
+    private readonly paymentsService: PaymentsService,
+  ) {}
 
   // Customer Auth Methods
   async initiateCustomerSignup(createCustomerDto: CreateCustomerDto) {
@@ -15,7 +21,28 @@ export class AuthService {
   }
 
   async completeCustomerSignup(validateOtpDto: ValidateOtpDto) {
-    return this.authClient.completeCustomerSignup(validateOtpDto);
+    const result = await this.authClient.completeCustomerSignup(validateOtpDto);
+    
+    // Create Stripe customer after successful signup
+    if (result && result.customer) {
+      try {
+        this.logger.log(`Creating Stripe customer for user ${result.customer.id}`);
+        await this.paymentsService.createStripeCustomer(
+          result.customer.id,
+          {
+            name: `${result.customer.name} ${result.customer.surname}`,
+            email: result.customer.email,
+            phone: result.customer.phone,
+          },
+        );
+        this.logger.log(`Successfully created Stripe customer for user ${result.customer.id}`);
+      } catch (error) {
+        // Log error but don't fail the signup
+        this.logger.error(`Failed to create Stripe customer: ${error.message}`, error.stack);
+      }
+    }
+    
+    return result;
   }
 
   async signinCustomer(signinDto: SigninDto) {

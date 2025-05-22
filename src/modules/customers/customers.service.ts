@@ -79,4 +79,9 @@ export class CustomersService {
     this.logger.log(`Deleting expo token for customer ${customerId}`);
     return this.customersClient.deleteExpoToken(customerId);
   }
+
+  async updateStripeCustomerId(customerId: string, stripeCustomerId: string): Promise<any> {
+    this.logger.log(`Updating Stripe customer ID for customer ${customerId}`);
+    return this.customersClient.updateStripeCustomerId(customerId, stripeCustomerId);
+  }
 }
