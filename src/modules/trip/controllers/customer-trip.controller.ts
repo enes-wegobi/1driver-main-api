@@ -8,10 +8,10 @@ import {
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/jwt/jwt.guard';
 import { GetUser } from 'src/jwt/user.decoretor';
-import { EstimateTripDto } from './dto/estimate-trip.dto';
+import { EstimateTripDto } from '../dto/estimate-trip.dto';
 import { IJwtPayload } from 'src/jwt/jwt-payload.interface';
-import { RequestDriverDto } from '../trips/dto/request-driver.dto';
-import { TripService } from './trip.service';
+import { RequestDriverDto } from '../../trips/dto/request-driver.dto';
+import { TripService } from '../services/trip.service';
 
 @ApiTags('customer-trips')
 @Controller('customer-trips')

@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Trip, TripDocument } from './schemas/trip.schema';
-import { UpdateTripDto } from './dto/update-trip.dto';
-import { CreateTripDto } from './dto/create-trip.dto';
+import { Trip, TripDocument } from '../schemas/trip.schema';
+import { UpdateTripDto } from '../dto/update-trip.dto';
+import { CreateTripDto } from '../dto/create-trip.dto';
 import { TripStatus } from 'src/common/enums/trip-status.enum';
 
 @Injectable()

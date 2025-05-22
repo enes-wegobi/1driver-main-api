@@ -1,0 +1,938 @@
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { TripRepository } from '../repositories/trip.repository';
+import { CreateTripDto } from '../dto/create-trip.dto';
+import { TripDocument } from '../schemas/trip.schema';
+import { UpdateTripDto } from '../dto/update-trip.dto';
+import { CustomersClient } from 'src/clients/customer/customers.client';
+import { DriversClient } from 'src/clients/driver/drivers.client';
+import { LockService } from 'src/common/lock/lock.service';
+import { TripErrors } from '../exceptions/trip-errors';
+import { TripStatus } from 'src/common/enums/trip-status.enum';
+import { ActiveTripService } from 'src/redis/services/active-trip.service';
+import { UserType } from 'src/common/user-type.enum';
+import { NearbySearchService } from 'src/redis/services/nearby-search.service';
+import { EstimateTripDto } from '../../trips/dto';
+import { PaymentStatus } from 'src/common/enums/payment-status.enum';
+import { ConfigService } from 'src/config/config.service';
+import { MapsService } from 'src/clients/maps/maps.service';
+import { EventService } from '../../event/event.service';
+import { RedisException } from 'src/common/redis.exception';
+import { RedisErrors } from 'src/common/redis-errors';
+import {
+  NearbyDriverDto as RedisNearbyDriverDto,
+  FindNearbyUsersResult,
+} from 'src/redis/dto/nearby-user.dto';
+import { EventType } from '../../event/enum/event-type.enum';
+import { LocationService } from 'src/redis/services/location.service';
+import { WebSocketService } from 'src/websocket/websocket.service';
+import { BatchDistanceRequest } from 'src/clients/maps/maps.interface';
+import { TripStateService } from './trip-state.service';
+
+export interface TripOperationResult {
+  success: boolean;
+  trip?: TripDocument;
+  message?: string;
+}
+
+export interface ActiveTripResult {
+  success: boolean;
+  trip?: TripDocument;
+  message?: string;
+}
+
+export interface LocationCoords {
+  lat: number;
+  lon: number;
+}
+
+@Injectable()
+export class TripService {
+  private readonly logger = new Logger(TripService.name);
+
+  constructor(
+    private readonly tripRepository: TripRepository,
+    private readonly lockService: LockService,
+    private readonly tripStateService: TripStateService,
+    private readonly customersClient: CustomersClient,
+    private readonly driversClient: DriversClient,
+    private readonly activeTripService: ActiveTripService,
+    private readonly nearbySearchService: NearbySearchService,
+    private readonly configService: ConfigService,
+    private readonly mapsService: MapsService,
+    private readonly eventService: EventService,
+    private readonly locationService: LocationService,
+    private readonly webSocketService: WebSocketService,
+  ) {}
+
+  // ================================
+  // PUBLIC API METHODS
+  // ================================
+
+  async estimate(
+    estimateTripDto: EstimateTripDto,
+    customerId: string,
+  ): Promise<any> {
+    const distanceMatrix = await this.mapsService.getDistanceMatrix(
+      estimateTripDto.route,
+    );
+
+    if (
+      !distanceMatrix.success ||
+      !distanceMatrix.duration ||
+      !distanceMatrix.distance
+    ) {
+      return {
+        success: false,
+        message: distanceMatrix.message || 'Failed to calculate distance',
+      };
+    }
+
+    const estimatedCost = this.calculateEstimatedCost(
+      distanceMatrix.duration.value,
+    );
+    const trip = await this.createTrip(
+      {
+        status: TripStatus.DRAFT,
+        paymentStatus: PaymentStatus.UNPAID,
+        route: estimateTripDto.route,
+        estimatedDistance: distanceMatrix.distance.value,
+        estimatedDuration: distanceMatrix.duration.value,
+        estimatedCost,
+      },
+      customerId,
+    );
+
+    return { success: true, trip };
+  }
+
+  async requestDriver(
+    tripId: string,
+    lat: number,
+    lon: number,
+    customerId: string,
+  ): Promise<any> {
+    return this.executeWithErrorHandling('requesting driver', async () => {
+      const driverIds = await this.searchDriver(lat, lon);
+      const trip = await this.validateTripForRequest(tripId, customerId);
+
+      const updateData = this.buildDriverRequestUpdateData(
+        driverIds,
+        trip.callRetryCount,
+      );
+      const updatedTrip = await this.updateTripWithData(tripId, updateData);
+
+      await this.setUserActiveTrip(customerId, UserType.CUSTOMER, tripId);
+      await this.eventService.notifyNewTripRequest(updatedTrip, driverIds);
+
+      return { success: true, trip: updatedTrip };
+    });
+  }
+
+  async getCustomerActiveTrip(customerId: string): Promise<ActiveTripResult> {
+    return this.getUserActiveTrip(customerId, UserType.CUSTOMER);
+  }
+
+  async getDriverActiveTrip(driverId: string): Promise<ActiveTripResult> {
+    return this.getUserActiveTrip(driverId, UserType.DRIVER);
+  }
+
+  async declineTrip(tripId: string, driverId: string): Promise<any> {
+    return this.executeWithErrorHandling('declining trip', async () => {
+      return this.handleDriverRejection(tripId, driverId);
+    });
+  }
+
+  async approveTrip(tripId: string, driverId: string): Promise<any> {
+    return this.executeWithErrorHandling('approving trip', async () => {
+      const trip = await this.validateTripExists(tripId);
+      const driver = await this.driversClient.findOne(driverId, [
+        'name',
+        'surname',
+        'rate',
+        'photoUrl',
+      ]);
+
+      this.validateStatusTransition(trip.status, TripStatus.APPROVED);
+
+      const updatedTrip = await this.updateTripWithDriverInfo(tripId, driver);
+      await this.handleTripApproval(updatedTrip, driverId);
+
+      return { success: true, trip: updatedTrip };
+    });
+  }
+
+  async startPickup(driverId: string): Promise<any> {
+    return this.executeDriverTripAction(
+      driverId,
+      TripStatus.DRIVER_ON_WAY_TO_PICKUP,
+      EventType.TRIP_DRIVER_EN_ROUTE,
+      'starting pickup',
+    );
+  }
+
+  async arrivePickup(driverId: string): Promise<any> {
+    return this.executeWithErrorHandling('reaching pickup', async () => {
+      const tripId = await this.getUserActiveTripId(driverId, UserType.DRIVER);
+      const tripDetails = await this.validateTripExists(tripId);
+
+      const pickupLocation = this.extractPickupLocation(tripDetails);
+      await this.verifyDriverLocation(
+        driverId,
+        pickupLocation,
+        100,
+        'You are too far from the pickup location',
+      );
+
+      const result = await this.updateTripStatus(
+        tripId,
+        TripStatus.ARRIVED_AT_PICKUP,
+      );
+
+      if (result.success && result.trip) {
+        await this.handleTripStatusUpdate(
+          driverId,
+          result.trip,
+          EventType.TRIP_DRIVER_ARRIVED,
+        );
+      }
+
+      return result;
+    });
+  }
+
+  async startTrip(driverId: string): Promise<any> {
+    return this.executeDriverTripAction(
+      driverId,
+      TripStatus.TRIP_IN_PROGRESS,
+      EventType.TRIP_STARTED,
+      'beginning trip',
+    );
+  }
+
+  async arrivedStop(driverId: string): Promise<any> {
+    return this.executeWithErrorHandling('completing trip', async () => {
+      const tripId = await this.getUserActiveTripId(driverId, UserType.DRIVER);
+      const result = await this.updateTripStatus(tripId, TripStatus.COMPLETED);
+
+      if (result.success && result.trip) {
+        await this.cleanupCompletedTrip(driverId, result.trip.customer.id);
+      }
+
+      return result;
+    });
+  }
+
+  async updateTrip(
+    tripId: string,
+    tripData: UpdateTripDto,
+  ): Promise<TripOperationResult> {
+    return this.lockService.executeWithLock<TripOperationResult>(
+      `trip:${tripId}`,
+      async () => {
+        const trip = await this.validateTripExists(tripId);
+
+        if (tripData.status && tripData.status !== trip.status) {
+          this.validateStatusTransition(trip.status, tripData.status);
+        }
+
+        const updatedTrip = await this.updateTripWithData(tripId, tripData);
+        return { success: true, trip: updatedTrip };
+      },
+      TripErrors.TRIP_LOCKED.message,
+    );
+  }
+
+  async findById(tripId: string): Promise<TripDocument | null> {
+    return this.tripRepository.findById(tripId);
+  }
+
+  async getNearbyAvailableDrivers(
+    latitude: number,
+    longitude: number,
+  ): Promise<FindNearbyUsersResult> {
+    return this.nearbySearchService.findNearbyUsers(
+      UserType.DRIVER,
+      latitude,
+      longitude,
+      5,
+      true,
+    );
+  }
+
+  // ================================
+  // PRIVATE HELPER METHODS
+  // ================================
+
+  private calculateEstimatedCost(durationInSeconds: number): number {
+    const durationInMinutes = durationInSeconds / 60;
+    const costPerMinute = this.configService.tripCostPerMinute;
+    return Math.round(durationInMinutes * costPerMinute * 100) / 100;
+  }
+
+  private async createTrip(
+    tripData: CreateTripDto,
+    customerId: string,
+  ): Promise<TripDocument> {
+    const customer = await this.customersClient.findOne(customerId, [
+      'name',
+      'surname',
+      'rate',
+      'vehicle.transmissionType',
+      'vehicle.licensePlate',
+      'photoUrl',
+    ]);
+
+    const trip = {
+      ...tripData,
+      customer: {
+        id: customer._id,
+        name: customer.name,
+        surname: customer.surname,
+        rate: customer.rate,
+        Vehicle: {
+          transmissionType: customer.vehicle.transmissionType,
+          licensePlate: customer.vehicle.licensePlate,
+        },
+        photoUrl: customer.photoUrl,
+      },
+    };
+
+    return this.tripRepository.createTrip(trip);
+  }
+
+  private async searchDriver(lat: number, lon: number): Promise<string[]> {
+    const searchRadii = [5, 7, 10];
+    let drivers: FindNearbyUsersResult = [];
+
+    for (const radius of searchRadii) {
+      this.logger.debug(`Searching for drivers within ${radius}km radius`);
+      drivers = await this.nearbySearchService.findNearbyAvailableDrivers(
+        lat,
+        lon,
+        radius,
+      );
+
+      if (drivers.length > 0) {
+        this.logger.debug(
+          `Found ${drivers.length} drivers within ${radius}km radius`,
+        );
+        break;
+      }
+    }
+
+    if (drivers.length === 0) {
+      throw new RedisException(
+        RedisErrors.NO_DRIVERS_FOUND.code,
+        RedisErrors.NO_DRIVERS_FOUND.message,
+      );
+    }
+
+    const typedDrivers = drivers as RedisNearbyDriverDto[];
+    return typedDrivers.map((driver) => driver.userId);
+  }
+
+  private async validateTripForRequest(
+    tripId: string,
+    customerId: string,
+  ): Promise<TripDocument> {
+    const trip = await this.validateTripExists(tripId);
+
+    this.validateMultipleStatuses(trip.status, [
+      TripStatus.DRAFT,
+      TripStatus.DRIVER_NOT_FOUND,
+    ]);
+    await this.validateCustomerNoActiveTrip(customerId, tripId);
+
+    return trip;
+  }
+
+  private async validateCustomerNoActiveTrip(
+    customerId: string,
+    currentTripId: string,
+  ): Promise<void> {
+    const customerActiveTripResult =
+      await this.findActiveByCustomerId(customerId);
+
+    if (
+      customerActiveTripResult.trip &&
+      customerActiveTripResult.trip._id &&
+      customerActiveTripResult.trip._id !== currentTripId
+    ) {
+      throw new BadRequestException(
+        `Customer already has an active trip with ID: ${customerActiveTripResult.trip._id}`,
+      );
+    }
+  }
+
+  private buildDriverRequestUpdateData(
+    driverIds: string[],
+    currentRetryCount: number,
+  ): UpdateTripDto {
+    return {
+      status: TripStatus.WAITING_FOR_DRIVER,
+      calledDriverIds: driverIds,
+      callStartTime: new Date(),
+      callRetryCount: (currentRetryCount || 0) + 1,
+    };
+  }
+
+  private async handleDriverRejection(
+    tripId: string,
+    driverId: string,
+  ): Promise<TripOperationResult> {
+    const trip = await this.validateTripExists(tripId);
+    this.validateSingleStatus(trip.status, TripStatus.WAITING_FOR_DRIVER);
+
+    const rejectedDriverIds = [...(trip.rejectedDriverIds || [])];
+    if (!rejectedDriverIds.includes(driverId)) {
+      rejectedDriverIds.push(driverId);
+    }
+
+    const newStatus = this.determineStatusAfterRejection(
+      trip,
+      rejectedDriverIds,
+    );
+    const updatedTrip = await this.updateTripWithData(tripId, {
+      rejectedDriverIds,
+      status: newStatus,
+    });
+
+    if (this.areAllDriversRejected(updatedTrip)) {
+      await this.eventService.notifyCustomerDriverNotFound(
+        updatedTrip,
+        updatedTrip.customer.id,
+      );
+    }
+
+    return { success: true, trip: updatedTrip };
+  }
+
+  private determineStatusAfterRejection(
+    trip: TripDocument,
+    rejectedDriverIds: string[],
+  ): TripStatus {
+    if (trip.calledDriverIds && trip.calledDriverIds.length > 0) {
+      const allDriversRejected = trip.calledDriverIds.every((id) =>
+        rejectedDriverIds.includes(id),
+      );
+      return allDriversRejected ? TripStatus.DRIVER_NOT_FOUND : trip.status;
+    }
+    return trip.status;
+  }
+
+  private areAllDriversRejected(trip: TripDocument): boolean {
+    return trip.calledDriverIds.length === trip.rejectedDriverIds.length;
+  }
+
+  private async updateTripWithDriverInfo(
+    tripId: string,
+    driver: any,
+  ): Promise<TripDocument> {
+    const updateData = {
+      driver: {
+        id: driver._id,
+        name: driver.name,
+        surname: driver.surname,
+        photoUrl: driver.photoUrl,
+        rate: driver.rate,
+      },
+      status: TripStatus.APPROVED,
+      tripStartTime: new Date(),
+    };
+
+    return this.updateTripWithData(tripId, updateData);
+  }
+
+  private async handleTripApproval(
+    updatedTrip: TripDocument,
+    driverId: string,
+  ): Promise<void> {
+    await this.setUserActiveTrip(driverId, UserType.DRIVER, updatedTrip._id);
+    await this.activeTripService.refreshUserActiveTripExpiry(
+      updatedTrip.customer.id,
+      UserType.CUSTOMER,
+    );
+
+    await this.notifyRemainingDrivers(updatedTrip, driverId);
+    await this.eventService.notifyCustomer(
+      updatedTrip,
+      updatedTrip.customer.id,
+      EventType.TRIP_DRIVER_ASSIGNED,
+    );
+    await this.sendDriverLocationToCustomer(
+      updatedTrip.customer.id,
+      driverId,
+      updatedTrip._id,
+    );
+  }
+
+  private async notifyRemainingDrivers(
+    updatedTrip: TripDocument,
+    approvedDriverId: string,
+  ): Promise<void> {
+    const remainingDriverIds = updatedTrip.calledDriverIds.filter(
+      (id) =>
+        !updatedTrip.rejectedDriverIds.includes(id) && id !== approvedDriverId,
+    );
+
+    if (remainingDriverIds.length > 0) {
+      await this.eventService.notifyTripAlreadyTaken(
+        updatedTrip,
+        remainingDriverIds,
+      );
+    }
+  }
+
+  private async sendDriverLocationToCustomer(
+    customerId: string,
+    driverId: string,
+    tripId: string,
+  ): Promise<void> {
+    const driverLocation = await this.locationService.getUserLocation(driverId);
+
+    if (driverLocation) {
+      this.webSocketService.sendToUser(customerId, 'driverLocation', {
+        tripId,
+        driverId,
+        location: driverLocation,
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }
+
+  private extractPickupLocation(tripDetails: TripDocument): LocationCoords {
+    const pickupLocation =
+      tripDetails.route && tripDetails.route.length > 0
+        ? tripDetails.route[0]
+        : null;
+
+    if (!pickupLocation || !pickupLocation.lat || !pickupLocation.lon) {
+      throw new BadRequestException(
+        'Pickup location not found in trip details',
+      );
+    }
+
+    return { lat: pickupLocation.lat, lon: pickupLocation.lon };
+  }
+
+  private async executeDriverTripAction(
+    driverId: string,
+    newStatus: TripStatus,
+    eventType: EventType,
+    actionName: string,
+  ): Promise<any> {
+    return this.executeWithErrorHandling(actionName, async () => {
+      const tripId = await this.getUserActiveTripId(driverId, UserType.DRIVER);
+      const result = await this.updateTripStatus(tripId, newStatus);
+
+      if (result.success && result.trip) {
+        await this.handleTripStatusUpdate(driverId, result.trip, eventType);
+      }
+
+      return result;
+    });
+  }
+
+  private async handleTripStatusUpdate(
+    driverId: string,
+    trip: TripDocument,
+    eventType: EventType,
+  ): Promise<void> {
+    const customerId = trip.customer.id;
+    await this.refreshUsersTripExpiry(driverId, customerId);
+    await this.eventService.notifyCustomer(trip, customerId, eventType);
+  }
+
+  private async cleanupCompletedTrip(
+    driverId: string,
+    customerId: string,
+  ): Promise<void> {
+    await this.activeTripService.removeUserActiveTrip(
+      driverId,
+      UserType.DRIVER,
+    );
+    await this.activeTripService.removeUserActiveTrip(
+      customerId,
+      UserType.CUSTOMER,
+    );
+  }
+
+  private async refreshUsersTripExpiry(
+    driverId: string,
+    customerId: string,
+  ): Promise<void> {
+    await Promise.all([
+      this.activeTripService.refreshUserActiveTripExpiry(
+        driverId,
+        UserType.DRIVER,
+      ),
+      this.activeTripService.refreshUserActiveTripExpiry(
+        customerId,
+        UserType.CUSTOMER,
+      ),
+    ]);
+  }
+
+  private async setUserActiveTrip(
+    userId: string,
+    userType: UserType,
+    tripId: string,
+  ): Promise<void> {
+    if (userType === UserType.CUSTOMER) {
+      await this.customersClient.setActiveTrip(userId, { tripId });
+    } else {
+      await this.driversClient.setActiveTrip(userId, { tripId });
+    }
+
+    await this.activeTripService.setUserActiveTripId(userId, userType, tripId);
+  }
+
+  // ================================
+  // VALIDATION HELPERS
+  // ================================
+
+  private async validateTripExists(tripId: string): Promise<TripDocument> {
+    const trip = await this.findById(tripId);
+    if (!trip) {
+      throw new BadRequestException(TripErrors.TRIP_NOT_FOUND.message);
+    }
+    return trip;
+  }
+
+  private validateSingleStatus(
+    currentStatus: TripStatus,
+    expectedStatus: TripStatus,
+  ): void {
+    const validation = this.tripStateService.validateStatus(
+      currentStatus,
+      expectedStatus,
+    );
+    if (!validation.valid) {
+      throw new BadRequestException(
+        validation.message || TripErrors.TRIP_INVALID_STATUS.message,
+      );
+    }
+  }
+
+  private validateMultipleStatuses(
+    currentStatus: TripStatus,
+    allowedStatuses: TripStatus[],
+  ): void {
+    const validation = this.tripStateService.validateMultipleStatuses(
+      currentStatus,
+      allowedStatuses,
+    );
+    if (!validation.valid) {
+      throw new BadRequestException(
+        validation.message || TripErrors.TRIP_INVALID_STATUS.message,
+      );
+    }
+  }
+
+  private validateStatusTransition(
+    fromStatus: TripStatus,
+    toStatus: TripStatus,
+  ): void {
+    const validation = this.tripStateService.canTransition(
+      fromStatus,
+      toStatus,
+    );
+    if (!validation.valid) {
+      throw new BadRequestException(
+        validation.message || TripErrors.TRIP_INVALID_STATUS.message,
+      );
+    }
+  }
+
+  // ================================
+  // DATABASE HELPERS
+  // ================================
+
+  private async updateTripWithData(
+    tripId: string,
+    updateData: any,
+  ): Promise<TripDocument> {
+    const updatedTrip = await this.tripRepository.findByIdAndUpdate(
+      tripId,
+      updateData,
+    );
+    if (!updatedTrip) {
+      throw new BadRequestException('Failed to update trip');
+    }
+    return updatedTrip;
+  }
+
+  async updateTripStatus(
+    tripId: string,
+    newStatus: TripStatus,
+  ): Promise<TripOperationResult> {
+    const trip = await this.validateTripExists(tripId);
+
+    this.validateAllowedStatusUpdate(newStatus);
+    this.validateStatusTransition(trip.status, newStatus);
+
+    const updateData =
+      newStatus === TripStatus.COMPLETED
+        ? { status: newStatus, tripEndTime: new Date() }
+        : { status: newStatus };
+
+    const updatedTrip = await this.updateTripWithData(tripId, updateData);
+    return { success: true, trip: updatedTrip };
+  }
+
+  private validateAllowedStatusUpdate(newStatus: TripStatus): void {
+    const allowedStatuses = [
+      TripStatus.DRIVER_ON_WAY_TO_PICKUP,
+      TripStatus.ARRIVED_AT_PICKUP,
+      TripStatus.TRIP_IN_PROGRESS,
+      TripStatus.COMPLETED,
+    ];
+
+    if (!allowedStatuses.includes(newStatus)) {
+      throw new BadRequestException(
+        `Cannot update to status ${newStatus}. Only ${allowedStatuses.join(', ')} are allowed.`,
+      );
+    }
+  }
+
+  // ================================
+  // ACTIVE TRIP MANAGEMENT
+  // ================================
+
+  private async getUserActiveTrip(
+    userId: string,
+    userType: UserType,
+  ): Promise<ActiveTripResult> {
+    try {
+      const tripId = await this.activeTripService.getUserActiveTripIfExists(
+        userId,
+        userType,
+      );
+
+      if (tripId) {
+        return await this.handleExistingActiveTripId(userId, userType, tripId);
+      }
+
+      return await this.findAndCacheActiveTrip(userId, userType);
+    } catch (error) {
+      this.logger.error(`Error getting active trip: ${error.message}`);
+      return this.findActiveTripByUserType(userId, userType);
+    }
+  }
+
+  private async handleExistingActiveTripId(
+    userId: string,
+    userType: UserType,
+    tripId: string,
+  ): Promise<ActiveTripResult> {
+    if (!this.activeTripService.isValidTripId(tripId)) {
+      return this.handleInvalidTripId(userId, userType);
+    }
+
+    try {
+      const tripDetails = await this.findById(tripId);
+
+      if (this.isTripCompleted(tripDetails)) {
+        return this.handleInvalidTripId(userId, userType);
+      }
+
+      await this.activeTripService.refreshUserActiveTripExpiry(
+        userId,
+        userType,
+      );
+      return { success: true, trip: tripDetails! };
+    } catch (apiError) {
+      return this.handleInvalidTripId(userId, userType);
+    }
+  }
+
+  private async handleInvalidTripId(
+    userId: string,
+    userType: UserType,
+  ): Promise<ActiveTripResult> {
+    await this.activeTripService.removeUserActiveTrip(userId, userType);
+    return this.findActiveTripByUserType(userId, userType);
+  }
+
+  private isTripCompleted(tripDetails: TripDocument | null): boolean {
+    return (
+      !tripDetails ||
+      tripDetails.status === TripStatus.COMPLETED ||
+      tripDetails.status === TripStatus.CANCELLED
+    );
+  }
+
+  private async findAndCacheActiveTrip(
+    userId: string,
+    userType: UserType,
+  ): Promise<ActiveTripResult> {
+    const result = await this.findActiveTripByUserType(userId, userType);
+
+    if (result.success && result.trip) {
+      const tripId = result.trip._id || result.trip.id;
+      if (tripId) {
+        await this.activeTripService.setUserActiveTripId(
+          userId,
+          userType,
+          tripId,
+        );
+      }
+    }
+
+    return result;
+  }
+
+  private async findActiveTripByUserType(
+    userId: string,
+    userType: UserType,
+  ): Promise<ActiveTripResult> {
+    return userType === UserType.DRIVER
+      ? await this.findActiveByDriverId(userId)
+      : await this.findActiveByCustomerId(userId);
+  }
+
+  private async getUserActiveTripId(
+    userId: string,
+    userType: UserType,
+  ): Promise<string> {
+    const tripId = await this.activeTripService.getUserActiveTripIfExists(
+      userId,
+      userType,
+    );
+
+    if (tripId && this.activeTripService.isValidTripId(tripId)) {
+      return tripId;
+    }
+
+    return this.getUserActiveTripIdFromDb(userId, userType);
+  }
+
+  private async getUserActiveTripIdFromDb(
+    userId: string,
+    userType: UserType,
+  ): Promise<string> {
+    const result =
+      userType === UserType.DRIVER
+        ? await this.findActiveByDriverId(userId)
+        : await this.findActiveByCustomerId(userId);
+
+    if (result.success && result.trip) {
+      const tripId = result.trip._id || result.trip.id;
+      if (tripId) return tripId;
+    }
+
+    throw new BadRequestException('User have no active trip!!!');
+  }
+
+  async findActiveByCustomerId(customerId: string): Promise<ActiveTripResult> {
+    return this.findActiveTripByClient(
+      () => this.customersClient.findOne(customerId, ['activeTrip']),
+      'No active trip found for this customer',
+    );
+  }
+
+  async findActiveByDriverId(driverId: string): Promise<ActiveTripResult> {
+    return this.findActiveTripByClient(
+      () => this.driversClient.findOne(driverId, ['activeTrip']),
+      'No active trip found for this driver',
+    );
+  }
+
+  private async findActiveTripByClient(
+    clientFinder: () => Promise<any>,
+    errorMessage: string,
+  ): Promise<ActiveTripResult> {
+    const user = await clientFinder();
+
+    if (!user.activeTrip) {
+      return { success: false, message: errorMessage };
+    }
+
+    const trip = await this.findById(user.activeTrip);
+    if (!trip) {
+      return { success: false, message: errorMessage };
+    }
+
+    return { success: true, trip };
+  }
+
+  // ================================
+  // LOCATION VERIFICATION
+  // ================================
+
+  private async verifyDriverLocation(
+    driverId: string,
+    targetLocation: LocationCoords,
+    maxDistance: number = 100,
+    errorMessage: string = 'You are too far from the target location',
+  ): Promise<void> {
+    const driverLocation = await this.locationService.getUserLocation(driverId);
+
+    if (!driverLocation) {
+      throw new BadRequestException(
+        'Driver location not found. Please ensure your location is enabled.',
+      );
+    }
+
+    const distance = await this.calculateDistanceToTarget(
+      driverId,
+      driverLocation,
+      targetLocation,
+    );
+
+    if (distance > maxDistance) {
+      throw new BadRequestException(
+        `${errorMessage} (${Math.round(distance)}m). You must be within ${maxDistance}m.`,
+      );
+    }
+  }
+
+  private async calculateDistanceToTarget(
+    driverId: string,
+    driverLocation: any,
+    targetLocation: LocationCoords,
+  ): Promise<number> {
+    const distanceRequest: BatchDistanceRequest = {
+      referencePoint: targetLocation,
+      driverLocations: [
+        {
+          driverId: driverId,
+          coordinates: {
+            lat: driverLocation.latitude,
+            lon: driverLocation.longitude,
+          },
+        },
+      ],
+    };
+
+    const distanceResult =
+      await this.mapsService.getBatchDistances(distanceRequest);
+    return distanceResult.results?.[driverId]?.distance ?? Infinity;
+  }
+
+  // ================================
+  // ERROR HANDLING
+  // ================================
+
+  private async executeWithErrorHandling<T>(
+    actionName: string,
+    operation: () => Promise<T>,
+  ): Promise<T> {
+    try {
+      return await operation();
+    } catch (error) {
+      this.logger.error(`Error ${actionName}: ${error.message}`);
+
+      if (
+        error instanceof RedisException ||
+        error instanceof BadRequestException
+      ) {
+        throw error;
+      }
+
+      throw new BadRequestException(
+        error.response?.data?.message || `Failed to ${actionName}`,
+      );
+    }
+  }
+}

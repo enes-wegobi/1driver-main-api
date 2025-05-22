@@ -1,4 +1,4 @@
-import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { WebSocketService } from 'src/websocket/websocket.service';
 import { DriversService } from 'src/modules/drivers/drivers.service';
 import { CustomersService } from 'src/modules/customers/customers.service';

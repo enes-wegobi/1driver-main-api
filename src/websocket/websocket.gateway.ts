@@ -19,8 +19,8 @@ import { DriverStatusService } from 'src/redis/services/driver-status.service';
 import { CustomerStatusService } from 'src/redis/services/customer-status.service';
 import { LocationService } from 'src/redis/services/location.service';
 import { ActiveTripService } from 'src/redis/services/active-trip.service';
-import { TripClient } from 'src/clients/trip/trip.client';
 import { UserType } from 'src/common/user-type.enum';
+import { TripService } from 'src/modules/trip/services/trip.service';
 
 const PING_INTERVAL = 25000;
 const PING_TIMEOUT = 10000;
@@ -50,7 +50,7 @@ export class WebSocketGateway
     private readonly locationService: LocationService,
     private readonly jwtService: JwtService,
     private readonly activeTripService: ActiveTripService,
-    private readonly tripClient: TripClient,
+    private readonly tripService: TripService,
   ) {}
 
   @WebSocketServer()
@@ -268,14 +268,14 @@ export class WebSocketGateway
 
       if (tripId) {
         // Get trip details to find customer ID
-        const tripDetails = await this.tripClient.getTripById(tripId);
+        const tripDetails = await this.tripService.findById(tripId);
 
         if (
-          tripDetails.success &&
-          tripDetails.trip.customer &&
-          tripDetails.trip.customer.id
+          tripDetails &&
+          tripDetails.customer &&
+          tripDetails.customer.id
         ) {
-          const customerId = tripDetails.trip.customer.id;
+          const customerId = tripDetails.customer.id;
 
           // Send location update directly to customer
           this.webSocketService.sendToUser(customerId, 'driverLocation', {

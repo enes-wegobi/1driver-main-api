@@ -4,8 +4,7 @@ import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/jwt/jwt.guard';
 import { GetUser } from 'src/jwt/user.decoretor';
 import { IJwtPayload } from 'src/jwt/jwt-payload.interface';
-import { TripsService } from '../trips/trips.service';
-import { TripService } from './trip.service';
+import { TripService } from '../services/trip.service';
 
 @ApiTags('driver-trips')
 @Controller('driver-trips')
@@ -13,7 +12,6 @@ import { TripService } from './trip.service';
 @ApiBearerAuth()
 export class DriversTripsController {
   constructor(
-    private readonly tripsService: TripsService,
     private readonly tripService: TripService,
   ) {}
 
@@ -60,11 +58,11 @@ export class DriversTripsController {
 
   @Post('arrive-at-destination')
   async arriveAtDestination(@GetUser() user: IJwtPayload) {
-    return await this.tripsService.arriveAtDestination(user.userId);
+   // return await this.tripService.arriveDestination(user.userId);
   }
 
   @Post('cancel')
   async cancelTrip(@GetUser() user: IJwtPayload) {
-    return await this.tripsService.cancelTrip(user.userId, user.userType);
+    //return await this.tripsService.cancelTrip(user.userId, user.userType);
   }
 }

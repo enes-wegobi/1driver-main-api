@@ -23,16 +23,13 @@ export class NearbySearchService extends BaseRedisService {
   ): Promise<FindNearbyUsersResult> {
     const geoKey = RedisKeyGenerator.nearbyUsers(userType);
 
-    const results = await this.client.call(
-      'GEORADIUS',
-      geoKey,
-      longitude.toString(),
-      latitude.toString(),
-      radius.toString(),
-      'km',
-      'WITHDIST',
-      'WITHCOORD',
-    );
+      const results = await this.client.geosearch(
+        geoKey,
+        'FROMLONLAT', longitude, latitude,
+        'BYRADIUS', radius, 'km',
+        'WITHDIST',
+        'WITHCOORD'
+      );
 
     // Process results to get more information about each user
     const enhancedResults: any[] = [];

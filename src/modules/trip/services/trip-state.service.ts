@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { TripStatus } from 'src/common/enums/trip-status.enum';
-import { TripErrors } from './exceptions/trip-errors';
+import { TripErrors } from '../exceptions/trip-errors';
 interface StatusTransition {
   to: TripStatus[];
   validate?: (

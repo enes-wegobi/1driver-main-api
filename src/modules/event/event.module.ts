@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { WebSocketModule } from 'src/websocket/websocket.module';
 import { RedisModule } from 'src/redis/redis.module';
 import { DriversModule } from 'src/modules/drivers/drivers.module';
@@ -10,7 +10,7 @@ import { EventService } from './event.service';
 
 @Module({
   imports: [
-    WebSocketModule,
+    forwardRef(() => WebSocketModule),
     RedisModule,
     DriversModule,
     CustomersModule,
