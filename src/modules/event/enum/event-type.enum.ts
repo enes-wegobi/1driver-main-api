@@ -1,6 +1,6 @@
 export enum EventType {
-  TRIP_REQUESTED = 'trip:requested', // TRIP_REQUEST = 'trip:request',
-  TRIP_DRIVER_ASSIGNED = 'trip:driver_assigned', // TRIP_ACCEPTED = 'trip:accepted',
+  TRIP_REQUESTED = 'trip:requested',
+  TRIP_DRIVER_ASSIGNED = 'trip:driver_assigned',
   TRIP_ALREADY_TAKEN = 'trip:already_taken',
   TRIP_REJECTED = 'trip:rejected',
   TRIP_CANCELLED = 'trip:cancelled',
@@ -9,6 +9,7 @@ export enum EventType {
   TRIP_DRIVER_ARRIVED = 'trip:driver_arrived',
   TRIP_STARTED = 'trip:started',
   TRIP_DRIVER_NOT_FOUND = 'trip:driver_not_found',
+  TRIP_PAYMENT_REQUIRED = 'trip:payment_required',
 
   // Driver related events
   DRIVER_LOCATION_UPDATED = 'driver:location_updated',

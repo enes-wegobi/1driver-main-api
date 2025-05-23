@@ -234,15 +234,36 @@ export class TripService {
   }
 
   async arrivedStop(driverId: string): Promise<any> {
-    return this.executeWithErrorHandling('completing trip', async () => {
+    return this.executeWithErrorHandling('arriving at destination', async () => {
       const tripId = await this.getUserActiveTripId(driverId, UserType.DRIVER);
-      const result = await this.updateTripStatus(tripId, TripStatus.COMPLETED);
+      const tripDetails = await this.validateTripExists(tripId);
 
-      if (result.success && result.trip) {
-        await this.cleanupCompletedTrip(driverId, result.trip.customer.id);
-      }
+      const destinationLocation = this.extractDestinationLocation(tripDetails);
+      await this.verifyDriverLocation(
+        driverId,
+        destinationLocation,
+        100,
+        'You are too far from the destination location'
+      );
 
-      return result;
+      const tripCalculations = this.calculateFinalTripCost(tripDetails);
+
+      const updateData = {
+        status: TripStatus.PAYMENT,
+        tripEndTime: new Date(),
+        actualDuration: tripCalculations.actualDuration,
+        finalCost: tripCalculations.finalCost
+      };
+
+      const updatedTrip = await this.updateTripWithData(tripId, updateData);
+
+      await this.eventService.notifyCustomer(
+        updatedTrip,
+        updatedTrip.customer.id,
+        EventType.TRIP_PAYMENT_REQUIRED
+      );
+
+      return { success: true, trip: updatedTrip };
     });
   }
 
@@ -335,6 +356,27 @@ export class TripService {
     const durationInMinutes = durationInSeconds / 60;
     const costPerMinute = this.configService.tripCostPerMinute;
     return Math.round(durationInMinutes * costPerMinute * 100) / 100;
+  }
+
+  private calculateFinalTripCost(tripDetails: TripDocument): {
+    actualDuration: number;
+    finalCost: number;
+  } {
+    const tripStartTime = tripDetails.tripStartTime;
+    const tripEndTime = new Date();
+    
+    // Gerçek süreyi hesapla (saniye cinsinden)
+    const actualDuration = Math.floor((tripEndTime.getTime() - tripStartTime.getTime()) / 1000);
+    
+    // Dakika başı 1 dirham hesaplama
+    const durationInMinutes = Math.ceil(actualDuration / 60); // Yukarı yuvarlama
+    const costPerMinute = this.configService.tripCostPerMinute; // 1 dirham
+    const finalCost = durationInMinutes * costPerMinute;
+    
+    return {
+      actualDuration,
+      finalCost
+    };
   }
 
   private async createTrip(
@@ -583,6 +625,21 @@ export class TripService {
     return { lat: pickupLocation.lat, lon: pickupLocation.lon };
   }
 
+  private extractDestinationLocation(tripDetails: TripDocument): LocationCoords {
+    const destinationLocation =
+      tripDetails.route && tripDetails.route.length > 0
+        ? tripDetails.route[tripDetails.route.length - 1] // Son nokta
+        : null;
+
+    if (!destinationLocation || !destinationLocation.lat || !destinationLocation.lon) {
+      throw new BadRequestException(
+        'Destination location not found in trip details',
+      );
+    }
+
+    return { lat: destinationLocation.lat, lon: destinationLocation.lon };
+  }
+
   private async executeDriverTripAction(
     driverId: string,
     newStatus: TripStatus,
@@ -735,6 +792,7 @@ export class TripService {
       TripStatus.DRIVER_ON_WAY_TO_PICKUP,
       TripStatus.ARRIVED_AT_PICKUP,
       TripStatus.TRIP_IN_PROGRESS,
+      TripStatus.PAYMENT,
       TripStatus.COMPLETED,
     ];
 

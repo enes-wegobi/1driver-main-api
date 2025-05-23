@@ -96,6 +96,15 @@ export class Trip extends EntityDocumentHelper {
   @Prop()
   estimatedCost: number;
 
+  @Prop()
+  actualDistance: number; // meters
+
+  @Prop()
+  actualDuration: number; // seconds
+
+  @Prop()
+  finalCost: number;
+
   @Prop({ type: [String], default: [] })
   calledDriverIds: string[];
 
