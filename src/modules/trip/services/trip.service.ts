@@ -111,21 +111,29 @@ export class TripService {
     lon: number,
     customerId: string,
   ): Promise<any> {
-    return this.executeWithErrorHandling('requesting driver', async () => {
-      const driverIds = await this.searchDriver(lat, lon);
-      const trip = await this.validateTripForRequest(tripId, customerId);
+    return this.lockService.executeWithLock(
+      `trip:${tripId}`,
+      async () => {
+        return this.executeWithErrorHandling('requesting driver', async () => {
+          const driverIds = await this.searchDriver(lat, lon);
+          const trip = await this.validateTripForRequest(tripId, customerId);
 
-      const updateData = this.buildDriverRequestUpdateData(
-        driverIds,
-        trip.callRetryCount,
-      );
-      const updatedTrip = await this.updateTripWithData(tripId, updateData);
+          const updateData = this.buildDriverRequestUpdateData(
+            driverIds,
+            trip.callRetryCount,
+          );
+          const updatedTrip = await this.updateTripWithData(tripId, updateData);
 
-      await this.setUserActiveTrip(customerId, UserType.CUSTOMER, tripId);
-      await this.eventService.notifyNewTripRequest(updatedTrip, driverIds);
+          await this.setUserActiveTrip(customerId, UserType.CUSTOMER, tripId);
+          await this.eventService.notifyNewTripRequest(updatedTrip, driverIds);
 
-      return { success: true, trip: updatedTrip };
-    });
+          return { success: true, trip: updatedTrip };
+        });
+      },
+      'Trip is currently being processed by another request. Please try again.',
+      45000, // 45 seconds timeout
+      2, // 2 retries
+    );
   }
 
   async getCustomerActiveTrip(customerId: string): Promise<ActiveTripResult> {
@@ -137,28 +145,44 @@ export class TripService {
   }
 
   async declineTrip(tripId: string, driverId: string): Promise<any> {
-    return this.executeWithErrorHandling('declining trip', async () => {
-      return this.handleDriverRejection(tripId, driverId);
-    });
+    return this.lockService.executeWithLock(
+      `trip:${tripId}`,
+      async () => {
+        return this.executeWithErrorHandling('declining trip', async () => {
+          return this.handleDriverRejection(tripId, driverId);
+        });
+      },
+      'Trip is currently being processed by another request. Please try again.',
+      30000, // 30 seconds timeout
+      1, // 1 retry
+    );
   }
 
   async approveTrip(tripId: string, driverId: string): Promise<any> {
-    return this.executeWithErrorHandling('approving trip', async () => {
-      const trip = await this.validateTripExists(tripId);
-      const driver = await this.driversClient.findOne(driverId, [
-        'name',
-        'surname',
-        'rate',
-        'photoUrl',
-      ]);
+    return this.lockService.executeWithLock(
+      `trip:${tripId}`,
+      async () => {
+        return this.executeWithErrorHandling('approving trip', async () => {
+          const trip = await this.validateTripExists(tripId);
+          const driver = await this.driversClient.findOne(driverId, [
+            'name',
+            'surname',
+            'rate',
+            'photoUrl',
+          ]);
 
-      this.validateStatusTransition(trip.status, TripStatus.APPROVED);
+          this.validateStatusTransition(trip.status, TripStatus.APPROVED);
 
-      const updatedTrip = await this.updateTripWithDriverInfo(tripId, driver);
-      await this.handleTripApproval(updatedTrip, driverId);
+          const updatedTrip = await this.updateTripWithDriverInfo(tripId, driver);
+          await this.handleTripApproval(updatedTrip, driverId);
 
-      return { success: true, trip: updatedTrip };
-    });
+          return { success: true, trip: updatedTrip };
+        });
+      },
+      'Trip is currently being processed by another request. Please try again.',
+      60000, // 60 seconds timeout
+      3, // 3 retries
+    );
   }
 
   async startPickup(driverId: string): Promise<any> {
@@ -226,7 +250,7 @@ export class TripService {
     tripId: string,
     tripData: UpdateTripDto,
   ): Promise<TripOperationResult> {
-    return this.lockService.executeWithLock<TripOperationResult>(
+    return this.lockService.executeWithLock(
       `trip:${tripId}`,
       async () => {
         const trip = await this.validateTripExists(tripId);
@@ -240,6 +264,50 @@ export class TripService {
       },
       TripErrors.TRIP_LOCKED.message,
     );
+  }
+
+  // ================================
+  // DEADLOCK-SAFE STATUS UPDATE METHODS
+  // ================================
+
+  /**
+   * External method with lock - for direct API calls
+   */
+  async updateTripStatus(
+    tripId: string,
+    newStatus: TripStatus,
+  ): Promise<TripOperationResult> {
+    return this.lockService.executeWithLock(
+      `trip:${tripId}`,
+      async () => {
+        return this.updateTripStatusInternal(tripId, newStatus);
+      },
+      'Trip status is currently being updated by another request. Please try again.',
+      30000, // 30 seconds timeout
+      2, // 2 retries
+    );
+  }
+
+  /**
+   * Internal method without lock - for use within already locked contexts
+   * DEADLOCK-SAFE: This method should be used when lock is already acquired
+   */
+  private async updateTripStatusInternal(
+    tripId: string,
+    newStatus: TripStatus,
+  ): Promise<TripOperationResult> {
+    const trip = await this.validateTripExists(tripId);
+
+    this.validateAllowedStatusUpdate(newStatus);
+    this.validateStatusTransition(trip.status, newStatus);
+
+    const updateData =
+      newStatus === TripStatus.COMPLETED
+        ? { status: newStatus, tripEndTime: new Date() }
+        : { status: newStatus };
+
+    const updatedTrip = await this.updateTripWithData(tripId, updateData);
+    return { success: true, trip: updatedTrip };
   }
 
   async findById(tripId: string): Promise<TripDocument | null> {
@@ -660,24 +728,6 @@ export class TripService {
       throw new BadRequestException('Failed to update trip');
     }
     return updatedTrip;
-  }
-
-  async updateTripStatus(
-    tripId: string,
-    newStatus: TripStatus,
-  ): Promise<TripOperationResult> {
-    const trip = await this.validateTripExists(tripId);
-
-    this.validateAllowedStatusUpdate(newStatus);
-    this.validateStatusTransition(trip.status, newStatus);
-
-    const updateData =
-      newStatus === TripStatus.COMPLETED
-        ? { status: newStatus, tripEndTime: new Date() }
-        : { status: newStatus };
-
-    const updatedTrip = await this.updateTripWithData(tripId, updateData);
-    return { success: true, trip: updatedTrip };
   }
 
   private validateAllowedStatusUpdate(newStatus: TripStatus): void {

@@ -81,7 +81,8 @@ export class LockService {
    * @param ttl The time-to-live for the lock in milliseconds (default: 30 seconds)
    * @param retries Number of retries if lock acquisition fails (default: 1)
    * @param retryDelay Delay between retries in milliseconds (default: 200ms)
-   * @returns The result of the operation, or an error object if lock acquisition fails
+   * @returns The result of the operation directly
+   * @throws Error if lock acquisition fails or operation fails
    */
   async executeWithLock<T>(
     key: string,
@@ -90,30 +91,23 @@ export class LockService {
     ttl: number = 30000,
     retries: number = 1,
     retryDelay: number = 200,
-  ): Promise<{ success: boolean; result?: T; message?: string }> {
+  ): Promise<T> {
     // Try to acquire a lock
     const lockAcquired = await this.acquireLock(key, ttl, retries, retryDelay);
     if (!lockAcquired) {
       this.logger.warn(`Failed to acquire lock for key: ${key}`);
-      return {
-        success: false,
-        message: errorMessage || `Failed to acquire lock for key: ${key}`,
-      };
+      throw new Error(errorMessage || `Failed to acquire lock for key: ${key}`);
     }
 
     try {
       // Execute the operation
-      const result = await operation();
-      return { success: true, result };
+      return await operation();
     } catch (error) {
       this.logger.error(
         `Error executing operation with lock for key: ${key}`,
         error,
       );
-      return {
-        success: false,
-        message: error instanceof Error ? error.message : 'Unknown error',
-      };
+      throw error; // Re-throw the original error
     } finally {
       // Always release the lock, even if an error occurred
       await this.releaseLock(key);
