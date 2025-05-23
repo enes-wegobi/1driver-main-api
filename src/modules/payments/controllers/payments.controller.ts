@@ -22,12 +22,12 @@ import {
 import { JwtAuthGuard } from 'src/jwt/jwt.guard';
 import { GetUser } from 'src/jwt/user.decoretor';
 import { IJwtPayload } from 'src/jwt/jwt-payload.interface';
-import { PaymentsService } from './payments.service';
+import { PaymentsService } from '../payments.service';
 import {
   AddPaymentMethodDto,
   CreatePaymentIntentDto,
   SetDefaultPaymentMethodDto,
-} from './dto';
+} from '../dto';
 
 @ApiTags('payments')
 @ApiBearerAuth()

@@ -31,6 +31,8 @@ const envSchema = z.object({
   TRIP_MONGODB_USER: z.string().min(1),
   TRIP_MONGODB_PASSWORD: z.string().min(1),
   TRIP_COST_PER_MINUTE: z.coerce.number().positive().optional().default(1),
+  STRIPE_SECRET_KEY: z.string().min(1),
+  STRIPE_WEBHOOK_SECRET: z.string().min(1),
 });
 
 export type EnvironmentVariables = z.infer<typeof envSchema>;
