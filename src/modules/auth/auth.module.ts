@@ -10,11 +10,11 @@ import { PaymentsModule } from '../payments/payments.module';
 
 @Module({
   imports: [
-    ClientsModule, 
-    RedisModule, 
-    ConfigModule, 
-    JwtModule, 
-    forwardRef(() => PaymentsModule)
+    ClientsModule,
+    RedisModule,
+    ConfigModule,
+    JwtModule,
+    forwardRef(() => PaymentsModule),
   ],
   controllers: [AuthCustomerController, AuthDriverController],
   providers: [AuthService],

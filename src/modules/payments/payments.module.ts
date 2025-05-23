@@ -7,7 +7,10 @@ import { PaymentsController } from './controllers/payments.controller';
 import { WebhookController } from './controllers/webhook.controller';
 import { PaymentMethodController } from './controllers/payment-method.controller';
 import { Payment, PaymentSchema } from './schemas/payment.schema';
-import { PaymentMethod, PaymentMethodSchema } from './schemas/payment-method.schema';
+import {
+  PaymentMethod,
+  PaymentMethodSchema,
+} from './schemas/payment-method.schema';
 import { PaymentRepository } from './repositories/payment.repository';
 import { PaymentMethodRepository } from './repositories/payment-method.repository';
 import { CustomersModule } from '../customers/customers.module';
@@ -26,10 +29,22 @@ import { AuthModule } from '../auth/auth.module';
     ConfigModule,
     JwtModule,
     RedisModule,
-    forwardRef(() => AuthModule)
+    forwardRef(() => AuthModule),
   ],
-  providers: [StripeService, PaymentsService, PaymentRepository, PaymentMethodService, PaymentMethodRepository],
+  providers: [
+    StripeService,
+    PaymentsService,
+    PaymentRepository,
+    PaymentMethodService,
+    PaymentMethodRepository,
+  ],
   controllers: [PaymentsController, WebhookController, PaymentMethodController],
-  exports: [StripeService, PaymentsService, PaymentRepository, PaymentMethodService, PaymentMethodRepository],
+  exports: [
+    StripeService,
+    PaymentsService,
+    PaymentRepository,
+    PaymentMethodService,
+    PaymentMethodRepository,
+  ],
 })
 export class PaymentsModule {}

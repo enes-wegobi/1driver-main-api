@@ -1,12 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { PaymentMethod, PaymentMethodDocument } from '../schemas/payment-method.schema';
+import {
+  PaymentMethod,
+  PaymentMethodDocument,
+} from '../schemas/payment-method.schema';
 
 @Injectable()
 export class PaymentMethodRepository {
   constructor(
-    @InjectModel(PaymentMethod.name) private paymentMethodModel: Model<PaymentMethodDocument>,
+    @InjectModel(PaymentMethod.name)
+    private paymentMethodModel: Model<PaymentMethodDocument>,
   ) {}
 
   async create(paymentMethod: Partial<PaymentMethod>): Promise<PaymentMethod> {
@@ -18,7 +22,9 @@ export class PaymentMethodRepository {
     return this.paymentMethodModel.findById(id).lean().exec();
   }
 
-  async findByStripePaymentMethodId(stripePaymentMethodId: string): Promise<PaymentMethod | null> {
+  async findByStripePaymentMethodId(
+    stripePaymentMethodId: string,
+  ): Promise<PaymentMethod | null> {
     return this.paymentMethodModel
       .findOne({ stripePaymentMethodId })
       .lean()
@@ -33,7 +39,9 @@ export class PaymentMethodRepository {
       .exec();
   }
 
-  async findDefaultByCustomerId(customerId: string): Promise<PaymentMethod | null> {
+  async findDefaultByCustomerId(
+    customerId: string,
+  ): Promise<PaymentMethod | null> {
     return this.paymentMethodModel
       .findOne({ customerId, isDefault: true, isActive: true })
       .lean()
@@ -49,21 +57,24 @@ export class PaymentMethodRepository {
 
   async unsetDefault(customerId: string): Promise<void> {
     await this.paymentMethodModel
-      .updateMany(
-        { customerId, isDefault: true },
-        { isDefault: false }
-      )
+      .updateMany({ customerId, isDefault: true }, { isDefault: false })
       .exec();
   }
 
   async setInactive(id: string): Promise<PaymentMethod | null> {
     return this.paymentMethodModel
-      .findByIdAndUpdate(id, { isActive: false, isDefault: false }, { new: true })
+      .findByIdAndUpdate(
+        id,
+        { isActive: false, isDefault: false },
+        { new: true },
+      )
       .lean()
       .exec();
   }
 
-  async findAnyActiveByCustomerId(customerId: string): Promise<PaymentMethod | null> {
+  async findAnyActiveByCustomerId(
+    customerId: string,
+  ): Promise<PaymentMethod | null> {
     return this.paymentMethodModel
       .findOne({ customerId, isActive: true })
       .sort({ createdAt: -1 })

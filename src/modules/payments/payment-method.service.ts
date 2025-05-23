@@ -30,19 +30,21 @@ export class PaymentMethodService {
     );
 
     // Check if this payment method already exists
-    const existingPaymentMethod = await this.paymentMethodRepository.findByStripePaymentMethodId(
-      stripePaymentMethodId,
-    );
+    const existingPaymentMethod =
+      await this.paymentMethodRepository.findByStripePaymentMethodId(
+        stripePaymentMethodId,
+      );
 
     if (existingPaymentMethod) {
-      this.logger.log('Payment method already exists, returning existing record');
+      this.logger.log(
+        'Payment method already exists, returning existing record',
+      );
       return existingPaymentMethod;
     }
 
     // Check if this is the first payment method for the customer
-    const existingMethods = await this.paymentMethodRepository.findByCustomerId(
-      customerId,
-    );
+    const existingMethods =
+      await this.paymentMethodRepository.findByCustomerId(customerId);
     const isFirstPaymentMethod = existingMethods.length === 0;
 
     // If this is not the first payment method, unset the previous default
@@ -54,7 +56,9 @@ export class PaymentMethodService {
     const paymentMethod = await this.paymentMethodRepository.create({
       customerId,
       stripePaymentMethodId,
-      name: name || `${stripePaymentMethod.card?.brand} ending in ${stripePaymentMethod.card?.last4}`,
+      name:
+        name ||
+        `${stripePaymentMethod.card?.brand} ending in ${stripePaymentMethod.card?.last4}`,
       brand: stripePaymentMethod.card?.brand,
       last4: stripePaymentMethod.card?.last4,
       expiryMonth: stripePaymentMethod.card?.exp_month,
@@ -77,8 +81,12 @@ export class PaymentMethodService {
   /**
    * Get the default payment method for a customer
    */
-  async getDefaultPaymentMethod(customerId: string): Promise<PaymentMethod | null> {
-    this.logger.log(`Getting default payment method for customer ${customerId}`);
+  async getDefaultPaymentMethod(
+    customerId: string,
+  ): Promise<PaymentMethod | null> {
+    this.logger.log(
+      `Getting default payment method for customer ${customerId}`,
+    );
     return this.paymentMethodRepository.findDefaultByCustomerId(customerId);
   }
 
@@ -94,20 +102,28 @@ export class PaymentMethodService {
     );
 
     // Verify the payment method exists and belongs to the customer
-    const paymentMethod = await this.paymentMethodRepository.findById(paymentMethodId);
-    if (!paymentMethod || paymentMethod.customerId !== customerId || !paymentMethod.isActive) {
-      throw new NotFoundException('Payment method not found or does not belong to this customer');
+    const paymentMethod =
+      await this.paymentMethodRepository.findById(paymentMethodId);
+    if (
+      !paymentMethod ||
+      paymentMethod.customerId !== customerId ||
+      !paymentMethod.isActive
+    ) {
+      throw new NotFoundException(
+        'Payment method not found or does not belong to this customer',
+      );
     }
 
     // Unset any existing default payment methods
     await this.paymentMethodRepository.unsetDefault(customerId);
 
     // Set the new default
-    const updatedPaymentMethod = await this.paymentMethodRepository.setAsDefault(paymentMethodId);
+    const updatedPaymentMethod =
+      await this.paymentMethodRepository.setAsDefault(paymentMethodId);
     if (!updatedPaymentMethod) {
       throw new NotFoundException('Failed to set payment method as default');
     }
-    
+
     return updatedPaymentMethod;
   }
 
@@ -123,15 +139,26 @@ export class PaymentMethodService {
     );
 
     // Verify the payment method exists and belongs to the customer
-    const paymentMethod = await this.paymentMethodRepository.findById(paymentMethodId);
-    if (!paymentMethod || paymentMethod.customerId !== customerId || !paymentMethod.isActive) {
-      throw new NotFoundException('Payment method not found or does not belong to this customer');
+    const paymentMethod =
+      await this.paymentMethodRepository.findById(paymentMethodId);
+    if (
+      !paymentMethod ||
+      paymentMethod.customerId !== customerId ||
+      !paymentMethod.isActive
+    ) {
+      throw new NotFoundException(
+        'Payment method not found or does not belong to this customer',
+      );
     }
 
     // Detach the payment method from Stripe
     try {
-      await this.stripeService.deletePaymentMethod(paymentMethod.stripePaymentMethodId);
-      this.logger.log(`Successfully detached payment method ${paymentMethod.stripePaymentMethodId} from Stripe`);
+      await this.stripeService.deletePaymentMethod(
+        paymentMethod.stripePaymentMethodId,
+      );
+      this.logger.log(
+        `Successfully detached payment method ${paymentMethod.stripePaymentMethodId} from Stripe`,
+      );
     } catch (error) {
       // Just log the error and continue - this could happen in test environments
       // or if the payment method was already detached
@@ -144,11 +171,14 @@ export class PaymentMethodService {
 
     // If this was the default payment method, set another one as default
     if (paymentMethod.isDefault) {
-      const anotherPaymentMethod = await this.paymentMethodRepository.findAnyActiveByCustomerId(
-        customerId,
-      );
+      const anotherPaymentMethod =
+        await this.paymentMethodRepository.findAnyActiveByCustomerId(
+          customerId,
+        );
       if (anotherPaymentMethod) {
-        await this.paymentMethodRepository.setAsDefault(String(anotherPaymentMethod._id));
+        await this.paymentMethodRepository.setAsDefault(
+          String(anotherPaymentMethod._id),
+        );
       }
     }
 

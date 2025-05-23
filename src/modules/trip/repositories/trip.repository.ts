@@ -29,13 +29,15 @@ export class TripRepository {
     id: string,
     tripData: UpdateTripDto,
   ): Promise<TripDocument | null> {
-    return this.tripModel.findByIdAndUpdate(
-      id,
-      {
-        ...tripData,
-      },
-      { new: true },
-    ).lean();
+    return this.tripModel
+      .findByIdAndUpdate(
+        id,
+        {
+          ...tripData,
+        },
+        { new: true },
+      )
+      .lean();
   }
 
   async findLatestPendingByCustomerId(
@@ -75,7 +77,11 @@ export class TripRepository {
   }
 
   async findTripStatusById(id: string): Promise<TripStatus | null> {
-    const trip = await this.tripModel.findById(id).select('status').lean().exec();
+    const trip = await this.tripModel
+      .findById(id)
+      .select('status')
+      .lean()
+      .exec();
     return trip ? trip.status : null;
   }
 }

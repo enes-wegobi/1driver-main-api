@@ -22,7 +22,7 @@ export class AuthService {
 
   async completeCustomerSignup(validateOtpDto: ValidateOtpDto) {
     const result = await this.authClient.completeCustomerSignup(validateOtpDto);
-    
+
     // Create Stripe customer after successful signup
     if (result && result.token && result.customer) {
       try {
