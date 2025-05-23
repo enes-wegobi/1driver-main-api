@@ -17,11 +17,12 @@ export class TripRepository {
     const createdTrip = new this.tripModel({
       ...tripData,
     });
-    return createdTrip.save();
+    const savedTrip = await createdTrip.save();
+    return savedTrip.toObject();
   }
 
   async findById(id: string): Promise<TripDocument | null> {
-    return this.tripModel.findById(id);
+    return this.tripModel.findById(id).lean();
   }
 
   async findByIdAndUpdate(
@@ -34,7 +35,7 @@ export class TripRepository {
         ...tripData,
       },
       { new: true },
-    );
+    ).lean();
   }
 
   async findLatestPendingByCustomerId(
@@ -47,6 +48,7 @@ export class TripRepository {
         driver: null,
       })
       .sort({ createdAt: -1 })
+      .lean()
       .exec();
   }
 
@@ -58,6 +60,7 @@ export class TripRepository {
         'customer.id': customerId,
         status: TripStatus.WAITING_FOR_DRIVER,
       })
+      .lean()
       .exec();
   }
 
@@ -67,11 +70,12 @@ export class TripRepository {
         'driver.id': driverId,
         status: TripStatus.APPROVED,
       })
+      .lean()
       .exec();
   }
 
   async findTripStatusById(id: string): Promise<TripStatus | null> {
-    const trip = await this.tripModel.findById(id).select('status').exec();
+    const trip = await this.tripModel.findById(id).select('status').lean().exec();
     return trip ? trip.status : null;
   }
 }
