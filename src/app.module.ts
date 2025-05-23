@@ -11,6 +11,7 @@ import { DriversModule } from './modules/drivers/drivers.module';
 import { PromotionsModule } from './modules/promotions/promotions.module';
 import { ExpoNotificationsModule } from './modules/expo-notifications/expo-notifications.module';
 import { TripModule } from './modules/trip/trip.module';
+import { SupportTicketsModule } from './modules/support-tickets/support-tickets.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { TripModule } from './modules/trip/trip.module';
     TripModule,
     PromotionsModule,
     ExpoNotificationsModule,
+    SupportTicketsModule
   ],
 })
 export class AppModule {}

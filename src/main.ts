@@ -16,18 +16,14 @@ import { WebSocketModule } from './websocket/websocket.module';
 async function bootstrap() {
   const fastifyAdapter = new FastifyAdapter();
 
-  // Configure Fastify to handle raw body for Stripe webhooks
-  fastifyAdapter.getInstance().addContentTypeParser('application/json', {
-    parseAs: 'string',
-  }, (req, body, done) => {
-    try {
-      // For Stripe webhook routes, preserve the raw body
-      if (req.url && req.url.includes('/webhooks/stripe')) {
-        (req as any).rawBody = body;
+  fastifyAdapter.getInstance().addHook('preHandler', async (request, reply) => {
+    if (request.url && request.url.includes('/webhooks/stripe')) {
+      // Raw body'yi buffer olarak oku
+      const chunks: Buffer[] = [];
+      for await (const chunk of request.raw) {
+        chunks.push(chunk);
       }
-      done(null, JSON.parse(body as string));
-    } catch (err) {
-      done(err as Error, undefined);
+      (request as any).rawBody = Buffer.concat(chunks);
     }
   });
 
