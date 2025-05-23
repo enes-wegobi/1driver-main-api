@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class AddPaymentMethodDto {
   @ApiProperty({
@@ -9,4 +9,12 @@ export class AddPaymentMethodDto {
   @IsString()
   @IsNotEmpty()
   paymentMethodId: string;
+
+  @ApiPropertyOptional({
+    description: 'Friendly name for the payment method',
+    example: 'My Work Card',
+  })
+  @IsString()
+  @IsOptional()
+  name?: string;
 }

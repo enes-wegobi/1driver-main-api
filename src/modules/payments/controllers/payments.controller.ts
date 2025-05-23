@@ -8,10 +8,8 @@ import {
   UseGuards,
   Logger,
   Param,
-  Delete,
   HttpException,
   Query,
-  Patch,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -24,9 +22,7 @@ import { GetUser } from 'src/jwt/user.decoretor';
 import { IJwtPayload } from 'src/jwt/jwt-payload.interface';
 import { PaymentsService } from '../payments.service';
 import {
-  AddPaymentMethodDto,
   CreatePaymentIntentDto,
-  SetDefaultPaymentMethodDto,
 } from '../dto';
 
 @ApiTags('payments')
@@ -37,175 +33,6 @@ export class PaymentsController {
   private readonly logger = new Logger(PaymentsController.name);
 
   constructor(private readonly paymentsService: PaymentsService) {}
-
-  @Post('payment-methods')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Add a payment method to the customer' })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Payment method added successfully',
-  })
-  @ApiResponse({
-    status: HttpStatus.BAD_REQUEST,
-    description: 'Invalid payment method ID',
-  })
-  @ApiResponse({
-    status: HttpStatus.NOT_FOUND,
-    description: 'Customer not found or does not have a Stripe account',
-  })
-  async addPaymentMethod(
-    @GetUser() user: IJwtPayload,
-    @Body() body: AddPaymentMethodDto,
-  ) {
-    try {
-      return await this.paymentsService.addPaymentMethod(
-        user.userId,
-        body.paymentMethodId,
-      );
-    } catch (error) {
-      this.logger.error(
-        `Error adding payment method: ${error.message}`,
-        error.stack,
-      );
-      throw new HttpException(
-        error.message || 'An error occurred while adding payment method',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-  }
-
-  @Get('payment-methods')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Get customer payment methods' })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Payment methods retrieved successfully',
-  })
-  @ApiResponse({
-    status: HttpStatus.NOT_FOUND,
-    description: 'Customer not found or does not have a Stripe account',
-  })
-  async getPaymentMethods(@GetUser() user: IJwtPayload) {
-    try {
-      return await this.paymentsService.getPaymentMethods(user.userId);
-    } catch (error) {
-      this.logger.error(
-        `Error getting payment methods: ${error.message}`,
-        error.stack,
-      );
-      throw new HttpException(
-        error.message || 'An error occurred while getting payment methods',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-  }
-
-  @Delete('payment-methods/:paymentMethodId')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Delete a payment method' })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Payment method deleted successfully',
-  })
-  @ApiResponse({
-    status: HttpStatus.BAD_REQUEST,
-    description: 'Invalid payment method ID',
-  })
-  @ApiResponse({
-    status: HttpStatus.NOT_FOUND,
-    description: 'Payment method not found',
-  })
-  async deletePaymentMethod(
-    @GetUser() user: IJwtPayload,
-    @Param('paymentMethodId') paymentMethodId: string,
-  ) {
-    try {
-      return await this.paymentsService.deletePaymentMethod(
-        user.userId,
-        paymentMethodId,
-      );
-    } catch (error) {
-      this.logger.error(
-        `Error deleting payment method: ${error.message}`,
-        error.stack,
-      );
-      throw new HttpException(
-        error.message || 'An error occurred while deleting payment method',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-  }
-
-  @Patch('payment-methods/default')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Set a payment method as default' })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Default payment method set successfully',
-  })
-  @ApiResponse({
-    status: HttpStatus.BAD_REQUEST,
-    description: 'Invalid payment method ID',
-  })
-  @ApiResponse({
-    status: HttpStatus.NOT_FOUND,
-    description: 'Payment method not found',
-  })
-  async setDefaultPaymentMethod(
-    @GetUser() user: IJwtPayload,
-    @Body() body: SetDefaultPaymentMethodDto,
-  ) {
-    try {
-      return await this.paymentsService.setDefaultPaymentMethod(
-        user.userId,
-        body.paymentMethodId,
-      );
-    } catch (error) {
-      this.logger.error(
-        `Error setting default payment method: ${error.message}`,
-        error.stack,
-      );
-      throw new HttpException(
-        error.message ||
-          'An error occurred while setting default payment method',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-  }
-
-  @Get('payment-methods/default')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Get customer default payment method' })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Default payment method retrieved successfully',
-  })
-  @ApiResponse({
-    status: HttpStatus.NOT_FOUND,
-    description: 'Customer not found or does not have a default payment method',
-  })
-  async getDefaultPaymentMethod(@GetUser() user: IJwtPayload) {
-    try {
-      const defaultPaymentMethod =
-        await this.paymentsService.getDefaultPaymentMethod(user.userId);
-
-      if (!defaultPaymentMethod) {
-        return { message: 'No default payment method set' };
-      }
-
-      return defaultPaymentMethod;
-    } catch (error) {
-      this.logger.error(
-        `Error getting default payment method: ${error.message}`,
-        error.stack,
-      );
-      throw new HttpException(
-        error.message ||
-          'An error occurred while getting default payment method',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-  }
 
   @Post('payment-intent')
   @HttpCode(HttpStatus.OK)

@@ -162,7 +162,7 @@
                     return;
                 }
                 
-                const response = await fetch(`${apiUrl}/payments/payment-methods`, {
+                const response = await fetch(`${apiUrl}/payment-methods`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -193,7 +193,7 @@
             }
             
             try {
-                const response = await fetch(`${apiUrl}/payments/payment-methods`, {
+                const response = await fetch(`${apiUrl}/payment-methods`, {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
@@ -204,7 +204,7 @@
                 // Varsayılan kartı alma
                 let defaultCard = null;
                 try {
-                    const defaultResponse = await fetch(`${apiUrl}/payments/payment-methods/default`, {
+                    const defaultResponse = await fetch(`${apiUrl}/payment-methods/default`, {
                         headers: {
                             'Authorization': `Bearer ${token}`
                         }
@@ -268,13 +268,11 @@
             const paymentMethodId = e.target.getAttribute('data-id');
             
             try {
-                const response = await fetch(`${apiUrl}/payments/payment-methods/default`, {
+                const response = await fetch(`${apiUrl}/payment-methods/${paymentMethodId}/default`, {
                     method: 'PATCH',
                     headers: {
-                        'Content-Type': 'application/json',
                         'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({ paymentMethodId })
+                    }
                 });
                 
                 await response.json();
@@ -291,7 +289,7 @@
             
             if (confirm('Bu kartı silmek istediğinizden emin misiniz?')) {
                 try {
-                    const response = await fetch(`${apiUrl}/payments/payment-methods/${paymentMethodId}`, {
+                    const response = await fetch(`${apiUrl}/payment-methods/${paymentMethodId}`, {
                         method: 'DELETE',
                         headers: {
                             'Authorization': `Bearer ${token}`
