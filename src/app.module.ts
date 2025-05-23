@@ -27,7 +27,7 @@ import { SupportTicketsModule } from './modules/support-tickets/support-tickets.
     TripModule,
     PromotionsModule,
     ExpoNotificationsModule,
-    SupportTicketsModule
+    SupportTicketsModule,
   ],
 })
 export class AppModule {}

@@ -218,7 +218,9 @@ export class CustomersClient {
     customerId: string,
     defaultPaymentMethodId: string,
   ): Promise<any> {
-    this.logger.log(`Updating default payment method for customer ${customerId}`);
+    this.logger.log(
+      `Updating default payment method for customer ${customerId}`,
+    );
     const { data } = await this.httpClient.patch(
       `/customers/${customerId}/default-payment-method`,
       { defaultPaymentMethodId },

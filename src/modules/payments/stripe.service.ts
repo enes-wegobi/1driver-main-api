@@ -197,7 +197,7 @@ export class StripeService {
     this.logger.log(`Confirming payment intent ${paymentIntentId}`);
 
     const confirmParams: Stripe.PaymentIntentConfirmParams = {};
-    
+
     if (paymentMethodId) {
       confirmParams.payment_method = paymentMethodId;
     }

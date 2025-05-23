@@ -23,10 +23,10 @@ import { JwtAuthGuard } from 'src/jwt/jwt.guard';
 import { GetUser } from 'src/jwt/user.decoretor';
 import { IJwtPayload } from 'src/jwt/jwt-payload.interface';
 import { PaymentsService } from './payments.service';
-import { 
-  AddPaymentMethodDto, 
-  CreatePaymentIntentDto, 
-  SetDefaultPaymentMethodDto 
+import {
+  AddPaymentMethodDto,
+  CreatePaymentIntentDto,
+  SetDefaultPaymentMethodDto,
 } from './dto';
 
 @ApiTags('payments')
@@ -166,7 +166,8 @@ export class PaymentsController {
         error.stack,
       );
       throw new HttpException(
-        error.message || 'An error occurred while setting default payment method',
+        error.message ||
+          'An error occurred while setting default payment method',
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -185,12 +186,13 @@ export class PaymentsController {
   })
   async getDefaultPaymentMethod(@GetUser() user: IJwtPayload) {
     try {
-      const defaultPaymentMethod = await this.paymentsService.getDefaultPaymentMethod(user.userId);
-      
+      const defaultPaymentMethod =
+        await this.paymentsService.getDefaultPaymentMethod(user.userId);
+
       if (!defaultPaymentMethod) {
         return { message: 'No default payment method set' };
       }
-      
+
       return defaultPaymentMethod;
     } catch (error) {
       this.logger.error(
@@ -198,7 +200,8 @@ export class PaymentsController {
         error.stack,
       );
       throw new HttpException(
-        error.message || 'An error occurred while getting default payment method',
+        error.message ||
+          'An error occurred while getting default payment method',
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -364,16 +367,16 @@ export class PaymentsController {
   ) {
     try {
       const payment = await this.paymentsService.getPaymentById(paymentId);
-      
+
       if (!payment) {
         throw new HttpException('Payment not found', HttpStatus.NOT_FOUND);
       }
-      
+
       // Ensure the user can only access their own payments
       if (payment.customerId !== user.userId) {
         throw new HttpException('Unauthorized', HttpStatus.UNAUTHORIZED);
       }
-      
+
       return payment;
     } catch (error) {
       this.logger.error(
@@ -382,7 +385,9 @@ export class PaymentsController {
       );
       throw new HttpException(
         error.message || 'An error occurred while getting payment details',
-        error instanceof HttpException ? error.getStatus() : HttpStatus.BAD_REQUEST,
+        error instanceof HttpException
+          ? error.getStatus()
+          : HttpStatus.BAD_REQUEST,
       );
     }
   }

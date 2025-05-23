@@ -23,7 +23,8 @@ export class LogoutGuard implements CanActivate {
     }
 
     // Check if token is already blacklisted
-    const isBlacklisted = await this.tokenManagerService.isTokenBlacklisted(token);
+    const isBlacklisted =
+      await this.tokenManagerService.isTokenBlacklisted(token);
     if (isBlacklisted) {
       throw new UnauthorizedException('Token has been revoked');
     }
@@ -45,7 +46,7 @@ export class LogoutGuard implements CanActivate {
 
     // Blacklist token
     await this.tokenManagerService.blacklistToken(token, decoded.exp);
-    
+
     // Invalidate active token
     await this.tokenManagerService.invalidateActiveToken(
       payload.userId,

@@ -8,7 +8,12 @@ import {
   Headers,
   UseGuards,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { CreateCustomerDto } from '../../clients/auth/dto/create-customer.dto';
 import { ValidateOtpDto } from '../../clients/auth/dto/validate-otp.dto';
@@ -16,10 +21,7 @@ import { SigninDto } from '../../clients/auth/dto/signin.dto';
 import { TokenManagerService } from '../../redis/services/token-manager.service';
 import { UserType } from '../../common/user-type.enum';
 import { ConfigService } from '@nestjs/config';
-import { JwtAuthGuard } from '../../jwt/jwt.guard';
 import { LogoutGuard } from '../../jwt/logout.guard';
-import { GetUser } from '../../jwt/user.decoretor';
-import { IJwtPayload } from '../../jwt/jwt-payload.interface';
 import { JwtService } from '../../jwt/jwt.service';
 
 @ApiTags('auth-customer')
@@ -68,7 +70,8 @@ export class AuthCustomerController {
     @Headers('device-id') deviceId: string,
   ) {
     try {
-      const result = await this.authService.completeCustomerSignup(validateOtpDto);
+      const result =
+        await this.authService.completeCustomerSignup(validateOtpDto);
 
       // If successful, store the token
       if (result && result.token && result.customer) {
@@ -120,7 +123,8 @@ export class AuthCustomerController {
     @Headers('device-id') deviceId: string,
   ) {
     try {
-      const result = await this.authService.completeCustomerSignin(validateOtpDto);
+      const result =
+        await this.authService.completeCustomerSignin(validateOtpDto);
 
       // If successful, invalidate any existing token and store the new one
       if (result && result.token && result.customer) {
@@ -136,7 +140,7 @@ export class AuthCustomerController {
           this.jwtExpiresIn,
         );
 
-        return { token : result.token };
+        return { token: result.token };
       }
 
       return result;
@@ -180,10 +184,7 @@ export class AuthCustomerController {
     try {
       return { success: true, message: 'Logged out successfully' };
     } catch (error) {
-      this.logger.error(
-        `Customer logout error: ${error.message}`,
-        error.stack,
-      );
+      this.logger.error(`Customer logout error: ${error.message}`, error.stack);
       throw new HttpException(
         error.message || 'An error occurred during logout',
         error.status || HttpStatus.INTERNAL_SERVER_ERROR,

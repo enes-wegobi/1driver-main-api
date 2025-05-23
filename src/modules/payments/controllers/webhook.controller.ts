@@ -35,7 +35,7 @@ export class WebhookController {
   ) {
     try {
       this.logger.log('Received Stripe webhook');
-      
+
       if (!signature) {
         this.logger.error('Missing Stripe signature header');
         return { success: false, error: 'Missing Stripe signature header' };
@@ -47,10 +47,16 @@ export class WebhookController {
         return { success: false, error: 'Missing raw body in request' };
       }
 
-      const result = await this.paymentsService.handleWebhookEvent(signature, Buffer.from(rawBody));
+      const result = await this.paymentsService.handleWebhookEvent(
+        signature,
+        Buffer.from(rawBody),
+      );
       return { success: true, type: result.type };
     } catch (error) {
-      this.logger.error(`Error handling webhook: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error handling webhook: ${error.message}`,
+        error.stack,
+      );
       return { success: false, error: error.message };
     }
   }

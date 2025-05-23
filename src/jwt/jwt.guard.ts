@@ -23,7 +23,8 @@ export class JwtAuthGuard implements CanActivate {
     }
 
     // Check if token is blacklisted
-    const isBlacklisted = await this.tokenManagerService.isTokenBlacklisted(token);
+    const isBlacklisted =
+      await this.tokenManagerService.isTokenBlacklisted(token);
     if (isBlacklisted) {
       throw new UnauthorizedException('Token has been revoked');
     }

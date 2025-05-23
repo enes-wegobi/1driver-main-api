@@ -131,13 +131,15 @@ export class PaymentsService {
    * Get the default payment method for a customer
    */
   async getDefaultPaymentMethod(customerId: string): Promise<any> {
-    this.logger.log(`Getting default payment method for customer ${customerId}`);
+    this.logger.log(
+      `Getting default payment method for customer ${customerId}`,
+    );
 
     // Get the customer with the default payment method ID
-    const customer = await this.customersService.findOne(
-      customerId,
-      ['stripeCustomerId', 'defaultPaymentMethodId'],
-    );
+    const customer = await this.customersService.findOne(customerId, [
+      'stripeCustomerId',
+      'defaultPaymentMethodId',
+    ]);
 
     if (!customer.stripeCustomerId) {
       throw new Error('Customer does not have a Stripe account');
@@ -221,10 +223,10 @@ export class PaymentsService {
     );
 
     // Get the customer with stripe ID and default payment method ID
-    const customer = await this.customersService.findOne(
-      customerId,
-      ['stripeCustomerId', 'defaultPaymentMethodId'],
-    );
+    const customer = await this.customersService.findOne(customerId, [
+      'stripeCustomerId',
+      'defaultPaymentMethodId',
+    ]);
 
     if (!customer.stripeCustomerId) {
       throw new Error('Customer does not have a Stripe account');
@@ -233,7 +235,9 @@ export class PaymentsService {
     // If no payment method is specified, use the default one
     let methodToUse = paymentMethodId;
     if (!methodToUse && customer.defaultPaymentMethodId) {
-      this.logger.log(`Using default payment method ${customer.defaultPaymentMethodId}`);
+      this.logger.log(
+        `Using default payment method ${customer.defaultPaymentMethodId}`,
+      );
       methodToUse = customer.defaultPaymentMethodId;
     }
 
@@ -269,10 +273,10 @@ export class PaymentsService {
     this.logger.log(`Creating payment record for customer ${customerId}`);
 
     // Get the customer with stripe ID and default payment method ID
-    const customer = await this.customersService.findOne(
-      customerId,
-      ['stripeCustomerId', 'defaultPaymentMethodId'],
-    );
+    const customer = await this.customersService.findOne(customerId, [
+      'stripeCustomerId',
+      'defaultPaymentMethodId',
+    ]);
 
     if (!customer.stripeCustomerId) {
       throw new Error('Customer does not have a Stripe account');
@@ -281,7 +285,9 @@ export class PaymentsService {
     // If no payment method is specified, use the default one
     let methodToUse = paymentMethodId;
     if (!methodToUse && customer.defaultPaymentMethodId) {
-      this.logger.log(`Using default payment method ${customer.defaultPaymentMethodId}`);
+      this.logger.log(
+        `Using default payment method ${customer.defaultPaymentMethodId}`,
+      );
       methodToUse = customer.defaultPaymentMethodId;
     }
 
@@ -319,7 +325,10 @@ export class PaymentsService {
     this.logger.log('Handling Stripe webhook event');
 
     try {
-      const event = await this.stripeService.handleWebhookEvent(signature, payload);
+      const event = await this.stripeService.handleWebhookEvent(
+        signature,
+        payload,
+      );
 
       // Process the event based on type
       switch (event.type) {
@@ -334,7 +343,10 @@ export class PaymentsService {
 
       return event;
     } catch (error) {
-      this.logger.error(`Error handling webhook: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error handling webhook: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -345,9 +357,13 @@ export class PaymentsService {
   private async handlePaymentSuccess(paymentIntent: any): Promise<any> {
     this.logger.log(`Payment succeeded for intent ${paymentIntent.id}`);
 
-    const payment = await this.paymentRepository.findByPaymentIntentId(paymentIntent.id);
+    const payment = await this.paymentRepository.findByPaymentIntentId(
+      paymentIntent.id,
+    );
     if (!payment) {
-      this.logger.warn(`No payment record found for intent ${paymentIntent.id}`);
+      this.logger.warn(
+        `No payment record found for intent ${paymentIntent.id}`,
+      );
       return null;
     }
 
@@ -361,7 +377,9 @@ export class PaymentsService {
     if (updatedPayment && updatedPayment.tripId) {
       // TODO: Update trip payment status
       // await this.tripService.updatePaymentStatus(updatedPayment.tripId, PaymentStatus.PAID);
-      this.logger.log(`Updated trip ${updatedPayment.tripId} payment status to PAID`);
+      this.logger.log(
+        `Updated trip ${updatedPayment.tripId} payment status to PAID`,
+      );
     }
 
     return updatedPayment;
@@ -373,14 +391,19 @@ export class PaymentsService {
   private async handlePaymentFailure(paymentIntent: any): Promise<any> {
     this.logger.log(`Payment failed for intent ${paymentIntent.id}`);
 
-    const payment = await this.paymentRepository.findByPaymentIntentId(paymentIntent.id);
+    const payment = await this.paymentRepository.findByPaymentIntentId(
+      paymentIntent.id,
+    );
     if (!payment) {
-      this.logger.warn(`No payment record found for intent ${paymentIntent.id}`);
+      this.logger.warn(
+        `No payment record found for intent ${paymentIntent.id}`,
+      );
       return null;
     }
 
     // Get error message
-    const errorMessage = paymentIntent.last_payment_error?.message || 'Payment failed';
+    const errorMessage =
+      paymentIntent.last_payment_error?.message || 'Payment failed';
 
     // Update payment status
     const updatedPayment = await this.paymentRepository.updateStatus(
@@ -393,7 +416,9 @@ export class PaymentsService {
     if (updatedPayment && updatedPayment.tripId) {
       // TODO: Update trip payment status
       // await this.tripService.updatePaymentStatus(updatedPayment.tripId, PaymentStatus.FAILED);
-      this.logger.log(`Updated trip ${updatedPayment.tripId} payment status to FAILED`);
+      this.logger.log(
+        `Updated trip ${updatedPayment.tripId} payment status to FAILED`,
+      );
     }
 
     return updatedPayment;
@@ -405,9 +430,13 @@ export class PaymentsService {
   private async handlePaymentCancellation(paymentIntent: any): Promise<any> {
     this.logger.log(`Payment cancelled for intent ${paymentIntent.id}`);
 
-    const payment = await this.paymentRepository.findByPaymentIntentId(paymentIntent.id);
+    const payment = await this.paymentRepository.findByPaymentIntentId(
+      paymentIntent.id,
+    );
     if (!payment) {
-      this.logger.warn(`No payment record found for intent ${paymentIntent.id}`);
+      this.logger.warn(
+        `No payment record found for intent ${paymentIntent.id}`,
+      );
       return null;
     }
 
@@ -421,7 +450,9 @@ export class PaymentsService {
     if (updatedPayment && updatedPayment.tripId) {
       // TODO: Update trip payment status
       // await this.tripService.updatePaymentStatus(updatedPayment.tripId, PaymentStatus.CANCELLED);
-      this.logger.log(`Updated trip ${updatedPayment.tripId} payment status to CANCELLED`);
+      this.logger.log(
+        `Updated trip ${updatedPayment.tripId} payment status to CANCELLED`,
+      );
     }
 
     return updatedPayment;

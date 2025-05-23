@@ -93,14 +93,19 @@ export class TokenManagerService extends BaseRedisService {
    * @returns True if successful, false otherwise
    */
   @WithErrorHandling()
-  async blacklistToken(token: string, expirationTime?: number): Promise<boolean> {
+  async blacklistToken(
+    token: string,
+    expirationTime?: number,
+  ): Promise<boolean> {
     // If no expiration time is provided, we'll set a default expiration of 24 hours
     // This is a fallback for cases where the token is invalidated without knowing its expiration
     const defaultExpirySeconds = 86400; // 24 hours in seconds
-    
+
     if (!expirationTime) {
-      this.logger.warn(`No expiration time provided for blacklisting token, using default expiry of ${defaultExpirySeconds} seconds`);
-      
+      this.logger.warn(
+        `No expiration time provided for blacklisting token, using default expiry of ${defaultExpirySeconds} seconds`,
+      );
+
       // Add to blacklist with default TTL
       const key = RedisKeyGenerator.tokenBlacklist(token);
       await this.client.set(key, 'true');
