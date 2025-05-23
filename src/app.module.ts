@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from './config/config.module';
 import { AuthModule } from './modules/auth/auth.module';
-import { JwtModule } from './jwt/jwt.modulte';
+import { JwtModule } from './jwt/jwt.module';
 import { CustomersModule } from './modules/customers/customers.module';
 import { ContentModule } from './modules/content/content.module';
 import { WebSocketModule } from './websocket/websocket.module';

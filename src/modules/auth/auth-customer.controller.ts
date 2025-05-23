@@ -5,19 +5,36 @@ import {
   HttpException,
   HttpStatus,
   Logger,
+  Headers,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { CreateCustomerDto } from '../../clients/auth/dto/create-customer.dto';
 import { ValidateOtpDto } from '../../clients/auth/dto/validate-otp.dto';
 import { SigninDto } from '../../clients/auth/dto/signin.dto';
+import { TokenManagerService } from '../../redis/services/token-manager.service';
+import { UserType } from '../../common/user-type.enum';
+import { ConfigService } from '@nestjs/config';
+import { JwtAuthGuard } from '../../jwt/jwt.guard';
+import { GetUser } from '../../jwt/user.decoretor';
+import { IJwtPayload } from '../../jwt/jwt-payload.interface';
+import { JwtService } from '../../jwt/jwt.service';
 
 @ApiTags('auth-customer')
 @Controller('auth/customer')
 export class AuthCustomerController {
   private readonly logger = new Logger(AuthCustomerController.name);
+  private readonly jwtExpiresIn: number;
 
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly tokenManagerService: TokenManagerService,
+    private readonly configService: ConfigService,
+    private readonly jwtService: JwtService,
+  ) {
+    this.jwtExpiresIn = this.configService.get<number>('jwt.expiresIn', 86400); // Default: 24 hours
+  }
 
   @Post('initiate-signup')
   @ApiOperation({ summary: 'Initiate customer registration process' })
@@ -45,9 +62,25 @@ export class AuthCustomerController {
     description: 'Registration completed, token returned',
   })
   @ApiResponse({ status: 400, description: 'Invalid OTP' })
-  async completeSignup(@Body() validateOtpDto: ValidateOtpDto) {
+  async completeSignup(
+    @Body() validateOtpDto: ValidateOtpDto,
+    @Headers('device-id') deviceId: string,
+  ) {
     try {
-      return await this.authService.completeCustomerSignup(validateOtpDto);
+      const result = await this.authService.completeCustomerSignup(validateOtpDto);
+
+      // If successful, store the token
+      if (result && result.token && result.customer) {
+        await this.tokenManagerService.storeActiveToken(
+          result.customer.id,
+          UserType.CUSTOMER,
+          result.token,
+          deviceId || 'unknown-device',
+          this.jwtExpiresIn,
+        );
+      }
+
+      return result;
     } catch (error) {
       this.logger.error(
         `User signup completion error: ${error.message}`,
@@ -81,9 +114,31 @@ export class AuthCustomerController {
   @ApiResponse({ status: 200, description: 'Token generated successfully' })
   @ApiResponse({ status: 400, description: 'Invalid OTP' })
   @ApiResponse({ status: 404, description: 'User not found' })
-  async completeSignin(@Body() validateOtpDto: ValidateOtpDto) {
+  async completeSignin(
+    @Body() validateOtpDto: ValidateOtpDto,
+    @Headers('device-id') deviceId: string,
+  ) {
     try {
-      return await this.authService.completeCustomerSignin(validateOtpDto);
+      const result = await this.authService.completeCustomerSignin(validateOtpDto);
+
+      // If successful, invalidate any existing token and store the new one
+      if (result && result.token && result.customer) {
+        await this.tokenManagerService.invalidateActiveToken(
+          result.customer._id,
+          UserType.CUSTOMER,
+        );
+        await this.tokenManagerService.storeActiveToken(
+          result.customer._id,
+          UserType.CUSTOMER,
+          result.token,
+          deviceId || 'unknown-device',
+          this.jwtExpiresIn,
+        );
+
+        return { token : result.token };
+      }
+
+      return result;
     } catch (error) {
       this.logger.error(
         `User complete signin error: ${error.message}`,
@@ -111,6 +166,55 @@ export class AuthCustomerController {
       throw new HttpException(
         error.response?.data || 'An error occurred during OTP resend',
         error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Post('logout')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Logout a customer' })
+  @ApiResponse({ status: 200, description: 'Logged out successfully' })
+  async logout(
+    @GetUser() user: IJwtPayload,
+    @Headers('authorization') authHeader: string,
+  ) {
+    try {
+      if (!authHeader) {
+        throw new HttpException(
+          'Missing authorization header',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const token = authHeader.replace('Bearer ', '');
+      
+      // Decode the token to get expiration time
+      const decoded = this.jwtService.decodeToken(token);
+      if (!decoded || !decoded.exp) {
+        throw new HttpException(
+          'Invalid token format',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      
+      // Blacklist the token with expiration time
+      await this.tokenManagerService.blacklistToken(token, decoded.exp);
+      
+      // Invalidate the active token
+      await this.tokenManagerService.invalidateActiveToken(
+        user.userId,
+        UserType.CUSTOMER,
+      );
+
+      return { success: true, message: 'Logged out successfully' };
+    } catch (error) {
+      this.logger.error(
+        `Customer logout error: ${error.message}`,
+        error.stack,
+      );
+      throw new HttpException(
+        error.message || 'An error occurred during logout',
+        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }

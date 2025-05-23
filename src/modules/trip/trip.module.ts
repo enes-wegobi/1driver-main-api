@@ -14,7 +14,7 @@ import { DatabaseModule } from './database/database.module';
 import { RedisModule } from 'src/redis/redis.module';
 import { WebSocketModule } from 'src/websocket/websocket.module';
 import { EventModule } from '../event/event.module';
-import { JwtModule } from 'src/jwt/jwt.modulte';
+import { JwtModule } from 'src/jwt/jwt.module';
 
 @Module({
   imports: [

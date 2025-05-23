@@ -48,4 +48,13 @@ export class RedisKeyGenerator {
   static nearbyUsers(userType: UserType): string {
     return this.geoIndex(userType);
   }
+
+  // Token management keys
+  static tokenBlacklist(token: string): string {
+    return `auth:blacklist:token:${token}`;
+  }
+
+  static userActiveToken(userId: string, userType: UserType): string {
+    return `auth:user:active_token:${userType}:${userId}`;
+  }
 }

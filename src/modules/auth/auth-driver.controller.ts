@@ -5,19 +5,36 @@ import {
   HttpException,
   HttpStatus,
   Logger,
+  Headers,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { CreateDriverDto } from '../../clients/auth/dto/create-driver.dto';
 import { ValidateOtpDto } from '../../clients/auth/dto/validate-otp.dto';
 import { SigninDto } from '../../clients/auth/dto/signin.dto';
+import { TokenManagerService } from '../../redis/services/token-manager.service';
+import { UserType } from '../../common/user-type.enum';
+import { ConfigService } from '@nestjs/config';
+import { JwtAuthGuard } from '../../jwt/jwt.guard';
+import { GetUser } from '../../jwt/user.decoretor';
+import { IJwtPayload } from '../../jwt/jwt-payload.interface';
+import { JwtService } from '../../jwt/jwt.service';
 
 @ApiTags('auth-driver')
 @Controller('auth/driver')
 export class AuthDriverController {
   private readonly logger = new Logger(AuthDriverController.name);
+  private readonly jwtExpiresIn: number;
 
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly tokenManagerService: TokenManagerService,
+    private readonly configService: ConfigService,
+    private readonly jwtService: JwtService,
+  ) {
+    this.jwtExpiresIn = this.configService.get<number>('jwt.expiresIn', 86400); // Default: 24 hours
+  }
 
   @Post('initiate-signup')
   @ApiOperation({ summary: 'Initiate driver registration process' })
@@ -45,9 +62,25 @@ export class AuthDriverController {
     description: 'Registration completed, token returned',
   })
   @ApiResponse({ status: 400, description: 'Invalid OTP' })
-  async completeSignup(@Body() validateOtpDto: ValidateOtpDto) {
+  async completeSignup(
+    @Body() validateOtpDto: ValidateOtpDto,
+    @Headers('device-id') deviceId: string,
+  ) {
     try {
-      return await this.authService.completeDriverSignup(validateOtpDto);
+      const result = await this.authService.completeDriverSignup(validateOtpDto);
+
+      // If successful, store the token
+      if (result && result.token && result.driver) {
+        await this.tokenManagerService.storeActiveToken(
+          result.driver.id,
+          UserType.DRIVER,
+          result.token,
+          deviceId || 'unknown-device',
+          this.jwtExpiresIn,
+        );
+      }
+
+      return result;
     } catch (error) {
       this.logger.error(
         `Driver signup completion error: ${error.message}`,
@@ -81,9 +114,31 @@ export class AuthDriverController {
   @ApiResponse({ status: 200, description: 'Token generated successfully' })
   @ApiResponse({ status: 400, description: 'Invalid OTP' })
   @ApiResponse({ status: 404, description: 'Driver not found' })
-  async completeSignin(@Body() validateOtpDto: ValidateOtpDto) {
+  async completeSignin(
+    @Body() validateOtpDto: ValidateOtpDto,
+    @Headers('device-id') deviceId: string,
+  ) {
     try {
-      return await this.authService.completeDriverSignin(validateOtpDto);
+      const result = await this.authService.completeDriverSignin(validateOtpDto);
+
+      // If successful, invalidate any existing token and store the new one
+      if (result && result.token && result.driver) {
+        await this.tokenManagerService.invalidateActiveToken(
+          result.driver._id,
+          UserType.DRIVER,
+        );
+        await this.tokenManagerService.storeActiveToken(
+          result.driver._id,
+          UserType.DRIVER,
+          result.token,
+          deviceId || 'unknown-device',
+          this.jwtExpiresIn,
+        );
+
+        return { token : result.token };
+      }
+
+      return result;
     } catch (error) {
       this.logger.error(
         `Driver complete signin error: ${error.message}`,
@@ -111,6 +166,55 @@ export class AuthDriverController {
       throw new HttpException(
         error.response?.data || 'An error occurred during OTP resend',
         error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Post('logout')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Logout a driver' })
+  @ApiResponse({ status: 200, description: 'Logged out successfully' })
+  async logout(
+    @GetUser() user: IJwtPayload,
+    @Headers('authorization') authHeader: string,
+  ) {
+    try {
+      if (!authHeader) {
+        throw new HttpException(
+          'Missing authorization header',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const token = authHeader.replace('Bearer ', '');
+      
+      // Decode the token to get expiration time
+      const decoded = this.jwtService.decodeToken(token);
+      if (!decoded || !decoded.exp) {
+        throw new HttpException(
+          'Invalid token format',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      
+      // Blacklist the token with expiration time
+      await this.tokenManagerService.blacklistToken(token, decoded.exp);
+      
+      // Invalidate the active token
+      await this.tokenManagerService.invalidateActiveToken(
+        user.userId,
+        UserType.DRIVER,
+      );
+
+      return { success: true, message: 'Logged out successfully' };
+    } catch (error) {
+      this.logger.error(
+        `Driver logout error: ${error.message}`,
+        error.stack,
+      );
+      throw new HttpException(
+        error.message || 'An error occurred during logout',
+        error.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }

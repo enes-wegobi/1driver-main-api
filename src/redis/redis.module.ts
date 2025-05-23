@@ -7,6 +7,7 @@ import { DriverStatusService } from './services/driver-status.service';
 import { CustomerStatusService } from './services/customer-status.service';
 import { NearbySearchService } from './services/nearby-search.service';
 import { ActiveTripService } from './services/active-trip.service';
+import { TokenManagerService } from './services/token-manager.service';
 
 @Module({
   imports: [ConfigModule],
@@ -17,6 +18,7 @@ import { ActiveTripService } from './services/active-trip.service';
     CustomerStatusService,
     NearbySearchService,
     ActiveTripService,
+    TokenManagerService,
     RedisService,
   ],
   exports: [
@@ -25,6 +27,7 @@ import { ActiveTripService } from './services/active-trip.service';
     CustomerStatusService,
     NearbySearchService,
     ActiveTripService,
+    TokenManagerService,
     RedisService,
   ],
 })
