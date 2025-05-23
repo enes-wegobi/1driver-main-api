@@ -4,6 +4,7 @@ import { JwtService } from './jwt.service';
 import { ConfigService } from 'src/config/config.service';
 import { ConfigModule } from 'src/config/config.module';
 import { JwtAuthGuard } from './jwt.guard';
+import { LogoutGuard } from './logout.guard';
 import { RedisModule } from 'src/redis/redis.module';
 
 @Module({
@@ -18,7 +19,7 @@ import { RedisModule } from 'src/redis/redis.module';
     }),
     RedisModule,
   ],
-  providers: [JwtService, JwtAuthGuard],
-  exports: [JwtService, JwtAuthGuard],
+  providers: [JwtService, JwtAuthGuard, LogoutGuard],
+  exports: [JwtService, JwtAuthGuard, LogoutGuard],
 })
 export class JwtModule {}

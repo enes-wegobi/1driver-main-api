@@ -8,7 +8,7 @@ import {
   Headers,
   UseGuards,
 } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiResponse, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { CreateDriverDto } from '../../clients/auth/dto/create-driver.dto';
 import { ValidateOtpDto } from '../../clients/auth/dto/validate-otp.dto';
@@ -17,6 +17,7 @@ import { TokenManagerService } from '../../redis/services/token-manager.service'
 import { UserType } from '../../common/user-type.enum';
 import { ConfigService } from '@nestjs/config';
 import { JwtAuthGuard } from '../../jwt/jwt.guard';
+import { LogoutGuard } from '../../jwt/logout.guard';
 import { GetUser } from '../../jwt/user.decoretor';
 import { IJwtPayload } from '../../jwt/jwt-payload.interface';
 import { JwtService } from '../../jwt/jwt.service';
@@ -171,41 +172,12 @@ export class AuthDriverController {
   }
 
   @Post('logout')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(LogoutGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Logout a driver' })
   @ApiResponse({ status: 200, description: 'Logged out successfully' })
-  async logout(
-    @GetUser() user: IJwtPayload,
-    @Headers('authorization') authHeader: string,
-  ) {
+  async logout() {
     try {
-      if (!authHeader) {
-        throw new HttpException(
-          'Missing authorization header',
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-
-      const token = authHeader.replace('Bearer ', '');
-      
-      // Decode the token to get expiration time
-      const decoded = this.jwtService.decodeToken(token);
-      if (!decoded || !decoded.exp) {
-        throw new HttpException(
-          'Invalid token format',
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-      
-      // Blacklist the token with expiration time
-      await this.tokenManagerService.blacklistToken(token, decoded.exp);
-      
-      // Invalidate the active token
-      await this.tokenManagerService.invalidateActiveToken(
-        user.userId,
-        UserType.DRIVER,
-      );
-
       return { success: true, message: 'Logged out successfully' };
     } catch (error) {
       this.logger.error(
