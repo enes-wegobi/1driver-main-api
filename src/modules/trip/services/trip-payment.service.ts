@@ -1,4 +1,4 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, Inject, forwardRef } from '@nestjs/common';
 import { TripService } from './trip.service';
 import { PaymentsService } from '../../payments/payments.service';
 import { PaymentMethodService } from '../../payments/payment-method.service';
@@ -23,6 +23,7 @@ export class TripPaymentService {
 
   constructor(
     private readonly tripService: TripService,
+    @Inject(forwardRef(() => PaymentsService))
     private readonly paymentsService: PaymentsService,
     private readonly paymentMethodService: PaymentMethodService,
     private readonly eventService: EventService,
