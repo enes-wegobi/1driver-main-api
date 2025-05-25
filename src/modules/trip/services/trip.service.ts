@@ -24,7 +24,6 @@ import {
 } from 'src/redis/dto/nearby-user.dto';
 import { EventType } from '../../event/enum/event-type.enum';
 import { LocationService } from 'src/redis/services/location.service';
-import { WebSocketService } from 'src/websocket/websocket.service';
 import { BatchDistanceRequest } from 'src/clients/maps/maps.interface';
 import { TripStateService } from './trip-state.service';
 
@@ -61,7 +60,6 @@ export class TripService {
     private readonly mapsService: MapsService,
     private readonly eventService: EventService,
     private readonly locationService: LocationService,
-    private readonly webSocketService: WebSocketService,
   ) {}
 
   // ================================
@@ -599,14 +597,14 @@ export class TripService {
     tripId: string,
   ): Promise<void> {
     const driverLocation = await this.locationService.getUserLocation(driverId);
-
     if (driverLocation) {
-      this.webSocketService.sendToUser(customerId, 'driverLocation', {
+      const data = {
         tripId,
         driverId,
         location: driverLocation,
         timestamp: new Date().toISOString(),
-      });
+      }; 
+    await this.eventService.sendToUser(customerId, EventType.DRIVER_LOCATION_UPDATED, data);
     }
   }
 

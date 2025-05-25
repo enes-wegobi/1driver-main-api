@@ -12,11 +12,16 @@ import { EstimateTripDto } from '../dto/estimate-trip.dto';
 import { IJwtPayload } from 'src/jwt/jwt-payload.interface';
 import { RequestDriverDto } from '../../trips/dto/request-driver.dto';
 import { TripService } from '../services/trip.service';
+import { TripPaymentService } from '../services/trip-payment.service';
+import { ProcessTripPaymentDto } from '../dto/process-trip-payment.dto';
 
 @ApiTags('customer-trips')
 @Controller('customer-trips')
 export class CustomersTripsController {
-  constructor(private readonly tripService: TripService) {}
+  constructor(
+    private readonly tripService: TripService,
+    private readonly tripPaymentService: TripPaymentService,
+  ) {}
 
   @Get('active')
   @UseGuards(JwtAuthGuard)
@@ -83,6 +88,54 @@ export class CustomersTripsController {
       user.userId,
     );
   }
+
+  @Post('process-payment')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ 
+    summary: 'Process payment for active trip',
+    description: 'Process payment for the customer\'s active trip using the specified payment method'
+  })
+  @ApiBody({ type: ProcessTripPaymentDto })
+  async processPayment(
+    @Body() processPaymentDto: ProcessTripPaymentDto,
+    @GetUser() user: IJwtPayload,
+  ) {
+    return await this.tripPaymentService.processTripPayment(
+      user.userId,
+      processPaymentDto.paymentMethodId,
+    );
+  }
+
+  @Post('retry-payment')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ 
+    summary: 'Retry payment with different payment method',
+    description: 'Retry payment for the active trip using a different payment method after a failed payment'
+  })
+  @ApiBody({ type: ProcessTripPaymentDto })
+  async retryPayment(
+    @Body() retryPaymentDto: ProcessTripPaymentDto,
+    @GetUser() user: IJwtPayload,
+  ) {
+    return await this.tripPaymentService.retryTripPayment(
+      user.userId,
+      retryPaymentDto.paymentMethodId,
+    );
+  }
+
+  @Get('payment-status')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ 
+    summary: 'Get payment status for active trip',
+    description: 'Get the current payment status and history for the customer\'s active trip'
+  })
+  async getPaymentStatus(@GetUser() user: IJwtPayload) {
+    return await this.tripPaymentService.getTripPaymentStatus(user.userId);
+  }
+
   /*
   @Post('cancel')
   @UseGuards(JwtAuthGuard)

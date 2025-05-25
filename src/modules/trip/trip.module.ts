@@ -8,13 +8,14 @@ import { ConfigModule } from 'src/config/config.module';
 import { MapsModule } from 'src/clients/maps/maps.module';
 import { LockModule } from 'src/common/lock/lock.module';
 import { TripStateService } from './services/trip-state.service';
+import { TripPaymentService } from './services/trip-payment.service';
 import { DriversTripsController } from './controllers/driver-trip.controller';
 import { CustomersTripsController } from './controllers/customer-trip.controller';
 import { DatabaseModule } from './database/database.module';
 import { RedisModule } from 'src/redis/redis.module';
-import { WebSocketModule } from 'src/websocket/websocket.module';
 import { EventModule } from '../event/event.module';
 import { JwtModule } from 'src/jwt/jwt.module';
+import { PaymentsModule } from '../payments/payments.module';
 
 @Module({
   imports: [
@@ -25,12 +26,12 @@ import { JwtModule } from 'src/jwt/jwt.module';
     LockModule,
     ClientsModule,
     RedisModule,
-    forwardRef(() => WebSocketModule),
     EventModule,
     JwtModule,
+    forwardRef(() => PaymentsModule),
   ],
-  providers: [TripService, TripRepository, TripStateService],
+  providers: [TripService, TripRepository, TripStateService, TripPaymentService],
   controllers: [DriversTripsController, CustomersTripsController],
-  exports: [TripService],
+  exports: [TripService, TripPaymentService],
 })
 export class TripModule {}

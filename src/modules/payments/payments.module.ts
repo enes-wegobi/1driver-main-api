@@ -3,6 +3,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { StripeService } from './stripe.service';
 import { PaymentsService } from './payments.service';
 import { PaymentMethodService } from './payment-method.service';
+import { WebhookHandlerService } from './webhook-handler.service';
 import { PaymentsController } from './controllers/payments.controller';
 import { WebhookController } from './controllers/webhook.controller';
 import { PaymentMethodController } from './controllers/payment-method.controller';
@@ -18,6 +19,7 @@ import { ConfigModule } from 'src/config/config.module';
 import { JwtModule } from 'src/jwt/jwt.module';
 import { RedisModule } from 'src/redis/redis.module';
 import { AuthModule } from '../auth/auth.module';
+import { TripModule } from '../trip/trip.module';
 
 @Module({
   imports: [
@@ -30,6 +32,7 @@ import { AuthModule } from '../auth/auth.module';
     JwtModule,
     RedisModule,
     forwardRef(() => AuthModule),
+    forwardRef(() => TripModule),
   ],
   providers: [
     StripeService,
@@ -37,6 +40,7 @@ import { AuthModule } from '../auth/auth.module';
     PaymentRepository,
     PaymentMethodService,
     PaymentMethodRepository,
+    WebhookHandlerService,
   ],
   controllers: [PaymentsController, WebhookController, PaymentMethodController],
   exports: [
@@ -45,6 +49,7 @@ import { AuthModule } from '../auth/auth.module';
     PaymentRepository,
     PaymentMethodService,
     PaymentMethodRepository,
+    WebhookHandlerService,
   ],
 })
 export class PaymentsModule {}

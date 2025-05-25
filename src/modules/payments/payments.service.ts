@@ -4,6 +4,7 @@ import { CustomersService } from '../customers/customers.service';
 import { PaymentRepository } from './repositories/payment.repository';
 import { PaymentStatus } from 'src/common/enums/payment-status.enum';
 import { Payment } from './schemas/payment.schema';
+import { WebhookHandlerService } from './webhook-handler.service';
 
 @Injectable()
 export class PaymentsService {
@@ -13,6 +14,7 @@ export class PaymentsService {
     private readonly stripeService: StripeService,
     private readonly customersService: CustomersService,
     private readonly paymentRepository: PaymentRepository,
+    private readonly webhookHandlerService: WebhookHandlerService,
   ) {}
 
   /**
@@ -330,14 +332,14 @@ export class PaymentsService {
         payload,
       );
 
-      // Process the event based on type
+      // Process the event based on type using WebhookHandlerService
       switch (event.type) {
         case 'payment_intent.succeeded':
-          return this.handlePaymentSuccess(event.data.object);
+          return this.webhookHandlerService.handlePaymentSuccess(event.data.object);
         case 'payment_intent.payment_failed':
-          return this.handlePaymentFailure(event.data.object);
+          return this.webhookHandlerService.handlePaymentFailure(event.data.object);
         case 'payment_intent.canceled':
-          return this.handlePaymentCancellation(event.data.object);
+          return this.webhookHandlerService.handlePaymentCancellation(event.data.object);
         // Add other cases as needed
       }
 
@@ -349,113 +351,6 @@ export class PaymentsService {
       );
       throw error;
     }
-  }
-
-  /**
-   * Handle successful payment
-   */
-  private async handlePaymentSuccess(paymentIntent: any): Promise<any> {
-    this.logger.log(`Payment succeeded for intent ${paymentIntent.id}`);
-
-    const payment = await this.paymentRepository.findByPaymentIntentId(
-      paymentIntent.id,
-    );
-    if (!payment) {
-      this.logger.warn(
-        `No payment record found for intent ${paymentIntent.id}`,
-      );
-      return null;
-    }
-
-    // Update payment status
-    const updatedPayment = await this.paymentRepository.updateStatus(
-      payment._id,
-      PaymentStatus.PAID,
-    );
-
-    // If this payment is for a trip, update the trip payment status
-    if (updatedPayment && updatedPayment.tripId) {
-      // TODO: Update trip payment status
-      // await this.tripService.updatePaymentStatus(updatedPayment.tripId, PaymentStatus.PAID);
-      this.logger.log(
-        `Updated trip ${updatedPayment.tripId} payment status to PAID`,
-      );
-    }
-
-    return updatedPayment;
-  }
-
-  /**
-   * Handle failed payment
-   */
-  private async handlePaymentFailure(paymentIntent: any): Promise<any> {
-    this.logger.log(`Payment failed for intent ${paymentIntent.id}`);
-
-    const payment = await this.paymentRepository.findByPaymentIntentId(
-      paymentIntent.id,
-    );
-    if (!payment) {
-      this.logger.warn(
-        `No payment record found for intent ${paymentIntent.id}`,
-      );
-      return null;
-    }
-
-    // Get error message
-    const errorMessage =
-      paymentIntent.last_payment_error?.message || 'Payment failed';
-
-    // Update payment status
-    const updatedPayment = await this.paymentRepository.updateStatus(
-      payment._id,
-      PaymentStatus.FAILED,
-      errorMessage,
-    );
-
-    // If this payment is for a trip, update the trip payment status
-    if (updatedPayment && updatedPayment.tripId) {
-      // TODO: Update trip payment status
-      // await this.tripService.updatePaymentStatus(updatedPayment.tripId, PaymentStatus.FAILED);
-      this.logger.log(
-        `Updated trip ${updatedPayment.tripId} payment status to FAILED`,
-      );
-    }
-
-    return updatedPayment;
-  }
-
-  /**
-   * Handle cancelled payment
-   */
-  private async handlePaymentCancellation(paymentIntent: any): Promise<any> {
-    this.logger.log(`Payment cancelled for intent ${paymentIntent.id}`);
-
-    const payment = await this.paymentRepository.findByPaymentIntentId(
-      paymentIntent.id,
-    );
-    if (!payment) {
-      this.logger.warn(
-        `No payment record found for intent ${paymentIntent.id}`,
-      );
-      return null;
-    }
-
-    // Update payment status
-    const updatedPayment = await this.paymentRepository.updateStatus(
-      payment._id,
-      PaymentStatus.CANCELLED,
-    );
-
-    // If this payment is for a trip, update the trip payment status
-    if (updatedPayment && updatedPayment.tripId) {
-      // TODO: Update trip payment status
-      // await this.tripService.updatePaymentStatus(updatedPayment.tripId, PaymentStatus.CANCELLED);
-      this.logger.log(
-        `Updated trip ${updatedPayment.tripId} payment status to CANCELLED`,
-      );
-    }
-
-    return updatedPayment;
   }
 
   /**

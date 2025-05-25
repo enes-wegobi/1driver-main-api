@@ -21,6 +21,7 @@ import { LocationService } from 'src/redis/services/location.service';
 import { ActiveTripService } from 'src/redis/services/active-trip.service';
 import { UserType } from 'src/common/user-type.enum';
 import { TripService } from 'src/modules/trip/services/trip.service';
+import { EventType } from 'src/modules/event/enum/event-type.enum';
 
 const PING_INTERVAL = 25000;
 const PING_TIMEOUT = 10000;
@@ -213,14 +214,12 @@ export class WebSocketGateway
       );
 
       if (tripId) {
-        // Get trip details to find customer ID
         const tripDetails = await this.tripService.findById(tripId);
 
         if (tripDetails && tripDetails.customer && tripDetails.customer.id) {
           const customerId = tripDetails.customer.id;
 
-          // Send location update directly to customer
-          this.webSocketService.sendToUser(customerId, 'driverLocation', {
+          this.webSocketService.sendToUser(customerId, EventType.DRIVER_LOCATION_UPDATED, {
             tripId,
             driverId: userId,
             location: payload,

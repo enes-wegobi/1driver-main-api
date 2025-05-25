@@ -10,6 +10,11 @@ export enum EventType {
   TRIP_STARTED = 'trip:started',
   TRIP_DRIVER_NOT_FOUND = 'trip:driver_not_found',
   TRIP_PAYMENT_REQUIRED = 'trip:payment_required',
+  TRIP_PAYMENT_STARTED = 'trip:payment_started',
+  TRIP_PAYMENT_PROCESSING = 'trip:payment_processing',
+  TRIP_PAYMENT_SUCCESS = 'trip:payment_success',
+  TRIP_PAYMENT_FAILED = 'trip:payment_failed',
+  TRIP_PAYMENT_RETRY = 'trip:payment_retry',
 
   // Driver related events
   DRIVER_LOCATION_UPDATED = 'driver:location_updated',

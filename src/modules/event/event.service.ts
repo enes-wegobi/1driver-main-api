@@ -384,4 +384,8 @@ export class EventService {
       await this.driverStatusService.checkDriversActiveStatus(driverIds);
     return this.categorizeDriversByStatus(driversStatus);
   }
+
+  async sendToUser(userId: string, eventType: EventType, data: any){
+      await this.webSocketService.sendToUser(userId, eventType, data);
+  }
 }
