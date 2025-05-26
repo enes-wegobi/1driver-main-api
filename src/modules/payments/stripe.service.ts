@@ -161,6 +161,10 @@ export class StripeService {
     this.logger.log('Processing Stripe webhook event');
 
     try {
+      this.logger.debug(`Payload type: ${typeof payload}, isBuffer: ${Buffer.isBuffer(payload)}, length: ${payload.length}`);
+      this.logger.debug(`Signature: ${signature}`);
+      this.logger.debug(`Webhook secret configured: ${!!this.configService.stripeWebhookSecret}`);
+
       const event = this.stripe.webhooks.constructEvent(
         payload,
         signature,
@@ -171,6 +175,7 @@ export class StripeService {
       return event;
     } catch (error) {
       this.logger.error(`Webhook error: ${error.message}`, error.stack);
+      this.logger.error(`Payload preview: ${payload.toString().substring(0, 100)}...`);
       throw error;
     }
   }

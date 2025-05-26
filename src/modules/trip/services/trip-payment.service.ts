@@ -48,7 +48,7 @@ export class TripPaymentService {
     }
 
     const trip = activeTripResult.trip;
-    const tripId = trip._id;
+    const tripId = trip._id.toString();
 
     return this.lockService.executeWithLock(
       `trip-payment:${tripId}`,
@@ -146,17 +146,17 @@ export class TripPaymentService {
       this.validateTripForPayment(trip);
 
       // Validate payment method belongs to customer
-      await this.validatePaymentMethod(customerId, paymentMethodId);
+      const stripePaymaymentMethodId = await this.validatePaymentMethod(customerId, paymentMethodId);
 
       // Create payment record and process with Stripe
       const paymentResult = await this.paymentsService.createPaymentRecord(
         customerId,
         trip.finalCost,
         'try', // Turkish Lira
-        paymentMethodId,
+        stripePaymaymentMethodId,
         trip._id,
         {
-          tripId: trip._id,
+          tripId: trip._id.toString(),
           driverId: trip.driver?.id,
           isRetry: isRetry,
         },
@@ -218,17 +218,19 @@ export class TripPaymentService {
   }
 
   /**
-   * Validate payment method belongs to customer
+   * Validate payment method belongs to customer and return Stripe payment method ID
    */
-  private async validatePaymentMethod(customerId: string, paymentMethodId: string): Promise<void> {
-    const paymentMethods = await this.paymentsService.getPaymentMethods(customerId);
-    const paymentMethodExists = paymentMethods.some((pm: any) => pm.id === paymentMethodId);
+  private async validatePaymentMethod(customerId: string, paymentMethodId: string): Promise<string> {
+    const paymentMethods = await this.paymentMethodService.getPaymentMethods(customerId);
+    const paymentMethod = paymentMethods.find((pm: any) => pm._id.toString() === paymentMethodId);
 
-    if (!paymentMethodExists) {
+    if (!paymentMethod) {
       throw new BadRequestException(
         'Payment method not found or does not belong to this customer',
       );
     }
+
+    return paymentMethod.stripePaymentMethodId;
   }
 
   /**

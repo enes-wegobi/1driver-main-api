@@ -12,19 +12,19 @@ import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { WebSocketModule } from './websocket/websocket.module';
+import rawBody from 'fastify-raw-body';
 
 async function bootstrap() {
   const fastifyAdapter = new FastifyAdapter();
+  const webhookRoutes = ['/api/webhooks/stripe'];
 
-  fastifyAdapter.getInstance().addHook('preHandler', async (request, reply) => {
-    if (request.url && request.url.includes('/webhooks/stripe')) {
-      // Raw body'yi buffer olarak oku
-      const chunks: Buffer[] = [];
-      for await (const chunk of request.raw) {
-        chunks.push(chunk);
-      }
-      (request as any).rawBody = Buffer.concat(chunks);
-    }
+  await fastifyAdapter.register(rawBody as any, {
+    field: 'rawBody',
+    global: false,
+    encoding: false, // Keep as Buffer for Stripe signature verification
+    runFirst: true,
+    routes: ['/api/webhooks/stripe', '/webhooks/stripe'],
+    jsonContentTypes: [] // Don't parse JSON for webhook routes
   });
 
   await fastifyAdapter.register(fastifyMultipart as any, {
@@ -74,6 +74,7 @@ async function bootstrap() {
       'Accept',
       'Origin',
       'X-Requested-With',
+      'stripe-signature',
     ],
   });
 
