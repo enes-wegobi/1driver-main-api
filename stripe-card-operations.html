@@ -112,12 +112,12 @@
         let stripe;
         let cardElement;
         let token = localStorage.getItem('stripeToken') || '';
-        const apiUrl = 'http://127.0.0.1:3000/api'; // API URL'nizi buraya ekleyin (boş bırakırsanız aynı domain kullanılır)
+        const apiUrl = 'https://1drive-dev.wegobitest.com/api'; // API URL'nizi buraya ekleyin (boş bırakırsanız aynı domain kullanılır)
         
         // Stripe başlatma
         function initStripe() {
             // Stripe publishable key'inizi buraya ekleyin
-            stripe = Stripe('pk_test_51Ows6oHDsqMpfoizh7g7g3H7LYbY6OUYftbgvIbQamCMlGAsuC4DqxMCIYfXz6tabXfsp6ieQXXzbn9EETApPHLl00JqRknpek');
+            stripe = Stripe('pk_test_51R85CiLxkk1228peZX95cpEnAcsS8uf1EK0tmlTNSMsvmaWabQLq5uFyXkXS7MO2ZzVf7TP9QiTpHmVZXDEHKDUy00N4eDfF0R');
             const elements = stripe.elements();
             
             cardElement = elements.create('card');
