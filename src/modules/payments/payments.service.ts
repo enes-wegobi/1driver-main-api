@@ -283,7 +283,7 @@ export class PaymentsService {
     }
 
     const paymentIntent = await this.stripeService.createPaymentIntent(
-      amount,
+      amount * 100,
       currency,
       customer.stripeCustomerId,
       paymentMethodId,

@@ -152,7 +152,7 @@ export class TripPaymentService {
       const paymentResult = await this.paymentsService.createPaymentRecord(
         customerId,
         trip.finalCost,
-        'try', // Turkish Lira
+        'eur',
         stripePaymaymentMethodId,
         trip._id,
         {
