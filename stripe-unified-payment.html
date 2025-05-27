@@ -1078,8 +1078,7 @@
                     throw new Error('Seçilen ödeme yöntemi bulunamadı');
                 }
 
-                const endpoint = isRetryMode ? 
-                    `${apiUrl}/customer-trips/retry-payment` : 
+                const endpoint = 
                     `${apiUrl}/customer-trips/process-payment`;
                 
                 const response = await fetch(endpoint, {

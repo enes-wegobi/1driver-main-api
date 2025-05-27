@@ -15,64 +15,6 @@ export class PaymentMethodService {
   ) {}
 
   /**
-   * Add a payment method for a customer
-   */
-  async addPaymentMethod(
-    customerId: string,
-    stripePaymentMethodId: string,
-    name?: string,
-  ): Promise<PaymentMethod> {
-    this.logger.log(
-      `Adding payment method ${stripePaymentMethodId} for customer ${customerId}`,
-    );
-
-    // Get payment method details from Stripe
-    const stripePaymentMethod = await this.stripeService.getPaymentMethod(
-      stripePaymentMethodId,
-    );
-
-    // Check if this payment method already exists
-    const existingPaymentMethod =
-      await this.paymentMethodRepository.findByStripePaymentMethodId(
-        stripePaymentMethodId,
-      );
-
-    if (existingPaymentMethod) {
-      this.logger.log(
-        'Payment method already exists, returning existing record',
-      );
-      return existingPaymentMethod;
-    }
-
-    // Check if this is the first payment method for the customer
-    const existingMethods =
-      await this.paymentMethodRepository.findByCustomerId(customerId);
-    const isFirstPaymentMethod = existingMethods.length === 0;
-
-    // If this is not the first payment method, unset the previous default
-    if (!isFirstPaymentMethod) {
-      await this.paymentMethodRepository.unsetDefault(customerId);
-    }
-
-    // Create payment method record
-    const paymentMethod = await this.paymentMethodRepository.create({
-      customerId,
-      stripePaymentMethodId,
-      name:
-        name ||
-        `${stripePaymentMethod.card?.brand} ending in ${stripePaymentMethod.card?.last4}`,
-      brand: stripePaymentMethod.card?.brand,
-      last4: stripePaymentMethod.card?.last4,
-      expiryMonth: stripePaymentMethod.card?.exp_month,
-      expiryYear: stripePaymentMethod.card?.exp_year,
-      isDefault: true, // Always set as default (newest one is default)
-      isActive: true,
-    });
-
-    return paymentMethod;
-  }
-
-  /**
    * Get all payment methods for a customer
    */
   async getPaymentMethods(customerId: string): Promise<PaymentMethod[]> {

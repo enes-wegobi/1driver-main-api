@@ -22,7 +22,7 @@ import { JwtAuthGuard } from 'src/jwt/jwt.guard';
 import { GetUser } from 'src/jwt/user.decoretor';
 import { IJwtPayload } from 'src/jwt/jwt-payload.interface';
 import { PaymentMethodService } from '../payment-method.service';
-import { AddPaymentMethodDto, CreateSetupIntentDto, SavePaymentMethodDto } from '../dto';
+import { CreateSetupIntentDto, SavePaymentMethodDto } from '../dto';
 
 @ApiTags('payment-methods')
 @ApiBearerAuth()
@@ -35,36 +35,40 @@ export class PaymentMethodController {
 
   @Post()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Add a payment method to the customer' })
+  @ApiOperation({ 
+    summary: 'Save payment method from Setup Intent (Uber-style)',
+    description: 'Validates the Setup Intent and saves the payment method to the customer account'
+  })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Payment method added successfully',
+    description: 'Payment method saved successfully',
   })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
-    description: 'Invalid payment method ID',
+    description: 'Setup Intent validation failed',
   })
   @ApiResponse({
-    status: HttpStatus.NOT_FOUND,
-    description: 'Customer not found',
+    status: HttpStatus.FORBIDDEN,
+    description: 'Setup Intent does not belong to this customer',
   })
   async addPaymentMethod(
     @GetUser() user: IJwtPayload,
-    @Body() body: AddPaymentMethodDto,
+    @Body() body: SavePaymentMethodDto,
   ) {
     try {
-      return await this.paymentMethodService.addPaymentMethod(
+      return await this.paymentMethodService.savePaymentMethodFromSetupIntent(
         user.userId,
+        body.setupIntentId,
         body.paymentMethodId,
         body.name,
       );
     } catch (error) {
       this.logger.error(
-        `Error adding payment method: ${error.message}`,
+        `Error saving payment method from setup intent: ${error.message}`,
         error.stack,
       );
       throw new HttpException(
-        error.message || 'An error occurred while adding payment method',
+        error.message || 'An error occurred while saving payment method',
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -238,44 +242,4 @@ export class PaymentMethodController {
     }
   }
 
-  @Post('save-from-setup-intent')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
-    summary: 'Save payment method from Setup Intent (Uber-style)',
-    description: 'Validates the Setup Intent and saves the payment method to the customer account'
-  })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Payment method saved successfully',
-  })
-  @ApiResponse({
-    status: HttpStatus.BAD_REQUEST,
-    description: 'Setup Intent validation failed',
-  })
-  @ApiResponse({
-    status: HttpStatus.FORBIDDEN,
-    description: 'Setup Intent does not belong to this customer',
-  })
-  async savePaymentMethodFromSetupIntent(
-    @GetUser() user: IJwtPayload,
-    @Body() body: SavePaymentMethodDto,
-  ) {
-    try {
-      return await this.paymentMethodService.savePaymentMethodFromSetupIntent(
-        user.userId,
-        body.setupIntentId,
-        body.paymentMethodId,
-        body.name,
-      );
-    } catch (error) {
-      this.logger.error(
-        `Error saving payment method from setup intent: ${error.message}`,
-        error.stack,
-      );
-      throw new HttpException(
-        error.message || 'An error occurred while saving payment method',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-  }
 }

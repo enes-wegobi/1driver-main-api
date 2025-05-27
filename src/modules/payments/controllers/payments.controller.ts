@@ -9,7 +9,6 @@ import {
   Logger,
   Param,
   HttpException,
-  Query,
 } from '@nestjs/common';
 import {
   ApiTags,
