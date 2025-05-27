@@ -8,7 +8,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { PaymentsService } from '../payments.service';
+import { PaymentsService } from '../services/payments.service';
 import { FastifyRequest } from 'fastify';
 
 @ApiTags('webhooks')

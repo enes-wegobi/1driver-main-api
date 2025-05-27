@@ -1,9 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { StripeService } from './stripe.service';
-import { CustomersService } from '../customers/customers.service';
-import { PaymentRepository } from './repositories/payment.repository';
+import { CustomersService } from '../../customers/customers.service';
+import { PaymentRepository } from '../repositories/payment.repository';
 import { PaymentStatus } from 'src/common/enums/payment-status.enum';
-import { Payment } from './schemas/payment.schema';
+import { Payment } from '../schemas/payment.schema';
 import { WebhookHandlerService } from './webhook-handler.service';
 
 @Injectable()

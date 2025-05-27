@@ -1,9 +1,9 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { StripeService } from './stripe.service';
-import { PaymentsService } from './payments.service';
-import { PaymentMethodService } from './payment-method.service';
-import { WebhookHandlerService } from './webhook-handler.service';
+import { StripeService } from './services/stripe.service';
+import { PaymentsService } from './services/payments.service';
+import { PaymentMethodService } from './services/payment-method.service';
+import { WebhookHandlerService } from './services/webhook-handler.service';
 import { PaymentsController } from './controllers/payments.controller';
 import { WebhookController } from './controllers/webhook.controller';
 import { PaymentMethodController } from './controllers/payment-method.controller';

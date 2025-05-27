@@ -5,10 +5,10 @@ import {
   BadRequestException,
   ForbiddenException,
 } from '@nestjs/common';
-import { PaymentMethodRepository } from './repositories/payment-method.repository';
+import { PaymentMethodRepository } from '../repositories/payment-method.repository';
+import { PaymentMethod } from '../schemas/payment-method.schema';
+import { CustomersService } from '../../customers/customers.service';
 import { StripeService } from './stripe.service';
-import { PaymentMethod } from './schemas/payment-method.schema';
-import { CustomersService } from '../customers/customers.service';
 
 @Injectable()
 export class PaymentMethodService {

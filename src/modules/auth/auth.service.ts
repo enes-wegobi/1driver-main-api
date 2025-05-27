@@ -4,7 +4,7 @@ import { CreateCustomerDto } from '../../clients/auth/dto/create-customer.dto';
 import { CreateDriverDto } from '../../clients/auth/dto/create-driver.dto';
 import { ValidateOtpDto } from '../../clients/auth/dto/validate-otp.dto';
 import { SigninDto } from '../../clients/auth/dto/signin.dto';
-import { PaymentsService } from '../payments/payments.service';
+import { PaymentsService } from '../payments/services/payments.service';
 
 @Injectable()
 export class AuthService {

@@ -6,8 +6,8 @@ import {
   forwardRef,
 } from '@nestjs/common';
 import { TripService } from './trip.service';
-import { PaymentsService } from '../../payments/payments.service';
-import { PaymentMethodService } from '../../payments/payment-method.service';
+import { PaymentsService } from '../../payments/services/payments.service';
+import { PaymentMethodService } from '../../payments/services/payment-method.service';
 import { EventService } from '../../event/event.service';
 import { LockService } from 'src/common/lock/lock.service';
 import { TripStatus } from 'src/common/enums/trip-status.enum';
@@ -123,7 +123,6 @@ export class TripPaymentService {
     isRetry: boolean = false,
   ): Promise<TripPaymentResult> {
     try {
-      // Validate trip status
       this.validateTripForPayment(trip);
 
       // Validate payment method belongs to customer
@@ -132,7 +131,6 @@ export class TripPaymentService {
         paymentMethodId,
       );
 
-      // Create off-session payment for trip
       const paymentResult = await this.paymentsService.createTripPayment(
         customerId,
         trip.finalCost,

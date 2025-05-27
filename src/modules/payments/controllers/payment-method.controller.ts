@@ -21,7 +21,7 @@ import {
 import { JwtAuthGuard } from 'src/jwt/jwt.guard';
 import { GetUser } from 'src/jwt/user.decoretor';
 import { IJwtPayload } from 'src/jwt/jwt-payload.interface';
-import { PaymentMethodService } from '../payment-method.service';
+import { PaymentMethodService } from '../services/payment-method.service';
 import { CreateSetupIntentDto, SavePaymentMethodDto } from '../dto';
 
 @ApiTags('payment-methods')

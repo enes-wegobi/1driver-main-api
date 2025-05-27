@@ -19,7 +19,7 @@ import {
 import { JwtAuthGuard } from 'src/jwt/jwt.guard';
 import { GetUser } from 'src/jwt/user.decoretor';
 import { IJwtPayload } from 'src/jwt/jwt-payload.interface';
-import { PaymentsService } from '../payments.service';
+import { PaymentsService } from '../services/payments.service';
 import { CreatePaymentIntentDto } from '../dto';
 
 @ApiTags('payments')

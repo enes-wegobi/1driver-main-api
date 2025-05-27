@@ -1,7 +1,7 @@
 import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
-import { PaymentRepository } from './repositories/payment.repository';
+import { PaymentRepository } from '../repositories/payment.repository';
 import { PaymentStatus } from 'src/common/enums/payment-status.enum';
-import { TripPaymentService } from '../trip/services/trip-payment.service';
+import { TripPaymentService } from '../../trip/services/trip-payment.service';
 
 @Injectable()
 export class WebhookHandlerService {
