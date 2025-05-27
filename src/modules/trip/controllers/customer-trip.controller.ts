@@ -107,24 +107,6 @@ export class CustomersTripsController {
     );
   }
 
-  @Post('retry-payment')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ 
-    summary: 'Retry payment with different payment method',
-    description: 'Retry payment for the active trip using a different payment method after a failed payment'
-  })
-  @ApiBody({ type: ProcessTripPaymentDto })
-  async retryPayment(
-    @Body() retryPaymentDto: ProcessTripPaymentDto,
-    @GetUser() user: IJwtPayload,
-  ) {
-    return await this.tripPaymentService.retryTripPayment(
-      user.userId,
-      retryPaymentDto.paymentMethodId,
-    );
-  }
-
   @Get('payment-status')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()

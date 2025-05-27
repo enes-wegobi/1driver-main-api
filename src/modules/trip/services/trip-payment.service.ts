@@ -65,40 +65,6 @@ export class TripPaymentService {
   }
 
   /**
-   * Retry payment with a different payment method
-   */
-  async retryTripPayment(
-    customerId: string,
-    newPaymentMethodId: string,
-  ): Promise<TripPaymentResult> {
-    this.logger.log(
-      `Retrying trip payment for customer ${customerId} with new payment method ${newPaymentMethodId}`,
-    );
-
-    // Get customer's active trip
-    const activeTripResult = await this.tripService.getCustomerActiveTrip(customerId);
-    if (!activeTripResult.success || !activeTripResult.trip) {
-      throw new BadRequestException('No active trip found for customer');
-    }
-
-    const trip = activeTripResult.trip;
-    const tripId = trip._id;
-
-    return this.lockService.executeWithLock(
-      `trip-payment:${tripId}`,
-      async () => {
-        // Validate trip is in payment status and has failed payments
-        await this.validateTripForRetry(trip);
-        
-        return this.executePaymentProcess(customerId, newPaymentMethodId, trip, true);
-      },
-      'Trip payment retry is currently being processed. Please try again.',
-      60000, // 60 seconds timeout
-      2, // 2 retries
-    );
-  }
-
-  /**
    * Get payment status for customer's active trip
    */
   async getTripPaymentStatus(customerId: string): Promise<any> {
@@ -208,22 +174,6 @@ export class TripPaymentService {
   }
 
   /**
-   * Validate trip for retry payment
-   */
-  private async validateTripForRetry(trip: TripDocument): Promise<void> {
-    this.validateTripForPayment(trip);
-
-    // Check if there are any failed payments for this trip
-    const paymentHistory = await this.paymentsService.getPaymentHistory(trip.customer.id);
-    const tripPayments = paymentHistory.filter(payment => payment.tripId === trip._id);
-    const hasFailedPayments = tripPayments.some(payment => payment.status === PaymentStatus.FAILED);
-
-    if (!hasFailedPayments) {
-      throw new BadRequestException('No failed payments found for this trip');
-    }
-  }
-
-  /**
    * Validate payment method belongs to customer and return Stripe payment method ID
    */
   private async validatePaymentMethod(customerId: string, paymentMethodId: string): Promise<string> {
@@ -268,9 +218,6 @@ export class TripPaymentService {
     await this.eventService.sendToUser(trip.driver.id, eventType, eventData);
   }
 
-  /**
-   * Handle payment success (called from webhook)
-   */
   async handlePaymentSuccess(payment: Payment): Promise<void> {
     if (!payment.tripId) {
       return;
@@ -307,9 +254,6 @@ export class TripPaymentService {
     await this.eventService.sendToUser(trip.driver.id, EventType.TRIP_PAYMENT_SUCCESS, eventData);
   }
 
-  /**
-   * Handle payment failure (called from webhook)
-   */
   async handlePaymentFailure(payment: Payment): Promise<void> {
     if (!payment.tripId) {
       return;
