@@ -1,7 +1,8 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PaymentMethodRepository } from './repositories/payment-method.repository';
 import { StripeService } from './stripe.service';
 import { PaymentMethod } from './schemas/payment-method.schema';
+import { CustomersService } from '../customers/customers.service';
 
 @Injectable()
 export class PaymentMethodService {
@@ -10,6 +11,7 @@ export class PaymentMethodService {
   constructor(
     private readonly paymentMethodRepository: PaymentMethodRepository,
     private readonly stripeService: StripeService,
+    private readonly customersService: CustomersService,
   ) {}
 
   /**
@@ -183,5 +185,141 @@ export class PaymentMethodService {
     }
 
     return { success: true };
+  }
+
+  /**
+   * Create a Setup Intent for adding payment methods (Uber-style)
+   */
+  async createSetupIntent(
+    customerId: string,
+    metadata?: Record<string, string>,
+  ): Promise<{ client_secret: string; setup_intent_id: string }> {
+    this.logger.log(`Creating setup intent for customer ${customerId}`);
+
+    // Get customer's Stripe customer ID
+    const customer = await this.customersService.findOne(customerId, [
+      'stripeCustomerId',
+    ]);
+
+    if (!customer?.stripeCustomerId) {
+      throw new BadRequestException('Customer does not have a Stripe account');
+    }
+
+    // Create Setup Intent
+    const setupIntent = await this.stripeService.createSetupIntent(
+      customer.stripeCustomerId,
+      {
+        customer_id: customerId,
+        ...metadata,
+      },
+    );
+
+    if (!setupIntent.client_secret) {
+      throw new BadRequestException('Failed to create setup intent');
+    }
+
+    return {
+      client_secret: setupIntent.client_secret,
+      setup_intent_id: setupIntent.id,
+    };
+  }
+
+  /**
+   * Save payment method after Setup Intent confirmation
+   */
+  async savePaymentMethodFromSetupIntent(
+    customerId: string,
+    setupIntentId: string,
+    paymentMethodId: string,
+    name?: string,
+  ): Promise<PaymentMethod> {
+    this.logger.log(
+      `Saving payment method from setup intent ${setupIntentId} for customer ${customerId}`,
+    );
+
+    // Get customer's Stripe customer ID
+    const customer = await this.customersService.findOne(customerId, [
+      'stripeCustomerId',
+    ]);
+
+    if (!customer?.stripeCustomerId) {
+      throw new BadRequestException('Customer does not have a Stripe account');
+    }
+
+    // Validate Setup Intent
+    const setupIntent = await this.stripeService.retrieveSetupIntent(
+      setupIntentId,
+    );
+
+    if (setupIntent.status !== 'succeeded') {
+      throw new BadRequestException('Setup intent not succeeded');
+    }
+
+    if (setupIntent.customer !== customer.stripeCustomerId) {
+      throw new ForbiddenException('Invalid setup intent for this customer');
+    }
+
+    if (setupIntent.payment_method !== paymentMethodId) {
+      throw new BadRequestException(
+        'Payment method ID does not match setup intent',
+      );
+    }
+
+    // Get payment method details from Stripe
+    const stripePaymentMethod = await this.stripeService.getPaymentMethod(
+      paymentMethodId,
+    );
+
+    // Check if this payment method already exists
+    const existingPaymentMethod =
+      await this.paymentMethodRepository.findByStripePaymentMethodId(
+        paymentMethodId,
+      );
+
+    if (existingPaymentMethod) {
+      this.logger.log(
+        'Payment method already exists, returning existing record',
+      );
+      return existingPaymentMethod;
+    }
+
+    // Attach payment method to customer (if not already attached)
+    if (!stripePaymentMethod.customer) {
+      await this.stripeService.attachPaymentMethod(
+        paymentMethodId,
+        customer.stripeCustomerId,
+      );
+    }
+
+    // Check if this is the first payment method for the customer
+    const existingMethods =
+      await this.paymentMethodRepository.findByCustomerId(customerId);
+    const isFirstPaymentMethod = existingMethods.length === 0;
+
+    // If this is not the first payment method, unset the previous default
+    if (!isFirstPaymentMethod) {
+      await this.paymentMethodRepository.unsetDefault(customerId);
+    }
+
+    // Create payment method record
+    const paymentMethod = await this.paymentMethodRepository.create({
+      customerId,
+      stripePaymentMethodId: paymentMethodId,
+      name:
+        name ||
+        `${stripePaymentMethod.card?.brand} ending in ${stripePaymentMethod.card?.last4}`,
+      brand: stripePaymentMethod.card?.brand,
+      last4: stripePaymentMethod.card?.last4,
+      expiryMonth: stripePaymentMethod.card?.exp_month,
+      expiryYear: stripePaymentMethod.card?.exp_year,
+      isDefault: true, // Always set as default (newest one is default)
+      isActive: true,
+    });
+
+    this.logger.log(
+      `Successfully saved payment method ${paymentMethodId} for customer ${customerId}`,
+    );
+
+    return paymentMethod;
   }
 }

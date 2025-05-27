@@ -308,6 +308,112 @@ export class PaymentsService {
   }
 
   /**
+   * Create off-session payment for trip (Uber-style)
+   */
+  async createTripPayment(
+    customerId: string,
+    amount: number,
+    currency: string = 'try',
+    stripePaymentMethodId: string,
+    tripId: string,
+    metadata?: Record<string, any>,
+  ): Promise<{
+    payment: Payment;
+    requiresAction: boolean;
+    clientSecret?: string;
+    paymentIntentId: string;
+  }> {
+    this.logger.log(
+      `Creating off-session trip payment for customer ${customerId}, trip ${tripId}, amount ${amount} ${currency}`,
+    );
+
+    const customer = await this.customersService.findOne(customerId, [
+      'stripeCustomerId',
+    ]);
+
+    if (!customer.stripeCustomerId) {
+      throw new Error('Customer does not have a Stripe account');
+    }
+
+    try {
+      // Create off-session Payment Intent
+      const paymentIntent = await this.stripeService.createOffSessionPaymentIntent(
+        Math.round(amount * 100), // Convert to cents
+        currency,
+        customer.stripeCustomerId,
+        stripePaymentMethodId,
+        {
+          trip_id: tripId,
+          customer_id: customerId,
+          ...metadata,
+        },
+      );
+
+      // Create payment record
+      const payment = await this.paymentRepository.create({
+        customerId,
+        tripId,
+        amount,
+        currency,
+        paymentMethodId: stripePaymentMethodId,
+        stripePaymentIntentId: paymentIntent.id,
+        status: this.getPaymentStatusFromStripe(paymentIntent.status),
+        metadata,
+      });
+
+      // Check if 3D Secure is required
+      const requiresAction = paymentIntent.status === 'requires_action';
+
+      return {
+        payment,
+        requiresAction,
+        clientSecret: requiresAction ? (paymentIntent.client_secret || undefined) : undefined,
+        paymentIntentId: paymentIntent.id,
+      };
+    } catch (error) {
+      this.logger.error(
+        `Error creating trip payment: ${error.message}`,
+        error.stack,
+      );
+
+      // Create failed payment record
+      const payment = await this.paymentRepository.create({
+        customerId,
+        tripId,
+        amount,
+        currency,
+        paymentMethodId: stripePaymentMethodId,
+        status: PaymentStatus.FAILED,
+        errorMessage: error.message,
+        metadata,
+      });
+
+      throw error;
+    }
+  }
+
+  /**
+   * Convert Stripe payment intent status to our PaymentStatus enum
+   */
+  private getPaymentStatusFromStripe(stripeStatus: string): PaymentStatus {
+    switch (stripeStatus) {
+      case 'succeeded':
+        return PaymentStatus.PAID;
+      case 'processing':
+        return PaymentStatus.PROCESSING;
+      case 'requires_action':
+        return PaymentStatus.PENDING;
+      case 'canceled':
+        return PaymentStatus.CANCELLED;
+      case 'requires_payment_method':
+      case 'requires_confirmation':
+        return PaymentStatus.PENDING;
+      default:
+        return PaymentStatus.FAILED;
+    }
+  }
+
+  /**
    * Handle Stripe webhook events
    */
   async handleWebhookEvent(signature: string, payload: Buffer): Promise<any> {
@@ -327,10 +433,16 @@ export class PaymentsService {
           return this.webhookHandlerService.handlePaymentFailure(event.data.object);
         case 'payment_intent.canceled':
           return this.webhookHandlerService.handlePaymentCancellation(event.data.object);
-        // Add other cases as needed
+        case 'payment_intent.requires_action':
+          return this.webhookHandlerService.handlePaymentRequiresAction(event.data.object);
+        case 'payment_intent.processing':
+          return this.webhookHandlerService.handlePaymentProcessing(event.data.object);
+        case 'setup_intent.succeeded':
+          return this.webhookHandlerService.handleSetupIntentSuccess(event.data.object);
+        default:
+          this.logger.log(`Unhandled webhook event type: ${event.type}`);
+          return { received: true, type: event.type };
       }
-
-      return event;
     } catch (error) {
       this.logger.error(
         `Error handling webhook: ${error.message}`,

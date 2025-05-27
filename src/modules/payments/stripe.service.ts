@@ -223,4 +223,74 @@ export class StripeService {
       cancellation_reason: cancellationReason as any,
     });
   }
+
+  /**
+   * Create a Setup Intent for future payments (Uber-style card addition)
+   */
+  async createSetupIntent(
+    customerId: string,
+    metadata?: Record<string, string>,
+  ): Promise<Stripe.SetupIntent> {
+    this.logger.log(`Creating setup intent for customer ${customerId}`);
+
+    return this.stripe.setupIntents.create({
+      customer: customerId,
+      usage: 'off_session',
+      payment_method_types: ['card'],
+      metadata,
+    });
+  }
+
+  /**
+   * Retrieve a Setup Intent
+   */
+  async retrieveSetupIntent(
+    setupIntentId: string,
+  ): Promise<Stripe.SetupIntent> {
+    this.logger.log(`Retrieving setup intent ${setupIntentId}`);
+
+    return this.stripe.setupIntents.retrieve(setupIntentId);
+  }
+
+  /**
+   * Create off-session Payment Intent for trip payments
+   */
+  async createOffSessionPaymentIntent(
+    amount: number,
+    currency: string,
+    customerId: string,
+    paymentMethodId: string,
+    metadata?: Record<string, string>,
+  ): Promise<Stripe.PaymentIntent> {
+    this.logger.log(
+      `Creating off-session payment intent for customer ${customerId} with amount ${amount} ${currency}`,
+    );
+
+    return this.stripe.paymentIntents.create({
+      amount,
+      currency,
+      customer: customerId,
+      payment_method: paymentMethodId,
+      confirmation_method: 'manual',
+      confirm: true,
+      off_session: true, // This enables saved card payments
+      metadata,
+    });
+  }
+
+  /**
+   * Attach payment method to customer (without setting as default)
+   */
+  async attachPaymentMethod(
+    paymentMethodId: string,
+    customerId: string,
+  ): Promise<Stripe.PaymentMethod> {
+    this.logger.log(
+      `Attaching payment method ${paymentMethodId} to customer ${customerId}`,
+    );
+
+    return this.stripe.paymentMethods.attach(paymentMethodId, {
+      customer: customerId,
+    });
+  }
 }

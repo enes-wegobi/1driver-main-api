@@ -116,4 +116,76 @@ export class WebhookHandlerService {
 
     return updatedPayment;
   }
+
+  /**
+   * Handle Setup Intent succeeded webhook (for payment method addition)
+   */
+  async handleSetupIntentSuccess(setupIntent: any): Promise<any> {
+    this.logger.log(`Setup Intent succeeded for ${setupIntent.id}`);
+    
+    // Setup Intent success is handled on the frontend when saving payment method
+    // This webhook is mainly for logging and monitoring
+    return {
+      success: true,
+      setupIntentId: setupIntent.id,
+      paymentMethodId: setupIntent.payment_method,
+    };
+  }
+
+  /**
+   * Handle Payment Intent requires action (3D Secure)
+   */
+  async handlePaymentRequiresAction(paymentIntent: any): Promise<any> {
+    this.logger.log(`Payment requires action for intent ${paymentIntent.id}`);
+
+    const payment = await this.paymentRepository.findByPaymentIntentId(
+      paymentIntent.id,
+    );
+    if (!payment) {
+      this.logger.warn(
+        `No payment record found for intent ${paymentIntent.id}`,
+      );
+      return null;
+    }
+
+    // Update payment status to pending (waiting for 3D Secure)
+    const updatedPayment = await this.paymentRepository.updateStatus(
+      payment._id,
+      PaymentStatus.PENDING,
+      'Waiting for 3D Secure authentication',
+    );
+
+    this.logger.log(
+      `Payment ${payment._id} updated to pending status for 3D Secure`,
+    );
+
+    return updatedPayment;
+  }
+
+  /**
+   * Handle Payment Intent processing
+   */
+  async handlePaymentProcessing(paymentIntent: any): Promise<any> {
+    this.logger.log(`Payment processing for intent ${paymentIntent.id}`);
+
+    const payment = await this.paymentRepository.findByPaymentIntentId(
+      paymentIntent.id,
+    );
+    if (!payment) {
+      this.logger.warn(
+        `No payment record found for intent ${paymentIntent.id}`,
+      );
+      return null;
+    }
+
+    // Update payment status to processing
+    const updatedPayment = await this.paymentRepository.updateStatus(
+      payment._id,
+      PaymentStatus.PROCESSING,
+    );
+
+    this.logger.log(`Payment ${payment._id} updated to processing status`);
+
+    return updatedPayment;
+  }
 }

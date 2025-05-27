@@ -15,6 +15,9 @@ export interface TripPaymentResult {
   payment?: Payment;
   trip?: TripDocument;
   message?: string;
+  requiresAction?: boolean;
+  clientSecret?: string;
+  paymentIntentId?: string;
 }
 
 @Injectable()
@@ -148,13 +151,13 @@ export class TripPaymentService {
       // Validate payment method belongs to customer
       const stripePaymaymentMethodId = await this.validatePaymentMethod(customerId, paymentMethodId);
 
-      // Create payment record and process with Stripe
-      const paymentResult = await this.paymentsService.createPaymentRecord(
+      // Create off-session payment for trip
+      const paymentResult = await this.paymentsService.createTripPayment(
         customerId,
         trip.finalCost,
         'eur',
         stripePaymaymentMethodId,
-        trip._id,
+        trip._id.toString(),
         {
           tripId: trip._id.toString(),
           driverId: trip.driver?.id,
@@ -175,6 +178,9 @@ export class TripPaymentService {
         success: true,
         payment: paymentResult.payment,
         trip: updatedTrip || undefined,
+        requiresAction: paymentResult.requiresAction,
+        clientSecret: paymentResult.clientSecret,
+        paymentIntentId: paymentResult.paymentIntentId,
       };
     } catch (error) {
       this.logger.error(`Error processing trip payment: ${error.message}`, error.stack);

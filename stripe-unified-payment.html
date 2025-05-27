@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Unified Trip Payment - Stripe Integration</title>
+    <title>Uber-Style Payment System - Stripe Integration</title>
     <script src="https://js.stripe.com/v3/"></script>
     <style>
         * {
@@ -428,13 +428,49 @@
             border-color: #17a2b8;
             color: #0c5460;
         }
+
+        .setup-intent-info {
+            background: #e7f3ff;
+            border: 2px solid #b8daff;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .setup-intent-info h4 {
+            color: #004085;
+            margin-bottom: 12px;
+        }
+
+        .setup-intent-info p {
+            color: #004085;
+            margin-bottom: 8px;
+        }
+
+        .requires-action {
+            background: #fff3cd;
+            border: 2px solid #ffd93d;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .requires-action h4 {
+            color: #856404;
+            margin-bottom: 12px;
+        }
+
+        .requires-action p {
+            color: #856404;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🚗 Trip Ödeme Sistemi</h1>
-            <p>Güvenli ve hızlı ödeme deneyimi</p>
+            <h1>🚗 Uber-Style Payment System</h1>
+            <p>Setup Intent + Off-Session Payment Intent</p>
             <div class="progress-bar">
                 <div class="progress-fill" id="progressFill"></div>
             </div>
@@ -525,12 +561,19 @@
                         <svg width="48" height="48" fill="#635bff" viewBox="0 0 24 24" style="margin-bottom: 12px;">
                             <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
                         </svg>
-                        <h4 style="color: #635bff; margin-bottom: 8px;">Yeni Kart Ekle</h4>
-                        <p style="color: #6b7c93;">Güvenli şekilde yeni bir ödeme kartı ekleyin</p>
+                        <h4 style="color: #635bff; margin-bottom: 8px;">Yeni Kart Ekle (Setup Intent)</h4>
+                        <p style="color: #6b7c93;">Güvenli Setup Intent ile yeni bir ödeme kartı ekleyin</p>
                     </div>
                 </div>
 
                 <div id="newCardForm" class="hidden" style="margin-top: 20px;">
+                    <div class="setup-intent-info">
+                        <h4>🔒 Setup Intent Akışı</h4>
+                        <p>• Setup Intent oluşturulacak</p>
+                        <p>• Kart bilgileri Stripe ile doğrulanacak</p>
+                        <p>• Başarılı doğrulama sonrası backend'e kaydedilecek</p>
+                    </div>
+                    
                     <h4 style="margin-bottom: 16px; color: #32325d;">Yeni Kart Bilgileri</h4>
                     <div class="form-group">
                         <label for="cardName">Kart Üzerindeki İsim (İsteğe bağlı):</label>
@@ -538,8 +581,8 @@
                     </div>
                     <div id="card-element"></div>
                     <div id="card-errors"></div>
-                    <button class="btn" id="addCardBtn" onclick="addNewCard()" style="margin-top: 16px;">
-                        <span>Kartı Ekle ve Seç</span>
+                    <button class="btn" id="addCardBtn" onclick="addNewCardWithSetupIntent()" style="margin-top: 16px;">
+                        <span>Setup Intent ile Kart Ekle</span>
                     </button>
                 </div>
 
@@ -563,7 +606,7 @@
             <div class="step" id="step4">
                 <div class="step-header">
                     <div class="step-number">4</div>
-                    <div class="step-title">Ödeme İşlemi</div>
+                    <div class="step-title">Off-Session Payment Intent</div>
                 </div>
 
                 <div class="trip-info">
@@ -573,9 +616,17 @@
                     </div>
                 </div>
 
+                <div id="requiresActionSection" class="requires-action hidden">
+                    <h4>🔐 3D Secure Doğrulaması Gerekli</h4>
+                    <p>Ödemeniz için 3D Secure doğrulaması gerekiyor. Lütfen aşağıdaki butona tıklayın.</p>
+                    <button class="btn" id="confirm3DSecure" onclick="handle3DSecure()" style="margin-top: 16px;">
+                        <span>3D Secure Doğrulaması Yap</span>
+                    </button>
+                </div>
+
                 <div id="paymentStatus" class="loading">
                     <div class="spinner"></div>
-                    <span>Ödeme işleniyor...</span>
+                    <span>Off-session Payment Intent oluşturuluyor...</span>
                 </div>
 
                 <div class="navigation">
@@ -618,7 +669,7 @@
     </div>
 
     <script>
-        // Global variables - using in-memory storage instead of localStorage
+        // Global variables
         let stripe;
         let cardElement;
         let currentStep = 1;
@@ -629,10 +680,12 @@
         let selectedPaymentMethodId = null;
         let isRetryMode = false;
         let currentPaymentIntentId = null;
+        let currentClientSecret = null;
+        let currentSetupIntent = null;
 
         // Configuration storage (in-memory)
         let savedConfig = {
-            apiUrl: 'https://1drive-dev.wegobitest.com/api',
+            apiUrl: 'http://127.0.0.1:3000/api',
             stripeKey: '',
             jwtToken: ''
         };
@@ -855,46 +908,129 @@
             });
         }
 
-        // Add new card
-        async function addNewCard() {
+        // Add new card with Setup Intent (Uber-style)
+        async function addNewCardWithSetupIntent() {
+            console.log('🚀 Setup Intent başlatılıyor...');
+            
             const addCardBtn = document.getElementById('addCardBtn');
             const cardName = document.getElementById('cardName').value.trim();
             
+            console.log('📝 Kart ismi:', cardName);
+            console.log('🔧 Card Element:', cardElement);
+            
+            if (!cardElement) {
+                showAlert('Kart elementi bulunamadı. Lütfen sayfayı yenileyin.', 'error');
+                return;
+            }
+            
             addCardBtn.disabled = true;
-            addCardBtn.innerHTML = '<div class="spinner" style="width: 16px; height: 16px; margin-right: 8px;"></div>Kart ekleniyor...';
+            addCardBtn.innerHTML = '<div class="spinner" style="width: 16px; height: 16px; margin-right: 8px;"></div>Setup Intent oluşturuluyor...';
             
             try {
-                // Create payment method with Stripe
-                const result = await stripe.createPaymentMethod({
-                    type: 'card',
-                    card: cardElement,
-                });
+                console.log('📡 Backend\'e Setup Intent isteği gönderiliyor...');
+                console.log('🌐 API URL:', `${apiUrl}/payment-methods/setup-intent`);
                 
-                if (result.error) {
-                    throw new Error(result.error.message);
-                }
-                
-                // Add payment method to backend
-                const response = await fetch(`${apiUrl}/payment-methods`, {
+                // Step 1: Create Setup Intent from backend
+                const setupIntentResponse = await fetch(`${apiUrl}/payment-methods/setup-intent`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': jwtToken.startsWith('Bearer ') ? jwtToken : `Bearer ${jwtToken}`
                     },
                     body: JSON.stringify({
-                        paymentMethodId: result.paymentMethod.id,
+                        metadata: { source: 'web_app' }
+                    })
+                });
+                
+                console.log('📥 Setup Intent Response Status:', setupIntentResponse.status);
+                
+                if (!setupIntentResponse.ok) {
+                    const error = await setupIntentResponse.json();
+                    console.error('❌ Setup Intent Error:', error);
+                    throw new Error(error.message || 'Setup Intent oluşturulamadı');
+                }
+                
+                const setupIntentData = await setupIntentResponse.json();
+                console.log('✅ Setup Intent Data:', setupIntentData);
+                currentSetupIntent = setupIntentData;
+                
+                addCardBtn.innerHTML = '<div class="spinner" style="width: 16px; height: 16px; margin-right: 8px;"></div>Kart doğrulanıyor...';
+                
+                console.log('🔐 Stripe ile Setup Intent doğrulanıyor...');
+                console.log('🔑 Client Secret:', setupIntentData.client_secret);
+                
+                // Step 2: First create payment method, then confirm Setup Intent
+                console.log('🔧 Payment method oluşturuluyor...');
+                const { error: pmError, paymentMethod } = await stripe.createPaymentMethod({
+                    type: 'card',
+                    card: cardElement,
+                    billing_details: {
+                        name: cardName || undefined,
+                    },
+                });
+                
+                if (pmError) {
+                    console.error('❌ Payment Method Error:', pmError);
+                    throw new Error(pmError.message);
+                }
+                
+                console.log('✅ Payment Method oluşturuldu:', paymentMethod.id);
+                
+                // Now confirm Setup Intent with the payment method ID
+                const { error, setupIntent } = await stripe.confirmSetupIntent(
+                    setupIntentData.client_secret,
+                    {
+                        payment_method: paymentMethod.id
+                    }
+                );
+                
+                console.log('🔐 Stripe confirmSetupIntent sonucu:');
+                console.log('❌ Error:', error);
+                console.log('✅ Setup Intent:', setupIntent);
+                
+                if (error) {
+                    console.error('❌ Stripe Error:', error);
+                    throw new Error(error.message);
+                }
+                
+                if (setupIntent.status !== 'succeeded') {
+                    console.error('❌ Setup Intent Status:', setupIntent.status);
+                    throw new Error('Setup Intent başarısız: ' + setupIntent.status);
+                }
+                
+                console.log('✅ Setup Intent başarılı! Payment Method ID:', setupIntent.payment_method);
+                
+                addCardBtn.innerHTML = '<div class="spinner" style="width: 16px; height: 16px; margin-right: 8px;"></div>Backend\'e kaydediliyor...';
+                
+                console.log('💾 Backend\'e payment method kaydediliyor...');
+                
+                // Step 3: Save payment method to backend
+                const saveResponse = await fetch(`${apiUrl}/payment-methods/save-from-setup-intent`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': jwtToken.startsWith('Bearer ') ? jwtToken : `Bearer ${jwtToken}`
+                    },
+                    body: JSON.stringify({
+                        setupIntentId: setupIntent.id,
+                        paymentMethodId: setupIntent.payment_method,
                         name: cardName || undefined
                     })
                 });
                 
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.message || 'Kart eklenemedi');
+                console.log('📥 Save Response Status:', saveResponse.status);
+                
+                if (!saveResponse.ok) {
+                    const error = await saveResponse.json();
+                    console.error('❌ Save Error:', error);
+                    throw new Error(error.message || 'Kart kaydedilemedi');
                 }
                 
-                const newPaymentMethod = await response.json();
+                const newPaymentMethod = await saveResponse.json();
+                console.log('✅ Yeni Payment Method:', newPaymentMethod);
                 
                 // Reload payment methods
+                console.log('🔄 Payment method listesi yenileniyor...');
                 await loadPaymentMethods();
                 
                 // Select the new payment method
@@ -908,13 +1044,15 @@
                 cardElement.clear();
                 document.getElementById('cardName').value = '';
                 
-                showAlert('Kart başarıyla eklendi!', 'success');
+                console.log('🎉 Setup Intent akışı tamamlandı!');
+                showAlert('Kart başarıyla Setup Intent ile eklendi!', 'success');
                 
             } catch (error) {
-                showAlert(`Kart eklenirken hata: ${error.message}`, 'error');
+                console.error('❌ Setup Intent Hatası:', error);
+                showAlert(`Setup Intent hatası: ${error.message}`, 'error');
             } finally {
                 addCardBtn.disabled = false;
-                addCardBtn.innerHTML = '<span>Kartı Ekle ve Seç</span>';
+                addCardBtn.innerHTML = '<span>Setup Intent ile Kart Ekle</span>';
             }
         }
 
@@ -929,12 +1067,12 @@
             processPayment();
         }
 
-        // Process payment with corrected payment method ID usage
+        // Process payment using off-session Payment Intent (Uber-style)
         async function processPayment() {
             try {
-                updatePaymentStatus('loading', 'Ödeme işleniyor...');
+                updatePaymentStatus('loading', 'Off-session Payment Intent oluşturuluyor...');
                 
-                // Find the selected payment method to get the correct stripePaymentMethodId
+                // Validate selected payment method exists
                 const selectedMethod = paymentMethods.find(pm => pm._id === selectedPaymentMethodId);
                 if (!selectedMethod) {
                     throw new Error('Seçilen ödeme yöntemi bulunamadı');
@@ -951,7 +1089,7 @@
                         'Authorization': jwtToken.startsWith('Bearer ') ? jwtToken : `Bearer ${jwtToken}`
                     },
                     body: JSON.stringify({
-                        paymentMethodId: selectedMethod.stripePaymentMethodId // Use the Stripe payment method ID
+                        paymentMethodId: selectedPaymentMethodId // Use payment method's own _id
                     })
                 });
                 
@@ -962,23 +1100,76 @@
                 
                 const result = await response.json();
                 
-                if (result.success && result.payment) {
-                    currentPaymentIntentId = result.payment.stripePaymentIntentId;
-                    
-                    // Check if payment requires confirmation
-                    if (result.payment.status === 'PENDING' && currentPaymentIntentId) {
-                        await confirmPaymentWithStripe(currentPaymentIntentId);
-                    } else if (result.payment.status === 'SUCCEEDED') {
-                        showPaymentSuccess(result);
+                if (result.success) {
+                    // Check if 3D Secure is required
+                    if (result.requiresAction && result.clientSecret) {
+                        currentClientSecret = result.clientSecret;
+                        currentPaymentIntentId = result.paymentIntentId;
+                        show3DSecureRequired();
+                    } else if (result.payment) {
+                        // Payment succeeded without 3D Secure
+                        currentPaymentIntentId = result.paymentIntentId || result.payment.stripePaymentIntentId;
+                        
+                        // Wait for webhook to process
+                        setTimeout(() => {
+                            checkPaymentStatus();
+                        }, 2000);
                     } else {
-                        throw new Error('Beklenmeyen ödeme durumu: ' + result.payment.status);
+                        throw new Error('Beklenmeyen ödeme yanıtı');
                     }
                 } else {
-                    throw new Error('Ödeme başlatılamadı');
+                    throw new Error(result.message || 'Ödeme başlatılamadı');
                 }
                 
             } catch (error) {
                 showPaymentError(error.message);
+            }
+        }
+
+        // Show 3D Secure required section
+        function show3DSecureRequired() {
+            updatePaymentStatus('warning', '⚠️ 3D Secure Doğrulaması Gerekli');
+            document.getElementById('requiresActionSection').classList.remove('hidden');
+        }
+
+        // Handle 3D Secure authentication
+        async function handle3DSecure() {
+            if (!currentClientSecret) {
+                showAlert('3D Secure client secret bulunamadı', 'error');
+                return;
+            }
+
+            const confirm3DBtn = document.getElementById('confirm3DSecure');
+            confirm3DBtn.disabled = true;
+            confirm3DBtn.innerHTML = '<div class="spinner" style="width: 16px; height: 16px; margin-right: 8px;"></div>3D Secure işleniyor...';
+
+            try {
+                updatePaymentStatus('loading', '3D Secure doğrulaması yapılıyor...');
+                
+                // Confirm payment intent with 3D Secure
+                const { error, paymentIntent } = await stripe.confirmCardPayment(currentClientSecret);
+                
+                if (error) {
+                    throw new Error(error.message);
+                }
+                
+                if (paymentIntent.status === 'succeeded') {
+                    // Hide 3D Secure section
+                    document.getElementById('requiresActionSection').classList.add('hidden');
+                    
+                    // Wait for webhook to process
+                    setTimeout(() => {
+                        checkPaymentStatus();
+                    }, 2000);
+                } else {
+                    throw new Error('3D Secure doğrulaması başarısız: ' + paymentIntent.status);
+                }
+                
+            } catch (error) {
+                showPaymentError(`3D Secure hatası: ${error.message}`);
+            } finally {
+                confirm3DBtn.disabled = false;
+                confirm3DBtn.innerHTML = '<span>3D Secure Doğrulaması Yap</span>';
             }
         }
 
@@ -1035,16 +1226,34 @@
                 
                 const result = await response.json();
                 
-                if (result.success && result.currentPayment) {
-                    if (result.currentPayment.status === 'SUCCEEDED') {
-                        showPaymentSuccess(result);
-                    } else if (result.currentPayment.status === 'FAILED') {
-                        showPaymentError('Ödeme başarısız oldu');
+                if (result.success) {
+                    // Check if trip is already completed and paid
+                    if (result.trip && result.trip.paymentStatus === 'PAID') {
+                        // Trip is already paid, show success
+                        const mockResult = {
+                            currentPayment: {
+                                _id: 'completed',
+                                status: 'SUCCEEDED'
+                            }
+                        };
+                        showPaymentSuccess(mockResult);
+                        return;
+                    }
+                    
+                    // Check current payment status
+                    if (result.currentPayment) {
+                        if (result.currentPayment.status === 'SUCCEEDED') {
+                            showPaymentSuccess(result);
+                        } else if (result.currentPayment.status === 'FAILED') {
+                            showPaymentError('Ödeme başarısız oldu');
+                        } else {
+                            // Still processing, check again
+                            setTimeout(() => {
+                                checkPaymentStatus();
+                            }, 3000);
+                        }
                     } else {
-                        // Still processing, check again
-                        setTimeout(() => {
-                            checkPaymentStatus();
-                        }, 3000);
+                        throw new Error('Ödeme durumu alınamadı');
                     }
                 } else {
                     throw new Error('Ödeme durumu alınamadı');

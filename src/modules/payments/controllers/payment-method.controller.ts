@@ -22,7 +22,7 @@ import { JwtAuthGuard } from 'src/jwt/jwt.guard';
 import { GetUser } from 'src/jwt/user.decoretor';
 import { IJwtPayload } from 'src/jwt/jwt-payload.interface';
 import { PaymentMethodService } from '../payment-method.service';
-import { AddPaymentMethodDto } from '../dto/add-payment-method.dto';
+import { AddPaymentMethodDto, CreateSetupIntentDto, SavePaymentMethodDto } from '../dto';
 
 @ApiTags('payment-methods')
 @ApiBearerAuth()
@@ -198,6 +198,82 @@ export class PaymentMethodController {
       );
       throw new HttpException(
         error.message || 'An error occurred while deleting payment method',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  @Post('setup-intent')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ 
+    summary: 'Create a Setup Intent for adding payment methods',
+    description: 'Creates a Setup Intent that allows the frontend to securely collect and validate payment method details'
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Setup Intent created successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Customer does not have a Stripe account',
+  })
+  async createSetupIntent(
+    @GetUser() user: IJwtPayload,
+    @Body() body: CreateSetupIntentDto,
+  ) {
+    try {
+      return await this.paymentMethodService.createSetupIntent(
+        user.userId,
+        body.metadata,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Error creating setup intent: ${error.message}`,
+        error.stack,
+      );
+      throw new HttpException(
+        error.message || 'An error occurred while creating setup intent',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  @Post('save-from-setup-intent')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ 
+    summary: 'Save payment method from Setup Intent (Uber-style)',
+    description: 'Validates the Setup Intent and saves the payment method to the customer account'
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Payment method saved successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Setup Intent validation failed',
+  })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Setup Intent does not belong to this customer',
+  })
+  async savePaymentMethodFromSetupIntent(
+    @GetUser() user: IJwtPayload,
+    @Body() body: SavePaymentMethodDto,
+  ) {
+    try {
+      return await this.paymentMethodService.savePaymentMethodFromSetupIntent(
+        user.userId,
+        body.setupIntentId,
+        body.paymentMethodId,
+        body.name,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Error saving payment method from setup intent: ${error.message}`,
+        error.stack,
+      );
+      throw new HttpException(
+        error.message || 'An error occurred while saving payment method',
         HttpStatus.BAD_REQUEST,
       );
     }
