@@ -92,9 +92,10 @@ export class CustomersTripsController {
   @Post('process-payment')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Process payment for active trip',
-    description: 'Process payment for the customer\'s active trip using the specified payment method'
+    description:
+      "Process payment for the customer's active trip using the specified payment method",
   })
   @ApiBody({ type: ProcessTripPaymentDto })
   async processPayment(
@@ -110,9 +111,10 @@ export class CustomersTripsController {
   @Get('payment-status')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Get payment status for active trip',
-    description: 'Get the current payment status and history for the customer\'s active trip'
+    description:
+      "Get the current payment status and history for the customer's active trip",
   })
   async getPaymentStatus(@GetUser() user: IJwtPayload) {
     return await this.tripPaymentService.getTripPaymentStatus(user.userId);

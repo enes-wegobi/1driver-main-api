@@ -35,9 +35,10 @@ export class PaymentMethodController {
 
   @Post()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Save payment method from Setup Intent (Uber-style)',
-    description: 'Validates the Setup Intent and saves the payment method to the customer account'
+    description:
+      'Validates the Setup Intent and saves the payment method to the customer account',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -209,9 +210,10 @@ export class PaymentMethodController {
 
   @Post('setup-intent')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Create a Setup Intent for adding payment methods',
-    description: 'Creates a Setup Intent that allows the frontend to securely collect and validate payment method details'
+    description:
+      'Creates a Setup Intent that allows the frontend to securely collect and validate payment method details',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -241,5 +243,4 @@ export class PaymentMethodController {
       );
     }
   }
-
 }

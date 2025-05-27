@@ -219,12 +219,16 @@ export class WebSocketGateway
         if (tripDetails && tripDetails.customer && tripDetails.customer.id) {
           const customerId = tripDetails.customer.id;
 
-          this.webSocketService.sendToUser(customerId, EventType.DRIVER_LOCATION_UPDATED, {
-            tripId,
-            driverId: userId,
-            location: payload,
-            timestamp: new Date().toISOString(),
-          });
+          this.webSocketService.sendToUser(
+            customerId,
+            EventType.DRIVER_LOCATION_UPDATED,
+            {
+              tripId,
+              driverId: userId,
+              location: payload,
+              timestamp: new Date().toISOString(),
+            },
+          );
 
           this.logger.debug(
             `Driver ${userId} location sent to customer ${customerId} for trip ${tripId}`,

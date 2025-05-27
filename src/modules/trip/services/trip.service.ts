@@ -171,7 +171,10 @@ export class TripService {
 
           this.validateStatusTransition(trip.status, TripStatus.APPROVED);
 
-          const updatedTrip = await this.updateTripWithDriverInfo(tripId, driver);
+          const updatedTrip = await this.updateTripWithDriverInfo(
+            tripId,
+            driver,
+          );
           await this.handleTripApproval(updatedTrip, driverId);
 
           return { success: true, trip: updatedTrip };
@@ -232,10 +235,15 @@ export class TripService {
   }
 
   async arrivedStop(driverId: string): Promise<any> {
-    return this.executeWithErrorHandling('arriving at destination', async () => {
-      const tripId = await this.getUserActiveTripId(driverId, UserType.DRIVER);
-      const tripDetails = await this.validateTripExists(tripId);
-/*
+    return this.executeWithErrorHandling(
+      'arriving at destination',
+      async () => {
+        const tripId = await this.getUserActiveTripId(
+          driverId,
+          UserType.DRIVER,
+        );
+        const tripDetails = await this.validateTripExists(tripId);
+        /*
       const destinationLocation = this.extractDestinationLocation(tripDetails);
       await this.verifyDriverLocation(
         driverId,
@@ -244,25 +252,26 @@ export class TripService {
         'You are too far from the destination location'
       );
 */
-      const tripCalculations = this.calculateFinalTripCost(tripDetails);
+        const tripCalculations = this.calculateFinalTripCost(tripDetails);
 
-      const updateData = {
-        status: TripStatus.PAYMENT,
-        tripEndTime: new Date(),
-        actualDuration: tripCalculations.actualDuration,
-        finalCost: tripCalculations.finalCost
-      };
+        const updateData = {
+          status: TripStatus.PAYMENT,
+          tripEndTime: new Date(),
+          actualDuration: tripCalculations.actualDuration,
+          finalCost: tripCalculations.finalCost,
+        };
 
-      const updatedTrip = await this.updateTripWithData(tripId, updateData);
+        const updatedTrip = await this.updateTripWithData(tripId, updateData);
 
-      await this.eventService.notifyCustomer(
-        updatedTrip,
-        updatedTrip.customer.id,
-        EventType.TRIP_PAYMENT_REQUIRED
-      );
+        await this.eventService.notifyCustomer(
+          updatedTrip,
+          updatedTrip.customer.id,
+          EventType.TRIP_PAYMENT_REQUIRED,
+        );
 
-      return { success: true, trip: updatedTrip };
-    });
+        return { success: true, trip: updatedTrip };
+      },
+    );
   }
 
   async updateTrip(
@@ -362,18 +371,20 @@ export class TripService {
   } {
     const tripStartTime = tripDetails.tripStartTime;
     const tripEndTime = new Date();
-    
+
     // Gerçek süreyi hesapla (saniye cinsinden)
-    const actualDuration = Math.floor((tripEndTime.getTime() - tripStartTime.getTime()) / 1000);
-    
+    const actualDuration = Math.floor(
+      (tripEndTime.getTime() - tripStartTime.getTime()) / 1000,
+    );
+
     // Dakika başı 1 dirham hesaplama
     const durationInMinutes = Math.ceil(actualDuration / 60); // Yukarı yuvarlama
     const costPerMinute = this.configService.tripCostPerMinute; // 1 dirham
     const finalCost = durationInMinutes * costPerMinute;
-    
+
     return {
       actualDuration,
-      finalCost
+      finalCost,
     };
   }
 
@@ -603,8 +614,12 @@ export class TripService {
         driverId,
         location: driverLocation,
         timestamp: new Date().toISOString(),
-      }; 
-    await this.eventService.sendToUser(customerId, EventType.DRIVER_LOCATION_UPDATED, data);
+      };
+      await this.eventService.sendToUser(
+        customerId,
+        EventType.DRIVER_LOCATION_UPDATED,
+        data,
+      );
     }
   }
 
@@ -623,13 +638,19 @@ export class TripService {
     return { lat: pickupLocation.lat, lon: pickupLocation.lon };
   }
 
-  private extractDestinationLocation(tripDetails: TripDocument): LocationCoords {
+  private extractDestinationLocation(
+    tripDetails: TripDocument,
+  ): LocationCoords {
     const destinationLocation =
       tripDetails.route && tripDetails.route.length > 0
         ? tripDetails.route[tripDetails.route.length - 1] // Son nokta
         : null;
 
-    if (!destinationLocation || !destinationLocation.lat || !destinationLocation.lon) {
+    if (
+      !destinationLocation ||
+      !destinationLocation.lat ||
+      !destinationLocation.lon
+    ) {
       throw new BadRequestException(
         'Destination location not found in trip details',
       );

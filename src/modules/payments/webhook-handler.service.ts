@@ -122,7 +122,7 @@ export class WebhookHandlerService {
    */
   async handleSetupIntentSuccess(setupIntent: any): Promise<any> {
     this.logger.log(`Setup Intent succeeded for ${setupIntent.id}`);
-    
+
     // Setup Intent success is handled on the frontend when saving payment method
     // This webhook is mainly for logging and monitoring
     return {

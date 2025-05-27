@@ -10,7 +10,8 @@ export const TripErrors = {
   },
   TRIP_INVALID_STATUS: {
     code: 'T103',
-    message: 'Trip is in an invalid status, this operation cannot be performed.',
+    message:
+      'Trip is in an invalid status, this operation cannot be performed.',
   },
   TRIP_NOT_FOUND: {
     code: 'T104',

@@ -30,7 +30,12 @@ import { PaymentsModule } from '../payments/payments.module';
     JwtModule,
     forwardRef(() => PaymentsModule),
   ],
-  providers: [TripService, TripRepository, TripStateService, TripPaymentService],
+  providers: [
+    TripService,
+    TripRepository,
+    TripStateService,
+    TripPaymentService,
+  ],
   controllers: [DriversTripsController, CustomersTripsController],
   exports: [TripService, TripPaymentService],
 })

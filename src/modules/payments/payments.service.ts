@@ -127,17 +127,18 @@ export class PaymentsService {
 
     try {
       // Create off-session Payment Intent
-      const paymentIntent = await this.stripeService.createOffSessionPaymentIntent(
-        Math.round(amount * 100), // Convert to cents
-        currency,
-        customer.stripeCustomerId,
-        stripePaymentMethodId,
-        {
-          trip_id: tripId,
-          customer_id: customerId,
-          ...metadata,
-        },
-      );
+      const paymentIntent =
+        await this.stripeService.createOffSessionPaymentIntent(
+          Math.round(amount * 100), // Convert to cents
+          currency,
+          customer.stripeCustomerId,
+          stripePaymentMethodId,
+          {
+            trip_id: tripId,
+            customer_id: customerId,
+            ...metadata,
+          },
+        );
 
       // Create payment record
       const payment = await this.paymentRepository.create({
@@ -157,7 +158,9 @@ export class PaymentsService {
       return {
         payment,
         requiresAction,
-        clientSecret: requiresAction ? (paymentIntent.client_secret || undefined) : undefined,
+        clientSecret: requiresAction
+          ? paymentIntent.client_secret || undefined
+          : undefined,
         paymentIntentId: paymentIntent.id,
       };
     } catch (error) {
@@ -217,17 +220,29 @@ export class PaymentsService {
       // Process the event based on type using WebhookHandlerService
       switch (event.type) {
         case 'payment_intent.succeeded':
-          return this.webhookHandlerService.handlePaymentSuccess(event.data.object);
+          return this.webhookHandlerService.handlePaymentSuccess(
+            event.data.object,
+          );
         case 'payment_intent.payment_failed':
-          return this.webhookHandlerService.handlePaymentFailure(event.data.object);
+          return this.webhookHandlerService.handlePaymentFailure(
+            event.data.object,
+          );
         case 'payment_intent.canceled':
-          return this.webhookHandlerService.handlePaymentCancellation(event.data.object);
+          return this.webhookHandlerService.handlePaymentCancellation(
+            event.data.object,
+          );
         case 'payment_intent.requires_action':
-          return this.webhookHandlerService.handlePaymentRequiresAction(event.data.object);
+          return this.webhookHandlerService.handlePaymentRequiresAction(
+            event.data.object,
+          );
         case 'payment_intent.processing':
-          return this.webhookHandlerService.handlePaymentProcessing(event.data.object);
+          return this.webhookHandlerService.handlePaymentProcessing(
+            event.data.object,
+          );
         case 'setup_intent.succeeded':
-          return this.webhookHandlerService.handleSetupIntentSuccess(event.data.object);
+          return this.webhookHandlerService.handleSetupIntentSuccess(
+            event.data.object,
+          );
         default:
           this.logger.log(`Unhandled webhook event type: ${event.type}`);
           return { received: true, type: event.type };

@@ -21,10 +21,10 @@ async function bootstrap() {
   await fastifyAdapter.register(rawBody as any, {
     field: 'rawBody',
     global: false,
-    encoding: false, // Keep as Buffer for Stripe signature verification
+    encoding: false,
     runFirst: true,
     routes: ['/api/webhooks/stripe', '/webhooks/stripe'],
-    jsonContentTypes: [] // Don't parse JSON for webhook routes
+    jsonContentTypes: [],
   });
 
   await fastifyAdapter.register(fastifyMultipart as any, {

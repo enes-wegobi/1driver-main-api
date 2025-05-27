@@ -385,7 +385,7 @@ export class EventService {
     return this.categorizeDriversByStatus(driversStatus);
   }
 
-  async sendToUser(userId: string, eventType: EventType, data: any){
-      await this.webSocketService.sendToUser(userId, eventType, data);
+  async sendToUser(userId: string, eventType: EventType, data: any) {
+    await this.webSocketService.sendToUser(userId, eventType, data);
   }
 }

@@ -47,11 +47,15 @@ export class WebhookController {
         return { success: false, error: 'Missing raw body in request' };
       }
 
-      this.logger.debug(`Raw body type: ${typeof rawBody}, length: ${rawBody.length}`);
+      this.logger.debug(
+        `Raw body type: ${typeof rawBody}, length: ${rawBody.length}`,
+      );
       this.logger.debug(`Signature: ${signature}`);
 
       // Ensure rawBody is a Buffer
-      const bodyBuffer = Buffer.isBuffer(rawBody) ? rawBody : Buffer.from(rawBody);
+      const bodyBuffer = Buffer.isBuffer(rawBody)
+        ? rawBody
+        : Buffer.from(rawBody);
 
       const result = await this.paymentsService.handleWebhookEvent(
         signature,

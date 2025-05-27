@@ -1,4 +1,10 @@
-import { Injectable, Logger, BadRequestException, Inject, forwardRef } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  BadRequestException,
+  Inject,
+  forwardRef,
+} from '@nestjs/common';
 import { TripService } from './trip.service';
 import { PaymentsService } from '../../payments/payments.service';
 import { PaymentMethodService } from '../../payments/payment-method.service';
@@ -45,7 +51,8 @@ export class TripPaymentService {
     );
 
     // Get customer's active trip
-    const activeTripResult = await this.tripService.getCustomerActiveTrip(customerId);
+    const activeTripResult =
+      await this.tripService.getCustomerActiveTrip(customerId);
     if (!activeTripResult.success || !activeTripResult.trip) {
       throw new BadRequestException('No active trip found for customer');
     }
@@ -71,7 +78,8 @@ export class TripPaymentService {
     this.logger.log(`Getting trip payment status for customer ${customerId}`);
 
     // Get customer's active trip
-    const activeTripResult = await this.tripService.getCustomerActiveTrip(customerId);
+    const activeTripResult =
+      await this.tripService.getCustomerActiveTrip(customerId);
     if (!activeTripResult.success || !activeTripResult.trip) {
       throw new BadRequestException('No active trip found for customer');
     }
@@ -80,13 +88,17 @@ export class TripPaymentService {
     const tripId = trip._id;
 
     // Get payment history for this trip
-    const paymentHistory = await this.paymentsService.getPaymentHistory(customerId);
-    const tripPayments = paymentHistory.filter(payment => payment.tripId === tripId);
+    const paymentHistory =
+      await this.paymentsService.getPaymentHistory(customerId);
+    const tripPayments = paymentHistory.filter(
+      (payment) => payment.tripId === tripId,
+    );
 
     // Get current payment (latest one) - using _id for sorting (ObjectId contains timestamp)
-    const currentPayment = tripPayments.length > 0 
-      ? tripPayments.sort((a, b) => b._id.localeCompare(a._id))[0]
-      : null;
+    const currentPayment =
+      tripPayments.length > 0
+        ? tripPayments.sort((a, b) => b._id.localeCompare(a._id))[0]
+        : null;
 
     return {
       success: true,
@@ -115,7 +127,10 @@ export class TripPaymentService {
       this.validateTripForPayment(trip);
 
       // Validate payment method belongs to customer
-      const stripePaymaymentMethodId = await this.validatePaymentMethod(customerId, paymentMethodId);
+      const stripePaymaymentMethodId = await this.validatePaymentMethod(
+        customerId,
+        paymentMethodId,
+      );
 
       // Create off-session payment for trip
       const paymentResult = await this.paymentsService.createTripPayment(
@@ -139,7 +154,7 @@ export class TripPaymentService {
 
       // Get updated trip
       const updatedTrip = await this.tripService.findById(trip._id);
-      
+
       return {
         success: true,
         payment: paymentResult.payment,
@@ -149,7 +164,10 @@ export class TripPaymentService {
         paymentIntentId: paymentResult.paymentIntentId,
       };
     } catch (error) {
-      this.logger.error(`Error processing trip payment: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error processing trip payment: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
@@ -176,9 +194,15 @@ export class TripPaymentService {
   /**
    * Validate payment method belongs to customer and return Stripe payment method ID
    */
-  private async validatePaymentMethod(customerId: string, paymentMethodId: string): Promise<string> {
-    const paymentMethods = await this.paymentMethodService.getPaymentMethods(customerId);
-    const paymentMethod = paymentMethods.find((pm: any) => pm._id.toString() === paymentMethodId);
+  private async validatePaymentMethod(
+    customerId: string,
+    paymentMethodId: string,
+  ): Promise<string> {
+    const paymentMethods =
+      await this.paymentMethodService.getPaymentMethods(customerId);
+    const paymentMethod = paymentMethods.find(
+      (pm: any) => pm._id.toString() === paymentMethodId,
+    );
 
     if (!paymentMethod) {
       throw new BadRequestException(
@@ -192,7 +216,10 @@ export class TripPaymentService {
   /**
    * Update trip payment status
    */
-  private async updateTripPaymentStatus(tripId: string, paymentStatus: PaymentStatus): Promise<void> {
+  private async updateTripPaymentStatus(
+    tripId: string,
+    paymentStatus: PaymentStatus,
+  ): Promise<void> {
     await this.tripService.updateTrip(tripId, { paymentStatus });
   }
 
@@ -204,8 +231,10 @@ export class TripPaymentService {
     payment: Payment,
     isRetry: boolean = false,
   ): Promise<void> {
-    const eventType = isRetry ? EventType.TRIP_PAYMENT_RETRY : EventType.TRIP_PAYMENT_STARTED;
-    
+    const eventType = isRetry
+      ? EventType.TRIP_PAYMENT_RETRY
+      : EventType.TRIP_PAYMENT_STARTED;
+
     const eventData = {
       eventType,
       tripId: trip._id,
@@ -250,8 +279,16 @@ export class TripPaymentService {
       trip: updatedTrip,
     };
 
-    await this.eventService.sendToUser(trip.customer.id, EventType.TRIP_PAYMENT_SUCCESS, eventData);
-    await this.eventService.sendToUser(trip.driver.id, EventType.TRIP_PAYMENT_SUCCESS, eventData);
+    await this.eventService.sendToUser(
+      trip.customer.id,
+      EventType.TRIP_PAYMENT_SUCCESS,
+      eventData,
+    );
+    await this.eventService.sendToUser(
+      trip.driver.id,
+      EventType.TRIP_PAYMENT_SUCCESS,
+      eventData,
+    );
   }
 
   async handlePaymentFailure(payment: Payment): Promise<void> {
@@ -286,7 +323,15 @@ export class TripPaymentService {
       trip: updatedTrip,
     };
 
-    await this.eventService.sendToUser(trip.customer.id, EventType.TRIP_PAYMENT_FAILED, eventData);
-    await this.eventService.sendToUser(trip.driver.id, EventType.TRIP_PAYMENT_FAILED, eventData);
+    await this.eventService.sendToUser(
+      trip.customer.id,
+      EventType.TRIP_PAYMENT_FAILED,
+      eventData,
+    );
+    await this.eventService.sendToUser(
+      trip.driver.id,
+      EventType.TRIP_PAYMENT_FAILED,
+      eventData,
+    );
   }
 }

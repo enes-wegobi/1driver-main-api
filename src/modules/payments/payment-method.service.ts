@@ -1,4 +1,10 @@
-import { Injectable, Logger, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PaymentMethodRepository } from './repositories/payment-method.repository';
 import { StripeService } from './stripe.service';
 import { PaymentMethod } from './schemas/payment-method.schema';
@@ -189,9 +195,8 @@ export class PaymentMethodService {
     }
 
     // Validate Setup Intent
-    const setupIntent = await this.stripeService.retrieveSetupIntent(
-      setupIntentId,
-    );
+    const setupIntent =
+      await this.stripeService.retrieveSetupIntent(setupIntentId);
 
     if (setupIntent.status !== 'succeeded') {
       throw new BadRequestException('Setup intent not succeeded');
@@ -208,9 +213,8 @@ export class PaymentMethodService {
     }
 
     // Get payment method details from Stripe
-    const stripePaymentMethod = await this.stripeService.getPaymentMethod(
-      paymentMethodId,
-    );
+    const stripePaymentMethod =
+      await this.stripeService.getPaymentMethod(paymentMethodId);
 
     // Check if this payment method already exists
     const existingPaymentMethod =
