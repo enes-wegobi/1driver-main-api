@@ -71,19 +71,4 @@ export class ActiveTripService extends BaseRedisService {
 
     return false;
   }
-
-  /**
-   * Validates if a trip ID has a valid format
-   * This is a simple validation that can be extended based on your ID format
-   */
-  isValidTripId(tripId: string | null): boolean {
-    if (!tripId || typeof tripId !== 'string' || tripId.trim() === '') {
-      return false;
-    }
-
-    // Add additional validation if needed, e.g., for MongoDB ObjectId format:
-    // return /^[0-9a-fA-F]{24}$/.test(tripId);
-
-    return true;
-  }
 }

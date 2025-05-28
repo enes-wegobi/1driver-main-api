@@ -92,6 +92,7 @@ export class TripService {
     const estimatedCost = this.calculateEstimatedCost(
       distanceMatrix.duration.value,
     );
+
     const trip = await this.createTrip(
       {
         status: TripStatus.DRAFT,
@@ -117,10 +118,12 @@ export class TripService {
       `trip:${tripId}`,
       async () => {
         return this.executeWithErrorHandling('requesting driver', async () => {
-          const trip = await this.validateTripForRequest(tripId, customerId);
-
-          // Validate customer has a payment method before searching for drivers
           await this.validateCustomerHasPaymentMethod(customerId);
+
+          const trip = await this.findAndValidateRequestTrip(
+            tripId,
+            customerId,
+          );
 
           const driverIds = await this.searchDriver(lat, lon);
 
@@ -130,15 +133,20 @@ export class TripService {
           );
           const updatedTrip = await this.updateTripWithData(tripId, updateData);
 
-          await this.setUserActiveTrip(customerId, UserType.CUSTOMER, tripId);
+          await this.activeTripService.setUserActiveTripId(
+            customerId,
+            UserType.CUSTOMER,
+            tripId,
+          );
+
           await this.eventService.notifyNewTripRequest(updatedTrip, driverIds);
 
           return { success: true, trip: updatedTrip };
         });
       },
       'Trip is currently being processed by another request. Please try again.',
-      45000, // 45 seconds timeout
-      2, // 2 retries
+      45000,
+      2,
     );
   }
 
@@ -169,7 +177,7 @@ export class TripService {
       `trip:${tripId}`,
       async () => {
         return this.executeWithErrorHandling('approving trip', async () => {
-          const trip = await this.validateTripExists(tripId);
+          const trip = await this.getTrip(tripId);
           const driver = await this.driversClient.findOne(driverId, [
             'name',
             'surname',
@@ -206,7 +214,7 @@ export class TripService {
   async arrivePickup(driverId: string): Promise<any> {
     return this.executeWithErrorHandling('reaching pickup', async () => {
       const tripId = await this.getUserActiveTripId(driverId, UserType.DRIVER);
-      const tripDetails = await this.validateTripExists(tripId);
+      const tripDetails = await this.getTrip(tripId);
       /*
       const pickupLocation = this.extractPickupLocation(tripDetails);
       await this.verifyDriverLocation(
@@ -250,7 +258,7 @@ export class TripService {
           driverId,
           UserType.DRIVER,
         );
-        const tripDetails = await this.validateTripExists(tripId);
+        const tripDetails = await this.getTrip(tripId);
         /*
       const destinationLocation = this.extractDestinationLocation(tripDetails);
       await this.verifyDriverLocation(
@@ -294,7 +302,7 @@ export class TripService {
               driverId,
               UserType.DRIVER,
             );
-            const trip = await this.validateTripExists(tripId);
+            const trip = await this.getTrip(tripId);
 
             // 2. Validate trip can be cancelled
             this.validateCancellableStatus(trip.status);
@@ -359,7 +367,7 @@ export class TripService {
               customerId,
               UserType.CUSTOMER,
             );
-            const trip = await this.validateTripExists(tripId);
+            const trip = await this.getTrip(tripId);
 
             // 2. Validate trip can be cancelled
             this.validateCustomerCancellableStatus(trip.status);
@@ -429,7 +437,7 @@ export class TripService {
     return this.lockService.executeWithLock(
       `trip:${tripId}`,
       async () => {
-        const trip = await this.validateTripExists(tripId);
+        const trip = await this.getTrip(tripId);
 
         if (tripData.status && tripData.status !== trip.status) {
           this.validateStatusTransition(trip.status, tripData.status);
@@ -472,7 +480,7 @@ export class TripService {
     tripId: string,
     newStatus: TripStatus,
   ): Promise<TripOperationResult> {
-    const trip = await this.validateTripExists(tripId);
+    const trip = await this.getTrip(tripId);
 
     this.validateAllowedStatusUpdate(newStatus);
     this.validateStatusTransition(trip.status, newStatus);
@@ -598,17 +606,17 @@ export class TripService {
     return typedDrivers.map((driver) => driver.userId);
   }
 
-  private async validateTripForRequest(
+  private async findAndValidateRequestTrip(
     tripId: string,
     customerId: string,
   ): Promise<TripDocument> {
-    const trip = await this.validateTripExists(tripId);
+    await this.validateCustomerNoActiveTrip(customerId, tripId);
+    const trip = await this.getTrip(tripId);
 
     this.validateMultipleStatuses(trip.status, [
       TripStatus.DRAFT,
       TripStatus.DRIVER_NOT_FOUND,
     ]);
-    await this.validateCustomerNoActiveTrip(customerId, tripId);
 
     return trip;
   }
@@ -617,8 +625,10 @@ export class TripService {
     customerId: string,
     currentTripId: string,
   ): Promise<void> {
-    const customerActiveTripResult =
-      await this.findActiveByCustomerId(customerId);
+    const customerActiveTripResult = await this.getUserActiveTrip(
+      customerId,
+      UserType.CUSTOMER,
+    );
 
     if (
       customerActiveTripResult.trip &&
@@ -647,7 +657,7 @@ export class TripService {
     tripId: string,
     driverId: string,
   ): Promise<TripOperationResult> {
-    const trip = await this.validateTripExists(tripId);
+    const trip = await this.getTrip(tripId);
     this.validateSingleStatus(trip.status, TripStatus.WAITING_FOR_DRIVER);
 
     const rejectedDriverIds = [...(trip.rejectedDriverIds || [])];
@@ -714,7 +724,11 @@ export class TripService {
     updatedTrip: TripDocument,
     driverId: string,
   ): Promise<void> {
-    await this.setUserActiveTrip(driverId, UserType.DRIVER, updatedTrip._id);
+    await this.activeTripService.setUserActiveTripId(
+      driverId,
+      UserType.DRIVER,
+      updatedTrip._id,
+    );
     await this.activeTripService.refreshUserActiveTripExpiry(
       updatedTrip.customer.id,
       UserType.CUSTOMER,
@@ -865,20 +879,6 @@ export class TripService {
     ]);
   }
 
-  private async setUserActiveTrip(
-    userId: string,
-    userType: UserType,
-    tripId: string,
-  ): Promise<void> {
-    if (userType === UserType.CUSTOMER) {
-      await this.customersClient.setActiveTrip(userId, { tripId });
-    } else {
-      await this.driversClient.setActiveTrip(userId, { tripId });
-    }
-
-    await this.activeTripService.setUserActiveTripId(userId, userType, tripId);
-  }
-
   // ================================
   // VALIDATION HELPERS
   // ================================
@@ -912,7 +912,7 @@ export class TripService {
     }
   }
 
-  private async validateTripExists(tripId: string): Promise<TripDocument> {
+  private async getTrip(tripId: string): Promise<TripDocument> {
     const trip = await this.findById(tripId);
     if (!trip) {
       throw new BadRequestException(TripErrors.TRIP_NOT_FOUND.message);
@@ -1074,14 +1074,10 @@ export class TripService {
     userType: UserType,
     tripId: string,
   ): Promise<ActiveTripResult> {
-    if (!this.activeTripService.isValidTripId(tripId)) {
-      return this.handleInvalidTripId(userId, userType);
-    }
-
     try {
-      const tripDetails = await this.findById(tripId);
+      const trip = await this.findById(tripId);
 
-      if (this.isTripCompleted(tripDetails)) {
+      if (this.isTripCompleted(trip)) {
         return this.handleInvalidTripId(userId, userType);
       }
 
@@ -1089,7 +1085,7 @@ export class TripService {
         userId,
         userType,
       );
-      return { success: true, trip: tripDetails! };
+      return { success: true, trip: trip! };
     } catch (apiError) {
       return this.handleInvalidTripId(userId, userType);
     }
@@ -1104,6 +1100,7 @@ export class TripService {
   }
 
   private isTripCompleted(tripDetails: TripDocument | null): boolean {
+    //TODO:driver ve customer için farklı bir kontrol yapılabilir
     return (
       !tripDetails ||
       tripDetails.status === TripStatus.COMPLETED ||
@@ -1149,7 +1146,7 @@ export class TripService {
       userType,
     );
 
-    if (tripId && this.activeTripService.isValidTripId(tripId)) {
+    if (tripId) {
       return tripId;
     }
 
