@@ -26,6 +26,8 @@ import { EventType } from '../../event/enum/event-type.enum';
 import { LocationService } from 'src/redis/services/location.service';
 import { BatchDistanceRequest } from 'src/clients/maps/maps.interface';
 import { TripStateService } from './trip-state.service';
+import { DriverPenaltyService } from './driver-penalty.service';
+import { PaymentMethodService } from '../../payments/services/payment-method.service';
 
 export interface TripOperationResult {
   success: boolean;
@@ -52,6 +54,7 @@ export class TripService {
     private readonly tripRepository: TripRepository,
     private readonly lockService: LockService,
     private readonly tripStateService: TripStateService,
+    private readonly driverPenaltyService: DriverPenaltyService,
     private readonly customersClient: CustomersClient,
     private readonly driversClient: DriversClient,
     private readonly activeTripService: ActiveTripService,
@@ -60,6 +63,7 @@ export class TripService {
     private readonly mapsService: MapsService,
     private readonly eventService: EventService,
     private readonly locationService: LocationService,
+    private readonly paymentMethodService: PaymentMethodService,
   ) {}
 
   // ================================
@@ -113,8 +117,12 @@ export class TripService {
       `trip:${tripId}`,
       async () => {
         return this.executeWithErrorHandling('requesting driver', async () => {
-          const driverIds = await this.searchDriver(lat, lon);
           const trip = await this.validateTripForRequest(tripId, customerId);
+          
+          // Validate customer has a payment method before searching for drivers
+          await this.validateCustomerHasPaymentMethod(customerId);
+          
+          const driverIds = await this.searchDriver(lat, lon);
 
           const updateData = this.buildDriverRequestUpdateData(
             driverIds,
@@ -271,6 +279,102 @@ export class TripService {
 
         return { success: true, trip: updatedTrip };
       },
+    );
+  }
+
+  async cancelTripByDriver(driverId: string): Promise<TripOperationResult> {
+    return this.lockService.executeWithLock(
+      `driver:${driverId}:cancel`,
+      async () => {
+        return this.executeWithErrorHandling('cancelling trip by driver', async () => {
+          // 1. Get driver's active trip
+          const tripId = await this.getUserActiveTripId(driverId, UserType.DRIVER);
+          const trip = await this.validateTripExists(tripId);
+
+          // 2. Validate trip can be cancelled
+          this.validateCancellableStatus(trip.status);
+
+          // 3. Calculate time difference since trip acceptance
+          const timeDifferenceMinutes = this.driverPenaltyService.calculateTimeDifference(trip.tripStartTime);
+
+          // 4. Apply penalty if more than 5 minutes
+          if (this.driverPenaltyService.shouldApplyPenalty(timeDifferenceMinutes)) {
+            await this.driverPenaltyService.createPenalty(driverId, UserType.DRIVER, trip, timeDifferenceMinutes);
+            this.logger.log(`Penalty applied to driver ${driverId} for late cancellation: ${timeDifferenceMinutes} minutes`);
+          }
+
+          // 5. Update trip status to cancelled
+          const updatedTrip = await this.updateTripWithData(tripId, {
+            status: TripStatus.CANCELLED,
+          });
+
+          // 6. Clean up active trips
+          await this.cleanupCancelledTrip(driverId, trip.customer.id);
+
+          // 7. Notify customer
+          await this.eventService.notifyCustomer(
+            updatedTrip,
+            trip.customer.id,
+            EventType.TRIP_CANCELLED,
+          );
+
+          return { success: true, trip: updatedTrip };
+        });
+      },
+      'Trip cancellation is currently being processed. Please try again.',
+      30000, // 30 seconds timeout
+      2, // 2 retries
+    );
+  }
+
+  async cancelTripByCustomer(customerId: string): Promise<TripOperationResult> {
+    return this.lockService.executeWithLock(
+      `customer:${customerId}:cancel`,
+      async () => {
+        return this.executeWithErrorHandling('cancelling trip by customer', async () => {
+          // 1. Get customer's active trip
+          const tripId = await this.getUserActiveTripId(customerId, UserType.CUSTOMER);
+          const trip = await this.validateTripExists(tripId);
+
+          // 2. Validate trip can be cancelled
+          this.validateCustomerCancellableStatus(trip.status);
+
+          // 3. Calculate time difference since trip acceptance (if driver assigned)
+          let timeDifferenceMinutes = 0;
+          if (trip.tripStartTime) {
+            timeDifferenceMinutes = this.driverPenaltyService.calculateTimeDifference(trip.tripStartTime);
+          }
+
+          // 4. Apply penalty if more than 5 minutes and driver is assigned
+          if (trip.driver && this.driverPenaltyService.shouldApplyPenalty(timeDifferenceMinutes)) {
+            await this.driverPenaltyService.createPenalty(customerId, UserType.CUSTOMER, trip, timeDifferenceMinutes);
+            this.logger.log(`Penalty applied to customer ${customerId} for late cancellation: ${timeDifferenceMinutes} minutes`);
+          }
+
+          // 5. Update trip status to cancelled
+          const updatedTrip = await this.updateTripWithData(tripId, {
+            status: TripStatus.CANCELLED,
+          });
+
+          // 6. Clean up active trips
+          if (trip.driver) {
+            await this.cleanupCancelledTrip(trip.driver.id, customerId);
+            // 7. Notify driver if assigned
+            await this.eventService.sendToUser(
+              trip.driver.id,
+              EventType.TRIP_CANCELLED,
+              { trip: updatedTrip, cancelledBy: 'customer' }
+            );
+          } else {
+            await this.activeTripService.removeUserActiveTrip(customerId, UserType.CUSTOMER);
+          }
+
+          return { success: true, trip: updatedTrip };
+        });
+      },
+      'Trip cancellation is currently being processed. Please try again.',
+      30000, // 30 seconds timeout
+      2, // 2 retries
     );
   }
 
@@ -735,6 +839,26 @@ export class TripService {
   // VALIDATION HELPERS
   // ================================
 
+  /**
+   * Validates that the customer has a valid payment method before requesting a driver
+   */
+  private async validateCustomerHasPaymentMethod(customerId: string): Promise<void> {
+    try {
+      const defaultPaymentMethod = await this.paymentMethodService.getDefaultPaymentMethod(customerId);
+      
+      if (!defaultPaymentMethod) {
+        throw new BadRequestException('You must add a payment method before requesting a driver');
+      }
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      
+      this.logger.error(`Error validating payment method for customer ${customerId}: ${error.message}`);
+      throw new BadRequestException('Unable to validate payment method. Please try again.');
+    }
+  }
+
   private async validateTripExists(tripId: string): Promise<TripDocument> {
     const trip = await this.findById(tripId);
     if (!trip) {
@@ -786,6 +910,51 @@ export class TripService {
         validation.message || TripErrors.TRIP_INVALID_STATUS.message,
       );
     }
+  }
+
+  private validateCancellableStatus(status: TripStatus): void {
+    const cancellableStatuses = [
+      TripStatus.APPROVED,
+      TripStatus.DRIVER_ON_WAY_TO_PICKUP,
+      TripStatus.ARRIVED_AT_PICKUP,
+    ];
+
+    if (!cancellableStatuses.includes(status)) {
+      throw new BadRequestException(
+        `Trip cannot be cancelled at this stage. Current status: ${status}`,
+      );
+    }
+  }
+
+  private validateCustomerCancellableStatus(status: TripStatus): void {
+    const cancellableStatuses = [
+      TripStatus.DRAFT,
+      TripStatus.WAITING_FOR_DRIVER,
+      TripStatus.DRIVER_NOT_FOUND,
+      TripStatus.APPROVED,
+      TripStatus.DRIVER_ON_WAY_TO_PICKUP,
+      TripStatus.ARRIVED_AT_PICKUP,
+    ];
+
+    if (!cancellableStatuses.includes(status)) {
+      throw new BadRequestException(
+        `Trip cannot be cancelled at this stage. Current status: ${status}`,
+      );
+    }
+  }
+
+  private async cleanupCancelledTrip(
+    driverId: string,
+    customerId: string,
+  ): Promise<void> {
+    await this.activeTripService.removeUserActiveTrip(
+      driverId,
+      UserType.DRIVER,
+    );
+    await this.activeTripService.removeUserActiveTrip(
+      customerId,
+      UserType.CUSTOMER,
+    );
   }
 
   // ================================

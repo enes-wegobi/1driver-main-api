@@ -61,6 +61,6 @@ export class DriversTripsController {
   */
   @Post('cancel')
   async cancelTrip(@GetUser() user: IJwtPayload) {
-    //return await this.tripsService.cancelTrip(user.userId, user.userType);
+    return await this.tripService.cancelTripByDriver(user.userId);
   }
 }

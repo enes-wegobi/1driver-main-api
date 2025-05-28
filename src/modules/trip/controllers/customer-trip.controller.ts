@@ -120,13 +120,11 @@ export class CustomersTripsController {
     return await this.tripPaymentService.getTripPaymentStatus(user.userId);
   }
 
-  /*
   @Post('cancel')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Cancel the active trip' })
   async cancelTrip(@GetUser() user: IJwtPayload) {
-    return await this.tripsService.cancelTrip(user.userId, user.userType);
+    return await this.tripService.cancelTripByCustomer(user.userId);
   }
-    */
 }
