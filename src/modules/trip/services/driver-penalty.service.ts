@@ -1,7 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { DriverPenaltyRepository } from '../repositories/driver-penalty.repository';
 import { TripDocument } from '../schemas/trip.schema';
-import { UserPenaltyDocument, PenaltyType } from '../schemas/driver-penalty.schema';
+import {
+  UserPenaltyDocument,
+  PenaltyType,
+} from '../schemas/driver-penalty.schema';
 import { UserType } from 'src/common/user-type.enum';
 
 @Injectable()
@@ -18,12 +21,16 @@ export class DriverPenaltyService {
     trip: TripDocument,
     timeDifferenceMinutes: number,
   ): Promise<UserPenaltyDocument> {
-    const penaltyType = userType === UserType.DRIVER 
-      ? PenaltyType.DRIVER_LATE_CANCELLATION 
-      : PenaltyType.CUSTOMER_LATE_CANCELLATION;
-    
-    const penaltyAmount = this.calculatePenaltyAmount(userType, timeDifferenceMinutes);
-    
+    const penaltyType =
+      userType === UserType.DRIVER
+        ? PenaltyType.DRIVER_LATE_CANCELLATION
+        : PenaltyType.CUSTOMER_LATE_CANCELLATION;
+
+    const penaltyAmount = this.calculatePenaltyAmount(
+      userType,
+      timeDifferenceMinutes,
+    );
+
     const penaltyData = {
       userId,
       userType,
@@ -43,7 +50,10 @@ export class DriverPenaltyService {
     return this.driverPenaltyRepository.create(penaltyData);
   }
 
-  async getUserPenalties(userId: string, userType?: UserType): Promise<UserPenaltyDocument[]> {
+  async getUserPenalties(
+    userId: string,
+    userType?: UserType,
+  ): Promise<UserPenaltyDocument[]> {
     return this.driverPenaltyRepository.findByUserId(userId, userType);
   }
 
@@ -51,15 +61,22 @@ export class DriverPenaltyService {
     return this.driverPenaltyRepository.findByDriverId(driverId);
   }
 
-  async getCustomerPenalties(customerId: string): Promise<UserPenaltyDocument[]> {
+  async getCustomerPenalties(
+    customerId: string,
+  ): Promise<UserPenaltyDocument[]> {
     return this.driverPenaltyRepository.findByCustomerId(customerId);
   }
 
-  async getUnpaidPenalties(userId: string, userType?: UserType): Promise<UserPenaltyDocument[]> {
+  async getUnpaidPenalties(
+    userId: string,
+    userType?: UserType,
+  ): Promise<UserPenaltyDocument[]> {
     return this.driverPenaltyRepository.findUnpaidPenalties(userId, userType);
   }
 
-  async markPenaltyAsPaid(penaltyId: string): Promise<UserPenaltyDocument | null> {
+  async markPenaltyAsPaid(
+    penaltyId: string,
+  ): Promise<UserPenaltyDocument | null> {
     return this.driverPenaltyRepository.markAsPaid(penaltyId);
   }
 
@@ -73,18 +90,21 @@ export class DriverPenaltyService {
     return timeDifferenceMinutes > 5;
   }
 
-  private calculatePenaltyAmount(userType: UserType, timeDifferenceMinutes: number): number {
+  private calculatePenaltyAmount(
+    userType: UserType,
+    timeDifferenceMinutes: number,
+  ): number {
     if (userType === UserType.DRIVER) {
       // Driver cancellations have no penalty amount
       return 0;
     }
-    
+
     if (userType === UserType.CUSTOMER) {
       // Customer penalty: 5 AED per minute after 5 minutes
       const penaltyMinutes = Math.max(0, timeDifferenceMinutes - 5);
       return penaltyMinutes * 5; // 5 AED per minute
     }
-    
+
     return 0;
   }
 }

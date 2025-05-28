@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { UserPenalty, UserPenaltyDocument } from '../schemas/driver-penalty.schema';
+import {
+  UserPenalty,
+  UserPenaltyDocument,
+} from '../schemas/driver-penalty.schema';
 import { UserType } from 'src/common/user-type.enum';
 
 @Injectable()
@@ -11,20 +14,22 @@ export class DriverPenaltyRepository {
     private readonly userPenaltyModel: Model<UserPenaltyDocument>,
   ) {}
 
-  async create(penaltyData: Partial<UserPenalty>): Promise<UserPenaltyDocument> {
+  async create(
+    penaltyData: Partial<UserPenalty>,
+  ): Promise<UserPenaltyDocument> {
     const penalty = new this.userPenaltyModel(penaltyData);
     return penalty.save();
   }
 
-  async findByUserId(userId: string, userType?: UserType): Promise<UserPenaltyDocument[]> {
+  async findByUserId(
+    userId: string,
+    userType?: UserType,
+  ): Promise<UserPenaltyDocument[]> {
     const filter: any = { userId };
     if (userType) {
       filter.userType = userType;
     }
-    return this.userPenaltyModel
-      .find(filter)
-      .sort({ createdAt: -1 })
-      .exec();
+    return this.userPenaltyModel.find(filter).sort({ createdAt: -1 }).exec();
   }
 
   async findByDriverId(driverId: string): Promise<UserPenaltyDocument[]> {
@@ -39,23 +44,23 @@ export class DriverPenaltyRepository {
     return this.userPenaltyModel.findOne({ tripId }).exec();
   }
 
-  async findUnpaidPenalties(userId: string, userType?: UserType): Promise<UserPenaltyDocument[]> {
+  async findUnpaidPenalties(
+    userId: string,
+    userType?: UserType,
+  ): Promise<UserPenaltyDocument[]> {
     const filter: any = { userId, isPaid: false };
     if (userType) {
       filter.userType = userType;
     }
-    return this.userPenaltyModel
-      .find(filter)
-      .sort({ createdAt: -1 })
-      .exec();
+    return this.userPenaltyModel.find(filter).sort({ createdAt: -1 }).exec();
   }
 
   async markAsPaid(penaltyId: string): Promise<UserPenaltyDocument | null> {
     return this.userPenaltyModel
       .findByIdAndUpdate(
-        penaltyId, 
-        { isPaid: true, paidAt: new Date() }, 
-        { new: true }
+        penaltyId,
+        { isPaid: true, paidAt: new Date() },
+        { new: true },
       )
       .exec();
   }

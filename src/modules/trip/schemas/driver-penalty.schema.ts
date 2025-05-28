@@ -51,7 +51,6 @@ export class UserPenalty extends EntityDocumentHelper {
 
 export const UserPenaltySchema = SchemaFactory.createForClass(UserPenalty);
 
-// Index for efficient queries
 UserPenaltySchema.index({ userId: 1, userType: 1, createdAt: -1 });
 UserPenaltySchema.index({ tripId: 1 });
 UserPenaltySchema.index({ userType: 1, penaltyType: 1 });

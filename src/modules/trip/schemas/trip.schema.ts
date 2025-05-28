@@ -4,70 +4,18 @@ import { RoutePoint, RoutePointSchema } from './route-point.schema';
 import { EntityDocumentHelper } from 'src/common/utils/document-helper';
 import { TripStatus } from 'src/common/enums/trip-status.enum';
 import { PaymentStatus } from 'src/common/enums/payment-status.enum';
+import { TripCustomer, TripCustomerSchema } from './trip-customer.schema';
+import { TripDriver, TripDriverSchema } from './trip-driver.schema';
 
 export type TripDocument = Trip & Document;
 
-@Schema({ _id: false })
-export class Vehicle {
-  @Prop()
-  transmissionType?: string;
-
-  @Prop()
-  licensePlate?: string;
-}
-
-export const VehicleSchema = SchemaFactory.createForClass(Vehicle);
-
-@Schema({ _id: false })
-export class Customer {
-  @Prop({ required: true })
-  id: string;
-
-  @Prop()
-  name?: string;
-
-  @Prop()
-  surname?: string;
-
-  @Prop()
-  rate?: number;
-
-  @Prop({ type: VehicleSchema })
-  vehicle?: Vehicle;
-
-  @Prop()
-  photoUrl?: string;
-}
-
-export const CustomerSchema = SchemaFactory.createForClass(Customer);
-
-@Schema({ _id: false })
-export class Driver {
-  @Prop({ required: true })
-  id: string;
-
-  @Prop()
-  name: string;
-
-  @Prop()
-  surname: string;
-
-  @Prop()
-  photoUrl: string;
-
-  @Prop()
-  rate: number;
-}
-
-export const DriverSchema = SchemaFactory.createForClass(Driver);
-
 @Schema({ timestamps: true })
 export class Trip extends EntityDocumentHelper {
-  @Prop({ type: CustomerSchema, required: true })
-  customer: Customer;
+  @Prop({ type: TripCustomerSchema, required: true })
+  customer: TripCustomer;
 
-  @Prop({ type: DriverSchema })
-  driver: Driver;
+  @Prop({ type: TripDriverSchema })
+  driver: TripDriver;
 
   @Prop({ enum: TripStatus, default: TripStatus.DRAFT })
   status: TripStatus;
@@ -125,40 +73,40 @@ export class Trip extends EntityDocumentHelper {
 }
 
 export const TripSchema = SchemaFactory.createForClass(Trip);
-//diğer statuleride ekle
+
 TripSchema.index(
   { 'customer.id': 1, status: 1 },
   {
     unique: true,
-    partialFilterExpression: { 
-      status: { 
+    partialFilterExpression: {
+      status: {
         $in: [
           TripStatus.WAITING_FOR_DRIVER,
           TripStatus.APPROVED,
           TripStatus.DRIVER_ON_WAY_TO_PICKUP,
           TripStatus.ARRIVED_AT_PICKUP,
           TripStatus.TRIP_IN_PROGRESS,
-          TripStatus.PAYMENT
-        ]
-      }
-    }
+          TripStatus.PAYMENT,
+        ],
+      },
+    },
   },
 );
 
 TripSchema.index(
   { 'driver.id': 1, status: 1 },
-  { 
-    unique: true, 
-    partialFilterExpression: { 
-      status: { 
+  {
+    unique: true,
+    partialFilterExpression: {
+      status: {
         $in: [
           TripStatus.APPROVED,
           TripStatus.DRIVER_ON_WAY_TO_PICKUP,
           TripStatus.ARRIVED_AT_PICKUP,
           TripStatus.TRIP_IN_PROGRESS,
-          TripStatus.PAYMENT
-        ]
-      }
-    }
+          TripStatus.PAYMENT,
+        ],
+      },
+    },
   },
 );

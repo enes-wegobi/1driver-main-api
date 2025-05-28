@@ -3,7 +3,7 @@ import { Document } from 'mongoose';
 
 export type RoutePointDocument = RoutePoint & Document;
 
-@Schema()
+@Schema({ _id: false })
 export class RoutePoint {
   @Prop({ required: true })
   lat: number;

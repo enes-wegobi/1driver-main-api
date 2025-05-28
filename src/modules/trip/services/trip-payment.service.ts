@@ -262,7 +262,10 @@ export class TripPaymentService {
     await this.tripService.updateTripStatus(trip._id, TripStatus.COMPLETED);
     await this.updateTripPaymentStatus(trip._id, PaymentStatus.PAID);
 
-    await this.tripService.cleanupCompletedTrip(trip.driver.id, trip.customer.id);
+    await this.tripService.cleanupCompletedTrip(
+      trip.driver.id,
+      trip.customer.id,
+    );
 
     // Get updated trip
     const updatedTrip = await this.tripService.findById(trip._id);

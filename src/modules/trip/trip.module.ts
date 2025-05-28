@@ -3,7 +3,10 @@ import { TripRepository } from './repositories/trip.repository';
 import { DriverPenaltyRepository } from './repositories/driver-penalty.repository';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Trip, TripSchema } from './schemas/trip.schema';
-import { UserPenalty, UserPenaltySchema } from './schemas/driver-penalty.schema';
+import {
+  UserPenalty,
+  UserPenaltySchema,
+} from './schemas/driver-penalty.schema';
 import { TripService } from './services/trip.service';
 import { DriverPenaltyService } from './services/driver-penalty.service';
 import { ClientsModule } from 'src/clients/clients.module';
@@ -45,7 +48,11 @@ import { PaymentsModule } from '../payments/payments.module';
     TripStateService,
     TripPaymentService,
   ],
-  controllers: [DriversTripsController, CustomersTripsController, DriverPenaltyController],
+  controllers: [
+    DriversTripsController,
+    CustomersTripsController,
+    DriverPenaltyController,
+  ],
   exports: [TripService, TripPaymentService, DriverPenaltyService],
 })
 export class TripModule {}
