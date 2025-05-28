@@ -130,11 +130,35 @@ TripSchema.index(
   { 'customer.id': 1, status: 1 },
   {
     unique: true,
-    partialFilterExpression: { status: TripStatus.WAITING_FOR_DRIVER },
+    partialFilterExpression: { 
+      status: { 
+        $in: [
+          TripStatus.WAITING_FOR_DRIVER,
+          TripStatus.APPROVED,
+          TripStatus.DRIVER_ON_WAY_TO_PICKUP,
+          TripStatus.ARRIVED_AT_PICKUP,
+          TripStatus.TRIP_IN_PROGRESS,
+          TripStatus.PAYMENT
+        ]
+      }
+    }
   },
 );
 
 TripSchema.index(
   { 'driver.id': 1, status: 1 },
-  { unique: true, partialFilterExpression: { status: TripStatus.APPROVED } },
+  { 
+    unique: true, 
+    partialFilterExpression: { 
+      status: { 
+        $in: [
+          TripStatus.APPROVED,
+          TripStatus.DRIVER_ON_WAY_TO_PICKUP,
+          TripStatus.ARRIVED_AT_PICKUP,
+          TripStatus.TRIP_IN_PROGRESS,
+          TripStatus.PAYMENT
+        ]
+      }
+    }
+  },
 );

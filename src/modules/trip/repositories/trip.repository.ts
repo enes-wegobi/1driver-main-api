@@ -60,7 +60,16 @@ export class TripRepository {
     return this.tripModel
       .findOne({
         'customer.id': customerId,
-        status: TripStatus.WAITING_FOR_DRIVER,
+        status: { 
+          $in: [
+            TripStatus.WAITING_FOR_DRIVER,
+            TripStatus.APPROVED,
+            TripStatus.DRIVER_ON_WAY_TO_PICKUP,
+            TripStatus.ARRIVED_AT_PICKUP,
+            TripStatus.TRIP_IN_PROGRESS,
+            TripStatus.PAYMENT
+          ]
+        }
       })
       .lean()
       .exec();
@@ -70,7 +79,15 @@ export class TripRepository {
     return this.tripModel
       .findOne({
         'driver.id': driverId,
-        status: TripStatus.APPROVED,
+        status: { 
+          $in: [
+            TripStatus.APPROVED,
+            TripStatus.DRIVER_ON_WAY_TO_PICKUP,
+            TripStatus.ARRIVED_AT_PICKUP,
+            TripStatus.TRIP_IN_PROGRESS,
+            TripStatus.PAYMENT
+          ]
+        }
       })
       .lean()
       .exec();

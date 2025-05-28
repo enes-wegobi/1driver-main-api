@@ -687,7 +687,7 @@ export class TripService {
     await this.eventService.notifyCustomer(trip, customerId, eventType);
   }
 
-  private async cleanupCompletedTrip(
+  async cleanupCompletedTrip(
     driverId: string,
     customerId: string,
   ): Promise<void> {
@@ -952,36 +952,25 @@ export class TripService {
   }
 
   async findActiveByCustomerId(customerId: string): Promise<ActiveTripResult> {
-    return this.findActiveTripByClient(
-      () => this.customersClient.findOne(customerId, ['activeTrip']),
-      'No active trip found for this customer',
-    );
+    const activeTrip = await this.tripRepository.findActiveByCustomerId(customerId);
+    
+    if (!activeTrip) {
+      return { success: false, message: 'No active trip found for this customer' };
+    }
+
+    return { success: true, trip: activeTrip };
   }
 
   async findActiveByDriverId(driverId: string): Promise<ActiveTripResult> {
-    return this.findActiveTripByClient(
-      () => this.driversClient.findOne(driverId, ['activeTrip']),
-      'No active trip found for this driver',
-    );
-  }
-
-  private async findActiveTripByClient(
-    clientFinder: () => Promise<any>,
-    errorMessage: string,
-  ): Promise<ActiveTripResult> {
-    const user = await clientFinder();
-
-    if (!user.activeTrip) {
-      return { success: false, message: errorMessage };
+    const activeTrip = await this.tripRepository.findActiveByDriverId(driverId);
+    
+    if (!activeTrip) {
+      return { success: false, message: 'No active trip found for this driver' };
     }
 
-    const trip = await this.findById(user.activeTrip);
-    if (!trip) {
-      return { success: false, message: errorMessage };
-    }
-
-    return { success: true, trip };
+    return { success: true, trip: activeTrip };
   }
+
 
   // ================================
   // LOCATION VERIFICATION
