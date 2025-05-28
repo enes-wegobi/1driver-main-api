@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { TripStatus } from 'src/common/enums/trip-status.enum';
 import { TripErrors } from '../exceptions/trip-errors';
+
 interface StatusTransition {
   to: TripStatus[];
   validate?: (
@@ -10,8 +11,8 @@ interface StatusTransition {
 }
 
 @Injectable()
-export class TripStateService {
-  private readonly logger = new Logger(TripStateService.name);
+export class TripStatusService {
+  private readonly logger = new Logger(TripStatusService.name);
   private readonly statusTransitions: Record<TripStatus, StatusTransition> = {
     [TripStatus.DRAFT]: {
       to: [TripStatus.WAITING_FOR_DRIVER, TripStatus.CANCELLED],

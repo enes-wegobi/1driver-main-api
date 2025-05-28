@@ -13,7 +13,7 @@ import { ClientsModule } from 'src/clients/clients.module';
 import { ConfigModule } from 'src/config/config.module';
 import { MapsModule } from 'src/clients/maps/maps.module';
 import { LockModule } from 'src/common/lock/lock.module';
-import { TripStateService } from './services/trip-state.service';
+import { TripStateService } from './services/trip-status.service';
 import { TripPaymentService } from './services/trip-payment.service';
 import { DriversTripsController } from './controllers/driver-trip.controller';
 import { CustomersTripsController } from './controllers/customer-trip.controller';

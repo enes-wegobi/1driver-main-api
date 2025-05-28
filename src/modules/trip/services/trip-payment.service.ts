@@ -72,48 +72,6 @@ export class TripPaymentService {
   }
 
   /**
-   * Get payment status for customer's active trip
-   */
-  async getTripPaymentStatus(customerId: string): Promise<any> {
-    this.logger.log(`Getting trip payment status for customer ${customerId}`);
-
-    // Get customer's active trip
-    const activeTripResult =
-      await this.tripService.getCustomerActiveTrip(customerId);
-    if (!activeTripResult.success || !activeTripResult.trip) {
-      throw new BadRequestException('No active trip found for customer');
-    }
-
-    const trip = activeTripResult.trip;
-    const tripId = trip._id;
-
-    // Get payment history for this trip
-    const paymentHistory =
-      await this.paymentsService.getPaymentHistory(customerId);
-    const tripPayments = paymentHistory.filter(
-      (payment) => payment.tripId === tripId,
-    );
-
-    // Get current payment (latest one) - using _id for sorting (ObjectId contains timestamp)
-    const currentPayment =
-      tripPayments.length > 0
-        ? tripPayments.sort((a, b) => b._id.localeCompare(a._id))[0]
-        : null;
-
-    return {
-      success: true,
-      trip: {
-        id: trip._id,
-        status: trip.status,
-        paymentStatus: trip.paymentStatus,
-        finalCost: trip.finalCost,
-      },
-      currentPayment,
-      paymentHistory: tripPayments,
-    };
-  }
-
-  /**
    * Execute the actual payment process
    */
   private async executePaymentProcess(

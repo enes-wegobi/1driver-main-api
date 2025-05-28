@@ -25,7 +25,7 @@ import {
 import { EventType } from '../../event/enum/event-type.enum';
 import { LocationService } from 'src/redis/services/location.service';
 import { BatchDistanceRequest } from 'src/clients/maps/maps.interface';
-import { TripStateService } from './trip-state.service';
+import { TripStatusService } from './trip-status.service';
 import { DriverPenaltyService } from './driver-penalty.service';
 import { PaymentMethodService } from '../../payments/services/payment-method.service';
 
@@ -53,7 +53,7 @@ export class TripService {
   constructor(
     private readonly tripRepository: TripRepository,
     private readonly lockService: LockService,
-    private readonly tripStateService: TripStateService,
+    private readonly tripStatusService: TripStatusService,
     private readonly driverPenaltyService: DriverPenaltyService,
     private readonly customersClient: CustomersClient,
     private readonly driversClient: DriversClient,
@@ -924,7 +924,7 @@ export class TripService {
     currentStatus: TripStatus,
     expectedStatus: TripStatus,
   ): void {
-    const validation = this.tripStateService.validateStatus(
+    const validation = this.tripStatusService.validateStatus(
       currentStatus,
       expectedStatus,
     );
@@ -939,7 +939,7 @@ export class TripService {
     currentStatus: TripStatus,
     allowedStatuses: TripStatus[],
   ): void {
-    const validation = this.tripStateService.validateMultipleStatuses(
+    const validation = this.tripStatusService.validateMultipleStatuses(
       currentStatus,
       allowedStatuses,
     );
@@ -954,7 +954,7 @@ export class TripService {
     fromStatus: TripStatus,
     toStatus: TripStatus,
   ): void {
-    const validation = this.tripStateService.canTransition(
+    const validation = this.tripStatusService.canTransition(
       fromStatus,
       toStatus,
     );

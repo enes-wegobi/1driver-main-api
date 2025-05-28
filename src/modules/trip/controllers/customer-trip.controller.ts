@@ -108,18 +108,6 @@ export class CustomersTripsController {
     );
   }
 
-  @Get('payment-status')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({
-    summary: 'Get payment status for active trip',
-    description:
-      "Get the current payment status and history for the customer's active trip",
-  })
-  async getPaymentStatus(@GetUser() user: IJwtPayload) {
-    return await this.tripPaymentService.getTripPaymentStatus(user.userId);
-  }
-
   @Post('cancel')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
