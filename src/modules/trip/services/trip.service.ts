@@ -207,7 +207,7 @@ export class TripService {
     return this.executeWithErrorHandling('reaching pickup', async () => {
       const tripId = await this.getUserActiveTripId(driverId, UserType.DRIVER);
       const tripDetails = await this.validateTripExists(tripId);
-
+/*
       const pickupLocation = this.extractPickupLocation(tripDetails);
       await this.verifyDriverLocation(
         driverId,
@@ -215,7 +215,7 @@ export class TripService {
         100,
         'You are too far from the pickup location',
       );
-
+*/
       const result = await this.updateTripStatus(
         tripId,
         TripStatus.ARRIVED_AT_PICKUP,
