@@ -1,1 +1,0 @@
-1.driver lokasyonu hangi durumlarda customera gidecek

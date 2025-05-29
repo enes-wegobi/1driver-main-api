@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Test Dashboard - Driver & Customer</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.8;
+            font-size: 1.1em;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0;
+            min-height: 800px;
+        }
+
+        .panel {
+            padding: 30px;
+            border-right: 1px solid #eee;
+        }
+
+        .panel:last-child {
+            border-right: none;
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .panel-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-size: 20px;
+            color: white;
+        }
+
+        .driver-panel .panel-icon {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+        }
+
+        .customer-panel .panel-icon {
+            background: linear-gradient(135deg, #4834d4, #686de0);
+        }
+
+        .panel-title {
+            font-size: 1.8em;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .connection-section {
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #00b894, #00a085);
+            color: white;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 184, 148, 0.4);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #fdcb6e, #e17055);
+            color: white;
+        }
+
+        .btn-warning:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(253, 203, 110, 0.4);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-connected {
+            background: #00b894;
+            box-shadow: 0 0 10px rgba(0, 184, 148, 0.5);
+        }
+
+        .status-disconnected {
+            background: #ff6b6b;
+            box-shadow: 0 0 10px rgba(255, 107, 107, 0.5);
+        }
+
+        .status-connecting {
+            background: #fdcb6e;
+            box-shadow: 0 0 10px rgba(253, 203, 110, 0.5);
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .location-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .location-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .logs-section {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 10px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .log-entry {
+            margin-bottom: 8px;
+            padding: 5px;
+            border-radius: 4px;
+        }
+
+        .log-info {
+            background: rgba(52, 152, 219, 0.2);
+            border-left: 3px solid #3498db;
+        }
+
+        .log-success {
+            background: rgba(46, 204, 113, 0.2);
+            border-left: 3px solid #2ecc71;
+        }
+
+        .log-warning {
+            background: rgba(241, 196, 15, 0.2);
+            border-left: 3px solid #f1c40f;
+        }
+
+        .log-error {
+            background: rgba(231, 76, 60, 0.2);
+            border-left: 3px solid #e74c3c;
+        }
+
+        .timestamp {
+            color: #95a5a6;
+            font-size: 11px;
+        }
+
+        .availability-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .availability-status {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+
+        .status-idle {
+            background: #95a5a6;
+            color: white;
+        }
+
+        .status-available {
+            background: #2ecc71;
+            color: white;
+        }
+
+        .status-busy {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .section-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #ecf0f1;
+        }
+
+        .clear-logs {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+        }
+
+        .clear-logs:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .logs-container {
+            position: relative;
+        }
+
+        .auto-location {
+            background: #e8f4fd;
+            border: 1px solid #bee5eb;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .auto-location h4 {
+            color: #0c5460;
+            margin-bottom: 10px;
+        }
+
+        .location-info {
+            font-size: 12px;
+            color: #0c5460;
+            margin-bottom: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .panel {
+                border-right: none;
+                border-bottom: 1px solid #eee;
+            }
+            
+            .panel:last-child {
+                border-bottom: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚗 WebSocket Test Dashboard</h1>
+            <p>Driver & Customer WebSocket Bağlantı Test Aracı</p>
+        </div>
+
+        <div class="main-content">
+            <!-- Driver Panel -->
+            <div class="panel driver-panel">
+                <div class="panel-header">
+                    <div class="panel-icon">🚗</div>
+                    <div class="panel-title">Driver Panel</div>
+                </div>
+
+                <div class="connection-section">
+                    <div class="section-title">Bağlantı Ayarları</div>
+                    
+                    <div class="form-group">
+                        <label>WebSocket URL:</label>
+                        <input type="text" id="driverUrl" value="ws://localhost:3000">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Driver Token:</label>
+                        <input type="text" id="driverToken" placeholder="JWT Token girin">
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <span class="status-indicator" id="driverStatus"></span>
+                        <span id="driverStatusText">Bağlantı Yok</span>
+                    </div>
+
+                    <button class="btn btn-primary" onclick="connectDriver()">Bağlan</button>
+                    <button class="btn btn-danger" onclick="disconnectDriver()">Bağlantıyı Kes</button>
+                </div>
+
+                <div class="section-title">Driver Availability Status</div>
+                <div class="availability-controls">
+                    <button class="btn btn-warning" onclick="updateDriverAvailability('idle')">IDLE</button>
+                    <button class="btn btn-success" onclick="updateDriverAvailability('available')">AVAILABLE</button>
+                </div>
+                <div id="driverAvailabilityStatus" class="availability-status status-idle">IDLE</div>
+
+                <div class="location-section">
+                    <div class="section-title">Konum Güncelleme</div>
+                    
+                    <div class="auto-location">
+                        <h4>🌍 Otomatik Konum</h4>
+                        <div class="location-info" id="driverLocationInfo">Konum bilgisi alınmadı</div>
+                        <button class="btn btn-primary" onclick="getDriverLocation()">Konumu Al</button>
+                        <button class="btn btn-success" onclick="toggleDriverAutoLocation()" id="driverAutoLocationBtn">Otomatik Gönderimi Başlat</button>
+                    </div>
+
+                    <div class="location-grid">
+                        <div class="form-group">
+                            <label>Latitude:</label>
+                            <input type="number" id="driverLat" step="any" value="41.0082">
+                        </div>
+                        <div class="form-group">
+                            <label>Longitude:</label>
+                            <input type="number" id="driverLng" step="any" value="28.9784">
+                        </div>
+                        <div class="form-group">
+                            <label>Speed (km/h):</label>
+                            <input type="number" id="driverSpeed" step="any" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label>Heading (°):</label>
+                            <input type="number" id="driverHeading" step="any" value="0">
+                        </div>
+                    </div>
+
+                    <button class="btn btn-success" onclick="updateDriverLocation()">Konum Gönder</button>
+                    <button class="btn btn-primary" onclick="updateBasicLocation('driver')">Basit Konum Gönder</button>
+                </div>
+
+                <div class="logs-container">
+                    <div class="section-title">Driver Logs</div>
+                    <div class="logs-section" id="driverLogs">
+                        <button class="clear-logs" onclick="clearLogs('driver')">Temizle</button>
+                        <div class="log-entry log-info">
+                            <span class="timestamp">[Başlatıldı]</span> Driver panel hazır
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Customer Panel -->
+            <div class="panel customer-panel">
+                <div class="panel-header">
+                    <div class="panel-icon">👤</div>
+                    <div class="panel-title">Customer Panel</div>
+                </div>
+
+                <div class="connection-section">
+                    <div class="section-title">Bağlantı Ayarları</div>
+                    
+                    <div class="form-group">
+                        <label>WebSocket URL:</label>
+                        <input type="text" id="customerUrl" value="ws://localhost:3000">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Customer Token:</label>
+                        <input type="text" id="customerToken" placeholder="JWT Token girin">
+                    </div>
+
+                    <div style="margin-bottom: 20px;">
+                        <span class="status-indicator" id="customerStatus"></span>
+                        <span id="customerStatusText">Bağlantı Yok</span>
+                    </div>
+
+                    <button class="btn btn-primary" onclick="connectCustomer()">Bağlan</button>
+                    <button class="btn btn-danger" onclick="disconnectCustomer()">Bağlantıyı Kes</button>
+                </div>
+
+                <div class="location-section">
+                    <div class="section-title">Konum Güncelleme</div>
+                    
+                    <div class="auto-location">
+                        <h4>🌍 Otomatik Konum</h4>
+                        <div class="location-info" id="customerLocationInfo">Konum bilgisi alınmadı</div>
+                        <button class="btn btn-primary" onclick="getCustomerLocation()">Konumu Al</button>
+                        <button class="btn btn-success" onclick="toggleCustomerAutoLocation()" id="customerAutoLocationBtn">Otomatik Gönderimi Başlat</button>
+                    </div>
+
+                    <div class="location-grid">
+                        <div class="form-group">
+                            <label>Latitude:</label>
+                            <input type="number" id="customerLat" step="any" value="41.0082">
+                        </div>
+                        <div class="form-group">
+                            <label>Longitude:</label>
+                            <input type="number" id="customerLng" step="any" value="28.9784">
+                        </div>
+                        <div class="form-group">
+                            <label>Accuracy (m):</label>
+                            <input type="number" id="customerAccuracy" step="any" value="10">
+                        </div>
+                        <div class="form-group">
+                            <label>Altitude (m):</label>
+                            <input type="number" id="customerAltitude" step="any" value="0">
+                        </div>
+                    </div>
+
+                    <button class="btn btn-success" onclick="updateCustomerLocation()">Konum Gönder</button>
+                </div>
+
+                <div class="logs-container">
+                    <div class="section-title">Customer Logs</div>
+                    <div class="logs-section" id="customerLogs">
+                        <button class="clear-logs" onclick="clearLogs('customer')">Temizle</button>
+                        <div class="log-entry log-info">
+                            <span class="timestamp">[Başlatıldı]</span> Customer panel hazır
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let driverSocket = null;
+        let customerSocket = null;
+        let driverAutoLocationInterval = null;
+        let customerAutoLocationInterval = null;
+
+        // Utility Functions
+        function getCurrentTimestamp() {
+            return new Date().toLocaleTimeString('tr-TR');
+        }
+
+        function addLog(panel, type, message) {
+            const logsContainer = document.getElementById(`${panel}Logs`);
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${type}`;
+            logEntry.innerHTML = `<span class="timestamp">[${getCurrentTimestamp()}]</span> ${message}`;
+            logsContainer.appendChild(logEntry);
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+        }
+
+        function clearLogs(panel) {
+            const logsContainer = document.getElementById(`${panel}Logs`);
+            logsContainer.innerHTML = '<button class="clear-logs" onclick="clearLogs(\'' + panel + '\')">Temizle</button>';
+        }
+
+        function updateConnectionStatus(panel, status) {
+            const statusIndicator = document.getElementById(`${panel}Status`);
+            const statusText = document.getElementById(`${panel}StatusText`);
+            
+            statusIndicator.className = `status-indicator status-${status}`;
+            
+            switch(status) {
+                case 'connected':
+                    statusText.textContent = 'Bağlı';
+                    break;
+                case 'connecting':
+                    statusText.textContent = 'Bağlanıyor...';
+                    break;
+                case 'disconnected':
+                    statusText.textContent = 'Bağlantı Yok';
+                    break;
+            }
+        }
+
+        // Driver Functions
+        function connectDriver() {
+            const url = document.getElementById('driverUrl').value;
+            const token = document.getElementById('driverToken').value;
+
+            if (!token) {
+                addLog('driver', 'error', 'Token gerekli!');
+                return;
+            }
+
+            updateConnectionStatus('driver', 'connecting');
+            addLog('driver', 'info', `Bağlanıyor: ${url}`);
+
+            driverSocket = io(url, {
+                auth: { token: token },
+                transports: ['websocket']
+            });
+
+            driverSocket.on('connect', () => {
+                updateConnectionStatus('driver', 'connected');
+                addLog('driver', 'success', `Bağlantı başarılı! Socket ID: ${driverSocket.id}`);
+            });
+
+            driverSocket.on('connection', (data) => {
+                addLog('driver', 'success', `Kimlik doğrulama başarılı: ${JSON.stringify(data)}`);
+                if (data.availabilityStatus) {
+                    updateDriverAvailabilityDisplay(data.availabilityStatus);
+                }
+            });
+
+            driverSocket.on('disconnect', () => {
+                updateConnectionStatus('driver', 'disconnected');
+                addLog('driver', 'warning', 'Bağlantı kesildi');
+            });
+
+            driverSocket.on('error', (error) => {
+                addLog('driver', 'error', `Hata: ${JSON.stringify(error)}`);
+            });
+
+            // Driver specific events
+            driverSocket.on('driver:location_updated', (data) => {
+                addLog('driver', 'info', `Konum güncellendi: ${JSON.stringify(data)}`);
+            });
+
+            driverSocket.on('driver:status_changed', (data) => {
+                addLog('driver', 'info', `Status değişti: ${JSON.stringify(data)}`);
+            });
+
+            // Trip events
+            driverSocket.on('trip:requested', (data) => {
+                addLog('driver', 'info', `🚗 Yeni trip talebi: ${JSON.stringify(data)}`);
+            });
+
+            driverSocket.on('trip:driver_assigned', (data) => {
+                addLog('driver', 'success', `✅ Trip atandı: ${JSON.stringify(data)}`);
+            });
+
+            driverSocket.on('trip:cancelled', (data) => {
+                addLog('driver', 'warning', `❌ Trip iptal edildi: ${JSON.stringify(data)}`);
+            });
+
+            driverSocket.on('trip:completed', (data) => {
+                addLog('driver', 'success', `🏁 Trip tamamlandı: ${JSON.stringify(data)}`);
+            });
+
+            // Generic event listener for all events
+            driverSocket.onAny((eventName, data) => {
+                if (!['connect', 'disconnect', 'connection', 'error'].includes(eventName)) {
+                    addLog('driver', 'info', `📡 Event: ${eventName} - ${JSON.stringify(data)}`);
+                }
+            });
+        }
+
+        function disconnectDriver() {
+            if (driverSocket) {
+                driverSocket.disconnect();
+                driverSocket = null;
+                updateConnectionStatus('driver', 'disconnected');
+                addLog('driver', 'info', 'Bağlantı kapatıldı');
+            }
+            
+            if (driverAutoLocationInterval) {
+                clearInterval(driverAutoLocationInterval);
+                driverAutoLocationInterval = null;
+                document.getElementById('driverAutoLocationBtn').textContent = 'Otomatik Gönderimi Başlat';
+            }
+        }
+
+        function updateDriverAvailability(status) {
+            if (!driverSocket || !driverSocket.connected) {
+                addLog('driver', 'error', 'Önce bağlantı kurmalısınız!');
+                return;
+            }
+
+            addLog('driver', 'info', `Availability status güncelleniyor: ${status}`);
+            
+            driverSocket.emit('updateDriverAvailability', { status: status }, (response) => {
+                if (response) {
+                    if (response.success) {
+                        addLog('driver', 'success', `Availability güncellendi: ${response.status}`);
+                        updateDriverAvailabilityDisplay(response.status);
+                    } else {
+                        addLog('driver', 'error', `Availability güncellenemedi: ${response.message}`);
+                    }
+                }
+            });
+        }
+
+        function updateDriverAvailabilityDisplay(status) {
+            const statusElement = document.getElementById('driverAvailabilityStatus');
+            statusElement.textContent = status.toUpperCase();
+            statusElement.className = `availability-status status-${status}`;
+        }
+
+        function updateDriverLocation() {
+            if (!driverSocket || !driverSocket.connected) {
+                addLog('driver', 'error', 'Önce bağlantı kurmalısınız!');
+                return;
+            }
+
+            const locationData = {
+                latitude: parseFloat(document.getElementById('driverLat').value),
+                longitude: parseFloat(document.getElementById('driverLng').value),
+                speed: parseFloat(document.getElementById('driverSpeed').value) || 0,
+                heading: parseFloat(document.getElementById('driverHeading').value) || 0,
+                timestamp: new Date().toISOString(),
+                accuracy: 10,
+                isActive: true
+            };
+
+            addLog('driver', 'info', `Driver konum gönderiliyor: ${JSON.stringify(locationData)}`);
+            
+            driverSocket.emit('updateDriverLocation', locationData, (response) => {
+                if (response) {
+                    if (response.success) {
+                        addLog('driver', 'success', 'Driver konum başarıyla güncellendi');
+                    } else {
+                        addLog('driver', 'error', `Driver konum güncellenemedi: ${response.message}`);
+                    }
+                }
+            });
+        }
+
+        function getDriverLocation() {
+            if (navigator.geolocation) {
+                addLog('driver', 'info', 'GPS konumu alınıyor...');
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+                        const accuracy = position.coords.accuracy;
+                        const speed = position.coords.speed || 0;
+                        const heading = position.coords.heading || 0;
+
+                        document.getElementById('driverLat').value = lat;
+                        document.getElementById('driverLng').value = lng;
+                        document.getElementById('driverSpeed').value = speed;
+                        document.getElementById('driverHeading').value = heading;
+
+                        document.getElementById('driverLocationInfo').textContent = 
+                            `Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}, Accuracy: ${accuracy}m`;
+
+                        addLog('driver', 'success', `GPS konum alındı: ${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+                    },
+                    (error) => {
+                        addLog('driver', 'error', `GPS hatası: ${error.message}`);
+                    },
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+                );
+            } else {
+                addLog('driver', 'error', 'Geolocation desteklenmiyor');
+            }
+        }
+
+        function toggleDriverAutoLocation() {
+            if (driverAutoLocationInterval) {
+                clearInterval(driverAutoLocationInterval);
+                driverAutoLocationInterval = null;
+                document.getElementById('driverAutoLocationBtn').textContent = 'Otomatik Gönderimi Başlat';
+                addLog('driver', 'info', 'Otomatik konum gönderimi durduruldu');
+            } else {
+                driverAutoLocationInterval = setInterval(() => {
+                    if (driverSocket && driverSocket.connected) {
+                        updateDriverLocation();
+                    }
+                }, 5000); // Her 5 saniyede bir
+                document.getElementById('driverAutoLocationBtn').textContent = 'Otomatik Gönderimi Durdur';
+                addLog('driver', 'info', 'Otomatik konum gönderimi başlatıldı (5s aralık)');
+            }
+        }
+
+        // Customer Functions
+        function connectCustomer() {
+            const url = document.getElementById('customerUrl').value;
+            const token = document.getElementById('customerToken').value;
+
+            if (!token) {
+                addLog('customer', 'error', 'Token gerekli!');
+                return;
+            }
+
+            updateConnectionStatus('customer', 'connecting');
+            addLog('customer', 'info', `Bağlanıyor: ${url}`);
+
+            customerSocket = io(url, {
+                auth: { token: token },
+                transports: ['websocket']
+            });
+
+            customerSocket.on('connect', () => {
+                updateConnectionStatus('customer', 'connected');
+                addLog('customer', 'success', `Bağlantı başarılı! Socket ID: ${customerSocket.id}`);
+            });
+
+            customerSocket.on('connection', (data) => {
+                addLog('customer', 'success', `Kimlik doğrulama başarılı: ${JSON.stringify(data)}`);
+            });
+
+            customerSocket.on('disconnect', () => {
+                updateConnectionStatus('customer', 'disconnected');
+                addLog('customer', 'warning', 'Bağlantı kesildi');
+            });
+
+            customerSocket.on('error', (error) => {
+                addLog('customer', 'error', `Hata: ${JSON.stringify(error)}`);
+            });
+
+            // Customer specific events
+            customerSocket.on('customer:location_updated', (data) => {
+                addLog('customer', 'info', `Konum güncellendi: ${JSON.stringify(data)}`);
+            });
+
+            // Driver location updates (when in trip)
+            customerSocket.on('driver:location_updated', (data) => {
+                addLog('customer', 'info', `🚗 Driver konum güncellendi: ${JSON.stringify(data)}`);
+            });
+
+            // Trip events
+            customerSocket.on('trip:driver_assigned', (data) => {
+                addLog('customer', 'success', `✅ Driver atandı: ${JSON.stringify(data)}`);
+            });
+
+            customerSocket.on('trip:driver_en_route', (data) => {
+                addLog('customer', 'info', `🚗 Driver yolda: ${JSON.stringify(data)}`);
+            });
+
+            customerSocket.on('trip:driver_arrived', (data) => {
+                addLog('customer', 'success', `📍 Driver geldi: ${JSON.stringify(data)}`);
+            });
+
+            customerSocket.on('trip:started', (data) => {
+                addLog('customer', 'info', `🚀 Trip başladı: ${JSON.stringify(data)}`);
+            });
+
+            customerSocket.on('trip:cancelled', (data) => {
+                addLog('customer', 'warning', `❌ Trip iptal edildi: ${JSON.stringify(data)}`);
+            });
+
+            customerSocket.on('trip:completed', (data) => {
+                addLog('customer', 'success', `🏁 Trip tamamlandı: ${JSON.stringify(data)}`);
+            });
+
+            customerSocket.on('trip:payment_required', (data) => {
+                addLog('customer', 'warning', `💳 Ödeme gerekli: ${JSON.stringify(data)}`);
+            });
+
+            customerSocket.on('trip:payment_success', (data) => {
+                addLog('customer', 'success', `✅ Ödeme başarılı: ${JSON.stringify(data)}`);
+            });
+
+            customerSocket.on('trip:payment_failed', (data) => {
+                addLog('customer', 'error', `❌ Ödeme başarısız: ${JSON.stringify(data)}`);
+            });
+
+            // Notification events
+            customerSocket.on('notification', (data) => {
+                addLog('customer', 'info', `🔔 Bildirim: ${JSON.stringify(data)}`);
+            });
+
+            // Generic event listener for all events
+            customerSocket.onAny((eventName, data) => {
+                if (!['connect', 'disconnect', 'connection', 'error'].includes(eventName)) {
+                    addLog('customer', 'info', `📡 Event: ${eventName} - ${JSON.stringify(data)}`);
+                }
+            });
+        }
+
+        function disconnectCustomer() {
+            if (customerSocket) {
+                customerSocket.disconnect();
+                customerSocket = null;
+                updateConnectionStatus('customer', 'disconnected');
+                addLog('customer', 'info', 'Bağlantı kapatıldı');
+            }
+            
+            if (customerAutoLocationInterval) {
+                clearInterval(customerAutoLocationInterval);
+                customerAutoLocationInterval = null;
+                document.getElementById('customerAutoLocationBtn').textContent = 'Otomatik Gönderimi Başlat';
+            }
+        }
+
+        function updateCustomerLocation() {
+            if (!customerSocket || !customerSocket.connected) {
+                addLog('customer', 'error', 'Önce bağlantı kurmalısınız!');
+                return;
+            }
+
+            const locationData = {
+                latitude: parseFloat(document.getElementById('customerLat').value),
+                longitude: parseFloat(document.getElementById('customerLng').value),
+                accuracy: parseFloat(document.getElementById('customerAccuracy').value) || 10,
+                altitude: parseFloat(document.getElementById('customerAltitude').value) || 0,
+                timestamp: new Date().toISOString()
+            };
+
+            addLog('customer', 'info', `Customer konum gönderiliyor: ${JSON.stringify(locationData)}`);
+            
+            customerSocket.emit('updateLocation', locationData, (response) => {
+                if (response) {
+                    if (response.success) {
+                        addLog('customer', 'success', 'Customer konum başarıyla güncellendi');
+                    } else {
+                        addLog('customer', 'error', `Customer konum güncellenemedi: ${response.message}`);
+                    }
+                }
+            });
+        }
+
+        function getCustomerLocation() {
+            if (navigator.geolocation) {
+                addLog('customer', 'info', 'GPS konumu alınıyor...');
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+                        const accuracy = position.coords.accuracy;
+                        const altitude = position.coords.altitude || 0;
+
+                        document.getElementById('customerLat').value = lat;
+                        document.getElementById('customerLng').value = lng;
+                        document.getElementById('customerAccuracy').value = accuracy;
+                        document.getElementById('customerAltitude').value = altitude;
+
+                        document.getElementById('customerLocationInfo').textContent = 
+                            `Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}, Accuracy: ${accuracy}m`;
+
+                        addLog('customer', 'success', `GPS konum alındı: ${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+                    },
+                    (error) => {
+                        addLog('customer', 'error', `GPS hatası: ${error.message}`);
+                    },
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+                );
+            } else {
+                addLog('customer', 'error', 'Geolocation desteklenmiyor');
+            }
+        }
+
+        function toggleCustomerAutoLocation() {
+            if (customerAutoLocationInterval) {
+                clearInterval(customerAutoLocationInterval);
+                customerAutoLocationInterval = null;
+                document.getElementById('customerAutoLocationBtn').textContent = 'Otomatik Gönderimi Başlat';
+                addLog('customer', 'info', 'Otomatik konum gönderimi durduruldu');
+            } else {
+                customerAutoLocationInterval = setInterval(() => {
+                    if (customerSocket && customerSocket.connected) {
+                        updateCustomerLocation();
+                    }
+                }, 5000); // Her 5 saniyede bir
+                document.getElementById('customerAutoLocationBtn').textContent = 'Otomatik Gönderimi Durdur';
+                addLog('customer', 'info', 'Otomatik konum gönderimi başlatıldı (5s aralık)');
+            }
+        }
+
+        // Common Functions
+        function updateBasicLocation(userType) {
+            if (userType === 'driver') {
+                if (!driverSocket || !driverSocket.connected) {
+                    addLog('driver', 'error', 'Önce bağlantı kurmalısınız!');
+                    return;
+                }
+
+                const locationData = {
+                    latitude: parseFloat(document.getElementById('driverLat').value),
+                    longitude: parseFloat(document.getElementById('driverLng').value),
+                    timestamp: new Date().toISOString()
+                };
+
+                addLog('driver', 'info', `Basit konum gönderiliyor: ${JSON.stringify(locationData)}`);
+                
+                driverSocket.emit('updateLocation', locationData, (response) => {
+                    if (response) {
+                        if (response.success) {
+                            addLog('driver', 'success', 'Basit konum başarıyla güncellendi');
+                        } else {
+                            addLog('driver', 'error', `Basit konum güncellenemedi: ${response.message}`);
+                        }
+                    }
+                });
+            }
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            updateConnectionStatus('driver', 'disconnected');
+            updateConnectionStatus('customer', 'disconnected');
+            
+            addLog('driver', 'info', 'WebSocket Test Dashboard başlatıldı');
+            addLog('customer', 'info', 'WebSocket Test Dashboard başlatıldı');
+        });
+    </script>
+</body>
+</html>

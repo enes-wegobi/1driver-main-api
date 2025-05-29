@@ -28,6 +28,8 @@ import { BatchDistanceRequest } from 'src/clients/maps/maps.interface';
 import { TripStatusService } from './trip-status.service';
 import { DriverPenaltyService } from './driver-penalty.service';
 import { PaymentMethodService } from '../../payments/services/payment-method.service';
+import { DriverStatusService } from 'src/redis/services/driver-status.service';
+import { DriverAvailabilityStatus } from 'src/websocket/dto/driver-location.dto';
 
 export interface TripOperationResult {
   success: boolean;
@@ -64,6 +66,7 @@ export class TripService {
     private readonly eventService: EventService,
     private readonly locationService: LocationService,
     private readonly paymentMethodService: PaymentMethodService,
+    private readonly driverStatusService: DriverStatusService,
   ) {}
 
   // ================================
@@ -734,6 +737,12 @@ export class TripService {
       UserType.CUSTOMER,
     );
 
+    // Set driver status to BUSY when they accept a trip
+    await this.driverStatusService.updateDriverAvailability(
+      driverId,
+      DriverAvailabilityStatus.BUSY,
+    );
+
     await this.notifyRemainingDrivers(updatedTrip, driverId);
     await this.eventService.notifyCustomer(
       updatedTrip,
@@ -860,6 +869,12 @@ export class TripService {
     await this.activeTripService.removeUserActiveTrip(
       customerId,
       UserType.CUSTOMER,
+    );
+
+    // Set driver status back to AVAILABLE when trip is completed
+    await this.driverStatusService.updateDriverAvailability(
+      driverId,
+      DriverAvailabilityStatus.AVAILABLE,
     );
   }
 
@@ -1007,6 +1022,12 @@ export class TripService {
     await this.activeTripService.removeUserActiveTrip(
       customerId,
       UserType.CUSTOMER,
+    );
+
+    // Set driver status back to AVAILABLE when trip is cancelled
+    await this.driverStatusService.updateDriverAvailability(
+      driverId,
+      DriverAvailabilityStatus.AVAILABLE,
     );
   }
 

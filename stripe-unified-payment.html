@@ -1005,7 +1005,7 @@
                 console.log('💾 Backend\'e payment method kaydediliyor...');
                 
                 // Step 3: Save payment method to backend
-                const saveResponse = await fetch(`${apiUrl}/payment-methods/save-from-setup-intent`, {
+                const saveResponse = await fetch(`${apiUrl}/payment-methods`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

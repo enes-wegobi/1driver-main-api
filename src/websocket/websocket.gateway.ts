@@ -104,7 +104,7 @@ export class WebSocketGateway
 
       // Mark user as active based on user type
       if (userType === 'driver') {
-        await this.driverStatusService.markDriverAsActive(payload.userId);
+        await this.driverStatusService.markDriverAsConnected(payload.userId);
 
         // Get current availability status
         const status = await this.driverStatusService.getDriverAvailability(
@@ -147,10 +147,10 @@ export class WebSocketGateway
 
     if (userId) {
       if (userType === 'driver') {
-        // Mark driver as inactive when they disconnect
-        await this.driverStatusService.markDriverAsInactive(userId);
+        // Mark driver as disconnected (preserve availability status)
+        await this.driverStatusService.markDriverAsDisconnected(userId);
         this.logger.log(
-          `Driver ${userId} marked as inactive due to disconnect`,
+          `Driver ${userId} marked as disconnected (availability status preserved)`,
         );
       } else if (userType === 'customer') {
         // Mark customer as inactive when they disconnect
@@ -271,11 +271,36 @@ export class WebSocketGateway
       };
     }
 
+    // Only allow IDLE and AVAILABLE status changes from drivers
+    if (payload.status === DriverAvailabilityStatus.BUSY) {
+      client.emit('error', {
+        message: 'BUSY status is controlled by the trip system',
+      });
+      return {
+        success: false,
+        message: 'BUSY status is controlled by the trip system',
+      };
+    }
+
     this.logger.debug(
       `Driver ${userId} availability update: ${payload.status}`,
     );
 
     try {
+      // Check if driver can change availability
+      const validation = await this.driverStatusService.canChangeAvailability(
+        userId,
+        payload.status,
+      );
+
+      if (!validation.canChange) {
+        client.emit('error', { message: validation.reason });
+        return {
+          success: false,
+          message: validation.reason,
+        };
+      }
+
       await this.driverStatusService.updateDriverAvailability(
         userId,
         payload.status,

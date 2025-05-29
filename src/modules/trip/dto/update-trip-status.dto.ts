@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsEnum, IsNotEmpty } from 'class-validator';
-import { TripStatus } from '../../common/enums/trip-status.enum';
+import { TripStatus } from 'src/common/enums/trip-status.enum';
 
 export class UpdateTripStatusDto {
   @ApiProperty({

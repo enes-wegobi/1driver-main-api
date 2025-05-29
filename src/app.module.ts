@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ConfigModule } from './config/config.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { JwtModule } from './jwt/jwt.module';
@@ -15,6 +16,7 @@ import { SupportTicketsModule } from './modules/support-tickets/support-tickets.
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     ConfigModule,
     JwtModule,
     AuthModule,

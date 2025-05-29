@@ -34,6 +34,7 @@
     "@nestjs/mongoose": "^11.0.3",
     "@nestjs/platform-fastify": "11.0.20",
     "@nestjs/platform-socket.io": "^11.0.17",
+    "@nestjs/schedule": "^6.0.0",
     "@nestjs/swagger": "^11.1.0",
     "@nestjs/websockets": "^11.0.17",
     "@socket.io/redis-adapter": "^8.3.0",

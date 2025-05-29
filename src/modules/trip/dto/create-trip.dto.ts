@@ -8,12 +8,12 @@ import {
   IsNumber,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { TripStatus } from '../../common/enums/trip-status.enum';
-import { PaymentStatus } from '../../common/enums/payment-status.enum';
-import { RoutePoint } from '../../common/clients/maps/maps.interface';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { CustomerDto } from './customer.dto';
 import { DriverDto } from './driver.dto';
+import { RoutePoint } from 'src/clients/maps/maps.interface';
+import { TripStatus } from 'src/common/enums/trip-status.enum';
+import { PaymentStatus } from 'src/common/enums/payment-status.enum';
 
 export class RoutePointDto implements RoutePoint {
   @ApiProperty({ description: 'Latitude coordinate', example: 40.7128 })

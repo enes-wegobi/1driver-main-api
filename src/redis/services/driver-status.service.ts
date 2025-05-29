@@ -34,11 +34,36 @@ export class DriverStatusService extends BaseRedisService {
 
     await pipeline.exec();
 
-    // Update availability status to busy when driver becomes inactive
-    await this.updateDriverAvailability(
-      driverId,
-      DriverAvailabilityStatus.BUSY,
-    );
+    // DO NOT automatically set availability to offline
+    // Driver's availability status should remain as they set it
+    
+    return true;
+  }
+
+  @WithErrorHandling()
+  async markDriverAsDisconnected(driverId: string) {
+    // Only update connection status, not availability status
+    const pipeline = this.client.multi();
+    const key = RedisKeyGenerator.driverActive(driverId);
+
+    pipeline.del(key);
+    pipeline.srem(RedisKeyGenerator.activeDriversSet(), driverId);
+
+    await pipeline.exec();
+
+    return true;
+  }
+
+  @WithErrorHandling()
+  async markDriverAsConnected(driverId: string) {
+    const pipeline = this.client.multi();
+    const key = RedisKeyGenerator.driverActive(driverId);
+
+    pipeline.set(key, new Date().toISOString());
+    pipeline.expire(key, this.ACTIVE_DRIVER_EXPIRY);
+    pipeline.sadd(RedisKeyGenerator.activeDriversSet(), driverId);
+
+    await pipeline.exec();
 
     return true;
   }
@@ -84,7 +109,7 @@ export class DriverStatusService extends BaseRedisService {
     const status = await this.client.get(key);
 
     return (
-      (status as DriverAvailabilityStatus) || DriverAvailabilityStatus.BUSY
+      (status as DriverAvailabilityStatus) || DriverAvailabilityStatus.IDLE
     );
   }
 
@@ -124,5 +149,141 @@ export class DriverStatusService extends BaseRedisService {
         : false;
       return { driverId, isActive };
     });
+  }
+
+  @WithErrorHandling(false)
+  async isDriverRecentlyActive(driverId: string): Promise<boolean> {
+    const key = RedisKeyGenerator.driverActive(driverId);
+    const lastActive = await this.client.get(key);
+
+    if (!lastActive) return false;
+
+    const lastActiveTime = new Date(lastActive).getTime();
+    const now = Date.now();
+    const twoMinutes = 2 * 60 * 1000;
+
+    return (now - lastActiveTime) < twoMinutes;
+  }
+
+  @WithErrorHandling(false)
+  async canAssignTripToDriver(driverId: string): Promise<boolean> {
+    // 1. Driver available mı?
+    const availability = await this.getDriverAvailability(driverId);
+    if (availability !== DriverAvailabilityStatus.AVAILABLE) {
+      return false;
+    }
+
+    // 2. Driver bağlı mı? (Son 2 dakikada aktif mi?)
+    const isRecentlyActive = await this.isDriverRecentlyActive(driverId);
+    if (!isRecentlyActive) {
+      return false;
+    }
+
+    return true;
+  }
+
+  @WithErrorHandling([])
+  async getAvailableDriversForTrip(): Promise<string[]> {
+    // Sadece available ve recently active driver'ları getir
+    const activeDrivers = await this.getActiveDrivers();
+    const availableDrivers: string[] = [];
+
+    const batchSize = 50;
+    for (let i = 0; i < activeDrivers.length; i += batchSize) {
+      const batch = activeDrivers.slice(i, i + batchSize);
+      const pipeline = this.client.multi();
+
+      // Her driver için status'u al
+      batch.forEach(driverId => {
+        pipeline.get(RedisKeyGenerator.driverStatus(driverId));
+      });
+
+      const results = await pipeline.exec();
+      
+      if (results) {
+        for (let j = 0; j < batch.length; j++) {
+          const driverId = batch[j];
+          const status = results[j][1] as DriverAvailabilityStatus;
+          
+          if (status === DriverAvailabilityStatus.AVAILABLE) {
+            // Recently active kontrolü
+            const isRecentlyActive = await this.isDriverRecentlyActive(driverId);
+            if (isRecentlyActive) {
+              availableDrivers.push(driverId);
+            }
+          }
+        }
+      }
+    }
+
+    return availableDrivers;
+  }
+
+  @WithErrorHandling({ canChange: false, reason: 'Unknown error' })
+  async canChangeAvailability(
+    driverId: string,
+    newStatus: DriverAvailabilityStatus,
+  ): Promise<{ canChange: boolean; reason?: string }> {
+    const currentStatus = await this.getDriverAvailability(driverId);
+    
+    // If driver is currently BUSY, they cannot change status manually
+    // This will be controlled by the trip system
+    if (currentStatus === DriverAvailabilityStatus.BUSY) {
+      return {
+        canChange: false,
+        reason: 'Cannot change availability while busy. Status is controlled by trip system.',
+      };
+    }
+    
+    // Allow transitions between IDLE and AVAILABLE
+    if (
+      (currentStatus === DriverAvailabilityStatus.IDLE && newStatus === DriverAvailabilityStatus.AVAILABLE) ||
+      (currentStatus === DriverAvailabilityStatus.AVAILABLE && newStatus === DriverAvailabilityStatus.IDLE)
+    ) {
+      return { canChange: true };
+    }
+    
+    // Same status - no change needed but allow it
+    if (currentStatus.toString() === newStatus.toString()) {
+      return { canChange: true };
+    }
+    
+    return {
+      canChange: false,
+      reason: 'Invalid status transition',
+    };
+  }
+
+  @WithErrorHandling([])
+  async cleanupStaleDrivers(): Promise<string[]> {
+    const cleanedDrivers: string[] = [];
+    
+    // Get all drivers with AVAILABLE status
+    const activeDrivers = await this.getActiveDrivers();
+    
+    for (const driverId of activeDrivers) {
+      const availability = await this.getDriverAvailability(driverId);
+      
+      if (availability === DriverAvailabilityStatus.AVAILABLE) {
+        const isRecentlyActive = await this.isDriverRecentlyActive(driverId);
+        
+        if (!isRecentlyActive) {
+          // Driver has been available but not connected for more than 2 minutes
+          // Check if they've been inactive for more than 5 minutes total
+          const key = RedisKeyGenerator.driverActive(driverId);
+          const lastActive = await this.client.get(key);
+          
+          if (!lastActive) {
+            // No recent activity, set to offline
+            await this.updateDriverAvailability(driverId, DriverAvailabilityStatus.IDLE);
+            cleanedDrivers.push(driverId);
+            
+            this.logger.log(`Driver ${driverId} automatically set to offline due to prolonged inactivity`);
+          }
+        }
+      }
+    }
+    
+    return cleanedDrivers;
   }
 }
