@@ -4,7 +4,8 @@ import { TripDocument } from '../schemas/trip.schema';
 import {
   UserPenaltyDocument,
   PenaltyType,
-} from '../schemas/driver-penalty.schema';
+  PenaltyStatus,
+} from '../schemas/penalty.schema';
 import { UserType } from 'src/common/user-type.enum';
 
 @Injectable()
@@ -31,6 +32,11 @@ export class DriverPenaltyService {
       timeDifferenceMinutes,
     );
 
+    const status = userType === UserType.DRIVER 
+      ? PenaltyStatus.COMPLETED
+      : PenaltyStatus.COMPLETED
+      //: PenaltyStatus.PENDING_PAYMENT;
+
     const penaltyData = {
       userId,
       userType,
@@ -40,7 +46,7 @@ export class DriverPenaltyService {
       actionAt: new Date(),
       referenceTime: trip.tripStartTime,
       timeDifferenceMinutes,
-      isPaid: false,
+      status,
     };
 
     this.logger.log(
@@ -80,6 +86,36 @@ export class DriverPenaltyService {
     return this.driverPenaltyRepository.markAsPaid(penaltyId);
   }
 
+  async hasPendingPenalties(
+    userId: string,
+    userType: UserType,
+  ): Promise<boolean> {
+    const pendingPenalties = await this.driverPenaltyRepository.findByUserIdAndStatus(
+      userId,
+      userType,
+      PenaltyStatus.PENDING_PAYMENT,
+    );
+    return pendingPenalties.length > 0;
+  }
+
+  async updatePenaltyStatus(
+    penaltyId: string,
+    status: PenaltyStatus,
+  ): Promise<UserPenaltyDocument | null> {
+    return this.driverPenaltyRepository.updateStatus(penaltyId, status);
+  }
+
+  async getPendingPenalties(
+    userId: string,
+    userType: UserType,
+  ): Promise<UserPenaltyDocument[]> {
+    return this.driverPenaltyRepository.findByUserIdAndStatus(
+      userId,
+      userType,
+      PenaltyStatus.PENDING_PAYMENT,
+    );
+  }
+
   calculateTimeDifference(tripStartTime: Date): number {
     const now = new Date();
     const diffMs = now.getTime() - tripStartTime.getTime();
@@ -100,9 +136,8 @@ export class DriverPenaltyService {
     }
 
     if (userType === UserType.CUSTOMER) {
-      // Customer penalty: 5 AED per minute after 5 minutes
-      const penaltyMinutes = Math.max(0, timeDifferenceMinutes - 5);
-      return penaltyMinutes * 5; // 5 AED per minute
+      // Customer penalty: Fixed 15 AED
+      return 15;
     }
 
     return 0;

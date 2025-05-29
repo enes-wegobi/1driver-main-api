@@ -6,7 +6,7 @@ import { Trip, TripSchema } from './schemas/trip.schema';
 import {
   UserPenalty,
   UserPenaltySchema,
-} from './schemas/driver-penalty.schema';
+} from './schemas/penalty.schema';
 import { TripService } from './services/trip.service';
 import { DriverPenaltyService } from './services/driver-penalty.service';
 import { ClientsModule } from 'src/clients/clients.module';

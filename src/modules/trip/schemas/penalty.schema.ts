@@ -13,6 +13,12 @@ export enum PenaltyType {
   INAPPROPRIATE_BEHAVIOR = 'INAPPROPRIATE_BEHAVIOR',
 }
 
+export enum PenaltyStatus {
+  COMPLETED = 'COMPLETED',
+  PENDING_PAYMENT = 'PENDING_PAYMENT',
+  PAID = 'PAID',
+}
+
 @Schema({ timestamps: true })
 export class UserPenalty extends EntityDocumentHelper {
   @Prop({ required: true })
@@ -39,8 +45,8 @@ export class UserPenalty extends EntityDocumentHelper {
   @Prop()
   timeDifferenceMinutes?: number; // Time difference for late cancellations
 
-  @Prop({ default: false })
-  isPaid: boolean;
+  @Prop({ required: true, enum: PenaltyStatus })
+  status: PenaltyStatus;
 
   @Prop()
   paidAt?: Date;
@@ -54,4 +60,5 @@ export const UserPenaltySchema = SchemaFactory.createForClass(UserPenalty);
 UserPenaltySchema.index({ userId: 1, userType: 1, createdAt: -1 });
 UserPenaltySchema.index({ tripId: 1 });
 UserPenaltySchema.index({ userType: 1, penaltyType: 1 });
-UserPenaltySchema.index({ isPaid: 1 });
+UserPenaltySchema.index({ status: 1 });
+UserPenaltySchema.index({ userId: 1, status: 1 });

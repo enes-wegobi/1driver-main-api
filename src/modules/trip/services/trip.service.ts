@@ -27,7 +27,9 @@ import { LocationService } from 'src/redis/services/location.service';
 import { BatchDistanceRequest } from 'src/clients/maps/maps.interface';
 import { TripStatusService } from './trip-status.service';
 import { DriverPenaltyService } from './driver-penalty.service';
+import { PenaltyStatus } from '../schemas/penalty.schema';
 import { PaymentMethodService } from '../../payments/services/payment-method.service';
+import { StripeService } from '../../payments/services/stripe.service';
 import { DriverStatusService } from 'src/redis/services/driver-status.service';
 import { DriverAvailabilityStatus } from 'src/websocket/dto/driver-location.dto';
 
@@ -67,6 +69,7 @@ export class TripService {
     private readonly locationService: LocationService,
     private readonly paymentMethodService: PaymentMethodService,
     private readonly driverStatusService: DriverStatusService,
+    private readonly stripeService: StripeService,
   ) {}
 
   // ================================
@@ -122,6 +125,7 @@ export class TripService {
       async () => {
         return this.executeWithErrorHandling('requesting driver', async () => {
           await this.validateCustomerHasPaymentMethod(customerId);
+          //await this.validateCustomerHasNoUnpaidPenalties(customerId);
 
           const trip = await this.findAndValidateRequestTrip(
             tripId,
@@ -300,23 +304,21 @@ export class TripService {
         return this.executeWithErrorHandling(
           'cancelling trip by driver',
           async () => {
-            // 1. Get driver's active trip
             const tripId = await this.getUserActiveTripId(
               driverId,
               UserType.DRIVER,
             );
             const trip = await this.getTrip(tripId);
 
-            // 2. Validate trip can be cancelled
             this.validateCancellableStatus(trip.status);
 
-            // 3. Calculate time difference since trip acceptance
+            // Calculate time difference since trip acceptance
             const timeDifferenceMinutes =
               this.driverPenaltyService.calculateTimeDifference(
                 trip.tripStartTime,
               );
 
-            // 4. Apply penalty if more than 5 minutes
+            // Apply penalty if more than 5 minutes
             if (
               this.driverPenaltyService.shouldApplyPenalty(
                 timeDifferenceMinutes,
@@ -341,7 +343,6 @@ export class TripService {
             // 6. Clean up active trips
             await this.cleanupCancelledTrip(driverId, trip.customer.id);
 
-            // 7. Notify customer
             await this.eventService.notifyCustomer(
               updatedTrip,
               trip.customer.id,
@@ -365,14 +366,12 @@ export class TripService {
         return this.executeWithErrorHandling(
           'cancelling trip by customer',
           async () => {
-            // 1. Get customer's active trip
             const tripId = await this.getUserActiveTripId(
               customerId,
               UserType.CUSTOMER,
             );
             const trip = await this.getTrip(tripId);
 
-            // 2. Validate trip can be cancelled
             this.validateCustomerCancellableStatus(trip.status);
 
             // 3. Calculate time difference since trip acceptance (if driver assigned)
@@ -391,15 +390,40 @@ export class TripService {
                 timeDifferenceMinutes,
               )
             ) {
-              await this.driverPenaltyService.createPenalty(
+              // Create penalty with PENDING_PAYMENT status
+              const penalty = await this.driverPenaltyService.createPenalty(
                 customerId,
                 UserType.CUSTOMER,
                 trip,
                 timeDifferenceMinutes,
               );
+              
               this.logger.log(
-                `Penalty applied to customer ${customerId} for late cancellation: ${timeDifferenceMinutes} minutes`,
+                `Penalty created for customer ${customerId} for late cancellation: ${penalty.penaltyAmount} AED`,
               );
+              /*
+              // Process penalty payment
+              try {
+                await this.processCustomerPenaltyPayment(penalty);
+                
+                // If payment successful, update penalty status to PAID
+                await this.driverPenaltyService.updatePenaltyStatus(
+                  penalty._id,
+                  PenaltyStatus.PAID,
+                );
+                
+                this.logger.log(
+                  `Penalty payment successful for customer ${customerId}`,
+                );
+              } catch (paymentError) {
+                this.logger.error(
+                  `Penalty payment failed for customer ${customerId}: ${paymentError.message}`,
+                );
+                throw new BadRequestException(
+                  'Penalty payment failed. Trip cannot be cancelled until penalty is paid.',
+                );
+              }
+              */
             }
 
             // 5. Update trip status to cancelled
@@ -1270,6 +1294,79 @@ export class TripService {
     const distanceResult =
       await this.mapsService.getBatchDistances(distanceRequest);
     return distanceResult.results?.[driverId]?.distance ?? Infinity;
+  }
+
+  // ================================
+  // PENALTY PAYMENT PROCESSING
+  // ================================
+
+  private async processCustomerPenaltyPayment(penalty: any): Promise<void> {
+    try {
+      // Get customer's default payment method
+      const paymentMethod = await this.paymentMethodService.getDefaultPaymentMethod(
+        penalty.userId,
+      );
+
+      if (!paymentMethod) {
+        throw new BadRequestException(
+          'No payment method found for penalty payment',
+        );
+      }
+
+      // Get customer's Stripe customer ID
+      const customer = await this.customersClient.findOne(penalty.userId, [
+        'stripeCustomerId',
+      ]);
+
+      if (!customer?.stripeCustomerId) {
+        throw new BadRequestException(
+          'Customer does not have a Stripe account',
+        );
+      }
+
+      // Create payment intent for penalty amount
+      const paymentIntent = await this.stripeService.createPaymentIntent(
+        penalty.penaltyAmount * 100, // Convert to cents
+        'aed',
+        customer.stripeCustomerId,
+        paymentMethod.stripePaymentMethodId,
+        {
+          penalty_id: penalty._id,
+          trip_id: penalty.tripId,
+          description: `Penalty payment for trip cancellation - ${penalty.penaltyAmount} AED`,
+        },
+      );
+
+      if (paymentIntent.status !== 'succeeded') {
+        throw new BadRequestException(
+          `Penalty payment failed: ${paymentIntent.status}`,
+        );
+      }
+
+      this.logger.log(
+        `Penalty payment successful for customer ${penalty.userId}: ${penalty.penaltyAmount} AED`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Penalty payment processing failed: ${error.message}`,
+      );
+      throw error;
+    }
+  }
+
+  private async validateCustomerHasNoUnpaidPenalties(
+    customerId: string,
+  ): Promise<void> {
+    const hasPendingPenalties = await this.driverPenaltyService.hasPendingPenalties(
+      customerId,
+      UserType.CUSTOMER,
+    );
+
+    if (hasPendingPenalties) {
+      throw new BadRequestException(
+        'You have unpaid penalties. Please pay your penalties before creating a new trip.',
+      );
+    }
   }
 
   // ================================

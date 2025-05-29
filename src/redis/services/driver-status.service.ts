@@ -101,7 +101,7 @@ export class DriverStatusService extends BaseRedisService {
     return true;
   }
 
-  @WithErrorHandling(DriverAvailabilityStatus.BUSY)
+  @WithErrorHandling(DriverAvailabilityStatus.IDLE)
   async getDriverAvailability(
     driverId: string,
   ): Promise<DriverAvailabilityStatus> {

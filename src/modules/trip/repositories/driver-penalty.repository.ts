@@ -4,7 +4,8 @@ import { Model } from 'mongoose';
 import {
   UserPenalty,
   UserPenaltyDocument,
-} from '../schemas/driver-penalty.schema';
+  PenaltyStatus,
+} from '../schemas/penalty.schema';
 import { UserType } from 'src/common/user-type.enum';
 
 @Injectable()
@@ -48,7 +49,7 @@ export class DriverPenaltyRepository {
     userId: string,
     userType?: UserType,
   ): Promise<UserPenaltyDocument[]> {
-    const filter: any = { userId, isPaid: false };
+    const filter: any = { userId, status: PenaltyStatus.PENDING_PAYMENT };
     if (userType) {
       filter.userType = userType;
     }
@@ -59,9 +60,34 @@ export class DriverPenaltyRepository {
     return this.userPenaltyModel
       .findByIdAndUpdate(
         penaltyId,
-        { isPaid: true, paidAt: new Date() },
+        { status: PenaltyStatus.PAID, paidAt: new Date() },
         { new: true },
       )
+      .exec();
+  }
+
+  async findByUserIdAndStatus(
+    userId: string,
+    userType: UserType,
+    status: PenaltyStatus,
+  ): Promise<UserPenaltyDocument[]> {
+    return this.userPenaltyModel
+      .find({ userId, userType, status })
+      .sort({ createdAt: -1 })
+      .exec();
+  }
+
+  async updateStatus(
+    penaltyId: string,
+    status: PenaltyStatus,
+  ): Promise<UserPenaltyDocument | null> {
+    const updateData: any = { status };
+    if (status === PenaltyStatus.PAID) {
+      updateData.paidAt = new Date();
+    }
+    
+    return this.userPenaltyModel
+      .findByIdAndUpdate(penaltyId, updateData, { new: true })
       .exec();
   }
 }
