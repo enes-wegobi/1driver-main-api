@@ -101,7 +101,7 @@ export class DriverStatusService extends BaseRedisService {
     return true;
   }
 
-  @WithErrorHandling(DriverAvailabilityStatus.IDLE)
+  @WithErrorHandling(DriverAvailabilityStatus.BUSY)
   async getDriverAvailability(
     driverId: string,
   ): Promise<DriverAvailabilityStatus> {
@@ -109,7 +109,7 @@ export class DriverStatusService extends BaseRedisService {
     const status = await this.client.get(key);
 
     return (
-      (status as DriverAvailabilityStatus) || DriverAvailabilityStatus.IDLE
+      (status as DriverAvailabilityStatus) || DriverAvailabilityStatus.BUSY
     );
   }
 
@@ -228,17 +228,17 @@ export class DriverStatusService extends BaseRedisService {
     
     // If driver is currently BUSY, they cannot change status manually
     // This will be controlled by the trip system
-    if (currentStatus === DriverAvailabilityStatus.BUSY) {
+    if (currentStatus === DriverAvailabilityStatus.ON_TRIP) {
       return {
         canChange: false,
         reason: 'Cannot change availability while busy. Status is controlled by trip system.',
       };
     }
-    
-    // Allow transitions between IDLE and AVAILABLE
+
+    // Allow transitions between BUSY and AVAILABLE
     if (
-      (currentStatus === DriverAvailabilityStatus.IDLE && newStatus === DriverAvailabilityStatus.AVAILABLE) ||
-      (currentStatus === DriverAvailabilityStatus.AVAILABLE && newStatus === DriverAvailabilityStatus.IDLE)
+      (currentStatus === DriverAvailabilityStatus.BUSY && newStatus === DriverAvailabilityStatus.AVAILABLE) ||
+      (currentStatus === DriverAvailabilityStatus.AVAILABLE && newStatus === DriverAvailabilityStatus.BUSY)
     ) {
       return { canChange: true };
     }
@@ -275,7 +275,7 @@ export class DriverStatusService extends BaseRedisService {
           
           if (!lastActive) {
             // No recent activity, set to offline
-            await this.updateDriverAvailability(driverId, DriverAvailabilityStatus.IDLE);
+            await this.updateDriverAvailability(driverId, DriverAvailabilityStatus.BUSY);
             cleanedDrivers.push(driverId);
             
             this.logger.log(`Driver ${driverId} automatically set to offline due to prolonged inactivity`);

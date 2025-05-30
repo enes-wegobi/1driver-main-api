@@ -80,4 +80,6 @@ export default () => ({
     mongoPassword: process.env.TRIP_MONGODB_PASSWORD,
   },
   tripCostPerMinute: parseFloat(process.env.TRIP_COST_PER_MINUTE || '1'),
+  tripDriverResponseTimeout: parseInt(process.env.TRIP_DRIVER_RESPONSE_TIMEOUT || '120', 10), // 2 minutes in seconds
+  tripTimeoutCheckInterval: parseInt(process.env.TRIP_TIMEOUT_CHECK_INTERVAL || '30', 10), // 30 seconds
 });

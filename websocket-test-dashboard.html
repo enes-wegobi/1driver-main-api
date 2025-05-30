@@ -284,7 +284,7 @@
             text-transform: uppercase;
         }
 
-        .status-idle {
+        .status-busy {
             background: #95a5a6;
             color: white;
         }
@@ -403,10 +403,10 @@
 
                 <div class="section-title">Driver Availability Status</div>
                 <div class="availability-controls">
-                    <button class="btn btn-warning" onclick="updateDriverAvailability('idle')">IDLE</button>
+                    <button class="btn btn-warning" onclick="updateDriverAvailability('busy')">BUSY</button>
                     <button class="btn btn-success" onclick="updateDriverAvailability('available')">AVAILABLE</button>
                 </div>
-                <div id="driverAvailabilityStatus" class="availability-status status-idle">IDLE</div>
+                <div id="driverAvailabilityStatus" class="availability-status status-busy">BUSY</div>
 
                 <div class="location-section">
                     <div class="section-title">Konum Güncelleme</div>

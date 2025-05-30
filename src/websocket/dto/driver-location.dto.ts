@@ -2,16 +2,16 @@ import { IsBoolean, IsEnum, IsOptional } from 'class-validator';
 import { LocationDto } from './location.dto';
 
 export enum DriverAvailabilityStatus {
-  IDLE = 'idle',
   AVAILABLE = 'available',
   BUSY = 'busy',
+  ON_TRIP = 'on_trip',
 }
 
 export class DriverLocationDto extends LocationDto {
   @IsEnum(DriverAvailabilityStatus)
   @IsOptional()
   availabilityStatus?: DriverAvailabilityStatus =
-    DriverAvailabilityStatus.IDLE;
+    DriverAvailabilityStatus.BUSY;
 
   @IsBoolean()
   @IsOptional()

@@ -271,14 +271,14 @@ export class WebSocketGateway
       };
     }
 
-    // Only allow IDLE and AVAILABLE status changes from drivers
-    if (payload.status === DriverAvailabilityStatus.BUSY) {
+    // Only allow ON_TRIP and AVAILABLE status changes from drivers
+    if (payload.status === DriverAvailabilityStatus.ON_TRIP) {
       client.emit('error', {
-        message: 'BUSY status is controlled by the trip system',
+        message: 'ON_TRIP status is controlled by the trip system',
       });
       return {
         success: false,
-        message: 'BUSY status is controlled by the trip system',
+        message: 'ON_TRIP status is controlled by the trip system',
       };
     }
 

@@ -101,4 +101,16 @@ export class TripRepository {
       .exec();
     return trip ? trip.status : null;
   }
+
+  async findTimedOutTrips(timeoutSeconds: number): Promise<TripDocument[]> {
+    const timeoutDate = new Date(Date.now() - timeoutSeconds * 1000);
+    
+    return this.tripModel
+      .find({
+        status: TripStatus.WAITING_FOR_DRIVER,
+        callStartTime: { $lt: timeoutDate },
+      })
+      .lean()
+      .exec();
+  }
 }

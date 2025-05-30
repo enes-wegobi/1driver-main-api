@@ -43,6 +43,15 @@ export interface ActiveTripResult {
   success: boolean;
   trip?: TripDocument;
   message?: string;
+  driverLocation?: {
+    latitude: number;
+    longitude: number;
+    timestamp: string;
+    accuracy?: number;
+    userId?: string;
+    userType?: string;
+    updatedAt?: string;
+  } | null;
 }
 
 export interface LocationCoords {
@@ -158,7 +167,22 @@ export class TripService {
   }
 
   async getCustomerActiveTrip(customerId: string): Promise<ActiveTripResult> {
-    return this.getUserActiveTrip(customerId, UserType.CUSTOMER);
+    const result = await this.getUserActiveTrip(customerId, UserType.CUSTOMER);
+    
+    // If trip exists and has a driver, fetch driver location
+    if (result.success && result.trip && result.trip.driver) {
+      try {
+        const driverLocation = await this.locationService.getUserLocation(result.trip.driver.id);
+        result.driverLocation = driverLocation;
+      } catch (error) {
+        this.logger.warn(`Failed to fetch driver location for trip ${result.trip._id}: ${error.message}`);
+        result.driverLocation = null;
+      }
+    } else {
+      result.driverLocation = null;
+    }
+    
+    return result;
   }
 
   async getDriverActiveTrip(driverId: string): Promise<ActiveTripResult> {
@@ -761,10 +785,9 @@ export class TripService {
       UserType.CUSTOMER,
     );
 
-    // Set driver status to BUSY when they accept a trip
     await this.driverStatusService.updateDriverAvailability(
       driverId,
-      DriverAvailabilityStatus.BUSY,
+      DriverAvailabilityStatus.ON_TRIP,
     );
 
     await this.notifyRemainingDrivers(updatedTrip, driverId);
