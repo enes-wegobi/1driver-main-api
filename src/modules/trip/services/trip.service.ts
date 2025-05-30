@@ -803,9 +803,9 @@ export class TripService {
     );
   }
 
-  private async notifyRemainingDrivers(
+  async notifyRemainingDrivers(
     updatedTrip: TripDocument,
-    approvedDriverId: string,
+    approvedDriverId?: string,
   ): Promise<void> {
     const remainingDriverIds = updatedTrip.calledDriverIds.filter(
       (id) =>

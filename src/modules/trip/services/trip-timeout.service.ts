@@ -7,6 +7,7 @@ import { ActiveTripService } from 'src/redis/services/active-trip.service';
 import { UserType } from 'src/common/user-type.enum';
 import { EventService } from '../../event/event.service';
 import { TripDocument } from '../schemas/trip.schema';
+import { TripService } from './trip.service';
 
 @Injectable()
 export class TripTimeoutService {
@@ -18,6 +19,7 @@ export class TripTimeoutService {
     private readonly tripRepository: TripRepository,
     private readonly activeTripService: ActiveTripService,
     private readonly eventService: EventService,
+    private readonly tripService: TripService,
   ) {
     this.driverResponseTimeout = this.configService.get<number>(
       'tripDriverResponseTimeout',
@@ -99,16 +101,21 @@ export class TripTimeoutService {
         throw new Error(`Failed to update trip ${trip._id} status`);
       }
 
-      // Notify remaining drivers that the trip has timed out
-      await this.notifyRemainingDrivers(trip);
-
-      // Remove customer's active trip from Redis
       await this.activeTripService.removeUserActiveTrip(
         trip.customer.id,
         UserType.CUSTOMER,
       );
 
-      // Notify customer about driver not found
+      const remainingDriverIds = updatedTrip.calledDriverIds.filter(
+        (id) =>
+          !updatedTrip.rejectedDriverIds.includes(id)
+      );
+
+      await this.eventService.notifyTripAlreadyTaken(
+        updatedTrip,
+        remainingDriverIds,
+      );
+
       await this.eventService.notifyCustomerDriverNotFound(
         updatedTrip,
         trip.customer.id,
