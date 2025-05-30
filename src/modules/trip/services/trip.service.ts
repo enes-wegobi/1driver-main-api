@@ -378,8 +378,8 @@ export class TripService {
         );
       },
       'Trip cancellation is currently being processed. Please try again.',
-      30000, // 30 seconds timeout
-      2, // 2 retries
+      30000,
+      2,
     );
   }
 
@@ -398,7 +398,6 @@ export class TripService {
 
             this.validateCustomerCancellableStatus(trip.status);
 
-            // 3. Calculate time difference since trip acceptance (if driver assigned)
             let timeDifferenceMinutes = 0;
             if (trip.tripStartTime) {
               timeDifferenceMinutes =
@@ -407,7 +406,6 @@ export class TripService {
                 );
             }
 
-            // 4. Apply penalty if more than 5 minutes and driver is assigned
             if (
               trip.driver &&
               this.driverPenaltyService.shouldApplyPenalty(

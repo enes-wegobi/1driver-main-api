@@ -13,6 +13,8 @@ import { PromotionsModule } from './modules/promotions/promotions.module';
 import { ExpoNotificationsModule } from './modules/expo-notifications/expo-notifications.module';
 import { TripModule } from './modules/trip/trip.module';
 import { SupportTicketsModule } from './modules/support-tickets/support-tickets.module';
+import { TestModule } from './modules/test/test.module';
+import { LocationModule } from './modules/location/location.module';
 
 @Module({
   imports: [
@@ -30,6 +32,8 @@ import { SupportTicketsModule } from './modules/support-tickets/support-tickets.
     PromotionsModule,
     ExpoNotificationsModule,
     SupportTicketsModule,
+    TestModule,
+    LocationModule,
   ],
 })
 export class AppModule {}

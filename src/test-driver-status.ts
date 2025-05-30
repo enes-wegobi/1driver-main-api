@@ -1,6 +1,3 @@
-// Test file to demonstrate the new driver status management
-// This file can be used for manual testing or removed after verification
-
 import { DriverStatusService } from './redis/services/driver-status.service';
 import { DriverAvailabilityStatus } from './websocket/dto/driver-location.dto';
 
