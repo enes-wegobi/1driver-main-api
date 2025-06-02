@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { TripRepository } from '../repositories/trip.repository';
 import { CreateTripDto } from '../dto/create-trip.dto';
 import { TripDocument } from '../schemas/trip.schema';
@@ -992,8 +992,10 @@ export class TripService {
         await this.paymentMethodService.getDefaultPaymentMethod(customerId);
 
       if (!defaultPaymentMethod) {
-        throw new BadRequestException(
-          'You must add a payment method before requesting a driver',
+        throw new RedisException(
+          RedisErrors.PAYMENT_NOT_FOUND.code,
+          RedisErrors.PAYMENT_NOT_FOUND.message,
+          HttpStatus.BAD_REQUEST,
         );
       }
     } catch (error) {
