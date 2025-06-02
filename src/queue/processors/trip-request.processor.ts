@@ -1,8 +1,4 @@
-import {
-  Processor,
-  WorkerHost,
-  OnWorkerEvent,
-} from '@nestjs/bullmq';
+import { Processor, WorkerHost, OnWorkerEvent } from '@nestjs/bullmq';
 import { Injectable, Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { TripRequestJob, JobResult } from '../interfaces/queue-job.interface';
@@ -36,7 +32,9 @@ export class TripRequestProcessor extends WorkerHost {
     }
   }
 
-  private async handleTripRequest(job: Job<TripRequestJob>): Promise<JobResult> {
+  private async handleTripRequest(
+    job: Job<TripRequestJob>,
+  ): Promise<JobResult> {
     const { tripId, driverId, customerLocation, tripData } = job.data;
 
     this.logger.debug(

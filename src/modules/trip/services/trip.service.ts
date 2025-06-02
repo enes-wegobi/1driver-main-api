@@ -157,7 +157,7 @@ export class TripService {
             tripId,
           );
 
-          // Create Bull Queue jobs for each driver
+          // Create Queue jobs for each driver
           for (const driverId of driverIds) {
             await this.tripQueueService.addTripRequest({
               tripId,
@@ -754,6 +754,10 @@ export class TripService {
     });
 
     if (this.areAllDriversRejected(updatedTrip)) {
+      await this.activeTripService.removeUserActiveTrip(
+      updatedTrip.customer.id,
+      UserType.CUSTOMER,
+    );
       await this.eventService.notifyCustomerDriverNotFound(
         updatedTrip,
         updatedTrip.customer.id,

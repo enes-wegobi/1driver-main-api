@@ -1,20 +1,20 @@
-import {
-  Processor,
-  WorkerHost,
-  OnWorkerEvent,
-} from '@nestjs/bullmq';
+import { Processor, WorkerHost, OnWorkerEvent } from '@nestjs/bullmq';
 import { Injectable, Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { TripTimeoutJob, JobResult } from '../interfaces/queue-job.interface';
 import { TripService } from '../../modules/trip/services/trip.service';
 import { TripStatus } from '../../common/enums/trip-status.enum';
+import { EventService } from '../../modules/event/event.service';
 
 @Processor('trip-timeouts')
 @Injectable()
 export class TripTimeoutProcessor extends WorkerHost {
   private readonly logger = new Logger(TripTimeoutProcessor.name);
 
-  constructor(private readonly tripService: TripService) {
+  constructor(
+    private readonly tripService: TripService,
+    private readonly eventService: EventService,
+  ) {
     super();
   }
 
@@ -27,7 +27,9 @@ export class TripTimeoutProcessor extends WorkerHost {
     }
   }
 
-  private async handleTripTimeout(job: Job<TripTimeoutJob>): Promise<JobResult> {
+  private async handleTripTimeout(
+    job: Job<TripTimeoutJob>,
+  ): Promise<JobResult> {
     const { tripId, driverId, timeoutType } = job.data;
 
     this.logger.debug(
@@ -70,13 +72,26 @@ export class TripTimeoutProcessor extends WorkerHost {
           rejectedDriverIds.push(driverId);
         }
 
-        await this.tripService.updateTrip(tripId, { rejectedDriverIds });
+        const result = await this.tripService.updateTrip(tripId, {
+          rejectedDriverIds,
+        });
+        if (result.success && result.trip) {
+          const updatedTrip = result.trip;
 
-        this.logger.log(
-          `Driver ${driverId} timed out for trip ${tripId}, added to rejected list`,
-        );
+          if (this.areAllDriversRejected(updatedTrip)) {
+            await this.eventService.notifyCustomerDriverNotFound(
+              updatedTrip,
+              updatedTrip.customer.id,
+            );
+            this.logger.log(
+              `All drivers rejected for trip ${tripId}, notified customer`,
+            );
+          }
+          this.logger.log(
+            `Driver ${driverId} timed out for trip ${tripId}, added to rejected list`,
+          );
+        }
       }
-
       return {
         success: true,
         message: 'Timeout handled',
@@ -108,5 +123,15 @@ export class TripTimeoutProcessor extends WorkerHost {
   @OnWorkerEvent('failed')
   onFailed(job: Job<TripTimeoutJob>, error: Error) {
     this.logger.error(`Timeout job ${job.id} failed: ${error.message}`);
+  }
+
+  private areAllDriversRejected(trip: any): boolean {
+    return (
+      trip &&
+      trip.calledDriverIds &&
+      trip.rejectedDriverIds &&
+      trip.calledDriverIds.length === trip.rejectedDriverIds.length &&
+      trip.calledDriverIds.length > 0
+    );
   }
 }
