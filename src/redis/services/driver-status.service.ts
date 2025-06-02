@@ -231,7 +231,7 @@ export class DriverStatusService extends BaseRedisService {
     if (currentStatus === DriverAvailabilityStatus.ON_TRIP) {
       return {
         canChange: false,
-        reason: 'Cannot change availability while busy. Status is controlled by trip system.',
+        reason: 'Cannot change availability while on trip. Status is controlled by trip system.',
       };
     }
 

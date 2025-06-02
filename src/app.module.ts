@@ -15,7 +15,7 @@ import { TripModule } from './modules/trip/trip.module';
 import { SupportTicketsModule } from './modules/support-tickets/support-tickets.module';
 import { TestModule } from './modules/test/test.module';
 import { LocationModule } from './modules/location/location.module';
-import { QueueMonitoringModule } from './modules/queue-monitoring/queue-monitoring.module';
+import { QueueModule } from './queue/queue.module';
 
 @Module({
   imports: [
@@ -35,7 +35,7 @@ import { QueueMonitoringModule } from './modules/queue-monitoring/queue-monitori
     SupportTicketsModule,
     TestModule,
     LocationModule,
-    QueueMonitoringModule,
+    QueueModule,
   ],
 })
 export class AppModule {}

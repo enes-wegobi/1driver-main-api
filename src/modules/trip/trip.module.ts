@@ -15,8 +15,6 @@ import { MapsModule } from 'src/clients/maps/maps.module';
 import { LockModule } from 'src/common/lock/lock.module';
 import { TripStatusService } from './services/trip-status.service';
 import { TripPaymentService } from './services/trip-payment.service';
-import { TripTimeoutService } from './services/trip-timeout.service';
-import { QueueTestService } from './services/queue-test.service';
 import { DriversTripsController } from './controllers/driver-trip.controller';
 import { CustomersTripsController } from './controllers/customer-trip.controller';
 import { DriverPenaltyController } from './controllers/driver-penalty.controller';
@@ -25,6 +23,7 @@ import { RedisModule } from 'src/redis/redis.module';
 import { EventModule } from '../event/event.module';
 import { JwtModule } from 'src/jwt/jwt.module';
 import { PaymentsModule } from '../payments/payments.module';
+import { QueueModule } from '../../queue/queue.module';
 
 @Module({
   imports: [
@@ -41,6 +40,7 @@ import { PaymentsModule } from '../payments/payments.module';
     EventModule,
     JwtModule,
     forwardRef(() => PaymentsModule),
+    forwardRef(() => QueueModule),
   ],
   providers: [
     TripService,
@@ -49,14 +49,12 @@ import { PaymentsModule } from '../payments/payments.module';
     DriverPenaltyService,
     TripStatusService,
     TripPaymentService,
-    TripTimeoutService,
-    QueueTestService,
   ],
   controllers: [
     DriversTripsController,
     CustomersTripsController,
     DriverPenaltyController,
   ],
-  exports: [TripService, TripPaymentService, DriverPenaltyService, QueueTestService],
+  exports: [TripService, TripPaymentService, DriverPenaltyService],
 })
 export class TripModule {}
