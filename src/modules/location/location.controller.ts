@@ -79,7 +79,7 @@ export class LocationController {
       };
     }
 
-    this.logger.debug(
+    this.logger.log(
       `Driver location update from ${user.userId}: ${JSON.stringify(payload)}`,
     );
 
