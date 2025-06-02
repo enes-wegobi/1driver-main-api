@@ -32,6 +32,7 @@ import { PaymentMethodService } from '../../payments/services/payment-method.ser
 import { StripeService } from '../../payments/services/stripe.service';
 import { DriverStatusService } from 'src/redis/services/driver-status.service';
 import { DriverAvailabilityStatus } from 'src/websocket/dto/driver-location.dto';
+import { DriverRequestQueueService } from 'src/redis/services/driver-request-queue.service';
 
 export interface TripOperationResult {
   success: boolean;
@@ -79,6 +80,7 @@ export class TripService {
     private readonly paymentMethodService: PaymentMethodService,
     private readonly driverStatusService: DriverStatusService,
     private readonly stripeService: StripeService,
+    private readonly driverRequestQueueService: DriverRequestQueueService,
   ) {}
 
   // ================================
@@ -143,6 +145,24 @@ export class TripService {
 
           const driverIds = await this.searchDriver(lat, lon);
 
+          // QUEUE MANAGEMENT: Separate available and busy drivers
+          const availableDrivers: string[] = [];
+          const busyDrivers: string[] = [];
+
+          for (const driverId of driverIds) {
+            const currentRequest = await this.driverRequestQueueService.getDriverCurrentRequest(driverId);
+            
+            if (!currentRequest) {
+              // Driver is available - send immediately
+              availableDrivers.push(driverId);
+            } else {
+              // Driver is busy - add to queue
+              busyDrivers.push(driverId);
+              await this.driverRequestQueueService.addRequestToDriverQueue(driverId, tripId, 2);
+              this.logger.debug(`Added trip ${tripId} to driver ${driverId} queue (driver busy with ${currentRequest})`);
+            }
+          }
+
           const updateData = this.buildDriverRequestUpdateData(
             driverIds,
             trip.callRetryCount,
@@ -155,7 +175,18 @@ export class TripService {
             tripId,
           );
 
-          await this.eventService.notifyNewTripRequest(updatedTrip, driverIds);
+          // Only notify available drivers immediately
+          if (availableDrivers.length > 0) {
+            // Mark these drivers as having current request
+            for (const driverId of availableDrivers) {
+              await this.driverRequestQueueService.setDriverCurrentRequest(driverId, tripId);
+            }
+            
+            await this.eventService.notifyNewTripRequest(updatedTrip, availableDrivers);
+            this.logger.log(`Notified ${availableDrivers.length} available drivers, queued to ${busyDrivers.length} busy drivers`);
+          } else {
+            this.logger.log(`All ${driverIds.length} drivers are busy, trip ${tripId} queued to all`);
+          }
 
           return { success: true, trip: updatedTrip };
         });
@@ -714,6 +745,10 @@ export class TripService {
       rejectedDriverIds.push(driverId);
     }
 
+    // QUEUE MANAGEMENT: Clear driver's current request and process next in queue
+    await this.driverRequestQueueService.clearDriverCurrentRequest(driverId);
+    await this.processNextQueuedRequestForDriver(driverId);
+
     const newStatus = this.determineStatusAfterRejection(
       trip,
       rejectedDriverIds,
@@ -787,6 +822,16 @@ export class TripService {
       driverId,
       DriverAvailabilityStatus.ON_TRIP,
     );
+
+    // QUEUE MANAGEMENT: Remove this trip from all queues and process next requests
+    await this.driverRequestQueueService.removeRequestFromAllQueues(updatedTrip._id);
+    
+    // Process next queued requests for other drivers
+    for (const otherDriverId of updatedTrip.calledDriverIds) {
+      if (otherDriverId !== driverId) {
+        await this.processNextQueuedRequestForDriver(otherDriverId);
+      }
+    }
 
     await this.notifyRemainingDrivers(updatedTrip, driverId);
     await this.eventService.notifyCustomer(
@@ -1387,6 +1432,39 @@ export class TripService {
       throw new BadRequestException(
         'You have unpaid penalties. Please pay your penalties before creating a new trip.',
       );
+    }
+  }
+
+  // ================================
+  // QUEUE MANAGEMENT HELPERS
+  // ================================
+
+  /**
+   * Process next queued request for a driver (transparent to frontend)
+   */
+  private async processNextQueuedRequestForDriver(driverId: string): Promise<void> {
+    try {
+      const nextTripId = await this.driverRequestQueueService.getNextRequestForDriver(driverId);
+      
+      if (nextTripId) {
+        // Set as current request and remove from queue
+        await this.driverRequestQueueService.setDriverCurrentRequest(driverId, nextTripId);
+        await this.driverRequestQueueService.removeRequestFromDriverQueue(driverId, nextTripId);
+        
+        // Check if trip is still valid
+        const trip = await this.findById(nextTripId);
+        if (trip && trip.status === TripStatus.WAITING_FOR_DRIVER) {
+          // Send normal trip request notification (transparent to driver)
+          await this.eventService.notifyNewTripRequest(trip, [driverId]);
+          this.logger.debug(`Sent queued trip ${nextTripId} to driver ${driverId}`);
+        } else {
+          // Trip is no longer valid, clear current request and try next
+          await this.driverRequestQueueService.clearDriverCurrentRequest(driverId);
+          await this.processNextQueuedRequestForDriver(driverId);
+        }
+      }
+    } catch (error) {
+      this.logger.error(`Error processing next queued request for driver ${driverId}: ${error.message}`);
     }
   }
 

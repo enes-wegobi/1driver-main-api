@@ -57,4 +57,17 @@ export class RedisKeyGenerator {
   static userActiveToken(userId: string, userType: UserType): string {
     return `auth:user:active_token:${userType}:${userId}`;
   }
+
+  // Driver request queue keys
+  static driverCurrentRequest(driverId: string): string {
+    return `driver:current_request:${driverId}`;
+  }
+
+  static driverRequestQueue(driverId: string): string {
+    return `driver:request_queue:${driverId}`;
+  }
+
+  static tripQueuedDrivers(tripId: string): string {
+    return `trip:queued_drivers:${tripId}`;
+  }
 }

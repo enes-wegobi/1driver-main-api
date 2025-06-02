@@ -16,6 +16,7 @@ import { LockModule } from 'src/common/lock/lock.module';
 import { TripStatusService } from './services/trip-status.service';
 import { TripPaymentService } from './services/trip-payment.service';
 import { TripTimeoutService } from './services/trip-timeout.service';
+import { QueueTestService } from './services/queue-test.service';
 import { DriversTripsController } from './controllers/driver-trip.controller';
 import { CustomersTripsController } from './controllers/customer-trip.controller';
 import { DriverPenaltyController } from './controllers/driver-penalty.controller';
@@ -49,12 +50,13 @@ import { PaymentsModule } from '../payments/payments.module';
     TripStatusService,
     TripPaymentService,
     TripTimeoutService,
+    QueueTestService,
   ],
   controllers: [
     DriversTripsController,
     CustomersTripsController,
     DriverPenaltyController,
   ],
-  exports: [TripService, TripPaymentService, DriverPenaltyService],
+  exports: [TripService, TripPaymentService, DriverPenaltyService, QueueTestService],
 })
 export class TripModule {}

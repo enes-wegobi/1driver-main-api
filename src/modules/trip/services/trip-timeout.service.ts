@@ -8,6 +8,7 @@ import { UserType } from 'src/common/user-type.enum';
 import { EventService } from '../../event/event.service';
 import { TripDocument } from '../schemas/trip.schema';
 import { TripService } from './trip.service';
+import { DriverRequestQueueService } from 'src/redis/services/driver-request-queue.service';
 
 @Injectable()
 export class TripTimeoutService {
@@ -20,6 +21,7 @@ export class TripTimeoutService {
     private readonly activeTripService: ActiveTripService,
     private readonly eventService: EventService,
     private readonly tripService: TripService,
+    private readonly driverRequestQueueService: DriverRequestQueueService,
   ) {
     this.driverResponseTimeout = this.configService.get<number>(
       'tripDriverResponseTimeout',
@@ -89,6 +91,9 @@ export class TripTimeoutService {
         `Processing timeout for trip ${trip._id} (customer: ${trip.customer.id})`,
       );
 
+      // QUEUE MANAGEMENT: Remove this trip from all queues
+      await this.driverRequestQueueService.removeRequestFromAllQueues(trip._id);
+
       // Update trip status to DRIVER_NOT_FOUND
       const updatedTrip = await this.tripRepository.findByIdAndUpdate(
         trip._id,
@@ -101,21 +106,35 @@ export class TripTimeoutService {
         throw new Error(`Failed to update trip ${trip._id} status`);
       }
 
+      // Clean up customer's active trip
       await this.activeTripService.removeUserActiveTrip(
         trip.customer.id,
         UserType.CUSTOMER,
       );
 
+      // QUEUE MANAGEMENT: Process next queued requests for affected drivers
+      for (const driverId of trip.calledDriverIds) {
+        const currentRequest = await this.driverRequestQueueService.getDriverCurrentRequest(driverId);
+        if (currentRequest === trip._id) {
+          // Clear current request and process next in queue
+          await this.driverRequestQueueService.clearDriverCurrentRequest(driverId);
+          await this.processNextQueuedRequestForDriver(driverId);
+        }
+      }
+
+      // Notify remaining drivers that trip is no longer available
       const remainingDriverIds = updatedTrip.calledDriverIds.filter(
-        (id) =>
-          !updatedTrip.rejectedDriverIds.includes(id)
+        (id) => !updatedTrip.rejectedDriverIds.includes(id)
       );
 
-      await this.eventService.notifyTripAlreadyTaken(
-        updatedTrip,
-        remainingDriverIds,
-      );
+      if (remainingDriverIds.length > 0) {
+        await this.eventService.notifyTripAlreadyTaken(
+          updatedTrip,
+          remainingDriverIds,
+        );
+      }
 
+      // Notify customer that no driver was found
       await this.eventService.notifyCustomerDriverNotFound(
         updatedTrip,
         trip.customer.id,
@@ -129,6 +148,35 @@ export class TripTimeoutService {
         `Error processing timeout for trip ${trip._id}: ${error.message}`,
       );
       throw error;
+    }
+  }
+
+  /**
+   * Process next queued request for a driver (transparent queue management)
+   */
+  private async processNextQueuedRequestForDriver(driverId: string): Promise<void> {
+    try {
+      const nextTripId = await this.driverRequestQueueService.getNextRequestForDriver(driverId);
+      
+      if (nextTripId) {
+        // Set as current request and remove from queue
+        await this.driverRequestQueueService.setDriverCurrentRequest(driverId, nextTripId);
+        await this.driverRequestQueueService.removeRequestFromDriverQueue(driverId, nextTripId);
+        
+        // Check if trip is still valid
+        const trip = await this.tripService.findById(nextTripId);
+        if (trip && trip.status === TripStatus.WAITING_FOR_DRIVER) {
+          // Send normal trip request notification (transparent to driver)
+          await this.eventService.notifyNewTripRequest(trip, [driverId]);
+          this.logger.debug(`Sent queued trip ${nextTripId} to driver ${driverId} after timeout cleanup`);
+        } else {
+          // Trip is no longer valid, clear current request and try next
+          await this.driverRequestQueueService.clearDriverCurrentRequest(driverId);
+          await this.processNextQueuedRequestForDriver(driverId);
+        }
+      }
+    } catch (error) {
+      this.logger.error(`Error processing next queued request for driver ${driverId}: ${error.message}`);
     }
   }
 
