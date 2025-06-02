@@ -724,6 +724,7 @@ export class TripService {
     return {
       status: TripStatus.WAITING_FOR_DRIVER,
       calledDriverIds: driverIds,
+      rejectedDriverIds: [],
       callStartTime: new Date(),
       callRetryCount: (currentRetryCount || 0) + 1,
     };
