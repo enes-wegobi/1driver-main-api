@@ -741,7 +741,7 @@ export class TripService {
       rejectedDriverIds.push(driverId);
     }
 
-    // Remove jobs for this driver and trip from Bull Queue
+    // Remove jobs for this driver and trip from queue
     await this.tripQueueService.removeJobsByDriverAndTrip(driverId, tripId);
 
     const newStatus = this.determineStatusAfterRejection(
@@ -818,7 +818,7 @@ export class TripService {
       DriverAvailabilityStatus.ON_TRIP,
     );
 
-    // QUEUE MANAGEMENT: Remove this trip from all Bull queues
+    //Remove this trip from all queues
     await this.tripQueueService.removeJobsByTripId(updatedTrip._id);
 
     await this.notifyRemainingDrivers(updatedTrip, driverId);

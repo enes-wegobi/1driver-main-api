@@ -1,25 +1,33 @@
 import {
-  Process,
   Processor,
-  OnQueueActive,
-  OnQueueCompleted,
-  OnQueueFailed,
-} from '@nestjs/bull';
+  WorkerHost,
+  OnWorkerEvent,
+} from '@nestjs/bullmq';
 import { Injectable, Logger } from '@nestjs/common';
-import { Job } from 'bull';
+import { Job } from 'bullmq';
 import { TripTimeoutJob, JobResult } from '../interfaces/queue-job.interface';
 import { TripService } from '../../modules/trip/services/trip.service';
 import { TripStatus } from '../../common/enums/trip-status.enum';
 
 @Processor('trip-timeouts')
 @Injectable()
-export class TripTimeoutProcessor {
+export class TripTimeoutProcessor extends WorkerHost {
   private readonly logger = new Logger(TripTimeoutProcessor.name);
 
-  constructor(private readonly tripService: TripService) {}
+  constructor(private readonly tripService: TripService) {
+    super();
+  }
 
-  @Process('timeout-trip-request')
-  async handleTripTimeout(job: Job<TripTimeoutJob>): Promise<JobResult> {
+  async process(job: Job<TripTimeoutJob, any, string>): Promise<JobResult> {
+    switch (job.name) {
+      case 'timeout-trip-request':
+        return this.handleTripTimeout(job);
+      default:
+        throw new Error(`Unknown job type: ${job.name}`);
+    }
+  }
+
+  private async handleTripTimeout(job: Job<TripTimeoutJob>): Promise<JobResult> {
     const { tripId, driverId, timeoutType } = job.data;
 
     this.logger.debug(
@@ -85,19 +93,19 @@ export class TripTimeoutProcessor {
     }
   }
 
-  @OnQueueActive()
+  @OnWorkerEvent('active')
   onActive(job: Job<TripTimeoutJob>) {
     this.logger.debug(
       `Processing timeout job ${job.id}: tripId=${job.data.tripId}, type=${job.data.timeoutType}`,
     );
   }
 
-  @OnQueueCompleted()
+  @OnWorkerEvent('completed')
   onCompleted(job: Job<TripTimeoutJob>, result: JobResult) {
     this.logger.debug(`Completed timeout job ${job.id}: ${result.message}`);
   }
 
-  @OnQueueFailed()
+  @OnWorkerEvent('failed')
   onFailed(job: Job<TripTimeoutJob>, error: Error) {
     this.logger.error(`Timeout job ${job.id} failed: ${error.message}`);
   }

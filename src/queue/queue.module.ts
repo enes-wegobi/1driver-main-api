@@ -1,5 +1,5 @@
 import { forwardRef, Module } from '@nestjs/common';
-import { BullModule } from '@nestjs/bull';
+import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TripQueueService } from './services/trip-queue.service';
 import { TripRequestProcessor } from './processors/trip-request.processor';
@@ -13,7 +13,7 @@ import { EventModule } from 'src/modules/event/event.module';
     BullModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
-        redis: {
+        connection: {
           host: configService.get('queue.redis.host'),
           port: configService.get('queue.redis.port'),
           username: configService.get('queue.redis.username'),

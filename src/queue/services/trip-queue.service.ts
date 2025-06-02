@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { InjectQueue } from '@nestjs/bull';
-import { Queue, Job } from 'bull';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue, Job } from 'bullmq';
 import { ConfigService } from '@nestjs/config';
 import {
   TripRequestJob,
@@ -41,7 +41,11 @@ export class TripQueueService {
       jobData.retryCount,
     );
 
+    // Create custom job ID for efficient filtering
+    const customJobId = `trip-${jobData.tripId}-driver-${jobData.driverId}-${Date.now()}`;
+
     const jobOptions = {
+      jobId: customJobId,
       priority,
       attempts: options?.attempts || 3,
       backoff: options?.backoff || {
@@ -51,10 +55,16 @@ export class TripQueueService {
       removeOnComplete: options?.removeOnComplete ?? 100,
       removeOnFail: options?.removeOnFail ?? 50,
       delay: options?.delay || 0,
+      // Tags for efficient filtering
+      tags: [
+        `driver:${jobData.driverId}`,
+        `trip:${jobData.tripId}`,
+        `driver-trip:${jobData.driverId}-${jobData.tripId}`,
+      ],
     };
 
     this.logger.debug(
-      `Adding trip request job: tripId=${jobData.tripId}, driverId=${jobData.driverId}, priority=${priority}`,
+      `Adding trip request job: tripId=${jobData.tripId}, driverId=${jobData.driverId}, priority=${priority}, jobId=${customJobId}`,
     );
 
     const job = await this.tripRequestQueue.add(
@@ -88,15 +98,26 @@ export class TripQueueService {
   ): Promise<Job<TripTimeoutJob>> {
     const delay = Math.max(0, jobData.scheduledAt.getTime() - Date.now());
 
+    // Create custom job ID for efficient filtering
+    const customJobId = `timeout-trip-${jobData.tripId}-driver-${jobData.driverId}-${jobData.timeoutType}-${Date.now()}`;
+
     const jobOptions = {
+      jobId: customJobId,
       delay,
       attempts: options?.attempts || 1,
       removeOnComplete: options?.removeOnComplete ?? 100,
       removeOnFail: options?.removeOnFail ?? 50,
+      // Tags for efficient filtering
+      tags: [
+        `driver:${jobData.driverId}`,
+        `trip:${jobData.tripId}`,
+        `driver-trip:${jobData.driverId}-${jobData.tripId}`,
+        `timeout:${jobData.timeoutType}`,
+      ],
     };
 
     this.logger.debug(
-      `Adding timeout job: tripId=${jobData.tripId}, driverId=${jobData.driverId}, type=${jobData.timeoutType}, delay=${delay}ms`,
+      `Adding timeout job: tripId=${jobData.tripId}, driverId=${jobData.driverId}, type=${jobData.timeoutType}, delay=${delay}ms, jobId=${customJobId}`,
     );
 
     return await this.tripTimeoutQueue.add(
@@ -107,32 +128,30 @@ export class TripQueueService {
   }
 
   /**
-   * Remove all jobs related to a specific trip
+   * Remove all jobs related to a specific trip (OPTIMIZED)
+   * Uses custom job ID patterns for efficient removal
    */
   async removeJobsByTripId(tripId: string): Promise<void> {
     this.logger.debug(`Removing all jobs for trip ${tripId}`);
 
-    // Remove from trip requests queue
-    const tripRequestJobs = await this.tripRequestQueue.getJobs([
-      'waiting',
-      'delayed',
-      'active',
+    // Get all jobs and filter by job ID pattern (more efficient than filtering by data)
+    const [tripRequestJobs, tripTimeoutJobs] = await Promise.all([
+      this.tripRequestQueue.getJobs(['waiting', 'delayed', 'active']),
+      this.tripTimeoutQueue.getJobs(['waiting', 'delayed', 'active']),
     ]);
-    const tripRequestJobsToRemove = tripRequestJobs.filter(
-      (job) => job.data.tripId === tripId,
-    );
 
-    // Remove from trip timeouts queue
-    const tripTimeoutJobs = await this.tripTimeoutQueue.getJobs([
-      'waiting',
-      'delayed',
-      'active',
-    ]);
-    const tripTimeoutJobsToRemove = tripTimeoutJobs.filter(
-      (job) => job.data.tripId === tripId,
-    );
+    // Filter by job ID pattern (faster than filtering by job.data)
+    const tripRequestJobsToRemove = tripRequestJobs.filter((job) => {
+      const jobId = job.id?.toString() || '';
+      return jobId.startsWith(`trip-${tripId}-`);
+    });
 
-    // Remove jobs
+    const tripTimeoutJobsToRemove = tripTimeoutJobs.filter((job) => {
+      const jobId = job.id?.toString() || '';
+      return jobId.startsWith(`timeout-trip-${tripId}-`);
+    });
+
+    // Remove jobs in parallel
     await Promise.all([
       ...tripRequestJobsToRemove.map((job) => job.remove()),
       ...tripTimeoutJobsToRemove.map((job) => job.remove()),
@@ -144,7 +163,7 @@ export class TripQueueService {
   }
 
   /**
-   * Remove jobs for a specific driver and trip
+   * Remove jobs for a specific driver and trip (OPTIMIZED with Tags)
    */
   async removeJobsByDriverAndTrip(
     driverId: string,
@@ -154,34 +173,22 @@ export class TripQueueService {
       `Removing jobs for driver ${driverId} and trip ${tripId}`,
     );
 
-    // Remove from trip requests queue
-    const tripRequestJobs = await this.tripRequestQueue.getJobs([
-      'waiting',
-      'delayed',
-      'active',
+    // Use tags for efficient filtering - only get jobs with specific driver-trip combination
+    const tag = `driver-trip:${driverId}-${tripId}`;
+    
+    const [tripRequestJobs, tripTimeoutJobs] = await Promise.all([
+      this.tripRequestQueue.getJobsByTag(tag),
+      this.tripTimeoutQueue.getJobsByTag(tag),
     ]);
-    const tripRequestJobsToRemove = tripRequestJobs.filter(
-      (job) => job.data.tripId === tripId && job.data.driverId === driverId,
-    );
 
-    // Remove from trip timeouts queue
-    const tripTimeoutJobs = await this.tripTimeoutQueue.getJobs([
-      'waiting',
-      'delayed',
-      'active',
-    ]);
-    const tripTimeoutJobsToRemove = tripTimeoutJobs.filter(
-      (job) => job.data.tripId === tripId && job.data.driverId === driverId,
-    );
-
-    // Remove jobs
+    // Remove jobs in parallel - no filtering needed as tags are precise
     await Promise.all([
-      ...tripRequestJobsToRemove.map((job) => job.remove()),
-      ...tripTimeoutJobsToRemove.map((job) => job.remove()),
+      ...tripRequestJobs.map((job) => job.remove()),
+      ...tripTimeoutJobs.map((job) => job.remove()),
     ]);
 
     this.logger.debug(
-      `Removed ${tripRequestJobsToRemove.length} trip request jobs and ${tripTimeoutJobsToRemove.length} timeout jobs for driver ${driverId} and trip ${tripId}`,
+      `Removed ${tripRequestJobs.length} trip request jobs and ${tripTimeoutJobs.length} timeout jobs for driver ${driverId} and trip ${tripId}`,
     );
   }
 
@@ -235,7 +242,7 @@ export class TripQueueService {
 
     const filterJobs = (jobs: Job[]) =>
       excludeJobId
-        ? jobs.filter((job) => job.id.toString() !== excludeJobId)
+        ? jobs.filter((job) => job.id?.toString() !== excludeJobId)
         : jobs;
 
     return (
@@ -284,15 +291,19 @@ export class TripQueueService {
    * Clean up completed and failed jobs
    */
   async cleanupJobs(): Promise<void> {
-    const [tripRequestCleaned, tripTimeoutCleaned] = await Promise.all([
-      this.tripRequestQueue.clean(24 * 60 * 60 * 1000, 'completed'), // 24 hours
-      this.tripRequestQueue.clean(24 * 60 * 60 * 1000, 'failed'),
-      this.tripTimeoutQueue.clean(24 * 60 * 60 * 1000, 'completed'),
-      this.tripTimeoutQueue.clean(24 * 60 * 60 * 1000, 'failed'),
+    const cleanOlderThan = 24 * 60 * 60 * 1000; // 24 hours
+    
+    const [tripRequestCompleted, tripRequestFailed, tripTimeoutCompleted, tripTimeoutFailed] = await Promise.all([
+      this.tripRequestQueue.clean(cleanOlderThan, 100, 'completed'),
+      this.tripRequestQueue.clean(cleanOlderThan, 100, 'failed'),
+      this.tripTimeoutQueue.clean(cleanOlderThan, 100, 'completed'),
+      this.tripTimeoutQueue.clean(cleanOlderThan, 100, 'failed'),
     ]);
 
+    const totalCleaned = tripRequestCompleted.length + tripRequestFailed.length + tripTimeoutCompleted.length + tripTimeoutFailed.length;
+    
     this.logger.log(
-      `Cleaned up jobs: trip-requests=${tripRequestCleaned}, trip-timeouts=${tripTimeoutCleaned}`,
+      `Cleaned up ${totalCleaned} jobs: trip-requests=${tripRequestCompleted.length + tripRequestFailed.length}, trip-timeouts=${tripTimeoutCompleted.length + tripTimeoutFailed.length}`,
     );
   }
 
@@ -311,13 +322,11 @@ export class TripQueueService {
     queueName: string,
     queue: Queue,
   ): Promise<QueueStatsDto> {
-    const [waiting, active, completed, failed, delayed] = await Promise.all([
-      queue.getWaiting(),
-      queue.getActive(),
-      queue.getCompleted(),
-      queue.getFailed(),
-      queue.getDelayed(),
-    ]);
+    const waiting = await queue.getWaiting();
+    const active = await queue.getActive();
+    const completed = await queue.getCompleted();
+    const failed = await queue.getFailed();
+    const delayed = await queue.getDelayed();
 
     return {
       queueName,
@@ -328,4 +337,6 @@ export class TripQueueService {
       delayed: delayed.length,
     };
   }
+
+
 }

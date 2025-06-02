@@ -1,12 +1,10 @@
 import {
-  Process,
   Processor,
-  OnQueueActive,
-  OnQueueCompleted,
-  OnQueueFailed,
-} from '@nestjs/bull';
+  WorkerHost,
+  OnWorkerEvent,
+} from '@nestjs/bullmq';
 import { Injectable, Logger } from '@nestjs/common';
-import { Job } from 'bull';
+import { Job } from 'bullmq';
 import { TripRequestJob, JobResult } from '../interfaces/queue-job.interface';
 import { TripService } from '../../modules/trip/services/trip.service';
 import { DriverStatusService } from '../../redis/services/driver-status.service';
@@ -17,7 +15,7 @@ import { TripQueueService } from '../services/trip-queue.service';
 
 @Processor('trip-requests')
 @Injectable()
-export class TripRequestProcessor {
+export class TripRequestProcessor extends WorkerHost {
   private readonly logger = new Logger(TripRequestProcessor.name);
 
   constructor(
@@ -25,10 +23,20 @@ export class TripRequestProcessor {
     private readonly driverStatusService: DriverStatusService,
     private readonly eventService: EventService,
     private readonly tripQueueService: TripQueueService,
-  ) {}
+  ) {
+    super();
+  }
 
-  @Process('process-trip-request')
-  async handleTripRequest(job: Job<TripRequestJob>): Promise<JobResult> {
+  async process(job: Job<TripRequestJob, any, string>): Promise<JobResult> {
+    switch (job.name) {
+      case 'process-trip-request':
+        return this.handleTripRequest(job);
+      default:
+        throw new Error(`Unknown job type: ${job.name}`);
+    }
+  }
+
+  private async handleTripRequest(job: Job<TripRequestJob>): Promise<JobResult> {
     const { tripId, driverId, customerLocation, tripData } = job.data;
 
     this.logger.debug(
@@ -80,7 +88,7 @@ export class TripRequestProcessor {
       const hasOtherPendingJobs =
         await this.tripQueueService.hasDriverPendingJobs(
           driverId,
-          job.id.toString(),
+          job.id?.toString(),
         );
       if (hasOtherPendingJobs) {
         this.logger.debug(`Driver ${driverId} already has pending jobs`);
@@ -117,14 +125,14 @@ export class TripRequestProcessor {
     }
   }
 
-  @OnQueueActive()
+  @OnWorkerEvent('active')
   onActive(job: Job<TripRequestJob>) {
     this.logger.debug(
       `Processing job ${job.id}: tripId=${job.data.tripId}, driverId=${job.data.driverId}`,
     );
   }
 
-  @OnQueueCompleted()
+  @OnWorkerEvent('completed')
   onCompleted(job: Job<TripRequestJob>, result: JobResult) {
     if (result.success) {
       this.logger.log(
@@ -137,7 +145,7 @@ export class TripRequestProcessor {
     }
   }
 
-  @OnQueueFailed()
+  @OnWorkerEvent('failed')
   async onFailed(job: Job<TripRequestJob>, error: Error) {
     this.logger.error(
       `Job ${job.id} failed: tripId=${job.data.tripId}, driverId=${job.data.driverId}, error=${error.message}`,
