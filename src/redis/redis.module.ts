@@ -10,6 +10,8 @@ import { ActiveTripService } from './services/active-trip.service';
 import { TokenManagerService } from './services/token-manager.service';
 import { DriverCleanupService } from './services/driver-cleanup.service';
 import { DriverRequestQueueService } from './services/driver-request-queue.service';
+import { QueueFullCleanupService } from './services/queue-full-cleanup.service';
+import { QueueStatusService } from './services/queue-status.service';
 
 @Module({
   imports: [ConfigModule],
@@ -23,6 +25,8 @@ import { DriverRequestQueueService } from './services/driver-request-queue.servi
     TokenManagerService,
     DriverCleanupService,
     DriverRequestQueueService,
+    QueueFullCleanupService,
+    QueueStatusService,
     RedisService,
   ],
   exports: [
@@ -33,6 +37,8 @@ import { DriverRequestQueueService } from './services/driver-request-queue.servi
     ActiveTripService,
     TokenManagerService,
     DriverRequestQueueService,
+    QueueFullCleanupService,
+    QueueStatusService,
     RedisService,
   ],
 })

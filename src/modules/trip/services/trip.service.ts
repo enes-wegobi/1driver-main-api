@@ -745,7 +745,6 @@ export class TripService {
       rejectedDriverIds.push(driverId);
     }
 
-    // QUEUE MANAGEMENT: Clear driver's current request and process next in queue
     await this.driverRequestQueueService.clearDriverCurrentRequest(driverId);
     await this.processNextQueuedRequestForDriver(driverId);
 
