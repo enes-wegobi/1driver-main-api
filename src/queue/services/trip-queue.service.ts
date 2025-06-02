@@ -17,6 +17,7 @@ import {
   CreateTripTimeoutJobDto,
   QueueStatsDto,
 } from '../dto/trip-job.dto';
+import { DriverTripQueueService } from '../../redis/services/driver-trip-queue.service';
 
 interface QueueConfig {
   driverResponseTimeout: number;
@@ -43,6 +44,7 @@ export class TripQueueService implements OnModuleInit, OnModuleDestroy {
     @InjectQueue('trip-requests') private readonly tripRequestQueue: Queue,
     @InjectQueue('trip-timeouts') private readonly tripTimeoutQueue: Queue,
     private readonly configService: ConfigService,
+    private readonly driverTripQueueService: DriverTripQueueService,
   ) {
     this.config = this.loadConfiguration();
   }
@@ -50,6 +52,16 @@ export class TripQueueService implements OnModuleInit, OnModuleDestroy {
   async onModuleInit(): Promise<void> {
     await this.initializeQueues();
     this.startPeriodicCleanup();
+    
+    // HEALTH CHECK EKLE
+    setTimeout(async () => {
+      await this.checkTimeoutQueueHealth();
+    }, 5000); // 5 saniye sonra kontrol et
+    
+    // Periyodik health check
+    setInterval(async () => {
+      await this.checkTimeoutQueueHealth();
+    }, 60000); // Her dakika kontrol et
   }
 
   async onModuleDestroy(): Promise<void> {
@@ -138,15 +150,35 @@ export class TripQueueService implements OnModuleInit, OnModuleDestroy {
         removeOnFail: options?.removeOnFail ?? 50,
       };
 
-      this.logger.debug(
-        `Adding timeout job: tripId=${jobData.tripId}, driverId=${jobData.driverId}, type=${jobData.timeoutType}, delay=${delay}ms`,
+      this.logger.log(
+        `⏰ CREATING TIMEOUT JOB: tripId=${jobData.tripId}, driverId=${jobData.driverId}, type=${jobData.timeoutType}, delay=${delay}ms, scheduledAt=${jobData.scheduledAt.toISOString()}`,
       );
 
-      return await this.tripTimeoutQueue.add(
+      const timeoutJob = await this.tripTimeoutQueue.add(
         'timeout-trip-request',
         jobData,
         jobOptions,
       );
+      
+      this.logger.log(
+        `✅ TIMEOUT JOB CREATED: jobId=${timeoutJob.id}, tripId=${jobData.tripId}, driverId=${jobData.driverId}`,
+      );
+      
+      // JOB DURUMUNU HEMEN KONTROL ET
+      setTimeout(async () => {
+        try {
+          const job = await this.tripTimeoutQueue.getJob(timeoutJob.id!);
+          if (job) {
+            this.logger.log(`🔍 JOB STATUS CHECK: jobId=${job.id}, state=${await job.getState()}, delay=${job.opts.delay}`);
+          } else {
+            this.logger.warn(`⚠️ JOB NOT FOUND: jobId=${timeoutJob.id}`);
+          }
+        } catch (error) {
+          this.logger.error(`❌ JOB STATUS CHECK FAILED: ${error.message}`);
+        }
+      }, 1000);
+      
+      return timeoutJob;
     } catch (error) {
       this.logger.error(
         `Failed to add timeout job: tripId=${jobData.tripId}, driverId=${jobData.driverId}`,
@@ -388,6 +420,225 @@ export class TripQueueService implements OnModuleInit, OnModuleDestroy {
     } catch (error) {
       this.logger.error('Failed to resume queues', error);
       throw error;
+    }
+  }
+
+  /**
+   * Add trip requests to driver queues sequentially (NEW SEQUENTIAL SYSTEM)
+   */
+  async addTripRequestSequential(
+    tripId: string,
+    driverIds: string[],
+    customerLocation: { lat: number; lon: number },
+    priority: number = 2,
+  ): Promise<void> {
+    try {
+      this.logger.debug(
+        `Adding trip ${tripId} to ${driverIds.length} driver queues sequentially`,
+      );
+
+      // Add trip to each driver's queue
+      for (const driverId of driverIds) {
+        await this.driverTripQueueService.addTripToDriverQueue(
+          driverId,
+          tripId,
+          priority,
+          customerLocation,
+        );
+      }
+
+      // Start processing for drivers who are not currently processing anything
+      for (const driverId of driverIds) {
+        await this.processNextDriverRequest(driverId);
+      }
+
+      this.logger.log(
+        `Successfully added trip ${tripId} to ${driverIds.length} driver queues`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to add trip ${tripId} to driver queues sequentially`,
+        error,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Process next trip request for a specific driver (NEW SEQUENTIAL SYSTEM)
+   */
+  async processNextDriverRequest(driverId: string): Promise<void> {
+    try {
+      // Check if driver is already processing a trip
+      const isProcessing = await this.driverTripQueueService.isDriverProcessingTrip(driverId);
+      if (isProcessing) {
+        this.logger.debug(
+          `Driver ${driverId} is already processing a trip, skipping`,
+        );
+        return;
+      }
+
+      // Get next trip from driver's queue
+      const nextTrip = await this.driverTripQueueService.popNextTripForDriver(driverId);
+      if (!nextTrip) {
+        this.logger.debug(`No trips in queue for driver ${driverId}`);
+        return;
+      }
+
+      // Mark driver as processing this trip
+      await this.driverTripQueueService.setDriverProcessingTrip(
+        driverId,
+        nextTrip.tripId,
+        this.config.driverResponseTimeout,
+      );
+
+      // Create Bull Queue job for this specific trip request
+      const jobData: CreateTripRequestJobDto = {
+        tripId: nextTrip.tripId,
+        driverId,
+        priority: nextTrip.priority,
+        customerLocation: nextTrip.customerLocation,
+        tripData: {
+          customerId: '', // Will be filled by processor
+        },
+        retryCount: 0,
+        originalDriverIds: [], // Will be filled by processor
+      };
+
+      await this.addTripRequest(jobData, {
+        attempts: 1, // Single attempt for sequential processing
+        removeOnComplete: 10,
+        removeOnFail: 10,
+      });
+
+      this.logger.debug(
+        `Started processing trip ${nextTrip.tripId} for driver ${driverId}`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to process next request for driver ${driverId}`,
+        error,
+      );
+      // Clear processing status on error
+      await this.driverTripQueueService.clearDriverProcessingTrip(driverId);
+    }
+  }
+
+  /**
+   * Handle driver response (accept/decline) for sequential system
+   */
+  async handleDriverResponse(
+    driverId: string,
+    tripId: string,
+    accepted: boolean,
+  ): Promise<void> {
+    try {
+      // Clear processing status
+      await this.driverTripQueueService.clearDriverProcessingTrip(driverId);
+
+      if (accepted) {
+        // Driver accepted - remove all trips from their queue
+        const removedCount = await this.driverTripQueueService.removeAllTripsForDriver(driverId);
+        this.logger.log(
+          `Driver ${driverId} accepted trip ${tripId}, removed ${removedCount} pending trips`,
+        );
+
+        // Remove this trip from all other driver queues
+        const totalRemoved = await this.driverTripQueueService.removeTripFromAllDriverQueues(tripId);
+        this.logger.log(
+          `Removed trip ${tripId} from ${totalRemoved} other driver queues`,
+        );
+      } else {
+        // Driver declined - remove only this trip and process next
+        await this.driverTripQueueService.removeSpecificTripFromDriver(driverId, tripId);
+        this.logger.debug(
+          `Driver ${driverId} declined trip ${tripId}, processing next trip`,
+        );
+
+        // Process next trip in queue
+        await this.processNextDriverRequest(driverId);
+      }
+    } catch (error) {
+      this.logger.error(
+        `Failed to handle driver response: driver=${driverId}, trip=${tripId}, accepted=${accepted}`,
+        error,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Handle timeout for sequential system
+   */
+  async handleDriverTimeout(driverId: string, tripId: string): Promise<void> {
+    try {
+      // Clear processing status
+      await this.driverTripQueueService.clearDriverProcessingTrip(driverId);
+
+      // Remove the timed-out trip
+      await this.driverTripQueueService.removeSpecificTripFromDriver(driverId, tripId);
+
+      this.logger.debug(
+        `Driver ${driverId} timed out for trip ${tripId}, processing next trip`,
+      );
+
+      // Process next trip in queue
+      await this.processNextDriverRequest(driverId);
+    } catch (error) {
+      this.logger.error(
+        `Failed to handle driver timeout: driver=${driverId}, trip=${tripId}`,
+        error,
+      );
+    }
+  }
+
+  /**
+   * Get driver queue status for monitoring
+   */
+  async getDriverQueueStatus(driverId: string) {
+    return await this.driverTripQueueService.getDriverQueueStatus(driverId);
+  }
+
+  /**
+   * Check timeout queue health and log detailed status
+   */
+  async checkTimeoutQueueHealth(): Promise<void> {
+    try {
+      this.logger.log('🔍 CHECKING TIMEOUT QUEUE HEALTH...');
+      
+      // Queue durumunu kontrol et
+      const waiting = await this.tripTimeoutQueue.getWaiting();
+      const active = await this.tripTimeoutQueue.getActive();
+      const delayed = await this.tripTimeoutQueue.getDelayed();
+      const completed = await this.tripTimeoutQueue.getCompleted();
+      const failed = await this.tripTimeoutQueue.getFailed();
+      
+      this.logger.log(`📊 TIMEOUT QUEUE STATUS:
+      - Waiting: ${waiting.length}
+      - Active: ${active.length} 
+      - Delayed: ${delayed.length}
+      - Completed: ${completed.length}
+      - Failed: ${failed.length}`);
+      
+      // Delayed job'ları detaylı kontrol et
+      if (delayed.length > 0) {
+        this.logger.log('⏰ DELAYED TIMEOUT JOBS:');
+        for (const job of delayed.slice(0, 5)) { // İlk 5 job'ı göster
+          const delay = job.opts.delay || 0;
+          const scheduledTime = new Date(job.timestamp + delay);
+          const now = new Date();
+          const remainingMs = scheduledTime.getTime() - now.getTime();
+          
+          this.logger.log(`  - Job ${job.id}: scheduled for ${scheduledTime.toISOString()}, remaining: ${remainingMs}ms, data: ${JSON.stringify(job.data)}`);
+        }
+      }
+      
+      // Worker durumunu kontrol et
+      const workers = await this.tripTimeoutQueue.getWorkers();
+      this.logger.log(`👷 TIMEOUT QUEUE WORKERS: ${workers.length} active workers`);
+      
+    } catch (error) {
+      this.logger.error('❌ TIMEOUT QUEUE HEALTH CHECK FAILED:', error);
     }
   }
 

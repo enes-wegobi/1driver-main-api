@@ -70,4 +70,13 @@ export class RedisKeyGenerator {
   static tripQueuedDrivers(tripId: string): string {
     return `trip:queued_drivers:${tripId}`;
   }
+
+  // Driver trip queue keys (new sequential system)
+  static driverTripQueue(driverId: string): string {
+    return `driver:${driverId}:trip-queue`;
+  }
+
+  static driverProcessingTrip(driverId: string): string {
+    return `driver:${driverId}:processing`;
+  }
 }

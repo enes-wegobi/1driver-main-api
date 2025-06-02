@@ -33,6 +33,7 @@ import { StripeService } from '../../payments/services/stripe.service';
 import { DriverStatusService } from 'src/redis/services/driver-status.service';
 import { DriverAvailabilityStatus } from 'src/websocket/dto/driver-location.dto';
 import { TripQueueService } from '../../../queue/services/trip-queue.service';
+import { DriverTripQueueService } from 'src/redis/services/driver-trip-queue.service';
 
 export interface TripOperationResult {
   success: boolean;
@@ -81,6 +82,7 @@ export class TripService {
     private readonly driverStatusService: DriverStatusService,
     private readonly stripeService: StripeService,
     private readonly tripQueueService: TripQueueService,
+    private readonly driverTripQueueService: DriverTripQueueService,
   ) {}
 
   // ================================
@@ -135,7 +137,7 @@ export class TripService {
       `trip:${tripId}`,
       async () => {
         return this.executeWithErrorHandling('requesting driver', async () => {
-          await this.validateCustomerHasPaymentMethod(customerId);
+          //await this.validateCustomerHasPaymentMethod(customerId);
           //await this.validateCustomerHasNoUnpaidPenalties(customerId);
 
           const trip = await this.findAndValidateRequestTrip(
@@ -157,27 +159,16 @@ export class TripService {
             tripId,
           );
 
-          // Create Queue jobs for each driver
-          for (const driverId of driverIds) {
-            await this.tripQueueService.addTripRequest({
-              tripId,
-              driverId,
-              priority: 2, // Normal priority
-              customerLocation: { lat, lon },
-              tripData: {
-                customerId,
-                estimatedDistance: trip.estimatedDistance,
-                estimatedDuration: trip.estimatedDuration,
-                estimatedCost: trip.estimatedCost,
-                route: trip.route,
-              },
-              retryCount: 0,
-              originalDriverIds: driverIds,
-            });
-          }
+          // Use NEW SEQUENTIAL SYSTEM: Add trip to driver queues sequentially
+          await this.tripQueueService.addTripRequestSequential(
+            tripId,
+            driverIds,
+            { lat, lon },
+            2, // Normal priority
+          );
 
           this.logger.log(
-            `Created Bull Queue jobs for ${driverIds.length} drivers for trip ${tripId}`,
+            `Added trip ${tripId} to ${driverIds.length} driver queues sequentially`,
           );
 
           return { success: true, trip: updatedTrip };
@@ -742,8 +733,8 @@ export class TripService {
       rejectedDriverIds.push(driverId);
     }
 
-    // Remove jobs for this driver and trip from queue
-    await this.tripQueueService.removeJobsByDriverAndTrip(driverId, tripId);
+    // Use NEW SEQUENTIAL SYSTEM: Handle driver decline
+    await this.tripQueueService.handleDriverResponse(driverId, tripId, false);
 
     const newStatus = this.determineStatusAfterRejection(
       trip,
@@ -823,7 +814,10 @@ export class TripService {
       DriverAvailabilityStatus.ON_TRIP,
     );
 
-    //Remove this trip from all queues
+    // Use NEW SEQUENTIAL SYSTEM: Handle driver accept
+    await this.tripQueueService.handleDriverResponse(driverId, updatedTrip._id, true);
+
+    // Also remove from old Bull Queue system for compatibility
     await this.tripQueueService.removeJobsByTripId(updatedTrip._id);
 
     await this.notifyRemainingDrivers(updatedTrip, driverId);

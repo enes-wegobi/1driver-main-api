@@ -5,6 +5,7 @@ import { TripTimeoutJob, JobResult } from '../interfaces/queue-job.interface';
 import { TripService } from '../../modules/trip/services/trip.service';
 import { TripStatus } from '../../common/enums/trip-status.enum';
 import { EventService } from '../../modules/event/event.service';
+import { TripQueueService } from '../services/trip-queue.service';
 
 @Processor('trip-timeouts')
 @Injectable()
@@ -14,15 +15,21 @@ export class TripTimeoutProcessor extends WorkerHost {
   constructor(
     private readonly tripService: TripService,
     private readonly eventService: EventService,
+    private readonly tripQueueService: TripQueueService,
   ) {
     super();
+    // WORKER BAŞLANGICI KONTROLÜ
+    this.logger.log('🚀 TIMEOUT PROCESSOR INITIALIZED - Worker is ready to process jobs');
   }
 
   async process(job: Job<TripTimeoutJob, any, string>): Promise<JobResult> {
+    this.logger.log(`🔥 TIMEOUT PROCESSOR STARTED: jobId=${job.id}, jobName=${job.name}, data=${JSON.stringify(job.data)}`);
+    
     switch (job.name) {
       case 'timeout-trip-request':
         return this.handleTripTimeout(job);
       default:
+        this.logger.error(`❌ UNKNOWN JOB TYPE: ${job.name} - Available types: timeout-trip-request`);
         throw new Error(`Unknown job type: ${job.name}`);
     }
   }
@@ -32,8 +39,8 @@ export class TripTimeoutProcessor extends WorkerHost {
   ): Promise<JobResult> {
     const { tripId, driverId, timeoutType } = job.data;
 
-    this.logger.debug(
-      `Processing trip timeout: tripId=${tripId}, driverId=${driverId}, type=${timeoutType}`,
+    this.logger.log(
+      `⏰ TIMEOUT PROCESSOR: Processing trip timeout: tripId=${tripId}, driverId=${driverId}, type=${timeoutType}`,
     );
 
     try {
@@ -66,6 +73,9 @@ export class TripTimeoutProcessor extends WorkerHost {
           };
         }
 
+        // Use NEW SEQUENTIAL SYSTEM: Handle driver timeout
+        await this.tripQueueService.handleDriverTimeout(driverId, tripId);
+
         // Add driver to rejected list (treat timeout as rejection)
         const rejectedDriverIds = [...(trip.rejectedDriverIds || [])];
         if (!rejectedDriverIds.includes(driverId)) {
@@ -88,7 +98,7 @@ export class TripTimeoutProcessor extends WorkerHost {
             );
           }
           this.logger.log(
-            `Driver ${driverId} timed out for trip ${tripId}, added to rejected list`,
+            `Driver ${driverId} timed out for trip ${tripId}, processing next trip in queue`,
           );
         }
       }
@@ -108,21 +118,37 @@ export class TripTimeoutProcessor extends WorkerHost {
     }
   }
 
+  // WORKER EVENT'LERİNE DETAYLI LOGLAR
+  @OnWorkerEvent('ready')
+  onReady() {
+    this.logger.log('✅ TIMEOUT WORKER READY - Worker is now listening for jobs');
+  }
+
+  @OnWorkerEvent('error')
+  onError(error: Error) {
+    this.logger.error('❌ TIMEOUT WORKER ERROR:', error);
+  }
+
+  @OnWorkerEvent('stalled')
+  onStalled(jobId: string) {
+    this.logger.warn(`⚠️ TIMEOUT JOB STALLED: ${jobId}`);
+  }
+
   @OnWorkerEvent('active')
   onActive(job: Job<TripTimeoutJob>) {
-    this.logger.debug(
-      `Processing timeout job ${job.id}: tripId=${job.data.tripId}, type=${job.data.timeoutType}`,
+    this.logger.log(
+      `🔥 TIMEOUT PROCESSOR ACTIVE: Processing timeout job ${job.id}: tripId=${job.data.tripId}, driverId=${job.data.driverId}, type=${job.data.timeoutType}`,
     );
   }
 
   @OnWorkerEvent('completed')
   onCompleted(job: Job<TripTimeoutJob>, result: JobResult) {
-    this.logger.debug(`Completed timeout job ${job.id}: ${result.message}`);
+    this.logger.log(`✅ TIMEOUT PROCESSOR COMPLETED: job ${job.id}: ${result.message}`);
   }
 
   @OnWorkerEvent('failed')
   onFailed(job: Job<TripTimeoutJob>, error: Error) {
-    this.logger.error(`Timeout job ${job.id} failed: ${error.message}`);
+    this.logger.error(`❌ TIMEOUT PROCESSOR FAILED: job ${job.id} failed: ${error.message}`);
   }
 
   private areAllDriversRejected(trip: any): boolean {

@@ -113,4 +113,13 @@ export class BullQueueTestController {
       message: 'All queues resumed',
     };
   }
+
+  @Get('queue-health')
+  async checkQueueHealth() {
+    await this.tripQueueService.checkTimeoutQueueHealth();
+    return {
+      success: true,
+      message: 'Queue health check completed, check logs for details',
+    };
+  }
 }

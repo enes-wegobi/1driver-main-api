@@ -45,7 +45,8 @@ export class TripRequestProcessor extends WorkerHost {
       // 1. Validate trip still exists and is in correct status
       const trip = await this.tripService.findById(tripId);
       if (!trip) {
-        this.logger.warn(`Trip ${tripId} not found, removing job`);
+        this.logger.warn(`Trip ${tripId} not found, clearing driver processing status`);
+        await this.tripQueueService.handleDriverTimeout(driverId, tripId);
         return {
           success: false,
           message: 'Trip not found',
@@ -57,6 +58,7 @@ export class TripRequestProcessor extends WorkerHost {
         this.logger.debug(
           `Trip ${tripId} status is ${trip.status}, not waiting for driver`,
         );
+        await this.tripQueueService.handleDriverTimeout(driverId, tripId);
         return {
           success: false,
           message: `Trip status is ${trip.status}`,
@@ -74,6 +76,7 @@ export class TripRequestProcessor extends WorkerHost {
         this.logger.debug(
           `Driver ${driverId} is not available (status: ${driverStatus})`,
         );
+        await this.tripQueueService.handleDriverTimeout(driverId, tripId);
         return {
           success: false,
           message: 'Driver not available',
@@ -82,18 +85,17 @@ export class TripRequestProcessor extends WorkerHost {
         };
       }
 
-      // 3. Check if driver already has an active trip
-      const hasOtherPendingJobs =
-        await this.tripQueueService.hasDriverPendingJobs(
-          driverId,
-          job.id?.toString(),
+      // 3. Check if driver is currently processing this trip (sequential system)
+      const processingTrip = await this.tripQueueService.getDriverQueueStatus(driverId);
+      if (processingTrip.currentProcessing !== tripId) {
+        this.logger.debug(
+          `Driver ${driverId} is not processing trip ${tripId}, current: ${processingTrip.currentProcessing}`,
         );
-      if (hasOtherPendingJobs) {
-        this.logger.debug(`Driver ${driverId} already has pending jobs`);
         return {
           success: false,
-          message: 'Driver has pending jobs',
-          shouldRetry: true, // Retry later when driver is free
+          message: 'Driver not processing this trip',
+          shouldRetry: false,
+          nextAction: 'complete',
         };
       }
 
@@ -115,10 +117,13 @@ export class TripRequestProcessor extends WorkerHost {
         error.stack,
       );
 
+      // Clear processing status on error and try next trip
+      await this.tripQueueService.handleDriverTimeout(driverId, tripId);
+
       return {
         success: false,
         message: error.message,
-        shouldRetry: true,
+        shouldRetry: false, // Don't retry, move to next trip
       };
     }
   }

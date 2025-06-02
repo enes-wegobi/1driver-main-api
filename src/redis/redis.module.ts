@@ -9,6 +9,7 @@ import { NearbySearchService } from './services/nearby-search.service';
 import { ActiveTripService } from './services/active-trip.service';
 import { TokenManagerService } from './services/token-manager.service';
 import { DriverCleanupService } from './services/driver-cleanup.service';
+import { DriverTripQueueService } from './services/driver-trip-queue.service';
 
 @Module({
   imports: [ConfigModule],
@@ -21,6 +22,7 @@ import { DriverCleanupService } from './services/driver-cleanup.service';
     ActiveTripService,
     TokenManagerService,
     DriverCleanupService,
+    DriverTripQueueService,
     RedisService,
   ],
   exports: [
@@ -30,6 +32,7 @@ import { DriverCleanupService } from './services/driver-cleanup.service';
     NearbySearchService,
     ActiveTripService,
     TokenManagerService,
+    DriverTripQueueService,
     RedisService,
   ],
 })
