@@ -18,8 +18,7 @@ export class DriverLocationDto extends LocationDto {
   })
   @IsEnum(DriverAvailabilityStatus)
   @IsOptional()
-  availabilityStatus?: DriverAvailabilityStatus =
-    DriverAvailabilityStatus.BUSY;
+  availabilityStatus?: DriverAvailabilityStatus = DriverAvailabilityStatus.BUSY;
 
   @ApiProperty({
     description: 'Whether the driver is active',

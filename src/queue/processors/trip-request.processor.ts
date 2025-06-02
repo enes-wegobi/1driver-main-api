@@ -1,4 +1,10 @@
-import { Process, Processor, OnQueueActive, OnQueueCompleted, OnQueueFailed } from '@nestjs/bull';
+import {
+  Process,
+  Processor,
+  OnQueueActive,
+  OnQueueCompleted,
+  OnQueueFailed,
+} from '@nestjs/bull';
 import { Injectable, Logger } from '@nestjs/common';
 import { Job } from 'bull';
 import { TripRequestJob, JobResult } from '../interfaces/queue-job.interface';
@@ -24,7 +30,7 @@ export class TripRequestProcessor {
   @Process('process-trip-request')
   async handleTripRequest(job: Job<TripRequestJob>): Promise<JobResult> {
     const { tripId, driverId, customerLocation, tripData } = job.data;
-    
+
     this.logger.debug(
       `Processing trip request: tripId=${tripId}, driverId=${driverId}, attempt=${job.attemptsMade + 1}/${job.opts.attempts}`,
     );
@@ -42,7 +48,9 @@ export class TripRequestProcessor {
       }
 
       if (trip.status !== TripStatus.WAITING_FOR_DRIVER) {
-        this.logger.debug(`Trip ${tripId} status is ${trip.status}, not waiting for driver`);
+        this.logger.debug(
+          `Trip ${tripId} status is ${trip.status}, not waiting for driver`,
+        );
         return {
           success: false,
           message: `Trip status is ${trip.status}`,
@@ -51,9 +59,15 @@ export class TripRequestProcessor {
       }
 
       // 2. Check if driver is still available
-      const driverStatus = await this.driverStatusService.getDriverAvailability(driverId);
-      if (!driverStatus || driverStatus !== DriverAvailabilityStatus.AVAILABLE) {
-        this.logger.debug(`Driver ${driverId} is not available (status: ${driverStatus})`);
+      const driverStatus =
+        await this.driverStatusService.getDriverAvailability(driverId);
+      if (
+        !driverStatus ||
+        driverStatus !== DriverAvailabilityStatus.AVAILABLE
+      ) {
+        this.logger.debug(
+          `Driver ${driverId} is not available (status: ${driverStatus})`,
+        );
         return {
           success: false,
           message: 'Driver not available',
@@ -63,11 +77,12 @@ export class TripRequestProcessor {
       }
 
       // 3. Check if driver already has an active trip
-  const hasOtherPendingJobs = await this.tripQueueService.hasDriverPendingJobs(
-    driverId, 
-    job.id.toString() 
-  );      
-  if (hasOtherPendingJobs) {
+      const hasOtherPendingJobs =
+        await this.tripQueueService.hasDriverPendingJobs(
+          driverId,
+          job.id.toString(),
+        );
+      if (hasOtherPendingJobs) {
         this.logger.debug(`Driver ${driverId} already has pending jobs`);
         return {
           success: false,
@@ -78,15 +93,16 @@ export class TripRequestProcessor {
 
       // 4. Send trip request notification to driver
       await this.eventService.notifyNewTripRequest(trip, [driverId]);
-      
-      this.logger.log(`Successfully sent trip request ${tripId} to driver ${driverId}`);
-      
+
+      this.logger.log(
+        `Successfully sent trip request ${tripId} to driver ${driverId}`,
+      );
+
       return {
         success: true,
         message: 'Trip request sent to driver',
         data: { tripId, driverId },
       };
-
     } catch (error) {
       this.logger.error(
         `Error processing trip request ${tripId} for driver ${driverId}: ${error.message}`,
@@ -135,7 +151,7 @@ export class TripRequestProcessor {
 
   private async handleJobExhausted(job: Job<TripRequestJob>): Promise<void> {
     const { tripId, driverId, originalDriverIds, customerLocation } = job.data;
-    
+
     this.logger.warn(
       `Job exhausted for trip ${tripId} and driver ${driverId}, attempting next driver`,
     );
@@ -145,10 +161,10 @@ export class TripRequestProcessor {
       if (originalDriverIds && originalDriverIds.length > 0) {
         const currentDriverIndex = originalDriverIds.indexOf(driverId);
         const nextDriverIndex = currentDriverIndex + 1;
-        
+
         if (nextDriverIndex < originalDriverIds.length) {
           const nextDriverId = originalDriverIds[nextDriverIndex];
-          
+
           // Create job for next driver
           await this.tripQueueService.addTripRequest({
             tripId,
@@ -159,23 +175,30 @@ export class TripRequestProcessor {
             retryCount: (job.data.retryCount || 0) + 1,
             originalDriverIds,
           });
-          
-          this.logger.log(`Created job for next driver ${nextDriverId} for trip ${tripId}`);
+
+          this.logger.log(
+            `Created job for next driver ${nextDriverId} for trip ${tripId}`,
+          );
           return;
         }
       }
 
       // No more drivers available, update trip status
-      await this.tripService.updateTripStatus(tripId,  TripStatus.DRIVER_NOT_FOUND);
+      await this.tripService.updateTripStatus(
+        tripId,
+        TripStatus.DRIVER_NOT_FOUND,
+      );
 
       // Notify customer that no driver was found
       const trip = await this.tripService.findById(tripId);
       if (trip) {
-        await this.eventService.notifyCustomerDriverNotFound(trip, trip.customer.id);
+        await this.eventService.notifyCustomerDriverNotFound(
+          trip,
+          trip.customer.id,
+        );
       }
 
       this.logger.warn(`No more drivers available for trip ${tripId}`);
-      
     } catch (error) {
       this.logger.error(
         `Error handling exhausted job for trip ${tripId}: ${error.message}`,

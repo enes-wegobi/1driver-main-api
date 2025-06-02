@@ -8,7 +8,12 @@ import { FindNearbyUsersResult } from '../dto/nearby-user.dto';
 import { WithErrorHandling } from '../decorators/with-error-handling.decorator';
 
 // Import DTO types
-import { NearbyUserDto, NearbyDriverDto, NearbyCustomerDto, Coordinates } from '../dto/nearby-user.dto';
+import {
+  NearbyUserDto,
+  NearbyDriverDto,
+  NearbyCustomerDto,
+  Coordinates,
+} from '../dto/nearby-user.dto';
 
 interface ParsedLocationData {
   availabilityStatus?: DriverAvailabilityStatus;
@@ -82,21 +87,28 @@ export class NearbySearchService extends BaseRedisService {
     }
 
     // Batch fetch user location data (solves N+1 problem)
-    const locationKeys = validResults.map(result => 
-      RedisKeyGenerator.userLocation(result[GEOSEARCH_RESULT.USER_ID_INDEX].toString())
+    const locationKeys = validResults.map((result) =>
+      RedisKeyGenerator.userLocation(
+        result[GEOSEARCH_RESULT.USER_ID_INDEX].toString(),
+      ),
     );
 
     // Also batch fetch availability status for drivers
-    const availabilityKeys = userType === UserType.DRIVER 
-      ? validResults.map(result => 
-          RedisKeyGenerator.driverStatus(result[GEOSEARCH_RESULT.USER_ID_INDEX].toString())
-        )
-      : [];
+    const availabilityKeys =
+      userType === UserType.DRIVER
+        ? validResults.map((result) =>
+            RedisKeyGenerator.driverStatus(
+              result[GEOSEARCH_RESULT.USER_ID_INDEX].toString(),
+            ),
+          )
+        : [];
 
     // Fetch both location and availability data in parallel
     const [locationDataArray, availabilityDataArray] = await Promise.all([
       this.client.mget(...locationKeys),
-      availabilityKeys.length > 0 ? this.client.mget(...availabilityKeys) : Promise.resolve([])
+      availabilityKeys.length > 0
+        ? this.client.mget(...availabilityKeys)
+        : Promise.resolve([]),
     ]);
 
     // Process results
@@ -113,7 +125,7 @@ export class NearbySearchService extends BaseRedisService {
           locationDataStr,
           availabilityDataStr,
           userType,
-          onlyAvailable
+          onlyAvailable,
         );
 
         if (processedUser) {
@@ -122,7 +134,7 @@ export class NearbySearchService extends BaseRedisService {
       } catch (error) {
         console.warn(
           `Failed to process user ${result[GEOSEARCH_RESULT.USER_ID_INDEX]}:`,
-          error
+          error,
         );
         // Continue processing other users
         continue;
@@ -152,14 +164,14 @@ export class NearbySearchService extends BaseRedisService {
   private validateInputs(
     latitude: number,
     longitude: number,
-    radius: number
+    radius: number,
   ): void {
     if (
       latitude < VALIDATION_LIMITS.MIN_LATITUDE ||
       latitude > VALIDATION_LIMITS.MAX_LATITUDE
     ) {
       throw new Error(
-        `Invalid latitude: ${latitude}. Must be between ${VALIDATION_LIMITS.MIN_LATITUDE} and ${VALIDATION_LIMITS.MAX_LATITUDE}`
+        `Invalid latitude: ${latitude}. Must be between ${VALIDATION_LIMITS.MIN_LATITUDE} and ${VALIDATION_LIMITS.MAX_LATITUDE}`,
       );
     }
 
@@ -168,7 +180,7 @@ export class NearbySearchService extends BaseRedisService {
       longitude > VALIDATION_LIMITS.MAX_LONGITUDE
     ) {
       throw new Error(
-        `Invalid longitude: ${longitude}. Must be between ${VALIDATION_LIMITS.MIN_LONGITUDE} and ${VALIDATION_LIMITS.MAX_LONGITUDE}`
+        `Invalid longitude: ${longitude}. Must be between ${VALIDATION_LIMITS.MIN_LONGITUDE} and ${VALIDATION_LIMITS.MAX_LONGITUDE}`,
       );
     }
 
@@ -177,7 +189,7 @@ export class NearbySearchService extends BaseRedisService {
       radius > VALIDATION_LIMITS.MAX_RADIUS
     ) {
       throw new Error(
-        `Invalid radius: ${radius}. Must be between ${VALIDATION_LIMITS.MIN_RADIUS} and ${VALIDATION_LIMITS.MAX_RADIUS} km`
+        `Invalid radius: ${radius}. Must be between ${VALIDATION_LIMITS.MIN_RADIUS} and ${VALIDATION_LIMITS.MAX_RADIUS} km`,
       );
     }
   }
@@ -190,11 +202,14 @@ export class NearbySearchService extends BaseRedisService {
       result[GEOSEARCH_RESULT.DISTANCE_INDEX] &&
       result[GEOSEARCH_RESULT.COORDINATES_INDEX] &&
       Array.isArray(result[GEOSEARCH_RESULT.COORDINATES_INDEX]) &&
-      result[GEOSEARCH_RESULT.COORDINATES_INDEX].length >= GEOSEARCH_RESULT.MIN_COORDINATES_LENGTH
+      result[GEOSEARCH_RESULT.COORDINATES_INDEX].length >=
+        GEOSEARCH_RESULT.MIN_COORDINATES_LENGTH
     );
   }
 
-  private parseUserLocationData(locationDataStr: string | null): ParsedLocationData | null {
+  private parseUserLocationData(
+    locationDataStr: string | null,
+  ): ParsedLocationData | null {
     if (!locationDataStr) {
       return null;
     }
@@ -207,7 +222,9 @@ export class NearbySearchService extends BaseRedisService {
     }
   }
 
-  private parseAvailabilityData(availabilityDataStr: string | null): { status: DriverAvailabilityStatus } | null {
+  private parseAvailabilityData(
+    availabilityDataStr: string | null,
+  ): { status: DriverAvailabilityStatus } | null {
     if (!availabilityDataStr) {
       return null;
     }
@@ -215,28 +232,29 @@ export class NearbySearchService extends BaseRedisService {
     try {
       // First try to parse as JSON
       const parsed = JSON.parse(availabilityDataStr);
-      
+
       // Handle different possible JSON structures
       if (typeof parsed === 'string') {
         return { status: parsed as DriverAvailabilityStatus };
       }
-      
+
       if (parsed && typeof parsed === 'object') {
         return {
-          status: parsed.status || parsed.availabilityStatus || parsed.availability
+          status:
+            parsed.status || parsed.availabilityStatus || parsed.availability,
         };
       }
-      
+
       return null;
     } catch (error) {
       // If JSON.parse fails, treat as plain string
       // availabilityDataStr is something like 'available' or 'AVAILABLE'
       const trimmedStatus = availabilityDataStr.trim();
-      
+
       if (trimmedStatus) {
         return { status: trimmedStatus as DriverAvailabilityStatus };
       }
-      
+
       return null;
     }
   }
@@ -244,7 +262,7 @@ export class NearbySearchService extends BaseRedisService {
   private shouldSkipUser(
     userData: ParsedLocationData | null,
     userType: UserType,
-    onlyAvailable: boolean
+    onlyAvailable: boolean,
   ): boolean {
     return (
       onlyAvailable &&
@@ -258,10 +276,12 @@ export class NearbySearchService extends BaseRedisService {
     locationDataStr: string | null,
     availabilityDataStr: string | null,
     userType: UserType,
-    onlyAvailable: boolean
+    onlyAvailable: boolean,
   ): NearbyUserDto | null {
     const userId = result[GEOSEARCH_RESULT.USER_ID_INDEX].toString();
-    const distance = parseFloat(result[GEOSEARCH_RESULT.DISTANCE_INDEX].toString());
+    const distance = parseFloat(
+      result[GEOSEARCH_RESULT.DISTANCE_INDEX].toString(),
+    );
     const coords = result[GEOSEARCH_RESULT.COORDINATES_INDEX];
 
     const userData = this.parseUserLocationData(locationDataStr);
@@ -270,7 +290,7 @@ export class NearbySearchService extends BaseRedisService {
     // Merge availability data with user data
     const combinedUserData = {
       ...userData,
-      ...(availabilityData && { availabilityStatus: availabilityData.status })
+      ...(availabilityData && { availabilityStatus: availabilityData.status }),
     };
 
     // Skip if filtering for available users and this one isn't available

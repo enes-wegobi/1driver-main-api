@@ -34,7 +34,8 @@ export class LocationController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Update driver location',
-    description: 'Update driver location and notify customers if on active trip',
+    description:
+      'Update driver location and notify customers if on active trip',
   })
   @ApiBody({ type: DriverLocationDto })
   @ApiResponse({

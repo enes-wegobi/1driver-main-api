@@ -32,10 +32,11 @@ export class DriverPenaltyService {
       timeDifferenceMinutes,
     );
 
-    const status = userType === UserType.DRIVER 
-      ? PenaltyStatus.COMPLETED
-      : PenaltyStatus.COMPLETED
-      //: PenaltyStatus.PENDING_PAYMENT;
+    const status =
+      userType === UserType.DRIVER
+        ? PenaltyStatus.COMPLETED
+        : PenaltyStatus.COMPLETED;
+    //: PenaltyStatus.PENDING_PAYMENT;
 
     const penaltyData = {
       userId,
@@ -90,11 +91,12 @@ export class DriverPenaltyService {
     userId: string,
     userType: UserType,
   ): Promise<boolean> {
-    const pendingPenalties = await this.driverPenaltyRepository.findByUserIdAndStatus(
-      userId,
-      userType,
-      PenaltyStatus.PENDING_PAYMENT,
-    );
+    const pendingPenalties =
+      await this.driverPenaltyRepository.findByUserIdAndStatus(
+        userId,
+        userType,
+        PenaltyStatus.PENDING_PAYMENT,
+      );
     return pendingPenalties.length > 0;
   }
 

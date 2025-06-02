@@ -11,30 +11,42 @@ export class DriverCleanupService {
   @Cron(CronExpression.EVERY_5_MINUTES)
   async handleDriverCleanup() {
     this.logger.log('Starting driver cleanup job...');
-    
+
     try {
-      const cleanedDrivers = await this.driverStatusService.cleanupStaleDrivers();
-      
+      const cleanedDrivers =
+        await this.driverStatusService.cleanupStaleDrivers();
+
       if (cleanedDrivers.length > 0) {
-        this.logger.log(`Cleaned up ${cleanedDrivers.length} stale drivers: ${cleanedDrivers.join(', ')}`);
+        this.logger.log(
+          `Cleaned up ${cleanedDrivers.length} stale drivers: ${cleanedDrivers.join(', ')}`,
+        );
       } else {
         this.logger.debug('No stale drivers found to clean up');
       }
     } catch (error) {
-      this.logger.error(`Error during driver cleanup: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error during driver cleanup: ${error.message}`,
+        error.stack,
+      );
     }
   }
 
   // Manual cleanup method for testing or admin purposes
   async manualCleanup(): Promise<string[]> {
     this.logger.log('Manual driver cleanup initiated');
-    
+
     try {
-      const cleanedDrivers = await this.driverStatusService.cleanupStaleDrivers();
-      this.logger.log(`Manual cleanup completed. Cleaned ${cleanedDrivers.length} drivers`);
+      const cleanedDrivers =
+        await this.driverStatusService.cleanupStaleDrivers();
+      this.logger.log(
+        `Manual cleanup completed. Cleaned ${cleanedDrivers.length} drivers`,
+      );
       return cleanedDrivers;
     } catch (error) {
-      this.logger.error(`Error during manual cleanup: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error during manual cleanup: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }

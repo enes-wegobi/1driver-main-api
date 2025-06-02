@@ -85,7 +85,7 @@ export class DriverPenaltyRepository {
     if (status === PenaltyStatus.PAID) {
       updateData.paidAt = new Date();
     }
-    
+
     return this.userPenaltyModel
       .findByIdAndUpdate(penaltyId, updateData, { new: true })
       .exec();

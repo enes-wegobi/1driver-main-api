@@ -176,7 +176,9 @@ export class TripService {
             });
           }
 
-          this.logger.log(`Created Bull Queue jobs for ${driverIds.length} drivers for trip ${tripId}`);
+          this.logger.log(
+            `Created Bull Queue jobs for ${driverIds.length} drivers for trip ${tripId}`,
+          );
 
           return { success: true, trip: updatedTrip };
         });
@@ -189,20 +191,24 @@ export class TripService {
 
   async getCustomerActiveTrip(customerId: string): Promise<ActiveTripResult> {
     const result = await this.getUserActiveTrip(customerId, UserType.CUSTOMER);
-    
+
     // If trip exists and has a driver, fetch driver location
     if (result.success && result.trip && result.trip.driver) {
       try {
-        const driverLocation = await this.locationService.getUserLocation(result.trip.driver.id);
+        const driverLocation = await this.locationService.getUserLocation(
+          result.trip.driver.id,
+        );
         result.driverLocation = driverLocation;
       } catch (error) {
-        this.logger.warn(`Failed to fetch driver location for trip ${result.trip._id}: ${error.message}`);
+        this.logger.warn(
+          `Failed to fetch driver location for trip ${result.trip._id}: ${error.message}`,
+        );
         result.driverLocation = null;
       }
     } else {
       result.driverLocation = null;
     }
-    
+
     return result;
   }
 
@@ -440,7 +446,7 @@ export class TripService {
                 trip,
                 timeDifferenceMinutes,
               );
-              
+
               this.logger.log(
                 `Penalty created for customer ${customerId} for late cancellation: ${penalty.penaltyAmount} AED`,
               );
@@ -1351,9 +1357,8 @@ export class TripService {
   private async processCustomerPenaltyPayment(penalty: any): Promise<void> {
     try {
       // Get customer's default payment method
-      const paymentMethod = await this.paymentMethodService.getDefaultPaymentMethod(
-        penalty.userId,
-      );
+      const paymentMethod =
+        await this.paymentMethodService.getDefaultPaymentMethod(penalty.userId);
 
       if (!paymentMethod) {
         throw new BadRequestException(
@@ -1395,9 +1400,7 @@ export class TripService {
         `Penalty payment successful for customer ${penalty.userId}: ${penalty.penaltyAmount} AED`,
       );
     } catch (error) {
-      this.logger.error(
-        `Penalty payment processing failed: ${error.message}`,
-      );
+      this.logger.error(`Penalty payment processing failed: ${error.message}`);
       throw error;
     }
   }
@@ -1405,10 +1408,11 @@ export class TripService {
   private async validateCustomerHasNoUnpaidPenalties(
     customerId: string,
   ): Promise<void> {
-    const hasPendingPenalties = await this.driverPenaltyService.hasPendingPenalties(
-      customerId,
-      UserType.CUSTOMER,
-    );
+    const hasPendingPenalties =
+      await this.driverPenaltyService.hasPendingPenalties(
+        customerId,
+        UserType.CUSTOMER,
+      );
 
     if (hasPendingPenalties) {
       throw new BadRequestException(

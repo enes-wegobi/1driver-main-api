@@ -19,18 +19,18 @@ export class BullQueueTestController {
         estimatedCost: 25.5,
         route: [
           { lat: 25.2048, lon: 55.2708, address: 'Dubai Mall' },
-          { lat: 25.1972, lon: 55.2744, address: 'Burj Khalifa' }
-        ]
+          { lat: 25.1972, lon: 55.2744, address: 'Burj Khalifa' },
+        ],
       },
       retryCount: 0,
-      originalDriverIds: [body.driverId || 'test-driver-456']
+      originalDriverIds: [body.driverId || 'test-driver-456'],
     });
 
     return {
       success: true,
       message: 'Trip request job added to Bull Queue',
       jobId: job.id,
-      jobData: job.data
+      jobData: job.data,
     };
   }
 
@@ -43,15 +43,15 @@ export class BullQueueTestController {
       scheduledAt: new Date(Date.now() + (body.delaySeconds || 10) * 1000),
       metadata: {
         customerLocation: { lat: 25.2048, lon: 55.2708 },
-        retryCount: 0
-      }
+        retryCount: 0,
+      },
     });
 
     return {
       success: true,
       message: 'Timeout job added to Bull Queue',
       jobId: job.id,
-      jobData: job.data
+      jobData: job.data,
     };
   }
 
@@ -60,7 +60,7 @@ export class BullQueueTestController {
     const stats = await this.tripQueueService.getQueueStats();
     return {
       success: true,
-      stats
+      stats,
     };
   }
 
@@ -73,8 +73,8 @@ export class BullQueueTestController {
       jobs: {
         active: jobs.active.length,
         waiting: jobs.waiting.length,
-        delayed: jobs.delayed.length
-      }
+        delayed: jobs.delayed.length,
+      },
     };
   }
 
@@ -83,7 +83,7 @@ export class BullQueueTestController {
     await this.tripQueueService.removeJobsByTripId(tripId);
     return {
       success: true,
-      message: `All jobs for trip ${tripId} removed`
+      message: `All jobs for trip ${tripId} removed`,
     };
   }
 
@@ -92,7 +92,7 @@ export class BullQueueTestController {
     await this.tripQueueService.cleanupJobs();
     return {
       success: true,
-      message: 'Old completed and failed jobs cleaned up'
+      message: 'Old completed and failed jobs cleaned up',
     };
   }
 
@@ -101,7 +101,7 @@ export class BullQueueTestController {
     await this.tripQueueService.pauseQueues();
     return {
       success: true,
-      message: 'All queues paused'
+      message: 'All queues paused',
     };
   }
 
@@ -110,7 +110,7 @@ export class BullQueueTestController {
     await this.tripQueueService.resumeQueues();
     return {
       success: true,
-      message: 'All queues resumed'
+      message: 'All queues resumed',
     };
   }
 }

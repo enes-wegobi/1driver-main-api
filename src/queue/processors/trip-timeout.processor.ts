@@ -1,4 +1,10 @@
-import { Process, Processor, OnQueueActive, OnQueueCompleted, OnQueueFailed } from '@nestjs/bull';
+import {
+  Process,
+  Processor,
+  OnQueueActive,
+  OnQueueCompleted,
+  OnQueueFailed,
+} from '@nestjs/bull';
 import { Injectable, Logger } from '@nestjs/common';
 import { Job } from 'bull';
 import { TripTimeoutJob, JobResult } from '../interfaces/queue-job.interface';
@@ -10,14 +16,12 @@ import { TripStatus } from '../../common/enums/trip-status.enum';
 export class TripTimeoutProcessor {
   private readonly logger = new Logger(TripTimeoutProcessor.name);
 
-  constructor(
-    private readonly tripService: TripService,
-  ) {}
+  constructor(private readonly tripService: TripService) {}
 
   @Process('timeout-trip-request')
   async handleTripTimeout(job: Job<TripTimeoutJob>): Promise<JobResult> {
     const { tripId, driverId, timeoutType } = job.data;
-    
+
     this.logger.debug(
       `Processing trip timeout: tripId=${tripId}, driverId=${driverId}, type=${timeoutType}`,
     );
@@ -34,10 +38,18 @@ export class TripTimeoutProcessor {
       }
 
       // Only handle driver response timeout for now
-      if (timeoutType === 'driver_response' && trip.status === TripStatus.WAITING_FOR_DRIVER) {
+      if (
+        timeoutType === 'driver_response' &&
+        trip.status === TripStatus.WAITING_FOR_DRIVER
+      ) {
         // Check if driver already responded
-        if (trip.driver?.id === driverId || trip.rejectedDriverIds?.includes(driverId)) {
-          this.logger.debug(`Driver ${driverId} already responded to trip ${tripId}`);
+        if (
+          trip.driver?.id === driverId ||
+          trip.rejectedDriverIds?.includes(driverId)
+        ) {
+          this.logger.debug(
+            `Driver ${driverId} already responded to trip ${tripId}`,
+          );
           return {
             success: true,
             message: 'Driver already responded',
@@ -51,15 +63,16 @@ export class TripTimeoutProcessor {
         }
 
         await this.tripService.updateTrip(tripId, { rejectedDriverIds });
-        
-        this.logger.log(`Driver ${driverId} timed out for trip ${tripId}, added to rejected list`);
+
+        this.logger.log(
+          `Driver ${driverId} timed out for trip ${tripId}, added to rejected list`,
+        );
       }
 
       return {
         success: true,
         message: 'Timeout handled',
       };
-
     } catch (error) {
       this.logger.error(
         `Error processing timeout for trip ${tripId}: ${error.message}`,
@@ -81,15 +94,11 @@ export class TripTimeoutProcessor {
 
   @OnQueueCompleted()
   onCompleted(job: Job<TripTimeoutJob>, result: JobResult) {
-    this.logger.debug(
-      `Completed timeout job ${job.id}: ${result.message}`,
-    );
+    this.logger.debug(`Completed timeout job ${job.id}: ${result.message}`);
   }
 
   @OnQueueFailed()
   onFailed(job: Job<TripTimeoutJob>, error: Error) {
-    this.logger.error(
-      `Timeout job ${job.id} failed: ${error.message}`,
-    );
+    this.logger.error(`Timeout job ${job.id} failed: ${error.message}`);
   }
 }

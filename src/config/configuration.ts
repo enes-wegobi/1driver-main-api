@@ -80,19 +80,36 @@ export default () => ({
     mongoPassword: process.env.TRIP_MONGODB_PASSWORD,
   },
   tripCostPerMinute: parseFloat(process.env.TRIP_COST_PER_MINUTE || '1'),
-  tripDriverResponseTimeout: parseInt(process.env.TRIP_DRIVER_RESPONSE_TIMEOUT || '120', 10), // 2 minutes in seconds
-  tripTimeoutCheckInterval: parseInt(process.env.TRIP_TIMEOUT_CHECK_INTERVAL || '30', 10), // 30 seconds
+  tripDriverResponseTimeout: parseInt(
+    process.env.TRIP_DRIVER_RESPONSE_TIMEOUT || '120',
+    10,
+  ), // 2 minutes in seconds
+  tripTimeoutCheckInterval: parseInt(
+    process.env.TRIP_TIMEOUT_CHECK_INTERVAL || '30',
+    10,
+  ), // 30 seconds
   queue: {
     redis: {
-      host: process.env.QUEUE_REDIS_HOST || process.env.VALKEY_HOST || 'localhost',
-      port: parseInt(process.env.QUEUE_REDIS_PORT || process.env.VALKEY_PORT || '6379', 10),
-      username: process.env.QUEUE_REDIS_USERNAME || process.env.VALKEY_USERNAME || '',
-      password: process.env.QUEUE_REDIS_PASSWORD || process.env.VALKEY_PASSWORD || '',
+      host:
+        process.env.QUEUE_REDIS_HOST || process.env.VALKEY_HOST || 'localhost',
+      port: parseInt(
+        process.env.QUEUE_REDIS_PORT || process.env.VALKEY_PORT || '6379',
+        10,
+      ),
+      username:
+        process.env.QUEUE_REDIS_USERNAME || process.env.VALKEY_USERNAME || '',
+      password:
+        process.env.QUEUE_REDIS_PASSWORD || process.env.VALKEY_PASSWORD || '',
       db: parseInt(process.env.QUEUE_REDIS_DB || '1', 10), // Use separate DB for queues
-      tls: process.env.QUEUE_REDIS_TLS === 'true' || process.env.VALKEY_TLS === 'true',
+      tls:
+        process.env.QUEUE_REDIS_TLS === 'true' ||
+        process.env.VALKEY_TLS === 'true',
     },
     defaultJobOptions: {
-      removeOnComplete: parseInt(process.env.QUEUE_REMOVE_ON_COMPLETE || '100', 10),
+      removeOnComplete: parseInt(
+        process.env.QUEUE_REMOVE_ON_COMPLETE || '100',
+        10,
+      ),
       removeOnFail: parseInt(process.env.QUEUE_REMOVE_ON_FAIL || '50', 10),
       attempts: parseInt(process.env.QUEUE_DEFAULT_ATTEMPTS || '3', 10),
       backoff: {
