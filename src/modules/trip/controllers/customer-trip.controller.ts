@@ -115,4 +115,12 @@ export class CustomersTripsController {
   async cancelTrip(@GetUser() user: IJwtPayload) {
     return await this.tripService.cancelTripByCustomer(user.userId);
   }
+
+  @Post('cancel-request')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Cancel pending trip request to drivers' })
+  async cancelTripRequest(@GetUser() user: IJwtPayload) {
+    return await this.tripService.cancelTripRequest(user.userId);
+  }
 }

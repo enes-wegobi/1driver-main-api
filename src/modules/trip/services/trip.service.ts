@@ -497,6 +497,70 @@ export class TripService {
     );
   }
 
+  async cancelTripRequest(customerId: string): Promise<TripOperationResult> {
+    return this.lockService.executeWithLock(
+      `customer:${customerId}:cancel-request`,
+      async () => {
+        return this.executeWithErrorHandling(
+          'cancelling trip request by customer',
+          async () => {
+            const tripId = await this.getUserActiveTripId(
+              customerId,
+              UserType.CUSTOMER,
+            );
+            const trip = await this.getTrip(tripId);
+
+            // Validate that trip can be cancelled (not yet accepted)
+            this.validateTripRequestCancellableStatus(trip.status);
+
+            // Store driver IDs for notification before clearing them
+            const driversToNotify = trip.calledDriverIds || [];
+
+            // Clean up queue systems
+            await this.cleanupTripFromQueues(tripId, driversToNotify);
+
+            // Update trip back to DRAFT status and clear driver-related fields
+            const updateData = {
+              status: TripStatus.DRAFT,
+              calledDriverIds: [],
+              rejectedDriverIds: [],
+              callStartTime: null,
+              callRetryCount: 0,
+            };
+
+            const updatedTrip = await this.updateTripWithData(tripId, updateData);
+
+            // Remove customer from active trip
+            await this.activeTripService.removeUserActiveTrip(
+              customerId,
+              UserType.CUSTOMER,
+            );
+
+            // Notify drivers that trip is no longer available
+            if (driversToNotify.length > 0) {
+              await this.eventService.notifyTripAlreadyTaken(
+                updatedTrip,
+                driversToNotify,
+              );
+              this.logger.log(
+                `Notified ${driversToNotify.length} drivers that trip ${tripId} request was cancelled`,
+              );
+            }
+
+            this.logger.log(
+              `Trip request ${tripId} cancelled by customer ${customerId}, status reset to DRAFT`,
+            );
+
+            return { success: true, trip: updatedTrip };
+          },
+        );
+      },
+      'Trip request cancellation is currently being processed. Please try again.',
+      30000, // 30 seconds timeout
+      2, // 2 retries
+    );
+  }
+
   async updateTrip(
     tripId: string,
     tripData: UpdateTripDto,
@@ -1087,6 +1151,58 @@ export class TripService {
       throw new BadRequestException(
         `Trip cannot be cancelled at this stage. Current status: ${status}`,
       );
+    }
+  }
+
+  private validateTripRequestCancellableStatus(status: TripStatus): void {
+    const cancellableStatuses = [
+      TripStatus.DRAFT,
+      TripStatus.WAITING_FOR_DRIVER,
+      TripStatus.DRIVER_NOT_FOUND,
+    ];
+
+    if (!cancellableStatuses.includes(status)) {
+      throw new BadRequestException(
+        `Trip request cannot be cancelled at this stage. Current status: ${status}. Only trips that haven't been accepted by a driver can be cancelled.`,
+      );
+    }
+  }
+
+  private async cleanupTripFromQueues(
+    tripId: string,
+    driverIds: string[],
+  ): Promise<void> {
+    try {
+      // Clean up from Bull Queue system (legacy compatibility)
+      const bullQueueResult = await this.tripQueueService.removeJobsByTripId(tripId);
+      this.logger.debug(
+        `Removed ${bullQueueResult.totalRemoved} jobs from Bull Queue for trip ${tripId}`,
+      );
+
+      // Clean up from Sequential Driver Queue system
+      let totalRemovedFromDriverQueues = 0;
+      for (const driverId of driverIds) {
+        // Clear any processing state for this driver
+        await this.driverTripQueueService.clearDriverProcessingTrip(driverId);
+        
+        // Remove this specific trip from driver's queue
+        const removed = await this.driverTripQueueService.removeSpecificTripFromDriver(
+          driverId,
+          tripId,
+        );
+        if (removed) {
+          totalRemovedFromDriverQueues++;
+        }
+      }
+
+      this.logger.debug(
+        `Cleaned up trip ${tripId} from ${totalRemovedFromDriverQueues} driver queues`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Error cleaning up trip ${tripId} from queues: ${error.message}`,
+      );
+      // Don't throw error here as cleanup is best effort
     }
   }
 
