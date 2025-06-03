@@ -79,4 +79,8 @@ export class RedisKeyGenerator {
   static driverProcessingTrip(driverId: string): string {
     return `driver:${driverId}:processing`;
   }
+
+  static driverLastRequest(driverId: string): string {
+    return `driver:${driverId}:last-request`;
+  }
 }

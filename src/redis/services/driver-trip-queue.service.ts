@@ -100,6 +100,10 @@ export class DriverTripQueueService extends BaseRedisService {
 
     try {
       const queueItem: DriverQueueItem = JSON.parse(result[0]);
+      
+      // Save the popped trip as last request for recovery
+      await this.setDriverLastRequest(driverId, queueItem);
+      
       this.logger.debug(
         `Popped trip ${queueItem.tripId} from driver ${driverId} queue`,
       );
@@ -353,5 +357,65 @@ export class DriverTripQueueService extends BaseRedisService {
     }
 
     return cleanedCount;
+  }
+
+  /**
+   * Set driver's last trip request for recovery
+   */
+  @WithErrorHandling()
+  async setDriverLastRequest(
+    driverId: string,
+    queueItem: DriverQueueItem,
+  ): Promise<void> {
+    const lastRequestKey = RedisKeyGenerator.driverLastRequest(driverId);
+    
+    // Store with 3 minutes TTL
+    await this.client.setex(
+      lastRequestKey,
+      180,
+      JSON.stringify(queueItem),
+    );
+    
+    this.logger.debug(
+      `Saved last request for driver ${driverId}: trip ${queueItem.tripId}`,
+    );
+  }
+
+  /**
+   * Get driver's last trip request
+   */
+  @WithErrorHandling(null)
+  async getDriverLastRequest(driverId: string): Promise<DriverQueueItem | null> {
+    const lastRequestKey = RedisKeyGenerator.driverLastRequest(driverId);
+    const result = await this.client.get(lastRequestKey);
+    
+    if (!result) {
+      return null;
+    }
+    
+    try {
+      const queueItem: DriverQueueItem = JSON.parse(result);
+      this.logger.debug(
+        `Retrieved last request for driver ${driverId}: trip ${queueItem.tripId}`,
+      );
+      return queueItem;
+    } catch (error) {
+      this.logger.error(
+        `Error parsing last request for driver ${driverId}:`,
+        error,
+      );
+      return null;
+    }
+  }
+
+  /**
+   * Clear driver's last trip request
+   */
+  @WithErrorHandling()
+  async clearDriverLastRequest(driverId: string): Promise<void> {
+    const lastRequestKey = RedisKeyGenerator.driverLastRequest(driverId);
+    await this.client.del(lastRequestKey);
+    
+    this.logger.debug(`Cleared last request for driver ${driverId}`);
   }
 }

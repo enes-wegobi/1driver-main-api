@@ -4,17 +4,59 @@ import { JwtAuthGuard } from 'src/jwt/jwt.guard';
 import { GetUser } from 'src/jwt/user.decoretor';
 import { IJwtPayload } from 'src/jwt/jwt-payload.interface';
 import { TripService } from '../services/trip.service';
+import { DriverTripQueueService } from 'src/redis/services/driver-trip-queue.service';
+import { TripStatus } from 'src/common/enums/trip-status.enum';
 
 @ApiTags('driver-trips')
 @Controller('driver-trips')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class DriversTripsController {
-  constructor(private readonly tripService: TripService) {}
+  constructor(
+    private readonly tripService: TripService,
+    private readonly driverTripQueueService: DriverTripQueueService,
+  ) {}
 
   @Get('active')
   async getTripById(@GetUser() user: IJwtPayload) {
     return await this.tripService.getDriverActiveTrip(user.userId);
+  }
+
+  @Get('last-request')
+  async getLastRequest(@GetUser() user: IJwtPayload) {
+    const lastRequest = await this.driverTripQueueService.getDriverLastRequest(
+      user.userId,
+    );
+
+    if (!lastRequest) {
+      return {
+        success: false,
+        message: 'No recent trip request found',
+        data: null,
+      };
+    }
+
+    // Check if trip is still valid
+    const trip = await this.tripService.findById(lastRequest.tripId);
+    if (!trip || trip.status !== TripStatus.WAITING_FOR_DRIVER) {
+      // Clear invalid last request
+      await this.driverTripQueueService.clearDriverLastRequest(user.userId);
+      return {
+        success: false,
+        message: 'Trip request is no longer available',
+        data: null,
+      };
+    }
+
+    return {
+      success: true,
+      message: 'Last trip request found',
+      data: {
+        lastRequest,
+        trip,
+        timeAgo: Math.floor((Date.now() - lastRequest.addedAt) / 1000), // seconds ago
+      },
+    };
   }
 
   @Post('accept/:tripId')
@@ -22,7 +64,14 @@ export class DriversTripsController {
     @Param('tripId') tripId: string,
     @GetUser() user: IJwtPayload,
   ) {
-    return await this.tripService.approveTrip(tripId, user.userId);
+    const result = await this.tripService.approveTrip(tripId, user.userId);
+    
+    // Clear last request after accepting
+    if (result.success) {
+      await this.driverTripQueueService.clearDriverLastRequest(user.userId);
+    }
+    
+    return result;
   }
 
   @Post('decline/:tripId')
@@ -30,7 +79,14 @@ export class DriversTripsController {
     @Param('tripId') tripId: string,
     @GetUser() user: IJwtPayload,
   ) {
-    return await this.tripService.declineTrip(tripId, user.userId);
+    const result = await this.tripService.declineTrip(tripId, user.userId);
+    
+    // Clear last request after declining
+    if (result.success) {
+      await this.driverTripQueueService.clearDriverLastRequest(user.userId);
+    }
+    
+    return result;
   }
 
   @Post('start-en-route')
