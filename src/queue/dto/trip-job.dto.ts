@@ -79,7 +79,7 @@ export class CreateTripTimeoutJobDto {
   driverId: string;
 
   @IsString()
-  timeoutType: 'driver_response' | 'pickup_arrival' | 'trip_completion';
+  timeoutType: 'driver_response' | 'pickup_arrival' | 'trip_completion' | 'global_trip_timeout';
 
   @IsDateString()
   scheduledAt: Date;

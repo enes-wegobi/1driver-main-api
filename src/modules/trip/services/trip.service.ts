@@ -33,6 +33,8 @@ import { StripeService } from '../../payments/services/stripe.service';
 import { DriverStatusService } from 'src/redis/services/driver-status.service';
 import { DriverAvailabilityStatus } from 'src/websocket/dto/driver-location.dto';
 import { TripQueueService } from '../../../queue/services/trip-queue.service';
+import { QueueOrchestrator } from '../../../queue/services/queue-orchestrator.service';
+import { ResponseHandler } from '../../../queue/services/response-handler.service';
 import { DriverTripQueueService } from 'src/redis/services/driver-trip-queue.service';
 
 export interface TripOperationResult {
@@ -82,7 +84,6 @@ export class TripService {
     private readonly driverStatusService: DriverStatusService,
     private readonly stripeService: StripeService,
     private readonly tripQueueService: TripQueueService,
-    private readonly driverTripQueueService: DriverTripQueueService,
   ) {}
 
   // ================================

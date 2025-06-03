@@ -2,6 +2,10 @@ import { forwardRef, Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TripQueueService } from './services/trip-queue.service';
+import { QueueOrchestrator } from './services/queue-orchestrator.service';
+import { ResponseHandler } from './services/response-handler.service';
+import { EnhancedDriverRequestProcessor } from './services/enhanced-driver-request-processor.service';
+import { QueuePerformanceMonitor } from './services/queue-performance-monitor.service';
 import { TripRequestProcessor } from './processors/trip-request.processor';
 import { TripTimeoutProcessor } from './processors/trip-timeout.processor';
 import { TripModule } from 'src/modules/trip/trip.module';
@@ -37,7 +41,21 @@ import { EventModule } from 'src/modules/event/event.module';
     RedisModule,
     EventModule,
   ],
-  providers: [TripQueueService, TripRequestProcessor, TripTimeoutProcessor],
-  exports: [TripQueueService],
+  providers: [
+    TripQueueService,
+    QueueOrchestrator,
+    ResponseHandler,
+    EnhancedDriverRequestProcessor,
+    QueuePerformanceMonitor,
+    TripRequestProcessor,
+    TripTimeoutProcessor,
+  ],
+  exports: [
+    TripQueueService,
+    QueueOrchestrator,
+    ResponseHandler,
+    EnhancedDriverRequestProcessor,
+    QueuePerformanceMonitor,
+  ],
 })
 export class QueueModule {}
