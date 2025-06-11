@@ -171,5 +171,4 @@ export class DriversService {
   async updateCustomerRate(customerId: string, rate: number): Promise<any> {
     return this.driversClient.updateCustomerRate(customerId, rate);
   }
-
 }

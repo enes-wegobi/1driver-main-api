@@ -39,7 +39,10 @@ import { DriverAvailabilityStatus } from 'src/websocket/dto/driver-location.dto'
 import { TripQueueService } from '../../../queue/services/trip-queue.service';
 import { DriverTripQueueService } from 'src/redis/services/driver-trip-queue.service';
 import { TripHistoryQueryDto } from '../dto/trip-history-query.dto';
-import { TripHistoryResponseDto, PaginationDto } from '../dto/trip-history-response.dto';
+import {
+  TripHistoryResponseDto,
+  PaginationDto,
+} from '../dto/trip-history-response.dto';
 import { DriverStatisticsQueryDto } from '../dto/driver-statistics-query.dto';
 import { DriverStatisticsResponseDto } from '../dto/driver-statistics-response.dto';
 
@@ -612,15 +615,20 @@ export class TripService {
     return this.tripRepository.findById(tripId);
   }
 
-  async getTripDetailForCustomer(tripId: string, customerId: string): Promise<any> {
+  async getTripDetailForCustomer(
+    tripId: string,
+    customerId: string,
+  ): Promise<any> {
     return this.executeWithErrorHandling('getting trip detail', async () => {
       const trip = await this.getTrip(tripId);
-      
+
       // Validate that the customer owns this trip
       if (trip.customer.id !== customerId) {
-        throw new BadRequestException('You are not authorized to view this trip');
+        throw new BadRequestException(
+          'You are not authorized to view this trip',
+        );
       }
-      
+
       // Get payment method details if paymentMethodId exists
       let paymentMethodDetails: {
         id: string;
@@ -631,12 +639,17 @@ export class TripService {
         expiryYear: number;
         isDefault: boolean;
       } | null = null;
-      
+
       if (trip.paymentMethodId) {
         try {
-          const paymentMethod = await this.paymentMethodService.getPaymentMethodById(trip.paymentMethodId);
-          this.logger.log(`Retrieved payment method for trip ${tripId}: ${paymentMethod?.name || 'Unknown'}`);
-          
+          const paymentMethod =
+            await this.paymentMethodService.getPaymentMethodById(
+              trip.paymentMethodId,
+            );
+          this.logger.log(
+            `Retrieved payment method for trip ${tripId}: ${paymentMethod?.name || 'Unknown'}`,
+          );
+
           if (paymentMethod) {
             paymentMethodDetails = {
               id: paymentMethod._id,
@@ -645,19 +658,21 @@ export class TripService {
               last4: paymentMethod.last4,
               expiryMonth: paymentMethod.expiryMonth,
               expiryYear: paymentMethod.expiryYear,
-              isDefault: paymentMethod.isDefault
+              isDefault: paymentMethod.isDefault,
             };
           }
         } catch (error) {
-          this.logger.warn(`Failed to retrieve payment method ${trip.paymentMethodId} for trip ${tripId}: ${error.message}`);
+          this.logger.warn(
+            `Failed to retrieve payment method ${trip.paymentMethodId} for trip ${tripId}: ${error.message}`,
+          );
           // Continue without payment method details if retrieval fails
         }
       }
-      
+
       // Return trip with payment method details
       return {
         ...trip,
-        paymentMethod: paymentMethodDetails
+        paymentMethod: paymentMethodDetails,
       };
     });
   }
@@ -665,12 +680,14 @@ export class TripService {
   async getTripDetailForDriver(tripId: string, driverId: string): Promise<any> {
     return this.executeWithErrorHandling('getting trip detail', async () => {
       const trip = await this.getTrip(tripId);
-      
+
       // Validate that the customer owns this trip
       if (trip.driver.id !== driverId) {
-        throw new BadRequestException('You are not authorized to view this trip');
-      }      
-      return trip
+        throw new BadRequestException(
+          'You are not authorized to view this trip',
+        );
+      }
+      return trip;
     });
   }
 
@@ -1600,10 +1617,11 @@ export class TripService {
     queryOptions: TripHistoryQueryDto,
   ): Promise<TripHistoryResponseDto> {
     try {
-      const { trips, total } = await this.tripRepository.findTripHistoryByCustomerId(
-        customerId,
-        queryOptions,
-      );
+      const { trips, total } =
+        await this.tripRepository.findTripHistoryByCustomerId(
+          customerId,
+          queryOptions,
+        );
 
       const pagination = this.buildPaginationData(
         queryOptions.page || 1,
@@ -1631,10 +1649,11 @@ export class TripService {
     queryOptions: TripHistoryQueryDto,
   ): Promise<TripHistoryResponseDto> {
     try {
-      const { trips, total } = await this.tripRepository.findTripHistoryByDriverId(
-        driverId,
-        queryOptions,
-      );
+      const { trips, total } =
+        await this.tripRepository.findTripHistoryByDriverId(
+          driverId,
+          queryOptions,
+        );
 
       const pagination = this.buildPaginationData(
         queryOptions.page || 1,
@@ -1663,7 +1682,7 @@ export class TripService {
     total: number,
   ): PaginationDto {
     const totalPages = Math.ceil(total / limit);
-    
+
     return {
       page,
       limit,
@@ -1681,14 +1700,15 @@ export class TripService {
     try {
       const startDate = new Date(queryOptions.startDate);
       const endDate = new Date(queryOptions.endDate);
-      
+
       endDate.setHours(23, 59, 59, 999);
 
-      const statistics = await this.tripRepository.getDriverStatisticsByDateRange(
-        driverId,
-        startDate,
-        endDate,
-      );
+      const statistics =
+        await this.tripRepository.getDriverStatisticsByDateRange(
+          driverId,
+          startDate,
+          endDate,
+        );
 
       return {
         success: true,

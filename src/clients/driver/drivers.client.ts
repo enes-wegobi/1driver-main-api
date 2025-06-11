@@ -262,7 +262,9 @@ export class DriversClient {
       `/customers/${customerId}/rate`,
       { rate },
     );
-    this.logger.log(`Successfully updated customer rate for customer ${customerId}`);
+    this.logger.log(
+      `Successfully updated customer rate for customer ${customerId}`,
+    );
     return data;
   }
 }

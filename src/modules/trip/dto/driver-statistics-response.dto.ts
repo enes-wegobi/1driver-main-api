@@ -18,6 +18,9 @@ export class DriverStatisticsResponseDto {
   @ApiProperty({ description: 'Response message', required: false })
   message?: string;
 
-  @ApiProperty({ description: 'Driver statistics data', type: DriverStatisticsDataDto })
+  @ApiProperty({
+    description: 'Driver statistics data',
+    type: DriverStatisticsDataDto,
+  })
   data: DriverStatisticsDataDto;
 }

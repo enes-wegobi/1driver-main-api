@@ -1,5 +1,13 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, IsNumber, Min, Max, IsEnum, IsDateString } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsNumber,
+  Min,
+  Max,
+  IsEnum,
+  IsDateString,
+} from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { TripStatus } from 'src/common/enums/trip-status.enum';
 
@@ -69,5 +77,6 @@ export class TripHistoryQueryDto {
   })
   @IsOptional()
   @IsString()
-  sortBy?: 'createdAt' | 'tripStartTime' | 'tripEndTime' | 'finalCost' = 'createdAt';
+  sortBy?: 'createdAt' | 'tripStartTime' | 'tripEndTime' | 'finalCost' =
+    'createdAt';
 }

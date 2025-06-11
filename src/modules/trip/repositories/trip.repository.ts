@@ -18,7 +18,6 @@ export interface DriverStatisticsResult {
   totalDuration: number;
 }
 
-
 @Injectable()
 export class TripRepository {
   constructor(
@@ -131,16 +130,16 @@ export class TripRepository {
     customerId: string,
     queryOptions: TripHistoryQueryDto,
   ): Promise<TripHistoryResult> {
-    const { 
-      page = 1, 
-      limit = 10, 
-      status, 
-      startDate, 
-      endDate, 
-      sortBy = 'createdAt', 
-      sortOrder = 'desc' 
+    const {
+      page = 1,
+      limit = 10,
+      status,
+      startDate,
+      endDate,
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
     } = queryOptions;
-    
+
     // Build filter query
     const filter: any = {
       'customer.id': customerId,
@@ -192,16 +191,16 @@ export class TripRepository {
     driverId: string,
     queryOptions: TripHistoryQueryDto,
   ): Promise<TripHistoryResult> {
-    const { 
-      page = 1, 
-      limit = 10, 
-      status, 
-      startDate, 
-      endDate, 
-      sortBy = 'createdAt', 
-      sortOrder = 'desc' 
+    const {
+      page = 1,
+      limit = 10,
+      status,
+      startDate,
+      endDate,
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
     } = queryOptions;
-    
+
     // Build filter query
     const filter: any = {
       'driver.id': driverId,
@@ -276,7 +275,7 @@ export class TripRepository {
     ];
 
     const result = await this.tripModel.aggregate(pipeline).exec();
-    
+
     if (result.length === 0) {
       return {
         completedTrips: 0,
@@ -291,5 +290,4 @@ export class TripRepository {
       totalDuration: result[0].totalDuration || 0,
     };
   }
-
 }

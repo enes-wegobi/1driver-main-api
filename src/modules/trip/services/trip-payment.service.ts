@@ -217,11 +217,14 @@ export class TripPaymentService {
       return;
     }
 
-    const updatedTrip = await this.tripService.updateTripWithData(trip._id.toString(), {
-      status: TripStatus.COMPLETED,
-      paymentStatus: PaymentStatus.PAID,
-      paymentMethodId: payment.paymentMethodId,
-    });
+    const updatedTrip = await this.tripService.updateTripWithData(
+      trip._id.toString(),
+      {
+        status: TripStatus.COMPLETED,
+        paymentStatus: PaymentStatus.PAID,
+        paymentMethodId: payment.paymentMethodId,
+      },
+    );
 
     await this.tripService.cleanupCompletedTrip(
       trip.driver.id,

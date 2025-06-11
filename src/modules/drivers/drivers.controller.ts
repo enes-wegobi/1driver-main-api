@@ -733,15 +733,21 @@ export class DriversController {
     @GetUser() user: IJwtPayload,
   ) {
     try {
-      this.logger.log(`Driver ${user.userId} updating customer ${customerId} rating to ${updateRateDto.rate}`);
-      await this.driversService.updateCustomerRate(customerId, updateRateDto.rate);
+      this.logger.log(
+        `Driver ${user.userId} updating customer ${customerId} rating to ${updateRateDto.rate}`,
+      );
+      await this.driversService.updateCustomerRate(
+        customerId,
+        updateRateDto.rate,
+      );
     } catch (error) {
       this.logger.error(
         `Error updating customer rating: ${error.message}`,
         error.stack,
       );
       throw new HttpException(
-        error.response?.data || 'An error occurred while updating customer rating',
+        error.response?.data ||
+          'An error occurred while updating customer rating',
         error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }

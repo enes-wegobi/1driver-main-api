@@ -1,4 +1,12 @@
-import { Controller, Get, UseGuards, Post, Body, Query, Param } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  UseGuards,
+  Post,
+  Body,
+  Query,
+  Param,
+} from '@nestjs/common';
 import {
   ApiTags,
   ApiBearerAuth,
@@ -131,41 +139,46 @@ export class CustomersTripsController {
   @Get('history')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Get customer trip history',
-    description: 'Retrieve paginated trip history for the authenticated customer with filtering and sorting options'
+    description:
+      'Retrieve paginated trip history for the authenticated customer with filtering and sorting options',
   })
-  @ApiResponse({ 
-    status: 200, 
+  @ApiResponse({
+    status: 200,
     description: 'Trip history retrieved successfully',
-    type: TripHistoryResponseDto 
+    type: TripHistoryResponseDto,
   })
   async getTripHistory(
     @Query() queryOptions: TripHistoryQueryDto,
     @GetUser() user: IJwtPayload,
   ): Promise<TripHistoryResponseDto> {
-    return await this.tripService.getCustomerTripHistory(user.userId, queryOptions);
+    return await this.tripService.getCustomerTripHistory(
+      user.userId,
+      queryOptions,
+    );
   }
 
   @Get(':id')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ 
+  @ApiOperation({
     summary: 'Get trip details by ID',
-    description: 'Get detailed information about a specific trip by its ID. Customer can only access their own trips.'
+    description:
+      'Get detailed information about a specific trip by its ID. Customer can only access their own trips.',
   })
   @ApiParam({
     name: 'id',
     description: 'Trip ID',
-    type: 'string'
+    type: 'string',
   })
-  @ApiResponse({ 
-    status: 200, 
-    description: 'Trip details retrieved successfully'
+  @ApiResponse({
+    status: 200,
+    description: 'Trip details retrieved successfully',
   })
-  @ApiResponse({ 
-    status: 400, 
-    description: 'Trip not found or unauthorized access'
+  @ApiResponse({
+    status: 400,
+    description: 'Trip not found or unauthorized access',
   })
   async getTripDetail(
     @Param('id') tripId: string,
