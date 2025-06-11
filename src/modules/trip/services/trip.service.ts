@@ -1727,6 +1727,194 @@ export class TripService {
   }
 
   // ================================
+  // TRIP COMMENT METHODS
+  // ================================
+
+  async addCustomerComment(
+    tripId: string,
+    customerId: string,
+    comment: string,
+  ): Promise<TripOperationResult> {
+    return this.lockService.executeWithLock(
+      `trip:${tripId}`,
+      async () => {
+        return this.executeWithErrorHandling('adding customer comment', async () => {
+          const trip = await this.getTrip(tripId);
+
+          // Validate that the customer owns this trip
+          if (trip.customer.id !== customerId) {
+            throw new BadRequestException(
+              'You are not authorized to comment on this trip',
+            );
+          }
+
+          // Validate trip is completed
+          if (trip.status !== TripStatus.COMPLETED) {
+            throw new BadRequestException(
+              'You can only comment on completed trips',
+            );
+          }
+
+          // Update trip with customer comment
+          const updatedTrip = await this.updateTripWithData(tripId, {
+            customerComment: comment,
+          });
+
+          return { success: true, trip: updatedTrip };
+        });
+      },
+      'Trip comment is currently being processed. Please try again.',
+      30000,
+      2,
+    );
+  }
+
+  async addDriverComment(
+    tripId: string,
+    driverId: string,
+    comment: string,
+  ): Promise<TripOperationResult> {
+    return this.lockService.executeWithLock(
+      `trip:${tripId}`,
+      async () => {
+        return this.executeWithErrorHandling('adding driver comment', async () => {
+          const trip = await this.getTrip(tripId);
+
+          // Validate that the driver owns this trip
+          if (!trip.driver || trip.driver.id !== driverId) {
+            throw new BadRequestException(
+              'You are not authorized to comment on this trip',
+            );
+          }
+
+          // Validate trip is completed
+          if (trip.status !== TripStatus.COMPLETED) {
+            throw new BadRequestException(
+              'You can only comment on completed trips',
+            );
+          }
+
+          // Update trip with driver comment
+          const updatedTrip = await this.updateTripWithData(tripId, {
+            driverComment: comment,
+          });
+
+          return { success: true, trip: updatedTrip };
+        });
+      },
+      'Trip comment is currently being processed. Please try again.',
+      30000,
+      2,
+    );
+  }
+
+  async rateTrip(
+    tripId: string,
+    customerId: string,
+    rating: number,
+  ): Promise<TripOperationResult> {
+    return this.lockService.executeWithLock(
+      `trip:${tripId}`,
+      async () => {
+        return this.executeWithErrorHandling('rating trip', async () => {
+          const trip = await this.getTrip(tripId);
+
+          // Validate that the customer owns this trip
+          if (trip.customer.id !== customerId) {
+            throw new BadRequestException(
+              'You are not authorized to rate this trip',
+            );
+          }
+
+          // Validate trip is completed
+          if (trip.status !== TripStatus.COMPLETED) {
+            throw new BadRequestException(
+              'You can only rate completed trips',
+            );
+          }
+
+          // Update trip rating
+          const updatedTrip = await this.updateTripWithData(tripId, {
+            rating: rating,
+          });
+
+          // Update driver rating via client
+          if (trip.driver && trip.driver.id) {
+            try {
+              await this.customersClient.updateDriverRate(trip.driver.id, rating);
+              this.logger.log(
+                `Updated driver ${trip.driver.id} rating to ${rating} for trip ${tripId}`,
+              );
+            } catch (error) {
+              this.logger.warn(
+                `Failed to update driver rating: ${error.message}`,
+              );
+            }
+          }
+
+          return { success: true, trip: updatedTrip };
+        });
+      },
+      'Trip rating is currently being processed. Please try again.',
+      30000,
+      2,
+    );
+  }
+
+  async rateDriverTrip(
+    tripId: string,
+    driverId: string,
+    rating: number,
+  ): Promise<TripOperationResult> {
+    return this.lockService.executeWithLock(
+      `trip:${tripId}`,
+      async () => {
+        return this.executeWithErrorHandling('rating trip by driver', async () => {
+          const trip = await this.getTrip(tripId);
+
+          // Validate that the driver owns this trip
+          if (!trip.driver || trip.driver.id !== driverId) {
+            throw new BadRequestException(
+              'You are not authorized to rate this trip',
+            );
+          }
+
+          // Validate trip is completed
+          if (trip.status !== TripStatus.COMPLETED) {
+            throw new BadRequestException(
+              'You can only rate completed trips',
+            );
+          }
+
+          // Update trip with driver rating (we can use a separate field if needed)
+          const updatedTrip = await this.updateTripWithData(tripId, {
+            driverRating: rating,
+          });
+
+          // Update customer rating via client
+          if (trip.customer && trip.customer.id) {
+            try {
+              await this.driversClient.updateCustomerRate(trip.customer.id, rating);
+              this.logger.log(
+                `Updated customer ${trip.customer.id} rating to ${rating} for trip ${tripId}`,
+              );
+            } catch (error) {
+              this.logger.warn(
+                `Failed to update customer rating: ${error.message}`,
+              );
+            }
+          }
+
+          return { success: true, trip: updatedTrip };
+        });
+      },
+      'Trip rating is currently being processed. Please try again.',
+      30000,
+      2,
+    );
+  }
+
+  // ================================
   // ERROR HANDLING
   // ================================
 

@@ -32,6 +32,18 @@ export class Trip extends EntityDocumentHelper {
   @Prop()
   comment: string;
 
+  @Prop()
+  customerRating: number;
+
+  @Prop()
+  customerComment: string;
+
+  @Prop()
+  driverRating: number;
+
+  @Prop()
+  driverComment: string;
+
   @Prop({ type: [{ type: RoutePointSchema }] })
   route: RoutePoint[];
 

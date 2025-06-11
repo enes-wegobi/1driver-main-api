@@ -6,6 +6,9 @@ import {
   Body,
   Query,
   Param,
+  Patch,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -26,6 +29,8 @@ import { TripPaymentService } from '../services/trip-payment.service';
 import { ProcessTripPaymentDto } from '../dto/process-trip-payment.dto';
 import { TripHistoryQueryDto } from '../dto/trip-history-query.dto';
 import { TripHistoryResponseDto } from '../dto/trip-history-response.dto';
+import { AddTripCommentDto } from '../dto/add-trip-comment.dto';
+import { UpdateRateDto } from 'src/common/dto/update-rate.dto';
 
 @ApiTags('customer-trips')
 @Controller('customer-trips')
@@ -156,6 +161,73 @@ export class CustomersTripsController {
     return await this.tripService.getCustomerTripHistory(
       user.userId,
       queryOptions,
+    );
+  }
+
+  @Patch(':id/rate')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Rate a completed trip',
+    description: 'Rate a completed trip and update driver rating. Only the customer who took the trip can rate it.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Trip ID',
+    type: 'string',
+  })
+  @ApiBody({ type: UpdateRateDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Trip rated successfully',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Trip not found, unauthorized access, or trip not completed',
+  })
+  async rateTrip(
+    @Param('id') tripId: string,
+    @Body() updateRateDto: UpdateRateDto,
+    @GetUser() user: IJwtPayload,
+  ) {
+    return await this.tripService.rateTrip(
+      tripId,
+      user.userId,
+      updateRateDto.rate,
+    );
+  }
+
+  @Post(':id/comment')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Add comment to a completed trip',
+    description: 'Add a comment to a completed trip. Only the customer who took the trip can add a comment.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Trip ID',
+    type: 'string',
+  })
+  @ApiBody({ type: AddTripCommentDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Comment added successfully',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Trip not found, unauthorized access, or trip not completed',
+  })
+  async addComment(
+    @Param('id') tripId: string,
+    @Body() addCommentDto: AddTripCommentDto,
+    @GetUser() user: IJwtPayload,
+  ) {
+    return await this.tripService.addCustomerComment(
+      tripId,
+      user.userId,
+      addCommentDto.comment,
     );
   }
 
