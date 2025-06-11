@@ -41,6 +41,16 @@ export class PaymentMethodService {
   }
 
   /**
+   * Get a payment method by ID
+   */
+  async getPaymentMethodById(
+    paymentMethodId: string,
+  ): Promise<PaymentMethod | null> {
+    this.logger.log(`Getting payment method by ID ${paymentMethodId}`);
+    return this.paymentMethodRepository.findById(paymentMethodId);
+  }
+
+  /**
    * Set a payment method as default
    */
   async setDefaultPaymentMethod(

@@ -170,6 +170,7 @@ export class TripRepository {
     const [trips, total] = await Promise.all([
       this.tripModel
         .find(filter)
+        .select('_id status route tripStartTime tripEndTime finalCost')
         .sort(sort)
         .skip(skip)
         .limit(limit)

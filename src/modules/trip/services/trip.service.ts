@@ -610,6 +610,56 @@ export class TripService {
     return this.tripRepository.findById(tripId);
   }
 
+  async getTripDetailForCustomer(tripId: string, customerId: string): Promise<any> {
+    return this.executeWithErrorHandling('getting trip detail', async () => {
+      const trip = await this.getTrip(tripId);
+      
+      // Validate that the customer owns this trip
+      if (trip.customer.id !== customerId) {
+        throw new BadRequestException('You are not authorized to view this trip');
+      }
+      
+      // Get payment method details if paymentMethodId exists
+      let paymentMethodDetails: {
+        id: string;
+        name: string;
+        brand: string;
+        last4: string;
+        expiryMonth: number;
+        expiryYear: number;
+        isDefault: boolean;
+      } | null = null;
+      
+      if (trip.paymentMethodId) {
+        try {
+          const paymentMethod = await this.paymentMethodService.getPaymentMethodById(trip.paymentMethodId);
+          this.logger.log(`Retrieved payment method for trip ${tripId}: ${paymentMethod?.name || 'Unknown'}`);
+          
+          if (paymentMethod) {
+            paymentMethodDetails = {
+              id: paymentMethod._id,
+              name: paymentMethod.name,
+              brand: paymentMethod.brand,
+              last4: paymentMethod.last4,
+              expiryMonth: paymentMethod.expiryMonth,
+              expiryYear: paymentMethod.expiryYear,
+              isDefault: paymentMethod.isDefault
+            };
+          }
+        } catch (error) {
+          this.logger.warn(`Failed to retrieve payment method ${trip.paymentMethodId} for trip ${tripId}: ${error.message}`);
+          // Continue without payment method details if retrieval fails
+        }
+      }
+      
+      // Return trip with payment method details
+      return {
+        ...trip,
+        paymentMethod: paymentMethodDetails
+      };
+    });
+  }
+
   async getNearbyAvailableDrivers(
     latitude: number,
     longitude: number,
@@ -1217,7 +1267,7 @@ export class TripService {
   // DATABASE HELPERS
   // ================================
 
-  private async updateTripWithData(
+  async updateTripWithData(
     tripId: string,
     updateData: any,
   ): Promise<TripDocument> {

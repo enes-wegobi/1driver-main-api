@@ -105,6 +105,7 @@ export class PaymentsService {
     amount: number,
     currency: string = 'try',
     stripePaymentMethodId: string,
+    paymentMethodId: string,
     tripId: string,
     metadata?: Record<string, any>,
   ): Promise<{
@@ -146,7 +147,7 @@ export class PaymentsService {
         tripId,
         amount,
         currency,
-        paymentMethodId: stripePaymentMethodId,
+        paymentMethodId,
         stripePaymentIntentId: paymentIntent.id,
         status: this.getPaymentStatusFromStripe(paymentIntent.status),
         metadata,

@@ -94,6 +94,7 @@ export class TripPaymentService {
         trip.finalCost,
         'eur',
         stripePaymaymentMethodId,
+        paymentMethodId,
         trip._id.toString(),
         {
           tripId: trip._id.toString(),
@@ -216,9 +217,11 @@ export class TripPaymentService {
       return;
     }
 
-    // Update trip status to completed
-    await this.tripService.updateTripStatus(trip._id, TripStatus.COMPLETED);
-    await this.updateTripPaymentStatus(trip._id, PaymentStatus.PAID);
+    const updatedTrip = await this.tripService.updateTripWithData(trip._id.toString(), {
+      status: TripStatus.COMPLETED,
+      paymentStatus: PaymentStatus.PAID,
+      paymentMethodId: payment.paymentMethodId,
+    });
 
     await this.tripService.cleanupCompletedTrip(
       trip.driver.id,
@@ -226,7 +229,6 @@ export class TripPaymentService {
     );
 
     // Get updated trip
-    const updatedTrip = await this.tripService.findById(trip._id);
     if (!updatedTrip) {
       this.logger.warn(`Updated trip not found for payment ${payment._id}`);
       return;

@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards, Post, Body, Query } from '@nestjs/common';
+import { Controller, Get, UseGuards, Post, Body, Query, Param } from '@nestjs/common';
 import {
   ApiTags,
   ApiBearerAuth,
@@ -6,6 +6,7 @@ import {
   ApiBody,
   ApiQuery,
   ApiResponse,
+  ApiParam,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/jwt/jwt.guard';
 import { GetUser } from 'src/jwt/user.decoretor';
@@ -144,5 +145,32 @@ export class CustomersTripsController {
     @GetUser() user: IJwtPayload,
   ): Promise<TripHistoryResponseDto> {
     return await this.tripService.getCustomerTripHistory(user.userId, queryOptions);
+  }
+
+  @Get(':id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ 
+    summary: 'Get trip details by ID',
+    description: 'Get detailed information about a specific trip by its ID. Customer can only access their own trips.'
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Trip ID',
+    type: 'string'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Trip details retrieved successfully'
+  })
+  @ApiResponse({ 
+    status: 400, 
+    description: 'Trip not found or unauthorized access'
+  })
+  async getTripDetail(
+    @Param('id') tripId: string,
+    @GetUser() user: IJwtPayload,
+  ) {
+    return await this.tripService.getTripDetailForCustomer(tripId, user.userId);
   }
 }
