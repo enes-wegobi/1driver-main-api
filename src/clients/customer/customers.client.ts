@@ -160,20 +160,22 @@ export class CustomersClient {
   }
 
   async createSupportTicket(
-    customerId: string,
+    userId: string,
     subject: string,
     description: string,
-    fileKey: string | null,
+    fileUrl: string | null,
+    userType?: string,
   ): Promise<any> {
-    this.logger.log(`Creating support ticket for customer ${customerId}`);
+    this.logger.log(`Creating support ticket for user ${userId}`);
     const { data } = await this.httpClient.post(`/support`, {
-      userId: customerId,
+      userId: userId,
       subject,
       description,
-      fileKey,
+      fileUrl,
+      userType,
     });
     this.logger.log(
-      `Successfully created support ticket for customer ${customerId}`,
+      `Successfully created support ticket for user ${userId}`,
     );
     return data;
   }
