@@ -1,5 +1,5 @@
 import { Controller, Get, UseGuards, Post, Param, Query } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/jwt/jwt.guard';
 import { GetUser } from 'src/jwt/user.decoretor';
 import { IJwtPayload } from 'src/jwt/jwt-payload.interface';
@@ -8,6 +8,8 @@ import { DriverTripQueueService } from 'src/redis/services/driver-trip-queue.ser
 import { TripStatus } from 'src/common/enums/trip-status.enum';
 import { TripHistoryQueryDto } from '../dto/trip-history-query.dto';
 import { TripHistoryResponseDto } from '../dto/trip-history-response.dto';
+import { DriverStatisticsQueryDto } from '../dto/driver-statistics-query.dto';
+import { DriverStatisticsResponseDto } from '../dto/driver-statistics-response.dto';
 
 @ApiTags('driver-trips')
 @Controller('driver-trips')
@@ -119,6 +121,48 @@ export class DriversTripsController {
   @Post('cancel')
   async cancelTrip(@GetUser() user: IJwtPayload) {
     return await this.tripService.cancelTripByDriver(user.userId);
+  }
+
+  @Get('statistics')
+  @ApiOperation({ 
+    summary: 'Get driver statistics',
+    description: 'Retrieve driver statistics for completed trips within a specified date range'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Driver statistics retrieved successfully',
+    type: DriverStatisticsResponseDto 
+  })
+  async getDriverStatistics(
+    @Query() queryOptions: DriverStatisticsQueryDto,
+    @GetUser() user: IJwtPayload,
+  ): Promise<DriverStatisticsResponseDto> {
+    return await this.tripService.getDriverStatistics(user.userId, queryOptions);
+  }
+
+  @Get(':id')
+  @ApiOperation({ 
+    summary: 'Get trip details by ID for driver',
+    description: 'Get detailed information about a specific trip by its ID. Driver can only access trips assigned to them.'
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Trip ID',
+    type: 'string'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Trip details retrieved successfully'
+  })
+  @ApiResponse({ 
+    status: 400, 
+    description: 'Trip not found or unauthorized access'
+  })
+  async getTripDetail(
+    @Param('id') tripId: string,
+    @GetUser() user: IJwtPayload,
+  ) {
+    return await this.tripService.getTripDetailForDriver(tripId, user.userId);
   }
 
   @Get('history')

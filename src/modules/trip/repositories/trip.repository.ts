@@ -12,6 +12,12 @@ export interface TripHistoryResult {
   total: number;
 }
 
+export interface DriverStatisticsResult {
+  completedTrips: number;
+  totalEarnings: number;
+  totalDuration: number;
+}
+
 
 @Injectable()
 export class TripRepository {
@@ -231,6 +237,7 @@ export class TripRepository {
     const [trips, total] = await Promise.all([
       this.tripModel
         .find(filter)
+        .select('_id status route tripStartTime tripEndTime finalCost')
         .sort(sort)
         .skip(skip)
         .limit(limit)
@@ -240,6 +247,49 @@ export class TripRepository {
     ]);
 
     return { trips, total };
+  }
+
+  async getDriverStatisticsByDateRange(
+    driverId: string,
+    startDate: Date,
+    endDate: Date,
+  ): Promise<DriverStatisticsResult> {
+    const pipeline = [
+      {
+        $match: {
+          'driver.id': driverId,
+          status: TripStatus.COMPLETED,
+          createdAt: {
+            $gte: startDate,
+            $lte: endDate,
+          },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          completedTrips: { $sum: 1 },
+          totalEarnings: { $sum: '$finalCost' },
+          totalDuration: { $sum: '$actualDuration' },
+        },
+      },
+    ];
+
+    const result = await this.tripModel.aggregate(pipeline).exec();
+    
+    if (result.length === 0) {
+      return {
+        completedTrips: 0,
+        totalEarnings: 0,
+        totalDuration: 0,
+      };
+    }
+
+    return {
+      completedTrips: result[0].completedTrips || 0,
+      totalEarnings: result[0].totalEarnings || 0,
+      totalDuration: result[0].totalDuration || 0,
+    };
   }
 
 }

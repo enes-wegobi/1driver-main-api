@@ -40,6 +40,8 @@ import { TripQueueService } from '../../../queue/services/trip-queue.service';
 import { DriverTripQueueService } from 'src/redis/services/driver-trip-queue.service';
 import { TripHistoryQueryDto } from '../dto/trip-history-query.dto';
 import { TripHistoryResponseDto, PaginationDto } from '../dto/trip-history-response.dto';
+import { DriverStatisticsQueryDto } from '../dto/driver-statistics-query.dto';
+import { DriverStatisticsResponseDto } from '../dto/driver-statistics-response.dto';
 
 export interface TripOperationResult {
   success: boolean;
@@ -657,6 +659,18 @@ export class TripService {
         ...trip,
         paymentMethod: paymentMethodDetails
       };
+    });
+  }
+
+  async getTripDetailForDriver(tripId: string, driverId: string): Promise<any> {
+    return this.executeWithErrorHandling('getting trip detail', async () => {
+      const trip = await this.getTrip(tripId);
+      
+      // Validate that the customer owns this trip
+      if (trip.driver.id !== driverId) {
+        throw new BadRequestException('You are not authorized to view this trip');
+      }      
+      return trip
     });
   }
 
@@ -1658,6 +1672,38 @@ export class TripService {
       hasNext: page < totalPages,
       hasPrev: page > 1,
     };
+  }
+
+  async getDriverStatistics(
+    driverId: string,
+    queryOptions: DriverStatisticsQueryDto,
+  ): Promise<DriverStatisticsResponseDto> {
+    try {
+      const startDate = new Date(queryOptions.startDate);
+      const endDate = new Date(queryOptions.endDate);
+      
+      endDate.setHours(23, 59, 59, 999);
+
+      const statistics = await this.tripRepository.getDriverStatisticsByDateRange(
+        driverId,
+        startDate,
+        endDate,
+      );
+
+      return {
+        success: true,
+        data: {
+          completedTrips: statistics.completedTrips,
+          totalEarnings: statistics.totalEarnings,
+          totalDuration: statistics.totalDuration,
+        },
+      };
+    } catch (error) {
+      this.logger.error(
+        `Error fetching driver statistics for ${driverId}: ${error.message}`,
+      );
+      throw new BadRequestException('Failed to fetch driver statistics');
+    }
   }
 
   // ================================
