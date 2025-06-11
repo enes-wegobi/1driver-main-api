@@ -103,4 +103,8 @@ export class CustomersService {
       defaultPaymentMethodId,
     );
   }
+
+  async updateDriverRate(driverId: string, rate: number): Promise<any> {
+    return this.customersClient.updateDriverRate(driverId, rate);
+  }
 }

@@ -45,6 +45,7 @@ import { CompletePhoneUpdateDto } from 'src/clients/customer/dto/complete-phone-
 import { UpdateNotificationPermissionsDto } from 'src/clients/driver/dto/update-notification-permissions.dto';
 import { UpdateDriverProfileDto } from './dto/update-driver-profile.dto';
 import { UpdateDriverExpoTokenDto } from './dto/update-driver-expo-token.dto';
+import { UpdateRateDto } from 'src/common/dto/update-rate.dto';
 
 @ApiTags('drivers')
 @ApiBearerAuth()
@@ -706,6 +707,41 @@ export class DriversController {
       );
       throw new HttpException(
         error.response?.data || 'An error occurred while deleting expo token',
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Patch(':id/rate')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Update customer rating' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Rating updated successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Customer not found',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Invalid rate value (must be between 0 and 5)',
+  })
+  async updateCustomerRate(
+    @Param('id') customerId: string,
+    @Body() updateRateDto: UpdateRateDto,
+    @GetUser() user: IJwtPayload,
+  ) {
+    try {
+      this.logger.log(`Driver ${user.userId} updating customer ${customerId} rating to ${updateRateDto.rate}`);
+      await this.driversService.updateCustomerRate(customerId, updateRateDto.rate);
+    } catch (error) {
+      this.logger.error(
+        `Error updating customer rating: ${error.message}`,
+        error.stack,
+      );
+      throw new HttpException(
+        error.response?.data || 'An error occurred while updating customer rating',
         error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }

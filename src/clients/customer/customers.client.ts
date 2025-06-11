@@ -230,4 +230,14 @@ export class CustomersClient {
     );
     return data;
   }
+
+  async updateDriverRate(driverId: string, rate: number): Promise<any> {
+    this.logger.log(`Updating driver rate for driver ${driverId}`);
+    const { data } = await this.httpClient.patch(
+      `/drivers/${driverId}/rate`,
+      { rate },
+    );
+    this.logger.log(`Successfully updated driver rate for driver ${driverId}`);
+    return data;
+  }
 }

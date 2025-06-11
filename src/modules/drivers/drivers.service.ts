@@ -165,7 +165,11 @@ export class DriversService {
   }
 
   async deleteExpoToken(driverId: string): Promise<any> {
-    this.logger.log(`Deleting expo token for driver ${driverId}`);
     return this.driversClient.deleteExpoToken(driverId);
   }
+
+  async updateCustomerRate(customerId: string, rate: number): Promise<any> {
+    return this.driversClient.updateCustomerRate(customerId, rate);
+  }
+
 }

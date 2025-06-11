@@ -255,4 +255,14 @@ export class DriversClient {
     this.logger.log(`Successfully set active trip for driver ${driverId}`);
     return data;
   }
+
+  async updateCustomerRate(customerId: string, rate: number): Promise<any> {
+    this.logger.log(`Updating customer rate for customer ${customerId}`);
+    const { data } = await this.httpClient.patch(
+      `/customers/${customerId}/rate`,
+      { rate },
+    );
+    this.logger.log(`Successfully updated customer rate for customer ${customerId}`);
+    return data;
+  }
 }
