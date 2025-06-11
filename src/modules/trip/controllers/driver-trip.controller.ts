@@ -1,11 +1,13 @@
-import { Controller, Get, UseGuards, Post, Param } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { Controller, Get, UseGuards, Post, Param, Query } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/jwt/jwt.guard';
 import { GetUser } from 'src/jwt/user.decoretor';
 import { IJwtPayload } from 'src/jwt/jwt-payload.interface';
 import { TripService } from '../services/trip.service';
 import { DriverTripQueueService } from 'src/redis/services/driver-trip-queue.service';
 import { TripStatus } from 'src/common/enums/trip-status.enum';
+import { TripHistoryQueryDto } from '../dto/trip-history-query.dto';
+import { TripHistoryResponseDto } from '../dto/trip-history-response.dto';
 
 @ApiTags('driver-trips')
 @Controller('driver-trips')
@@ -65,12 +67,12 @@ export class DriversTripsController {
     @GetUser() user: IJwtPayload,
   ) {
     const result = await this.tripService.approveTrip(tripId, user.userId);
-    
+
     // Clear last request after accepting
     if (result.success) {
       await this.driverTripQueueService.clearDriverLastRequest(user.userId);
     }
-    
+
     return result;
   }
 
@@ -80,12 +82,12 @@ export class DriversTripsController {
     @GetUser() user: IJwtPayload,
   ) {
     const result = await this.tripService.declineTrip(tripId, user.userId);
-    
+
     // Clear last request after declining
     if (result.success) {
       await this.driverTripQueueService.clearDriverLastRequest(user.userId);
     }
-    
+
     return result;
   }
 
@@ -117,5 +119,22 @@ export class DriversTripsController {
   @Post('cancel')
   async cancelTrip(@GetUser() user: IJwtPayload) {
     return await this.tripService.cancelTripByDriver(user.userId);
+  }
+
+  @Get('history')
+  @ApiOperation({ 
+    summary: 'Get driver trip history',
+    description: 'Retrieve paginated trip history for the authenticated driver with filtering and sorting options'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Trip history retrieved successfully',
+    type: TripHistoryResponseDto 
+  })
+  async getTripHistory(
+    @Query() queryOptions: TripHistoryQueryDto,
+    @GetUser() user: IJwtPayload,
+  ): Promise<TripHistoryResponseDto> {
+    return await this.tripService.getDriverTripHistory(user.userId, queryOptions);
   }
 }

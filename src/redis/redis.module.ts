@@ -8,8 +8,8 @@ import { CustomerStatusService } from './services/customer-status.service';
 import { NearbySearchService } from './services/nearby-search.service';
 import { ActiveTripService } from './services/active-trip.service';
 import { TokenManagerService } from './services/token-manager.service';
-import { DriverCleanupService } from './services/driver-cleanup.service';
 import { DriverTripQueueService } from './services/driver-trip-queue.service';
+import { CleanupService } from './services/cleanup.service';
 
 @Module({
   imports: [ConfigModule],
@@ -21,9 +21,9 @@ import { DriverTripQueueService } from './services/driver-trip-queue.service';
     NearbySearchService,
     ActiveTripService,
     TokenManagerService,
-    DriverCleanupService,
     DriverTripQueueService,
     RedisService,
+    CleanupService,
   ],
   exports: [
     LocationService,

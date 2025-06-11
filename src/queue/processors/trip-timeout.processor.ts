@@ -19,17 +19,23 @@ export class TripTimeoutProcessor extends WorkerHost {
   ) {
     super();
     // WORKER BAŞLANGICI KONTROLÜ
-    this.logger.log('🚀 TIMEOUT PROCESSOR INITIALIZED - Worker is ready to process jobs');
+    this.logger.log(
+      '🚀 TIMEOUT PROCESSOR INITIALIZED - Worker is ready to process jobs',
+    );
   }
 
   async process(job: Job<TripTimeoutJob, any, string>): Promise<JobResult> {
-    this.logger.log(`🔥 TIMEOUT PROCESSOR STARTED: jobId=${job.id}, jobName=${job.name}, data=${JSON.stringify(job.data)}`);
-    
+    this.logger.log(
+      `🔥 TIMEOUT PROCESSOR STARTED: jobId=${job.id}, jobName=${job.name}, data=${JSON.stringify(job.data)}`,
+    );
+
     switch (job.name) {
       case 'timeout-trip-request':
         return this.handleTripTimeout(job);
       default:
-        this.logger.error(`❌ UNKNOWN JOB TYPE: ${job.name} - Available types: timeout-trip-request`);
+        this.logger.error(
+          `❌ UNKNOWN JOB TYPE: ${job.name} - Available types: timeout-trip-request`,
+        );
         throw new Error(`Unknown job type: ${job.name}`);
     }
   }
@@ -121,7 +127,9 @@ export class TripTimeoutProcessor extends WorkerHost {
   // WORKER EVENT'LERİNE DETAYLI LOGLAR
   @OnWorkerEvent('ready')
   onReady() {
-    this.logger.log('✅ TIMEOUT WORKER READY - Worker is now listening for jobs');
+    this.logger.log(
+      '✅ TIMEOUT WORKER READY - Worker is now listening for jobs',
+    );
   }
 
   @OnWorkerEvent('error')
@@ -143,12 +151,16 @@ export class TripTimeoutProcessor extends WorkerHost {
 
   @OnWorkerEvent('completed')
   onCompleted(job: Job<TripTimeoutJob>, result: JobResult) {
-    this.logger.log(`✅ TIMEOUT PROCESSOR COMPLETED: job ${job.id}: ${result.message}`);
+    this.logger.log(
+      `✅ TIMEOUT PROCESSOR COMPLETED: job ${job.id}: ${result.message}`,
+    );
   }
 
   @OnWorkerEvent('failed')
   onFailed(job: Job<TripTimeoutJob>, error: Error) {
-    this.logger.error(`❌ TIMEOUT PROCESSOR FAILED: job ${job.id} failed: ${error.message}`);
+    this.logger.error(
+      `❌ TIMEOUT PROCESSOR FAILED: job ${job.id} failed: ${error.message}`,
+    );
   }
 
   private areAllDriversRejected(trip: any): boolean {

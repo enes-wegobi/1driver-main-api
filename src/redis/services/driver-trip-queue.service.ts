@@ -38,7 +38,7 @@ export class DriverTripQueueService extends BaseRedisService {
     customerLocation: { lat: number; lon: number },
   ): Promise<void> {
     const queueKey = RedisKeyGenerator.driverTripQueue(driverId);
-    
+
     const queueItem: DriverQueueItem = {
       tripId,
       priority,
@@ -47,11 +47,7 @@ export class DriverTripQueueService extends BaseRedisService {
     };
 
     // Add to sorted set with priority as score (higher priority = lower score for first processing)
-    await this.client.zadd(
-      queueKey,
-      priority,
-      JSON.stringify(queueItem),
-    );
+    await this.client.zadd(queueKey, priority, JSON.stringify(queueItem));
 
     // Set expiry for queue (24 hours)
     await this.client.expire(queueKey, 24 * 60 * 60);
@@ -65,12 +61,14 @@ export class DriverTripQueueService extends BaseRedisService {
    * Get the next trip for driver (highest priority)
    */
   @WithErrorHandling(null)
-  async getNextTripForDriver(driverId: string): Promise<DriverQueueItem | null> {
+  async getNextTripForDriver(
+    driverId: string,
+  ): Promise<DriverQueueItem | null> {
     const queueKey = RedisKeyGenerator.driverTripQueue(driverId);
-    
+
     // Get the item with lowest score (highest priority)
     const result = await this.client.zrange(queueKey, 0, 0, 'WITHSCORES');
-    
+
     if (!result || result.length === 0) {
       return null;
     }
@@ -79,7 +77,10 @@ export class DriverTripQueueService extends BaseRedisService {
       const queueItem: DriverQueueItem = JSON.parse(result[0]);
       return queueItem;
     } catch (error) {
-      this.logger.error(`Error parsing queue item for driver ${driverId}:`, error);
+      this.logger.error(
+        `Error parsing queue item for driver ${driverId}:`,
+        error,
+      );
       return null;
     }
   }
@@ -88,28 +89,33 @@ export class DriverTripQueueService extends BaseRedisService {
    * Remove and get the next trip for driver (pop operation)
    */
   @WithErrorHandling(null)
-  async popNextTripForDriver(driverId: string): Promise<DriverQueueItem | null> {
+  async popNextTripForDriver(
+    driverId: string,
+  ): Promise<DriverQueueItem | null> {
     const queueKey = RedisKeyGenerator.driverTripQueue(driverId);
-    
+
     // Get and remove the item with lowest score (highest priority)
     const result = await this.client.zpopmin(queueKey, 1);
-    
+
     if (!result || result.length === 0) {
       return null;
     }
 
     try {
       const queueItem: DriverQueueItem = JSON.parse(result[0]);
-      
+
       // Save the popped trip as last request for recovery
       await this.setDriverLastRequest(driverId, queueItem);
-      
+
       this.logger.debug(
         `Popped trip ${queueItem.tripId} from driver ${driverId} queue`,
       );
       return queueItem;
     } catch (error) {
-      this.logger.error(`Error parsing popped queue item for driver ${driverId}:`, error);
+      this.logger.error(
+        `Error parsing popped queue item for driver ${driverId}:`,
+        error,
+      );
       return null;
     }
   }
@@ -121,14 +127,14 @@ export class DriverTripQueueService extends BaseRedisService {
   async removeAllTripsForDriver(driverId: string): Promise<number> {
     const queueKey = RedisKeyGenerator.driverTripQueue(driverId);
     const processingKey = RedisKeyGenerator.driverProcessingTrip(driverId);
-    
+
     const pipeline = this.client.multi();
     pipeline.zcard(queueKey);
     pipeline.del(queueKey);
     pipeline.del(processingKey);
-    
+
     const results = await pipeline.exec();
-    const queueCount = results ? results[0][1] as number : 0;
+    const queueCount = results ? (results[0][1] as number) : 0;
 
     this.logger.debug(
       `Removed ${queueCount} trips from driver ${driverId} queue`,
@@ -146,10 +152,10 @@ export class DriverTripQueueService extends BaseRedisService {
     tripId: string,
   ): Promise<boolean> {
     const queueKey = RedisKeyGenerator.driverTripQueue(driverId);
-    
+
     // Get all items and find the one with matching tripId
     const allItems = await this.client.zrange(queueKey, 0, -1);
-    
+
     for (const item of allItems) {
       try {
         const queueItem: DriverQueueItem = JSON.parse(item);
@@ -206,9 +212,9 @@ export class DriverTripQueueService extends BaseRedisService {
     timeoutSeconds: number = 120,
   ): Promise<void> {
     const processingKey = RedisKeyGenerator.driverProcessingTrip(driverId);
-    
+
     await this.client.setex(processingKey, timeoutSeconds, tripId);
-    
+
     this.logger.debug(
       `Set driver ${driverId} as processing trip ${tripId} with ${timeoutSeconds}s timeout`,
     );
@@ -221,24 +227,29 @@ export class DriverTripQueueService extends BaseRedisService {
   async clearDriverProcessingTrip(driverId: string): Promise<void> {
     const processingKey = RedisKeyGenerator.driverProcessingTrip(driverId);
     await this.client.del(processingKey);
-    
+
     this.logger.debug(`Cleared processing trip for driver ${driverId}`);
   }
 
   /**
    * Get complete driver queue status
    */
-  @WithErrorHandling({ queueLength: 0, currentProcessing: null, processingStartedAt: null, nextTrips: [] })
+  @WithErrorHandling({
+    queueLength: 0,
+    currentProcessing: null,
+    processingStartedAt: null,
+    nextTrips: [],
+  })
   async getDriverQueueStatus(driverId: string): Promise<DriverQueueStatus> {
     const queueKey = RedisKeyGenerator.driverTripQueue(driverId);
     const processingKey = RedisKeyGenerator.driverProcessingTrip(driverId);
-    
+
     const pipeline = this.client.multi();
     pipeline.zrange(queueKey, 0, -1, 'WITHSCORES');
     pipeline.get(processingKey);
-    
+
     const results = await pipeline.exec();
-    
+
     if (!results) {
       return {
         queueLength: 0,
@@ -252,7 +263,7 @@ export class DriverTripQueueService extends BaseRedisService {
     const currentProcessing = results[1][1] as string | null;
 
     const nextTrips: DriverQueueItem[] = [];
-    
+
     // Parse queue items
     for (let i = 0; i < queueItems.length; i += 2) {
       try {
@@ -288,12 +299,12 @@ export class DriverTripQueueService extends BaseRedisService {
     // This is a more expensive operation, use sparingly
     const pattern = RedisKeyGenerator.driverTripQueue('*');
     const keys = await this.client.keys(pattern);
-    
+
     const driversWithTrip: string[] = [];
-    
+
     for (const key of keys) {
       const items = await this.client.zrange(key, 0, -1);
-      
+
       for (const item of items) {
         try {
           const queueItem: DriverQueueItem = JSON.parse(item);
@@ -341,12 +352,13 @@ export class DriverTripQueueService extends BaseRedisService {
   async cleanupExpiredProcessingTrips(): Promise<number> {
     const pattern = RedisKeyGenerator.driverProcessingTrip('*');
     const keys = await this.client.keys(pattern);
-    
+
     let cleanedCount = 0;
-    
+
     for (const key of keys) {
       const ttl = await this.client.ttl(key);
-      if (ttl === -1) { // Key exists but has no expiry
+      if (ttl === -1) {
+        // Key exists but has no expiry
         await this.client.del(key);
         cleanedCount++;
       }
@@ -368,14 +380,10 @@ export class DriverTripQueueService extends BaseRedisService {
     queueItem: DriverQueueItem,
   ): Promise<void> {
     const lastRequestKey = RedisKeyGenerator.driverLastRequest(driverId);
-    
+
     // Store with 3 minutes TTL
-    await this.client.setex(
-      lastRequestKey,
-      180,
-      JSON.stringify(queueItem),
-    );
-    
+    await this.client.setex(lastRequestKey, 180, JSON.stringify(queueItem));
+
     this.logger.debug(
       `Saved last request for driver ${driverId}: trip ${queueItem.tripId}`,
     );
@@ -385,14 +393,16 @@ export class DriverTripQueueService extends BaseRedisService {
    * Get driver's last trip request
    */
   @WithErrorHandling(null)
-  async getDriverLastRequest(driverId: string): Promise<DriverQueueItem | null> {
+  async getDriverLastRequest(
+    driverId: string,
+  ): Promise<DriverQueueItem | null> {
     const lastRequestKey = RedisKeyGenerator.driverLastRequest(driverId);
     const result = await this.client.get(lastRequestKey);
-    
+
     if (!result) {
       return null;
     }
-    
+
     try {
       const queueItem: DriverQueueItem = JSON.parse(result);
       this.logger.debug(
@@ -415,7 +425,7 @@ export class DriverTripQueueService extends BaseRedisService {
   async clearDriverLastRequest(driverId: string): Promise<void> {
     const lastRequestKey = RedisKeyGenerator.driverLastRequest(driverId);
     await this.client.del(lastRequestKey);
-    
+
     this.logger.debug(`Cleared last request for driver ${driverId}`);
   }
 }

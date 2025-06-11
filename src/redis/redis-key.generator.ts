@@ -35,6 +35,16 @@ export class RedisKeyGenerator {
     return `driver:status:${driverId}`;
   }
 
+  // ========== OPTIONAL: APP STATE KEY ==========
+  // (Only add if you need to track app state separately)
+  static driverAppState(driverId: string): string {
+    return `driver:app-state:${driverId}`;
+  }
+
+  static customerAppState(customerId: string): string {
+    return `customer:app-state:${customerId}`;
+  }
+
   // Active users sets
   static activeDriversSet(): string {
     return 'drivers:active';

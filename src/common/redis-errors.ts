@@ -10,8 +10,7 @@ export const RedisErrors = {
   },
   PAYMENT_NOT_FOUND: {
     code: 'P101',
-    message:
-      'You must add a payment method before requesting a driver',
+    message: 'You must add a payment method before requesting a driver',
   },
   // Other trip-related errors can be added here
 };

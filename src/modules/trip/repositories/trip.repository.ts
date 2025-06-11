@@ -5,6 +5,13 @@ import { Trip, TripDocument } from '../schemas/trip.schema';
 import { UpdateTripDto } from '../dto/update-trip.dto';
 import { CreateTripDto } from '../dto/create-trip.dto';
 import { TripStatus } from 'src/common/enums/trip-status.enum';
+import { TripHistoryQueryDto } from '../dto/trip-history-query.dto';
+
+export interface TripHistoryResult {
+  trips: TripDocument[];
+  total: number;
+}
+
 
 @Injectable()
 export class TripRepository {
@@ -113,4 +120,125 @@ export class TripRepository {
       .lean()
       .exec();
   }
+
+  async findTripHistoryByCustomerId(
+    customerId: string,
+    queryOptions: TripHistoryQueryDto,
+  ): Promise<TripHistoryResult> {
+    const { 
+      page = 1, 
+      limit = 10, 
+      status, 
+      startDate, 
+      endDate, 
+      sortBy = 'createdAt', 
+      sortOrder = 'desc' 
+    } = queryOptions;
+    
+    // Build filter query
+    const filter: any = {
+      'customer.id': customerId,
+      status: {
+        $in: [TripStatus.COMPLETED, TripStatus.CANCELLED],
+      },
+    };
+
+    // Add status filter if specified
+    if (status) {
+      filter.status = status;
+    }
+
+    // Add date range filter
+    if (startDate || endDate) {
+      filter.createdAt = {};
+      if (startDate) {
+        filter.createdAt.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        filter.createdAt.$lte = new Date(endDate);
+      }
+    }
+
+    // Build sort object
+    const sort: any = {};
+    sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
+
+    // Calculate skip value for pagination
+    const skip = (page - 1) * limit;
+
+    // Execute queries in parallel
+    const [trips, total] = await Promise.all([
+      this.tripModel
+        .find(filter)
+        .sort(sort)
+        .skip(skip)
+        .limit(limit)
+        .lean()
+        .exec(),
+      this.tripModel.countDocuments(filter).exec(),
+    ]);
+
+    return { trips, total };
+  }
+
+  async findTripHistoryByDriverId(
+    driverId: string,
+    queryOptions: TripHistoryQueryDto,
+  ): Promise<TripHistoryResult> {
+    const { 
+      page = 1, 
+      limit = 10, 
+      status, 
+      startDate, 
+      endDate, 
+      sortBy = 'createdAt', 
+      sortOrder = 'desc' 
+    } = queryOptions;
+    
+    // Build filter query
+    const filter: any = {
+      'driver.id': driverId,
+      status: {
+        $in: [TripStatus.COMPLETED, TripStatus.CANCELLED],
+      },
+    };
+
+    // Add status filter if specified
+    if (status) {
+      filter.status = status;
+    }
+
+    // Add date range filter
+    if (startDate || endDate) {
+      filter.createdAt = {};
+      if (startDate) {
+        filter.createdAt.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        filter.createdAt.$lte = new Date(endDate);
+      }
+    }
+
+    // Build sort object
+    const sort: any = {};
+    sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
+
+    // Calculate skip value for pagination
+    const skip = (page - 1) * limit;
+
+    // Execute queries in parallel
+    const [trips, total] = await Promise.all([
+      this.tripModel
+        .find(filter)
+        .sort(sort)
+        .skip(skip)
+        .limit(limit)
+        .lean()
+        .exec(),
+      this.tripModel.countDocuments(filter).exec(),
+    ]);
+
+    return { trips, total };
+  }
+
 }

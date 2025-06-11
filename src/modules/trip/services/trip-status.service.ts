@@ -45,6 +45,9 @@ export class TripStatusService {
     [TripStatus.COMPLETED]: {
       to: [],
     },
+    [TripStatus.CANCELLED_PAYMENT]: {
+      to: [TripStatus.CANCELLED],
+    },
     [TripStatus.CANCELLED]: {
       to: [],
     },

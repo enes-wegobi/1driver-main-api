@@ -1,4 +1,9 @@
-import { BadRequestException, HttpStatus, Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpStatus,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
 import { TripRepository } from '../repositories/trip.repository';
 import { CreateTripDto } from '../dto/create-trip.dto';
 import { TripDocument } from '../schemas/trip.schema';
@@ -27,13 +32,14 @@ import { LocationService } from 'src/redis/services/location.service';
 import { BatchDistanceRequest } from 'src/clients/maps/maps.interface';
 import { TripStatusService } from './trip-status.service';
 import { DriverPenaltyService } from './driver-penalty.service';
-import { PenaltyStatus } from '../schemas/penalty.schema';
 import { PaymentMethodService } from '../../payments/services/payment-method.service';
 import { StripeService } from '../../payments/services/stripe.service';
 import { DriverStatusService } from 'src/redis/services/driver-status.service';
 import { DriverAvailabilityStatus } from 'src/websocket/dto/driver-location.dto';
 import { TripQueueService } from '../../../queue/services/trip-queue.service';
 import { DriverTripQueueService } from 'src/redis/services/driver-trip-queue.service';
+import { TripHistoryQueryDto } from '../dto/trip-history-query.dto';
+import { TripHistoryResponseDto, PaginationDto } from '../dto/trip-history-response.dto';
 
 export interface TripOperationResult {
   success: boolean;
@@ -415,7 +421,15 @@ export class TripService {
             const trip = await this.getTrip(tripId);
 
             this.validateCustomerCancellableStatus(trip.status);
-
+            await this.activeTripService.removeUserActiveTrip(
+              trip.driver.id,
+              UserType.DRIVER,
+            );
+            await this.eventService.sendToUser(
+              trip.driver.id,
+              EventType.TRIP_CANCELLED,
+              { trip: trip, cancelledBy: 'customer' },
+            );
             let timeDifferenceMinutes = 0;
             if (trip.tripStartTime) {
               timeDifferenceMinutes =
@@ -430,70 +444,40 @@ export class TripService {
                 timeDifferenceMinutes,
               )
             ) {
-              // Create penalty with PENDING_PAYMENT status
-              const penalty = await this.driverPenaltyService.createPenalty(
-                customerId,
-                UserType.CUSTOMER,
-                trip,
-                timeDifferenceMinutes,
-              );
-
-              this.logger.log(
-                `Penalty created for customer ${customerId} for late cancellation: ${penalty.penaltyAmount} AED`,
-              );
-              /*
-              // Process penalty payment
               try {
-                await this.processCustomerPenaltyPayment(penalty);
-                
-                // If payment successful, update penalty status to PAID
-                await this.driverPenaltyService.updatePenaltyStatus(
-                  penalty._id,
-                  PenaltyStatus.PAID,
-                );
-                
-                this.logger.log(
-                  `Penalty payment successful for customer ${customerId}`,
+                await this.updateTripWithData(tripId, {
+                  status: TripStatus.CANCELLED_PAYMENT,
+                });
+                await this.processCustomerPenaltyPayment(
+                  trip._id.toString(),
+                  customerId,
                 );
               } catch (paymentError) {
                 this.logger.error(
                   `Penalty payment failed for customer ${customerId}: ${paymentError.message}`,
                 );
+
                 throw new BadRequestException(
                   'Penalty payment failed. Trip cannot be cancelled until penalty is paid.',
                 );
               }
-              */
             }
+            await this.activeTripService.removeUserActiveTrip(
+              customerId,
+              UserType.CUSTOMER,
+            );
 
-            // 5. Update trip status to cancelled
             const updatedTrip = await this.updateTripWithData(tripId, {
               status: TripStatus.CANCELLED,
             });
-
-            // 6. Clean up active trips
-            if (trip.driver) {
-              await this.cleanupCancelledTrip(trip.driver.id, customerId);
-              // 7. Notify driver if assigned
-              await this.eventService.sendToUser(
-                trip.driver.id,
-                EventType.TRIP_CANCELLED,
-                { trip: updatedTrip, cancelledBy: 'customer' },
-              );
-            } else {
-              await this.activeTripService.removeUserActiveTrip(
-                customerId,
-                UserType.CUSTOMER,
-              );
-            }
 
             return { success: true, trip: updatedTrip };
           },
         );
       },
       'Trip cancellation is currently being processed. Please try again.',
-      30000, // 30 seconds timeout
-      2, // 2 retries
+      30000,
+      2,
     );
   }
 
@@ -510,16 +494,12 @@ export class TripService {
             );
             const trip = await this.getTrip(tripId);
 
-            // Validate that trip can be cancelled (not yet accepted)
             this.validateTripRequestCancellableStatus(trip.status);
 
-            // Store driver IDs for notification before clearing them
             const driversToNotify = trip.calledDriverIds || [];
 
-            // Clean up queue systems
             await this.cleanupTripFromQueues(tripId, driversToNotify);
 
-            // Update trip back to DRAFT status and clear driver-related fields
             const updateData = {
               status: TripStatus.DRAFT,
               calledDriverIds: [],
@@ -528,15 +508,16 @@ export class TripService {
               callRetryCount: 0,
             };
 
-            const updatedTrip = await this.updateTripWithData(tripId, updateData);
+            const updatedTrip = await this.updateTripWithData(
+              tripId,
+              updateData,
+            );
 
-            // Remove customer from active trip
             await this.activeTripService.removeUserActiveTrip(
               customerId,
               UserType.CUSTOMER,
             );
 
-            // Notify drivers that trip is no longer available
             if (driversToNotify.length > 0) {
               await this.eventService.notifyTripAlreadyTaken(
                 updatedTrip,
@@ -811,9 +792,9 @@ export class TripService {
 
     if (this.areAllDriversRejected(updatedTrip)) {
       await this.activeTripService.removeUserActiveTrip(
-      updatedTrip.customer.id,
-      UserType.CUSTOMER,
-    );
+        updatedTrip.customer.id,
+        UserType.CUSTOMER,
+      );
       await this.eventService.notifyCustomerDriverNotFound(
         updatedTrip,
         updatedTrip.customer.id,
@@ -879,7 +860,11 @@ export class TripService {
     );
 
     // Use NEW SEQUENTIAL SYSTEM: Handle driver accept
-    await this.tripQueueService.handleDriverResponse(driverId, updatedTrip._id, true);
+    await this.tripQueueService.handleDriverResponse(
+      driverId,
+      updatedTrip._id,
+      true,
+    );
 
     // Also remove from old Bull Queue system for compatibility
     await this.tripQueueService.removeJobsByTripId(updatedTrip._id);
@@ -1174,7 +1159,8 @@ export class TripService {
   ): Promise<void> {
     try {
       // Clean up from Bull Queue system (legacy compatibility)
-      const bullQueueResult = await this.tripQueueService.removeJobsByTripId(tripId);
+      const bullQueueResult =
+        await this.tripQueueService.removeJobsByTripId(tripId);
       this.logger.debug(
         `Removed ${bullQueueResult.totalRemoved} jobs from Bull Queue for trip ${tripId}`,
       );
@@ -1184,12 +1170,13 @@ export class TripService {
       for (const driverId of driverIds) {
         // Clear any processing state for this driver
         await this.driverTripQueueService.clearDriverProcessingTrip(driverId);
-        
+
         // Remove this specific trip from driver's queue
-        const removed = await this.driverTripQueueService.removeSpecificTripFromDriver(
-          driverId,
-          tripId,
-        );
+        const removed =
+          await this.driverTripQueueService.removeSpecificTripFromDriver(
+            driverId,
+            tripId,
+          );
         if (removed) {
           totalRemovedFromDriverQueues++;
         }
@@ -1471,11 +1458,14 @@ export class TripService {
   // PENALTY PAYMENT PROCESSING
   // ================================
 
-  private async processCustomerPenaltyPayment(penalty: any): Promise<void> {
+  private async processCustomerPenaltyPayment(
+    tripId: string,
+    userId: string,
+  ): Promise<void> {
     try {
       // Get customer's default payment method
       const paymentMethod =
-        await this.paymentMethodService.getDefaultPaymentMethod(penalty.userId);
+        await this.paymentMethodService.getDefaultPaymentMethod(userId);
 
       if (!paymentMethod) {
         throw new BadRequestException(
@@ -1484,7 +1474,7 @@ export class TripService {
       }
 
       // Get customer's Stripe customer ID
-      const customer = await this.customersClient.findOne(penalty.userId, [
+      const customer = await this.customersClient.findOne(userId, [
         'stripeCustomerId',
       ]);
 
@@ -1496,14 +1486,13 @@ export class TripService {
 
       // Create payment intent for penalty amount
       const paymentIntent = await this.stripeService.createPaymentIntent(
-        penalty.penaltyAmount * 100, // Convert to cents
+        15 * 100,
         'aed',
         customer.stripeCustomerId,
         paymentMethod.stripePaymentMethodId,
         {
-          penalty_id: penalty._id,
-          trip_id: penalty.tripId,
-          description: `Penalty payment for trip cancellation - ${penalty.penaltyAmount} AED`,
+          user_id: userId,
+          trip_id: tripId,
         },
       );
 
@@ -1514,7 +1503,7 @@ export class TripService {
       }
 
       this.logger.log(
-        `Penalty payment successful for customer ${penalty.userId}: ${penalty.penaltyAmount} AED`,
+        `Penalty payment successful for customer ${userId}: 15 AED`,
       );
     } catch (error) {
       this.logger.error(`Penalty payment processing failed: ${error.message}`);
@@ -1539,13 +1528,87 @@ export class TripService {
   }
 
   // ================================
-  // QUEUE MANAGEMENT HELPERS
+  // TRIP HISTORY METHODS
   // ================================
 
-  /**
-   * Bull Queue automatically handles job processing and retries
-   * No manual queue management needed
-   */
+  async getCustomerTripHistory(
+    customerId: string,
+    queryOptions: TripHistoryQueryDto,
+  ): Promise<TripHistoryResponseDto> {
+    try {
+      const { trips, total } = await this.tripRepository.findTripHistoryByCustomerId(
+        customerId,
+        queryOptions,
+      );
+
+      const pagination = this.buildPaginationData(
+        queryOptions.page || 1,
+        queryOptions.limit || 10,
+        total,
+      );
+
+      return {
+        success: true,
+        data: {
+          trips,
+          pagination,
+        },
+      };
+    } catch (error) {
+      this.logger.error(
+        `Error fetching customer trip history for ${customerId}: ${error.message}`,
+      );
+      throw new BadRequestException('Failed to fetch trip history');
+    }
+  }
+
+  async getDriverTripHistory(
+    driverId: string,
+    queryOptions: TripHistoryQueryDto,
+  ): Promise<TripHistoryResponseDto> {
+    try {
+      const { trips, total } = await this.tripRepository.findTripHistoryByDriverId(
+        driverId,
+        queryOptions,
+      );
+
+      const pagination = this.buildPaginationData(
+        queryOptions.page || 1,
+        queryOptions.limit || 10,
+        total,
+      );
+
+      return {
+        success: true,
+        data: {
+          trips,
+          pagination,
+        },
+      };
+    } catch (error) {
+      this.logger.error(
+        `Error fetching driver trip history for ${driverId}: ${error.message}`,
+      );
+      throw new BadRequestException('Failed to fetch trip history');
+    }
+  }
+
+  private buildPaginationData(
+    page: number,
+    limit: number,
+    total: number,
+  ): PaginationDto {
+    const totalPages = Math.ceil(total / limit);
+    
+    return {
+      page,
+      limit,
+      total,
+      totalPages,
+      hasNext: page < totalPages,
+      hasPrev: page > 1,
+    };
+  }
 
   // ================================
   // ERROR HANDLING

@@ -52,12 +52,12 @@ export class TripQueueService implements OnModuleInit, OnModuleDestroy {
   async onModuleInit(): Promise<void> {
     await this.initializeQueues();
     this.startPeriodicCleanup();
-    
+
     // HEALTH CHECK EKLE
     setTimeout(async () => {
       await this.checkTimeoutQueueHealth();
     }, 5000); // 5 saniye sonra kontrol et
-    
+
     // Periyodik health check
     setInterval(async () => {
       await this.checkTimeoutQueueHealth();
@@ -159,17 +159,19 @@ export class TripQueueService implements OnModuleInit, OnModuleDestroy {
         jobData,
         jobOptions,
       );
-      
+
       this.logger.log(
         `✅ TIMEOUT JOB CREATED: jobId=${timeoutJob.id}, tripId=${jobData.tripId}, driverId=${jobData.driverId}`,
       );
-      
+
       // JOB DURUMUNU HEMEN KONTROL ET
       setTimeout(async () => {
         try {
           const job = await this.tripTimeoutQueue.getJob(timeoutJob.id!);
           if (job) {
-            this.logger.log(`🔍 JOB STATUS CHECK: jobId=${job.id}, state=${await job.getState()}, delay=${job.opts.delay}`);
+            this.logger.log(
+              `🔍 JOB STATUS CHECK: jobId=${job.id}, state=${await job.getState()}, delay=${job.opts.delay}`,
+            );
           } else {
             this.logger.warn(`⚠️ JOB NOT FOUND: jobId=${timeoutJob.id}`);
           }
@@ -177,7 +179,7 @@ export class TripQueueService implements OnModuleInit, OnModuleDestroy {
           this.logger.error(`❌ JOB STATUS CHECK FAILED: ${error.message}`);
         }
       }, 1000);
-      
+
       return timeoutJob;
     } catch (error) {
       this.logger.error(
@@ -470,7 +472,8 @@ export class TripQueueService implements OnModuleInit, OnModuleDestroy {
   async processNextDriverRequest(driverId: string): Promise<void> {
     try {
       // Check if driver is already processing a trip
-      const isProcessing = await this.driverTripQueueService.isDriverProcessingTrip(driverId);
+      const isProcessing =
+        await this.driverTripQueueService.isDriverProcessingTrip(driverId);
       if (isProcessing) {
         this.logger.debug(
           `Driver ${driverId} is already processing a trip, skipping`,
@@ -479,7 +482,8 @@ export class TripQueueService implements OnModuleInit, OnModuleDestroy {
       }
 
       // Get next trip from driver's queue
-      const nextTrip = await this.driverTripQueueService.popNextTripForDriver(driverId);
+      const nextTrip =
+        await this.driverTripQueueService.popNextTripForDriver(driverId);
       if (!nextTrip) {
         this.logger.debug(`No trips in queue for driver ${driverId}`);
         return;
@@ -538,19 +542,26 @@ export class TripQueueService implements OnModuleInit, OnModuleDestroy {
 
       if (accepted) {
         // Driver accepted - remove all trips from their queue
-        const removedCount = await this.driverTripQueueService.removeAllTripsForDriver(driverId);
+        const removedCount =
+          await this.driverTripQueueService.removeAllTripsForDriver(driverId);
         this.logger.log(
           `Driver ${driverId} accepted trip ${tripId}, removed ${removedCount} pending trips`,
         );
 
         // Remove this trip from all other driver queues
-        const totalRemoved = await this.driverTripQueueService.removeTripFromAllDriverQueues(tripId);
+        const totalRemoved =
+          await this.driverTripQueueService.removeTripFromAllDriverQueues(
+            tripId,
+          );
         this.logger.log(
           `Removed trip ${tripId} from ${totalRemoved} other driver queues`,
         );
       } else {
         // Driver declined - remove only this trip and process next
-        await this.driverTripQueueService.removeSpecificTripFromDriver(driverId, tripId);
+        await this.driverTripQueueService.removeSpecificTripFromDriver(
+          driverId,
+          tripId,
+        );
         this.logger.debug(
           `Driver ${driverId} declined trip ${tripId}, processing next trip`,
         );
@@ -576,7 +587,10 @@ export class TripQueueService implements OnModuleInit, OnModuleDestroy {
       await this.driverTripQueueService.clearDriverProcessingTrip(driverId);
 
       // Remove the timed-out trip
-      await this.driverTripQueueService.removeSpecificTripFromDriver(driverId, tripId);
+      await this.driverTripQueueService.removeSpecificTripFromDriver(
+        driverId,
+        tripId,
+      );
 
       this.logger.debug(
         `Driver ${driverId} timed out for trip ${tripId}, processing next trip`,
@@ -605,38 +619,42 @@ export class TripQueueService implements OnModuleInit, OnModuleDestroy {
   async checkTimeoutQueueHealth(): Promise<void> {
     try {
       this.logger.log('🔍 CHECKING TIMEOUT QUEUE HEALTH...');
-      
+
       // Queue durumunu kontrol et
       const waiting = await this.tripTimeoutQueue.getWaiting();
       const active = await this.tripTimeoutQueue.getActive();
       const delayed = await this.tripTimeoutQueue.getDelayed();
       const completed = await this.tripTimeoutQueue.getCompleted();
       const failed = await this.tripTimeoutQueue.getFailed();
-      
+
       this.logger.log(`📊 TIMEOUT QUEUE STATUS:
       - Waiting: ${waiting.length}
       - Active: ${active.length} 
       - Delayed: ${delayed.length}
       - Completed: ${completed.length}
       - Failed: ${failed.length}`);
-      
+
       // Delayed job'ları detaylı kontrol et
       if (delayed.length > 0) {
         this.logger.log('⏰ DELAYED TIMEOUT JOBS:');
-        for (const job of delayed.slice(0, 5)) { // İlk 5 job'ı göster
+        for (const job of delayed.slice(0, 5)) {
+          // İlk 5 job'ı göster
           const delay = job.opts.delay || 0;
           const scheduledTime = new Date(job.timestamp + delay);
           const now = new Date();
           const remainingMs = scheduledTime.getTime() - now.getTime();
-          
-          this.logger.log(`  - Job ${job.id}: scheduled for ${scheduledTime.toISOString()}, remaining: ${remainingMs}ms, data: ${JSON.stringify(job.data)}`);
+
+          this.logger.log(
+            `  - Job ${job.id}: scheduled for ${scheduledTime.toISOString()}, remaining: ${remainingMs}ms, data: ${JSON.stringify(job.data)}`,
+          );
         }
       }
-      
+
       // Worker durumunu kontrol et
       const workers = await this.tripTimeoutQueue.getWorkers();
-      this.logger.log(`👷 TIMEOUT QUEUE WORKERS: ${workers.length} active workers`);
-      
+      this.logger.log(
+        `👷 TIMEOUT QUEUE WORKERS: ${workers.length} active workers`,
+      );
     } catch (error) {
       this.logger.error('❌ TIMEOUT QUEUE HEALTH CHECK FAILED:', error);
     }

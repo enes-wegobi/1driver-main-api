@@ -68,6 +68,38 @@ export class DriverStatusService extends BaseRedisService {
     return true;
   }
 
+  // ========== HEARTBEAT METHODS (USING EXISTING ACTIVE KEY) ==========
+
+  @WithErrorHandling()
+  async updateDriverHeartbeat(driverId: string): Promise<void> {
+    // Mevcut driver:active key'ini heartbeat için kullan
+    const pipeline = this.client.multi();
+    const key = RedisKeyGenerator.driverActive(driverId);
+
+    // Hem timestamp'i güncelle hem TTL'yi refresh et
+    pipeline.set(key, new Date().toISOString());
+    pipeline.expire(key, this.ACTIVE_DRIVER_EXPIRY);
+    pipeline.sadd(RedisKeyGenerator.activeDriversSet(), driverId);
+
+    await pipeline.exec();
+  }
+
+  @WithErrorHandling()
+  async updateDriverLastSeen(driverId: string, timestamp: Date): Promise<void> {
+    await this.updateDriverHeartbeat(driverId);
+  }
+
+  @WithErrorHandling(false)
+  async isDriverHeartbeatActive(driverId: string): Promise<boolean> {
+    return await this.isDriverActive(driverId);
+  }
+
+  @WithErrorHandling([])
+  async getDriversWithActiveHeartbeat(): Promise<string[]> {
+    // Mevcut active drivers'ı döndür
+    return await this.getActiveDrivers();
+  }
+
   @WithErrorHandling()
   async updateDriverAvailability(
     driverId: string,
@@ -167,57 +199,17 @@ export class DriverStatusService extends BaseRedisService {
 
   @WithErrorHandling(false)
   async canAssignTripToDriver(driverId: string): Promise<boolean> {
-    // 1. Driver available mı?
     const availability = await this.getDriverAvailability(driverId);
     if (availability !== DriverAvailabilityStatus.AVAILABLE) {
       return false;
     }
 
-    // 2. Driver bağlı mı? (Son 2 dakikada aktif mi?)
-    const isRecentlyActive = await this.isDriverRecentlyActive(driverId);
-    if (!isRecentlyActive) {
+    const hasActiveHeartbeat = await this.isDriverHeartbeatActive(driverId);
+    if (!hasActiveHeartbeat) {
       return false;
     }
 
     return true;
-  }
-
-  @WithErrorHandling([])
-  async getAvailableDriversForTrip(): Promise<string[]> {
-    // Sadece available ve recently active driver'ları getir
-    const activeDrivers = await this.getActiveDrivers();
-    const availableDrivers: string[] = [];
-
-    const batchSize = 50;
-    for (let i = 0; i < activeDrivers.length; i += batchSize) {
-      const batch = activeDrivers.slice(i, i + batchSize);
-      const pipeline = this.client.multi();
-
-      // Her driver için status'u al
-      batch.forEach((driverId) => {
-        pipeline.get(RedisKeyGenerator.driverStatus(driverId));
-      });
-
-      const results = await pipeline.exec();
-
-      if (results) {
-        for (let j = 0; j < batch.length; j++) {
-          const driverId = batch[j];
-          const status = results[j][1] as DriverAvailabilityStatus;
-
-          if (status === DriverAvailabilityStatus.AVAILABLE) {
-            // Recently active kontrolü
-            const isRecentlyActive =
-              await this.isDriverRecentlyActive(driverId);
-            if (isRecentlyActive) {
-              availableDrivers.push(driverId);
-            }
-          }
-        }
-      }
-    }
-
-    return availableDrivers;
   }
 
   @WithErrorHandling({ canChange: false, reason: 'Unknown error' })
@@ -227,8 +219,6 @@ export class DriverStatusService extends BaseRedisService {
   ): Promise<{ canChange: boolean; reason?: string }> {
     const currentStatus = await this.getDriverAvailability(driverId);
 
-    // If driver is currently BUSY, they cannot change status manually
-    // This will be controlled by the trip system
     if (currentStatus === DriverAvailabilityStatus.ON_TRIP) {
       return {
         canChange: false,
@@ -237,7 +227,6 @@ export class DriverStatusService extends BaseRedisService {
       };
     }
 
-    // Allow transitions between BUSY and AVAILABLE
     if (
       (currentStatus === DriverAvailabilityStatus.BUSY &&
         newStatus === DriverAvailabilityStatus.AVAILABLE) ||
@@ -247,7 +236,6 @@ export class DriverStatusService extends BaseRedisService {
       return { canChange: true };
     }
 
-    // Same status - no change needed but allow it
     if (currentStatus.toString() === newStatus.toString()) {
       return { canChange: true };
     }
@@ -262,37 +250,138 @@ export class DriverStatusService extends BaseRedisService {
   async cleanupStaleDrivers(): Promise<string[]> {
     const cleanedDrivers: string[] = [];
 
-    // Get all drivers with AVAILABLE status
-    const activeDrivers = await this.getActiveDrivers();
+    // Get all drivers in active set
+    const activeDriversInSet = await this.getActiveDrivers();
 
-    for (const driverId of activeDrivers) {
-      const availability = await this.getDriverAvailability(driverId);
+    for (const driverId of activeDriversInSet) {
+      // Check if driver's active key still exists (heartbeat check)
+      const hasActiveHeartbeat = await this.isDriverHeartbeatActive(driverId);
 
-      if (availability === DriverAvailabilityStatus.AVAILABLE) {
-        const isRecentlyActive = await this.isDriverRecentlyActive(driverId);
+      if (!hasActiveHeartbeat) {
+        // Driver's heartbeat expired, remove from active set
+        await this.markDriverAsDisconnected(driverId);
+        cleanedDrivers.push(driverId);
 
-        if (!isRecentlyActive) {
-          // Driver has been available but not connected for more than 2 minutes
-          // Check if they've been inactive for more than 5 minutes total
-          const key = RedisKeyGenerator.driverActive(driverId);
-          const lastActive = await this.client.get(key);
+        this.logger.log(
+          `Driver ${driverId} cleaned up due to heartbeat timeout`,
+        );
+      }
+    }
 
-          if (!lastActive) {
-            // No recent activity, set to offline
+    return cleanedDrivers;
+  }
+
+  @WithErrorHandling([])
+  async cleanupStaleDriversAdvanced(): Promise<{
+    heartbeatExpired: string[];
+    availabilityChanged: string[];
+  }> {
+    const heartbeatExpired: string[] = [];
+    const availabilityChanged: string[] = [];
+
+    // Get all drivers in active set
+    const activeDriversInSet = await this.getActiveDrivers();
+
+    for (const driverId of activeDriversInSet) {
+      // 1. Check heartbeat status
+      const hasActiveHeartbeat = await this.isDriverHeartbeatActive(driverId);
+
+      if (!hasActiveHeartbeat) {
+        // Heartbeat expired
+        await this.markDriverAsDisconnected(driverId);
+        heartbeatExpired.push(driverId);
+
+        this.logger.warn(
+          `Driver ${driverId} disconnected due to heartbeat timeout`,
+        );
+      } else {
+        // 2. Check if driver is available but hasn't been active for too long
+        const availability = await this.getDriverAvailability(driverId);
+
+        if (availability === DriverAvailabilityStatus.AVAILABLE) {
+          const isRecentlyActive = await this.isDriverRecentlyActive(driverId);
+
+          if (!isRecentlyActive) {
+            // Driver has heartbeat but hasn't been actively responding
+            // Optionally change their status to BUSY
             await this.updateDriverAvailability(
               driverId,
               DriverAvailabilityStatus.BUSY,
             );
-            cleanedDrivers.push(driverId);
+            availabilityChanged.push(driverId);
 
             this.logger.log(
-              `Driver ${driverId} automatically set to offline due to prolonged inactivity`,
+              `Driver ${driverId} automatically set to BUSY due to inactivity`,
             );
           }
         }
       }
     }
 
-    return cleanedDrivers;
+    return { heartbeatExpired, availabilityChanged };
+  }
+
+  // ========== MONITORING METHODS ==========
+
+  @WithErrorHandling({
+    totalDrivers: 0,
+    connectedDrivers: 0,
+    availableDrivers: 0,
+    onTripDrivers: 0,
+    busyDrivers: 0,
+  })
+  async getDriverStatusSummary(): Promise<{
+    totalDrivers: number;
+    connectedDrivers: number;
+    availableDrivers: number;
+    onTripDrivers: number;
+    busyDrivers: number;
+  }> {
+    const activeDrivers = await this.getActiveDrivers();
+    const connectedDrivers = activeDrivers.length;
+
+    let availableCount = 0;
+    let onTripCount = 0;
+    let busyCount = 0;
+
+    // Batch process for efficiency
+    const batchSize = 50;
+    for (let i = 0; i < activeDrivers.length; i += batchSize) {
+      const batch = activeDrivers.slice(i, i + batchSize);
+      const pipeline = this.client.multi();
+
+      batch.forEach((driverId) => {
+        pipeline.get(RedisKeyGenerator.driverStatus(driverId));
+      });
+
+      const results = await pipeline.exec();
+
+      if (results) {
+        for (let j = 0; j < batch.length; j++) {
+          const status = results[j][1] as DriverAvailabilityStatus;
+
+          switch (status) {
+            case DriverAvailabilityStatus.AVAILABLE:
+              availableCount++;
+              break;
+            case DriverAvailabilityStatus.ON_TRIP:
+              onTripCount++;
+              break;
+            case DriverAvailabilityStatus.BUSY:
+            default:
+              busyCount++;
+              break;
+          }
+        }
+      }
+    }
+
+    return {
+      totalDrivers: connectedDrivers, // We can get total from DB if needed
+      connectedDrivers,
+      availableDrivers: availableCount,
+      onTripDrivers: onTripCount,
+      busyDrivers: busyCount,
+    };
   }
 }

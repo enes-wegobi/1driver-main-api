@@ -45,7 +45,9 @@ export class TripRequestProcessor extends WorkerHost {
       // 1. Validate trip still exists and is in correct status
       const trip = await this.tripService.findById(tripId);
       if (!trip) {
-        this.logger.warn(`Trip ${tripId} not found, clearing driver processing status`);
+        this.logger.warn(
+          `Trip ${tripId} not found, clearing driver processing status`,
+        );
         await this.tripQueueService.handleDriverTimeout(driverId, tripId);
         return {
           success: false,
@@ -86,7 +88,8 @@ export class TripRequestProcessor extends WorkerHost {
       }
 
       // 3. Check if driver is currently processing this trip (sequential system)
-      const processingTrip = await this.tripQueueService.getDriverQueueStatus(driverId);
+      const processingTrip =
+        await this.tripQueueService.getDriverQueueStatus(driverId);
       if (processingTrip.currentProcessing !== tripId) {
         this.logger.debug(
           `Driver ${driverId} is not processing trip ${tripId}, current: ${processingTrip.currentProcessing}`,

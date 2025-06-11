@@ -5,6 +5,7 @@ import {
   ApiOperation,
   ApiBody,
   ApiQuery,
+  ApiResponse,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/jwt/jwt.guard';
 import { GetUser } from 'src/jwt/user.decoretor';
@@ -14,6 +15,8 @@ import { RequestDriverDto } from '../../trips/dto/request-driver.dto';
 import { TripService } from '../services/trip.service';
 import { TripPaymentService } from '../services/trip-payment.service';
 import { ProcessTripPaymentDto } from '../dto/process-trip-payment.dto';
+import { TripHistoryQueryDto } from '../dto/trip-history-query.dto';
+import { TripHistoryResponseDto } from '../dto/trip-history-response.dto';
 
 @ApiTags('customer-trips')
 @Controller('customer-trips')
@@ -122,5 +125,24 @@ export class CustomersTripsController {
   @ApiOperation({ summary: 'Cancel pending trip request to drivers' })
   async cancelTripRequest(@GetUser() user: IJwtPayload) {
     return await this.tripService.cancelTripRequest(user.userId);
+  }
+
+  @Get('history')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ 
+    summary: 'Get customer trip history',
+    description: 'Retrieve paginated trip history for the authenticated customer with filtering and sorting options'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Trip history retrieved successfully',
+    type: TripHistoryResponseDto 
+  })
+  async getTripHistory(
+    @Query() queryOptions: TripHistoryQueryDto,
+    @GetUser() user: IJwtPayload,
+  ): Promise<TripHistoryResponseDto> {
+    return await this.tripService.getCustomerTripHistory(user.userId, queryOptions);
   }
 }
