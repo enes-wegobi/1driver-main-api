@@ -170,7 +170,8 @@ export class CustomersTripsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Rate a completed trip',
-    description: 'Rate a completed trip and update driver rating. Only the customer who took the trip can rate it.',
+    description:
+      'Rate a completed trip and update driver rating. Only the customer who took the trip can rate it.',
   })
   @ApiParam({
     name: 'id',
@@ -203,7 +204,8 @@ export class CustomersTripsController {
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Add comment to a completed trip',
-    description: 'Add a comment to a completed trip. Only the customer who took the trip can add a comment.',
+    description:
+      'Add a comment to a completed trip. Only the customer who took the trip can add a comment.',
   })
   @ApiParam({
     name: 'id',

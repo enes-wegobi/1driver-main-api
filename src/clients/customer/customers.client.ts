@@ -174,9 +174,7 @@ export class CustomersClient {
       fileUrl,
       userType,
     });
-    this.logger.log(
-      `Successfully created support ticket for user ${userId}`,
-    );
+    this.logger.log(`Successfully created support ticket for user ${userId}`);
     return data;
   }
 

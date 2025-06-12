@@ -1,4 +1,15 @@
-import { Controller, Get, UseGuards, Post, Param, Query, Body, Patch, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  UseGuards,
+  Post,
+  Param,
+  Query,
+  Body,
+  Patch,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
 import {
   ApiTags,
   ApiBearerAuth,
@@ -157,7 +168,8 @@ export class DriversTripsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Rate a completed trip',
-    description: 'Rate a completed trip and update customer rating. Only the driver who completed the trip can rate it.',
+    description:
+      'Rate a completed trip and update customer rating. Only the driver who completed the trip can rate it.',
   })
   @ApiParam({
     name: 'id',
@@ -188,7 +200,8 @@ export class DriversTripsController {
   @Post(':id/comment')
   @ApiOperation({
     summary: 'Add comment to a completed trip',
-    description: 'Add a comment to a completed trip. Only the driver who completed the trip can add a comment.',
+    description:
+      'Add a comment to a completed trip. Only the driver who completed the trip can add a comment.',
   })
   @ApiParam({
     name: 'id',

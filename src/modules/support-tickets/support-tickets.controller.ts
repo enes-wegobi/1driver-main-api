@@ -145,7 +145,6 @@ export class SupportTicketsController {
         fileKey = `support-tickets/drivers/${user.userId}/${uuidv4()}-${file.originalname}`;
         await this.s3Service.uploadFileWithKey(file, fileKey);
         fileUrl = this.s3Service.getPublicUrl(fileKey);
-        
       } catch (error) {
         this.logger.error('File upload failed:', error);
         throw new BadRequestException('File upload failed.');

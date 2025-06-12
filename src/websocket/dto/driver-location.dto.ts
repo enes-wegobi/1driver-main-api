@@ -1,12 +1,7 @@
 import { IsBoolean, IsEnum, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { LocationDto } from './location.dto';
-
-export enum DriverAvailabilityStatus {
-  AVAILABLE = 'available',
-  BUSY = 'busy',
-  ON_TRIP = 'on_trip',
-}
+import { DriverAvailabilityStatus } from 'src/common/enums/driver-availability-status.enum';
 
 export class DriverLocationDto extends LocationDto {
   @ApiProperty({

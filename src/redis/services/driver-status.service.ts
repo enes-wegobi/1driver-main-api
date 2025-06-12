@@ -2,8 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { BaseRedisService } from './base-redis.service';
 import { RedisKeyGenerator } from '../redis-key.generator';
-import { DriverAvailabilityStatus } from 'src/websocket/dto/driver-location.dto';
 import { WithErrorHandling } from '../decorators/with-error-handling.decorator';
+import { DriverAvailabilityStatus } from 'src/common/enums/driver-availability-status.enum';
 
 @Injectable()
 export class DriverStatusService extends BaseRedisService {

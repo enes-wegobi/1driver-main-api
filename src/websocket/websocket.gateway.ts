@@ -11,10 +11,7 @@ import { Server, Socket } from 'socket.io';
 import { WebSocketService } from './websocket.service';
 import { JwtService } from 'src/jwt/jwt.service';
 import { LocationDto } from './dto/location.dto';
-import {
-  DriverAvailabilityStatus,
-  DriverLocationDto,
-} from './dto/driver-location.dto';
+import { DriverLocationDto } from './dto/driver-location.dto';
 import { DriverStatusService } from 'src/redis/services/driver-status.service';
 import { CustomerStatusService } from 'src/redis/services/customer-status.service';
 import { LocationService } from 'src/redis/services/location.service';
@@ -22,17 +19,13 @@ import { ActiveTripService } from 'src/redis/services/active-trip.service';
 import { UserType } from 'src/common/user-type.enum';
 import { TripService } from 'src/modules/trip/services/trip.service';
 import { EventType } from 'src/modules/event/enum/event-type.enum';
+import { AppState } from 'src/common/enums/app-state.enum';
+import { HeartbeatDto } from './dto/heartbeat.dto';
+import { DriverAvailabilityStatus } from 'src/common/enums/driver-availability-status.enum';
 
 const PING_INTERVAL = 25000;
 const PING_TIMEOUT = 10000;
 const HEARTBEAT_INTERVAL = 30000; // 30 seconds
-
-interface HeartbeatData {
-  timestamp: string;
-  location?: LocationDto;
-  appState?: 'active' | 'background' | 'inactive';
-  batteryLevel?: number;
-}
 
 @NestWebSocketGateway({
   cors: {
@@ -253,7 +246,7 @@ export class WebSocketGateway
   }
 
   @SubscribeMessage('heartbeat')
-  async handleHeartbeat(client: Socket, payload: HeartbeatData) {
+  async handleHeartbeat(client: Socket, payload: HeartbeatDto) {
     const userId = client.data.userId;
     const userType = client.data.userType;
 

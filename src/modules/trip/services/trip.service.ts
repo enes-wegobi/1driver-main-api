@@ -35,7 +35,6 @@ import { DriverPenaltyService } from './driver-penalty.service';
 import { PaymentMethodService } from '../../payments/services/payment-method.service';
 import { StripeService } from '../../payments/services/stripe.service';
 import { DriverStatusService } from 'src/redis/services/driver-status.service';
-import { DriverAvailabilityStatus } from 'src/websocket/dto/driver-location.dto';
 import { TripQueueService } from '../../../queue/services/trip-queue.service';
 import { DriverTripQueueService } from 'src/redis/services/driver-trip-queue.service';
 import { TripHistoryQueryDto } from '../dto/trip-history-query.dto';
@@ -45,6 +44,7 @@ import {
 } from '../dto/trip-history-response.dto';
 import { DriverStatisticsQueryDto } from '../dto/driver-statistics-query.dto';
 import { DriverStatisticsResponseDto } from '../dto/driver-statistics-response.dto';
+import { DriverAvailabilityStatus } from 'src/common/enums/driver-availability-status.enum';
 
 export interface TripOperationResult {
   success: boolean;
@@ -1738,30 +1738,33 @@ export class TripService {
     return this.lockService.executeWithLock(
       `trip:${tripId}`,
       async () => {
-        return this.executeWithErrorHandling('adding customer comment', async () => {
-          const trip = await this.getTrip(tripId);
+        return this.executeWithErrorHandling(
+          'adding customer comment',
+          async () => {
+            const trip = await this.getTrip(tripId);
 
-          // Validate that the customer owns this trip
-          if (trip.customer.id !== customerId) {
-            throw new BadRequestException(
-              'You are not authorized to comment on this trip',
-            );
-          }
+            // Validate that the customer owns this trip
+            if (trip.customer.id !== customerId) {
+              throw new BadRequestException(
+                'You are not authorized to comment on this trip',
+              );
+            }
 
-          // Validate trip is completed
-          if (trip.status !== TripStatus.COMPLETED) {
-            throw new BadRequestException(
-              'You can only comment on completed trips',
-            );
-          }
+            // Validate trip is completed
+            if (trip.status !== TripStatus.COMPLETED) {
+              throw new BadRequestException(
+                'You can only comment on completed trips',
+              );
+            }
 
-          // Update trip with customer comment
-          const updatedTrip = await this.updateTripWithData(tripId, {
-            customerComment: comment,
-          });
+            // Update trip with customer comment
+            const updatedTrip = await this.updateTripWithData(tripId, {
+              customerComment: comment,
+            });
 
-          return { success: true, trip: updatedTrip };
-        });
+            return { success: true, trip: updatedTrip };
+          },
+        );
       },
       'Trip comment is currently being processed. Please try again.',
       30000,
@@ -1777,30 +1780,33 @@ export class TripService {
     return this.lockService.executeWithLock(
       `trip:${tripId}`,
       async () => {
-        return this.executeWithErrorHandling('adding driver comment', async () => {
-          const trip = await this.getTrip(tripId);
+        return this.executeWithErrorHandling(
+          'adding driver comment',
+          async () => {
+            const trip = await this.getTrip(tripId);
 
-          // Validate that the driver owns this trip
-          if (!trip.driver || trip.driver.id !== driverId) {
-            throw new BadRequestException(
-              'You are not authorized to comment on this trip',
-            );
-          }
+            // Validate that the driver owns this trip
+            if (!trip.driver || trip.driver.id !== driverId) {
+              throw new BadRequestException(
+                'You are not authorized to comment on this trip',
+              );
+            }
 
-          // Validate trip is completed
-          if (trip.status !== TripStatus.COMPLETED) {
-            throw new BadRequestException(
-              'You can only comment on completed trips',
-            );
-          }
+            // Validate trip is completed
+            if (trip.status !== TripStatus.COMPLETED) {
+              throw new BadRequestException(
+                'You can only comment on completed trips',
+              );
+            }
 
-          // Update trip with driver comment
-          const updatedTrip = await this.updateTripWithData(tripId, {
-            driverComment: comment,
-          });
+            // Update trip with driver comment
+            const updatedTrip = await this.updateTripWithData(tripId, {
+              driverComment: comment,
+            });
 
-          return { success: true, trip: updatedTrip };
-        });
+            return { success: true, trip: updatedTrip };
+          },
+        );
       },
       'Trip comment is currently being processed. Please try again.',
       30000,
@@ -1828,9 +1834,7 @@ export class TripService {
 
           // Validate trip is completed
           if (trip.status !== TripStatus.COMPLETED) {
-            throw new BadRequestException(
-              'You can only rate completed trips',
-            );
+            throw new BadRequestException('You can only rate completed trips');
           }
 
           // Update trip rating
@@ -1841,7 +1845,10 @@ export class TripService {
           // Update driver rating via client
           if (trip.driver && trip.driver.id) {
             try {
-              await this.customersClient.updateDriverRate(trip.driver.id, rating);
+              await this.customersClient.updateDriverRate(
+                trip.driver.id,
+                rating,
+              );
               this.logger.log(
                 `Updated driver ${trip.driver.id} rating to ${rating} for trip ${tripId}`,
               );
@@ -1869,44 +1876,50 @@ export class TripService {
     return this.lockService.executeWithLock(
       `trip:${tripId}`,
       async () => {
-        return this.executeWithErrorHandling('rating trip by driver', async () => {
-          const trip = await this.getTrip(tripId);
+        return this.executeWithErrorHandling(
+          'rating trip by driver',
+          async () => {
+            const trip = await this.getTrip(tripId);
 
-          // Validate that the driver owns this trip
-          if (!trip.driver || trip.driver.id !== driverId) {
-            throw new BadRequestException(
-              'You are not authorized to rate this trip',
-            );
-          }
-
-          // Validate trip is completed
-          if (trip.status !== TripStatus.COMPLETED) {
-            throw new BadRequestException(
-              'You can only rate completed trips',
-            );
-          }
-
-          // Update trip with driver rating (we can use a separate field if needed)
-          const updatedTrip = await this.updateTripWithData(tripId, {
-            driverRating: rating,
-          });
-
-          // Update customer rating via client
-          if (trip.customer && trip.customer.id) {
-            try {
-              await this.driversClient.updateCustomerRate(trip.customer.id, rating);
-              this.logger.log(
-                `Updated customer ${trip.customer.id} rating to ${rating} for trip ${tripId}`,
-              );
-            } catch (error) {
-              this.logger.warn(
-                `Failed to update customer rating: ${error.message}`,
+            // Validate that the driver owns this trip
+            if (!trip.driver || trip.driver.id !== driverId) {
+              throw new BadRequestException(
+                'You are not authorized to rate this trip',
               );
             }
-          }
 
-          return { success: true, trip: updatedTrip };
-        });
+            // Validate trip is completed
+            if (trip.status !== TripStatus.COMPLETED) {
+              throw new BadRequestException(
+                'You can only rate completed trips',
+              );
+            }
+
+            // Update trip with driver rating (we can use a separate field if needed)
+            const updatedTrip = await this.updateTripWithData(tripId, {
+              driverRating: rating,
+            });
+
+            // Update customer rating via client
+            if (trip.customer && trip.customer.id) {
+              try {
+                await this.driversClient.updateCustomerRate(
+                  trip.customer.id,
+                  rating,
+                );
+                this.logger.log(
+                  `Updated customer ${trip.customer.id} rating to ${rating} for trip ${tripId}`,
+                );
+              } catch (error) {
+                this.logger.warn(
+                  `Failed to update customer rating: ${error.message}`,
+                );
+              }
+            }
+
+            return { success: true, trip: updatedTrip };
+          },
+        );
       },
       'Trip rating is currently being processed. Please try again.',
       30000,
