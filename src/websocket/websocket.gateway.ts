@@ -184,6 +184,63 @@ export class WebSocketGateway
     this.logger.log(`Client disconnected: ${client.id}`);
   }
 
+  @SubscribeMessage('updateLocation')
+  async handleDriverLocationUpdate(client: Socket, payload: LocationDto) {
+    const userId = client.data.userId;
+    const userType = client.data.userType;
+
+    if (!userId) {
+      client.emit('error', { message: 'User not authenticated' });
+      return { success: false, message: 'User not authenticated' };
+    }
+
+    this.logger.debug(
+      `Driver location update from ${userId}: ${JSON.stringify(payload)}`,
+    );
+
+    try {
+      if (userType === UserType.DRIVER) {
+        const tripId = await this.activeTripService.getUserActiveTripIfExists(
+          userId,
+          UserType.DRIVER,
+        );
+
+        if (tripId) {
+          const tripDetails = await this.tripService.findById(tripId);
+
+          if (tripDetails && tripDetails.customer && tripDetails.customer.id) {
+            const customerId = tripDetails.customer.id;
+
+            this.webSocketService.sendToUser(
+              customerId,
+              EventType.DRIVER_LOCATION_UPDATED,
+              {
+                tripId,
+                driverId: userId,
+                location: payload,
+                timestamp: new Date().toISOString(),
+              },
+            );
+
+            this.logger.debug(
+              `Driver ${userId} location sent to customer ${customerId} for trip ${tripId}`,
+            );
+          }
+        }
+      }
+
+      // Store location to redis
+      this.storeUserLocation(userId, userType, payload);
+
+      return { success: true };
+    } catch (error) {
+      this.logger.error(
+        `Error processing driver location update: ${error.message}`,
+      );
+      return { success: false, message: 'Failed to process location update' };
+    }
+  }
+
   @SubscribeMessage('heartbeat')
   async handleHeartbeat(client: Socket, payload: HeartbeatDto) {
     const userId = client.data.userId;
@@ -205,48 +262,10 @@ export class WebSocketGateway
           payload.appState,
         );
 
-        if (payload.location) {
-          await this.storeUserLocation(userId, userType, payload.location);
-          const tripId = await this.activeTripService.getUserActiveTripIfExists(
-            userId,
-            UserType.DRIVER,
-          );
-          if (tripId) {
-            const tripDetails = await this.tripService.findById(tripId);
-
-            if (
-              tripDetails &&
-              tripDetails.customer &&
-              tripDetails.customer.id
-            ) {
-              const customerId = tripDetails.customer.id;
-
-              this.webSocketService.sendToUser(
-                customerId,
-                EventType.DRIVER_LOCATION_UPDATED,
-                {
-                  tripId,
-                  driverId: userId,
-                  location: payload,
-                  timestamp: new Date().toISOString(),
-                },
-              );
-
-              this.logger.debug(
-                `Driver ${userId} location sent to customer ${customerId} for trip ${tripId}`,
-              );
-            }
-          }
-        }
-
         this.logger.debug(
           `Heartbeat from driver ${userId}, appState: ${payload.appState}`,
         );
       } else if (userType === UserType.CUSTOMER) {
-        // If location included in heartbeat, store it
-        if (payload.location) {
-          await this.storeUserLocation(userId, userType, payload.location);
-        }
         await this.customerStatusService.updateCustomerAppState(
           userId,
           payload.appState,

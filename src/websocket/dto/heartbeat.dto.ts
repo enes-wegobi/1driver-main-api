@@ -1,8 +1,6 @@
-import { IsString, IsOptional, IsEnum, ValidateNested } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsString, IsEnum } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { AppState } from 'src/common/enums/app-state.enum';
-import { LocationDto } from './location.dto';
 
 export class HeartbeatDto {
   @ApiProperty({
@@ -19,14 +17,4 @@ export class HeartbeatDto {
   })
   @IsEnum(AppState)
   appState: AppState;
-
-  @ApiProperty({
-    description: 'Current location data',
-    type: LocationDto,
-    required: false,
-  })
-  @ValidateNested()
-  @Type(() => LocationDto)
-  @IsOptional()
-  location?: LocationDto;
 }
