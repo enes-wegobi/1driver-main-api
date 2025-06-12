@@ -16,11 +16,9 @@ export class HeartbeatDto {
   @ApiProperty({
     enum: AppState,
     description: 'Current application state',
-    required: false,
   })
   @IsEnum(AppState)
-  @IsOptional()
-  appState?: AppState;
+  appState: AppState;
 
   @ApiProperty({
     description: 'Current location data',

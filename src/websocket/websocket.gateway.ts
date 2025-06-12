@@ -11,7 +11,6 @@ import { Server, Socket } from 'socket.io';
 import { WebSocketService } from './websocket.service';
 import { JwtService } from 'src/jwt/jwt.service';
 import { LocationDto } from './dto/location.dto';
-import { DriverLocationDto } from './dto/driver-location.dto';
 import { DriverStatusService } from 'src/redis/services/driver-status.service';
 import { CustomerStatusService } from 'src/redis/services/customer-status.service';
 import { LocationService } from 'src/redis/services/location.service';
@@ -19,7 +18,6 @@ import { ActiveTripService } from 'src/redis/services/active-trip.service';
 import { UserType } from 'src/common/user-type.enum';
 import { TripService } from 'src/modules/trip/services/trip.service';
 import { EventType } from 'src/modules/event/enum/event-type.enum';
-import { AppState } from 'src/common/enums/app-state.enum';
 import { HeartbeatDto } from './dto/heartbeat.dto';
 import { DriverAvailabilityStatus } from 'src/common/enums/driver-availability-status.enum';
 
@@ -63,72 +61,6 @@ export class WebSocketGateway
     this.webSocketService.setServer(server);
   }
 
-  @SubscribeMessage('updateDriverLocation')
-  async handleDriverLocationUpdate(client: Socket, payload: DriverLocationDto) {
-    const userId = client.data.userId;
-    const userType = client.data.userType;
-
-    if (!userId) {
-      client.emit('error', { message: 'User not authenticated' });
-      return { success: false, message: 'User not authenticated' };
-    }
-
-    if (userType !== 'driver') {
-      client.emit('error', {
-        message: 'Only drivers can update driver location',
-      });
-      return {
-        success: false,
-        message: 'Only drivers can update driver location',
-      };
-    }
-
-    this.logger.debug(
-      `Driver location update from ${userId}: ${JSON.stringify(payload)}`,
-    );
-
-    try {
-      // Get driver's active trip ID
-      const tripId = await this.activeTripService.getUserActiveTripIfExists(
-        userId,
-        UserType.DRIVER,
-      );
-
-      if (tripId) {
-        const tripDetails = await this.tripService.findById(tripId);
-
-        if (tripDetails && tripDetails.customer && tripDetails.customer.id) {
-          const customerId = tripDetails.customer.id;
-
-          this.webSocketService.sendToUser(
-            customerId,
-            EventType.DRIVER_LOCATION_UPDATED,
-            {
-              tripId,
-              driverId: userId,
-              location: payload,
-              timestamp: new Date().toISOString(),
-            },
-          );
-
-          this.logger.debug(
-            `Driver ${userId} location sent to customer ${customerId} for trip ${tripId}`,
-          );
-        }
-      }
-
-      // Store location to redis
-      this.storeUserLocation(userId, userType, payload);
-
-      return { success: true };
-    } catch (error) {
-      this.logger.error(
-        `Error processing driver location update: ${error.message}`,
-      );
-      return { success: false, message: 'Failed to process location update' };
-    }
-  }
-
   async handleConnection(client: Socket, ...args: any[]) {
     const clientId = client.id;
 
@@ -169,11 +101,12 @@ export class WebSocketGateway
       client.join(`user:${payload.userId}`);
       client.join(`type:${userType}`);
 
-      // Mark user as active based on user type
       if (userType === UserType.DRIVER) {
         await this.driverStatusService.markDriverAsConnected(payload.userId);
+        await this.driverStatusService.setDriverAppStateOnConnect(
+          payload.userId,
+        );
 
-        // Get current availability status
         const status = await this.driverStatusService.getDriverAvailability(
           payload.userId,
         );
@@ -187,10 +120,12 @@ export class WebSocketGateway
           message: 'Connection successful',
         });
 
-        // Start heartbeat tracking in Redis
         await this.setHeartbeatInRedis(payload.userId, userType);
       } else if (userType === UserType.CUSTOMER) {
         await this.customerStatusService.markCustomerAsActive(payload.userId);
+        await this.customerStatusService.setCustomerAppStateOnConnect(
+          payload.userId,
+        );
 
         client.emit('connection', {
           status: 'connected',
@@ -226,6 +161,7 @@ export class WebSocketGateway
     if (userId) {
       if (userType === UserType.DRIVER) {
         await this.driverStatusService.markDriverAsDisconnected(userId);
+        await this.driverStatusService.setDriverAppStateOnDisconnect(userId);
         const status =
           await this.driverStatusService.getDriverAvailability(userId);
         if (status !== DriverAvailabilityStatus.ON_TRIP) {
@@ -238,6 +174,9 @@ export class WebSocketGateway
         this.logger.debug(`Driver ${userId} marked as disconnected`);
       } else if (userType === UserType.CUSTOMER) {
         await this.customerStatusService.markCustomerAsInactive(userId);
+        await this.customerStatusService.setCustomerAppStateOnDisconnect(
+          userId,
+        );
         this.logger.debug(`Customer ${userId} marked as disconnected`);
       }
     }
@@ -261,8 +200,11 @@ export class WebSocketGateway
       // Update user status based on type
       if (userType === UserType.DRIVER) {
         await this.driverStatusService.updateDriverLastSeen(userId, new Date());
+        await this.driverStatusService.updateDriverAppState(
+          userId,
+          payload.appState,
+        );
 
-        // If location included in heartbeat, store it and send
         if (payload.location) {
           await this.storeUserLocation(userId, userType, payload.location);
           const tripId = await this.activeTripService.getUserActiveTripIfExists(
@@ -300,18 +242,19 @@ export class WebSocketGateway
         this.logger.debug(
           `Heartbeat from driver ${userId}, appState: ${payload.appState}`,
         );
-      }
-      /* else if (userType === UserType.CUSTOMER) {
-        await this.customerStatusService.updateCustomerLastSeen(userId, new Date());
-        
+      } else if (userType === UserType.CUSTOMER) {
         // If location included in heartbeat, store it
         if (payload.location) {
           await this.storeUserLocation(userId, userType, payload.location);
         }
-
-        this.logger.debug(`Heartbeat from customer ${userId}`);
+        await this.customerStatusService.updateCustomerAppState(
+          userId,
+          payload.appState,
+        );
+        this.logger.debug(
+          `Heartbeat from customer ${userId}, appState: ${payload.appState}`,
+        );
       }
-      */
       client.emit('heartbeat-ack', {
         timestamp: new Date().toISOString(),
         nextHeartbeatIn: HEARTBEAT_INTERVAL,
@@ -346,7 +289,7 @@ export class WebSocketGateway
       return { success: false, message: 'User not authenticated' };
     }
 
-    if (userType !== 'driver') {
+    if (userType !== UserType.DRIVER) {
       client.emit('error', {
         message: 'Only drivers can update availability status',
       });

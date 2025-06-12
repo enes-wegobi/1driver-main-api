@@ -3,17 +3,10 @@ import { ConfigService } from '@nestjs/config';
 import { BaseRedisService } from './base-redis.service';
 import { RedisKeyGenerator } from '../redis-key.generator';
 import { UserType } from 'src/common/user-type.enum';
-import { DriverAvailabilityStatus } from 'src/websocket/dto/driver-location.dto';
 import { FindNearbyUsersResult } from '../dto/nearby-user.dto';
 import { WithErrorHandling } from '../decorators/with-error-handling.decorator';
-
-// Import DTO types
-import {
-  NearbyUserDto,
-  NearbyDriverDto,
-  NearbyCustomerDto,
-  Coordinates,
-} from '../dto/nearby-user.dto';
+import { NearbyUserDto } from '../dto/nearby-user.dto';
+import { DriverAvailabilityStatus } from 'src/common/enums/driver-availability-status.enum';
 
 interface ParsedLocationData {
   availabilityStatus?: DriverAvailabilityStatus;

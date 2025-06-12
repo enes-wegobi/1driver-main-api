@@ -1,11 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
-import { DriverAvailabilityStatus } from 'src/websocket/dto/driver-location.dto';
 import { FindNearbyUsersResult } from './dto/nearby-user.dto';
 import { UserType } from 'src/common/user-type.enum';
 import { RedisKeyGenerator } from './redis-key.generator';
 import { BaseRedisService } from './services/base-redis.service';
+import { DriverAvailabilityStatus } from 'src/common/enums/driver-availability-status.enum';
 
 @Injectable()
 export class RedisService {

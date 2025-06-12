@@ -17,9 +17,9 @@ import {
 import { JwtAuthGuard } from 'src/jwt/jwt.guard';
 import { GetUser } from 'src/jwt/user.decoretor';
 import { IJwtPayload } from 'src/jwt/jwt-payload.interface';
-import { DriverLocationDto } from 'src/websocket/dto/driver-location.dto';
 import { LocationService } from './location.service';
 import { UserType } from 'src/common/user-type.enum';
+import { DriverLocationDto } from 'src/websocket/dto/driver-location.dto';
 
 @ApiTags('location')
 @ApiBearerAuth()

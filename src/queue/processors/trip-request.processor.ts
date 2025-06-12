@@ -6,8 +6,8 @@ import { TripService } from '../../modules/trip/services/trip.service';
 import { DriverStatusService } from '../../redis/services/driver-status.service';
 import { EventService } from '../../modules/event/event.service';
 import { TripStatus } from '../../common/enums/trip-status.enum';
-import { DriverAvailabilityStatus } from '../../websocket/dto/driver-location.dto';
 import { TripQueueService } from '../services/trip-queue.service';
+import { DriverAvailabilityStatus } from 'src/common/enums/driver-availability-status.enum';
 
 @Processor('trip-requests')
 @Injectable()

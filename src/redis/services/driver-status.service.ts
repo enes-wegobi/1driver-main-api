@@ -4,6 +4,7 @@ import { BaseRedisService } from './base-redis.service';
 import { RedisKeyGenerator } from '../redis-key.generator';
 import { WithErrorHandling } from '../decorators/with-error-handling.decorator';
 import { DriverAvailabilityStatus } from 'src/common/enums/driver-availability-status.enum';
+import { AppState } from 'src/common/enums/app-state.enum';
 
 @Injectable()
 export class DriverStatusService extends BaseRedisService {
@@ -33,16 +34,11 @@ export class DriverStatusService extends BaseRedisService {
     pipeline.srem(RedisKeyGenerator.activeDriversSet(), driverId);
 
     await pipeline.exec();
-
-    // DO NOT automatically set availability to offline
-    // Driver's availability status should remain as they set it
-
     return true;
   }
 
   @WithErrorHandling()
   async markDriverAsDisconnected(driverId: string) {
-    // Only update connection status, not availability status
     const pipeline = this.client.multi();
     const key = RedisKeyGenerator.driverActive(driverId);
 
@@ -68,15 +64,11 @@ export class DriverStatusService extends BaseRedisService {
     return true;
   }
 
-  // ========== HEARTBEAT METHODS (USING EXISTING ACTIVE KEY) ==========
-
   @WithErrorHandling()
   async updateDriverHeartbeat(driverId: string): Promise<void> {
-    // Mevcut driver:active key'ini heartbeat için kullan
     const pipeline = this.client.multi();
     const key = RedisKeyGenerator.driverActive(driverId);
 
-    // Hem timestamp'i güncelle hem TTL'yi refresh et
     pipeline.set(key, new Date().toISOString());
     pipeline.expire(key, this.ACTIVE_DRIVER_EXPIRY);
     pipeline.sadd(RedisKeyGenerator.activeDriversSet(), driverId);
@@ -96,7 +88,6 @@ export class DriverStatusService extends BaseRedisService {
 
   @WithErrorHandling([])
   async getDriversWithActiveHeartbeat(): Promise<string[]> {
-    // Mevcut active drivers'ı döndür
     return await this.getActiveDrivers();
   }
 
@@ -321,7 +312,41 @@ export class DriverStatusService extends BaseRedisService {
     return { heartbeatExpired, availabilityChanged };
   }
 
-  // ========== MONITORING METHODS ==========
+  // ========== APP STATE METHODS ==========
+
+  @WithErrorHandling()
+  async updateDriverAppState(
+    driverId: string,
+    appState: AppState,
+  ): Promise<void> {
+    const key = RedisKeyGenerator.driverAppState(driverId);
+    const pipeline = this.client.multi();
+
+    pipeline.set(key, appState);
+    pipeline.expire(key, this.ACTIVE_DRIVER_EXPIRY);
+
+    await pipeline.exec();
+
+    this.logger.debug(`Driver ${driverId} app state updated to: ${appState}`);
+  }
+
+  @WithErrorHandling(AppState.INACTIVE)
+  async getDriverAppState(driverId: string): Promise<AppState> {
+    const key = RedisKeyGenerator.driverAppState(driverId);
+    const appState = await this.client.get(key);
+
+    return (appState as AppState) || AppState.INACTIVE;
+  }
+
+  @WithErrorHandling()
+  async setDriverAppStateOnConnect(driverId: string): Promise<void> {
+    await this.updateDriverAppState(driverId, AppState.ACTIVE);
+  }
+
+  @WithErrorHandling()
+  async setDriverAppStateOnDisconnect(driverId: string): Promise<void> {
+    await this.updateDriverAppState(driverId, AppState.INACTIVE);
+  }
 
   @WithErrorHandling({
     totalDrivers: 0,

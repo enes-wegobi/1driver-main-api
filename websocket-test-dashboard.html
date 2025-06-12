@@ -380,7 +380,38 @@
                 </div>
 
                 <div class="connection-section">
-                    <div class="section-title">Bağlantı Ayarları</div>
+                    <div class="section-title">Driver Login</div>
+                    
+                    <div class="form-group">
+                        <label>API Base URL:</label>
+                        <input type="text" id="driverApiUrl" value="http://localhost:3000">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Phone Number:</label>
+                        <input type="text" id="driverPhone" placeholder="+905551234567">
+                    </div>
+
+                    <div class="form-group" id="driverOtpGroup" style="display: none;">
+                        <label>OTP Code:</label>
+                        <input type="text" id="driverOtp" placeholder="123456" maxlength="6">
+                    </div>
+
+                    <div class="availability-controls">
+                        <button class="btn btn-primary" onclick="initiateDriverLogin()" id="driverLoginBtn">Login</button>
+                        <button class="btn btn-success" onclick="completeDriverLogin()" id="driverOtpBtn" style="display: none;">Verify OTP</button>
+                        <button class="btn btn-warning" onclick="resendDriverOtp()" id="driverResendBtn" style="display: none;">Resend OTP</button>
+                    </div>
+
+                    <div class="form-group" id="driverTokenGroup" style="display: none;">
+                        <label>Generated Token:</label>
+                        <textarea id="driverTokenDisplay" readonly rows="3" style="font-family: monospace; font-size: 11px; word-break: break-all;"></textarea>
+                        <button class="btn btn-primary" onclick="copyDriverToken()" style="margin-top: 5px;">Copy Token</button>
+                    </div>
+                </div>
+
+                <div class="connection-section">
+                    <div class="section-title">WebSocket Bağlantı</div>
                     
                     <div class="form-group">
                         <label>WebSocket URL:</label>
@@ -388,8 +419,8 @@
                     </div>
 
                     <div class="form-group">
-                        <label>Driver Token:</label>
-                        <input type="text" id="driverToken" placeholder="JWT Token girin">
+                        <label>Driver Token (Manuel):</label>
+                        <input type="text" id="driverToken" placeholder="JWT Token girin veya yukarıdan login yapın">
                     </div>
 
                     <div style="margin-bottom: 20px;">
@@ -408,6 +439,23 @@
                 </div>
                 <div id="driverAvailabilityStatus" class="availability-status status-busy">BUSY</div>
 
+                <div class="section-title">App State</div>
+                <div class="form-group">
+                    <label>Current App State:</label>
+                    <select id="driverAppState">
+                        <option value="active">ACTIVE</option>
+                        <option value="background">BACKGROUND</option>
+                        <option value="inactive">INACTIVE</option>
+                    </select>
+                </div>
+
+                <div class="section-title">Heartbeat Kontrolü</div>
+                <div class="availability-controls">
+                    <button class="btn btn-primary" onclick="sendDriverHeartbeat()">Manuel Heartbeat Gönder</button>
+                    <button class="btn btn-success" onclick="toggleDriverAutoHeartbeat()" id="driverAutoHeartbeatBtn">Otomatik Heartbeat Başlat</button>
+                </div>
+                <div id="driverHeartbeatStatus" class="location-info">Heartbeat durumu: Kapalı</div>
+
                 <div class="location-section">
                     <div class="section-title">Konum Güncelleme</div>
                     
@@ -415,7 +463,6 @@
                         <h4>🌍 Otomatik Konum</h4>
                         <div class="location-info" id="driverLocationInfo">Konum bilgisi alınmadı</div>
                         <button class="btn btn-primary" onclick="getDriverLocation()">Konumu Al</button>
-                        <button class="btn btn-success" onclick="toggleDriverAutoLocation()" id="driverAutoLocationBtn">Otomatik Gönderimi Başlat</button>
                     </div>
 
                     <div class="location-grid">
@@ -437,8 +484,7 @@
                         </div>
                     </div>
 
-                    <button class="btn btn-success" onclick="updateDriverLocation()">Konum Gönder</button>
-                    <button class="btn btn-primary" onclick="updateBasicLocation('driver')">Basit Konum Gönder</button>
+                    <div class="location-info">ℹ️ Konum artık heartbeat ile otomatik gönderilir</div>
                 </div>
 
                 <div class="logs-container">
@@ -460,7 +506,38 @@
                 </div>
 
                 <div class="connection-section">
-                    <div class="section-title">Bağlantı Ayarları</div>
+                    <div class="section-title">Customer Login</div>
+                    
+                    <div class="form-group">
+                        <label>API Base URL:</label>
+                        <input type="text" id="customerApiUrl" value="http://localhost:3000">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Phone Number:</label>
+                        <input type="text" id="customerPhone" placeholder="+905551234567">
+                    </div>
+
+                    <div class="form-group" id="customerOtpGroup" style="display: none;">
+                        <label>OTP Code:</label>
+                        <input type="text" id="customerOtp" placeholder="123456" maxlength="6">
+                    </div>
+
+                    <div class="availability-controls">
+                        <button class="btn btn-primary" onclick="initiateCustomerLogin()" id="customerLoginBtn">Login</button>
+                        <button class="btn btn-success" onclick="completeCustomerLogin()" id="customerOtpBtn" style="display: none;">Verify OTP</button>
+                        <button class="btn btn-warning" onclick="resendCustomerOtp()" id="customerResendBtn" style="display: none;">Resend OTP</button>
+                    </div>
+
+                    <div class="form-group" id="customerTokenGroup" style="display: none;">
+                        <label>Generated Token:</label>
+                        <textarea id="customerTokenDisplay" readonly rows="3" style="font-family: monospace; font-size: 11px; word-break: break-all;"></textarea>
+                        <button class="btn btn-primary" onclick="copyCustomerToken()" style="margin-top: 5px;">Copy Token</button>
+                    </div>
+                </div>
+
+                <div class="connection-section">
+                    <div class="section-title">WebSocket Bağlantı</div>
                     
                     <div class="form-group">
                         <label>WebSocket URL:</label>
@@ -468,8 +545,8 @@
                     </div>
 
                     <div class="form-group">
-                        <label>Customer Token:</label>
-                        <input type="text" id="customerToken" placeholder="JWT Token girin">
+                        <label>Customer Token (Manuel):</label>
+                        <input type="text" id="customerToken" placeholder="JWT Token girin veya yukarıdan login yapın">
                     </div>
 
                     <div style="margin-bottom: 20px;">
@@ -481,6 +558,23 @@
                     <button class="btn btn-danger" onclick="disconnectCustomer()">Bağlantıyı Kes</button>
                 </div>
 
+                <div class="section-title">App State</div>
+                <div class="form-group">
+                    <label>Current App State:</label>
+                    <select id="customerAppState">
+                        <option value="active">ACTIVE</option>
+                        <option value="background">BACKGROUND</option>
+                        <option value="inactive">INACTIVE</option>
+                    </select>
+                </div>
+
+                <div class="section-title">Heartbeat Kontrolü</div>
+                <div class="availability-controls">
+                    <button class="btn btn-primary" onclick="sendCustomerHeartbeat()">Manuel Heartbeat Gönder</button>
+                    <button class="btn btn-success" onclick="toggleCustomerAutoHeartbeat()" id="customerAutoHeartbeatBtn">Otomatik Heartbeat Başlat</button>
+                </div>
+                <div id="customerHeartbeatStatus" class="location-info">Heartbeat durumu: Kapalı</div>
+
                 <div class="location-section">
                     <div class="section-title">Konum Güncelleme</div>
                     
@@ -488,7 +582,6 @@
                         <h4>🌍 Otomatik Konum</h4>
                         <div class="location-info" id="customerLocationInfo">Konum bilgisi alınmadı</div>
                         <button class="btn btn-primary" onclick="getCustomerLocation()">Konumu Al</button>
-                        <button class="btn btn-success" onclick="toggleCustomerAutoLocation()" id="customerAutoLocationBtn">Otomatik Gönderimi Başlat</button>
                     </div>
 
                     <div class="location-grid">
@@ -510,7 +603,7 @@
                         </div>
                     </div>
 
-                    <button class="btn btn-success" onclick="updateCustomerLocation()">Konum Gönder</button>
+                    <div class="location-info">ℹ️ Konum artık heartbeat ile otomatik gönderilir</div>
                 </div>
 
                 <div class="logs-container">
@@ -529,8 +622,15 @@
     <script>
         let driverSocket = null;
         let customerSocket = null;
-        let driverAutoLocationInterval = null;
-        let customerAutoLocationInterval = null;
+        let driverHeartbeatInterval = null;
+        let customerHeartbeatInterval = null;
+
+        // App States
+        const AppState = {
+            ACTIVE: 'active',
+            BACKGROUND: 'background',
+            INACTIVE: 'inactive'
+        };
 
         // Utility Functions
         function getCurrentTimestamp() {
@@ -549,6 +649,19 @@
         function clearLogs(panel) {
             const logsContainer = document.getElementById(`${panel}Logs`);
             logsContainer.innerHTML = '<button class="clear-logs" onclick="clearLogs(\'' + panel + '\')">Temizle</button>';
+        }
+
+        function updateHeartbeatStatus(panel, status) {
+            const statusElement = document.getElementById(`${panel}HeartbeatStatus`);
+            statusElement.textContent = status;
+        }
+
+        function displayLocationFromHeartbeat(panel, location) {
+            if (location) {
+                const locationInfo = document.getElementById(`${panel}LocationInfo`);
+                locationInfo.textContent = `💓 Heartbeat Konum: Lat: ${location.latitude?.toFixed(6)}, Lng: ${location.longitude?.toFixed(6)}`;
+                addLog(panel, 'info', `📍 Heartbeat ile konum alındı: ${JSON.stringify(location)}`);
+            }
         }
 
         function updateConnectionStatus(panel, status) {
@@ -598,6 +711,15 @@
                 if (data.availabilityStatus) {
                     updateDriverAvailabilityDisplay(data.availabilityStatus);
                 }
+                if (data.heartbeatInterval) {
+                    addLog('driver', 'info', `Heartbeat interval: ${data.heartbeatInterval}ms`);
+                }
+            });
+
+            // Heartbeat acknowledgment
+            driverSocket.on('heartbeat-ack', (data) => {
+                addLog('driver', 'success', `💓 Heartbeat ACK: ${JSON.stringify(data)}`);
+                updateHeartbeatStatus('driver', 'Heartbeat başarılı - ' + new Date().toLocaleTimeString());
             });
 
             driverSocket.on('disconnect', () => {
@@ -651,10 +773,12 @@
                 addLog('driver', 'info', 'Bağlantı kapatıldı');
             }
             
-            if (driverAutoLocationInterval) {
-                clearInterval(driverAutoLocationInterval);
-                driverAutoLocationInterval = null;
-                document.getElementById('driverAutoLocationBtn').textContent = 'Otomatik Gönderimi Başlat';
+
+            if (driverHeartbeatInterval) {
+                clearInterval(driverHeartbeatInterval);
+                driverHeartbeatInterval = null;
+                document.getElementById('driverAutoHeartbeatBtn').textContent = 'Otomatik Heartbeat Başlat';
+                document.getElementById('driverHeartbeatStatus').textContent = 'Heartbeat durumu: Kapalı';
             }
         }
 
@@ -684,34 +808,6 @@
             statusElement.className = `availability-status status-${status}`;
         }
 
-        function updateDriverLocation() {
-            if (!driverSocket || !driverSocket.connected) {
-                addLog('driver', 'error', 'Önce bağlantı kurmalısınız!');
-                return;
-            }
-
-            const locationData = {
-                latitude: parseFloat(document.getElementById('driverLat').value),
-                longitude: parseFloat(document.getElementById('driverLng').value),
-                speed: parseFloat(document.getElementById('driverSpeed').value) || 0,
-                heading: parseFloat(document.getElementById('driverHeading').value) || 0,
-                timestamp: new Date().toISOString(),
-                accuracy: 10,
-                isActive: true
-            };
-
-            addLog('driver', 'info', `Driver konum gönderiliyor: ${JSON.stringify(locationData)}`);
-            
-            driverSocket.emit('updateDriverLocation', locationData, (response) => {
-                if (response) {
-                    if (response.success) {
-                        addLog('driver', 'success', 'Driver konum başarıyla güncellendi');
-                    } else {
-                        addLog('driver', 'error', `Driver konum güncellenemedi: ${response.message}`);
-                    }
-                }
-            });
-        }
 
         function getDriverLocation() {
             if (navigator.geolocation) {
@@ -744,22 +840,6 @@
             }
         }
 
-        function toggleDriverAutoLocation() {
-            if (driverAutoLocationInterval) {
-                clearInterval(driverAutoLocationInterval);
-                driverAutoLocationInterval = null;
-                document.getElementById('driverAutoLocationBtn').textContent = 'Otomatik Gönderimi Başlat';
-                addLog('driver', 'info', 'Otomatik konum gönderimi durduruldu');
-            } else {
-                driverAutoLocationInterval = setInterval(() => {
-                    if (driverSocket && driverSocket.connected) {
-                        updateDriverLocation();
-                    }
-                }, 5000); // Her 5 saniyede bir
-                document.getElementById('driverAutoLocationBtn').textContent = 'Otomatik Gönderimi Durdur';
-                addLog('driver', 'info', 'Otomatik konum gönderimi başlatıldı (5s aralık)');
-            }
-        }
 
         // Customer Functions
         function connectCustomer() {
@@ -786,6 +866,15 @@
 
             customerSocket.on('connection', (data) => {
                 addLog('customer', 'success', `Kimlik doğrulama başarılı: ${JSON.stringify(data)}`);
+                if (data.heartbeatInterval) {
+                    addLog('customer', 'info', `Heartbeat interval: ${data.heartbeatInterval}ms`);
+                }
+            });
+
+            // Heartbeat acknowledgment
+            customerSocket.on('heartbeat-ack', (data) => {
+                addLog('customer', 'success', `💓 Heartbeat ACK: ${JSON.stringify(data)}`);
+                updateHeartbeatStatus('customer', 'Heartbeat başarılı - ' + new Date().toLocaleTimeString());
             });
 
             customerSocket.on('disconnect', () => {
@@ -865,39 +954,15 @@
                 addLog('customer', 'info', 'Bağlantı kapatıldı');
             }
             
-            if (customerAutoLocationInterval) {
-                clearInterval(customerAutoLocationInterval);
-                customerAutoLocationInterval = null;
-                document.getElementById('customerAutoLocationBtn').textContent = 'Otomatik Gönderimi Başlat';
+
+            if (customerHeartbeatInterval) {
+                clearInterval(customerHeartbeatInterval);
+                customerHeartbeatInterval = null;
+                document.getElementById('customerAutoHeartbeatBtn').textContent = 'Otomatik Heartbeat Başlat';
+                document.getElementById('customerHeartbeatStatus').textContent = 'Heartbeat durumu: Kapalı';
             }
         }
 
-        function updateCustomerLocation() {
-            if (!customerSocket || !customerSocket.connected) {
-                addLog('customer', 'error', 'Önce bağlantı kurmalısınız!');
-                return;
-            }
-
-            const locationData = {
-                latitude: parseFloat(document.getElementById('customerLat').value),
-                longitude: parseFloat(document.getElementById('customerLng').value),
-                accuracy: parseFloat(document.getElementById('customerAccuracy').value) || 10,
-                altitude: parseFloat(document.getElementById('customerAltitude').value) || 0,
-                timestamp: new Date().toISOString()
-            };
-
-            addLog('customer', 'info', `Customer konum gönderiliyor: ${JSON.stringify(locationData)}`);
-            
-            customerSocket.emit('updateLocation', locationData, (response) => {
-                if (response) {
-                    if (response.success) {
-                        addLog('customer', 'success', 'Customer konum başarıyla güncellendi');
-                    } else {
-                        addLog('customer', 'error', `Customer konum güncellenemedi: ${response.message}`);
-                    }
-                }
-            });
-        }
 
         function getCustomerLocation() {
             if (navigator.geolocation) {
@@ -929,49 +994,353 @@
             }
         }
 
-        function toggleCustomerAutoLocation() {
-            if (customerAutoLocationInterval) {
-                clearInterval(customerAutoLocationInterval);
-                customerAutoLocationInterval = null;
-                document.getElementById('customerAutoLocationBtn').textContent = 'Otomatik Gönderimi Başlat';
-                addLog('customer', 'info', 'Otomatik konum gönderimi durduruldu');
-            } else {
-                customerAutoLocationInterval = setInterval(() => {
-                    if (customerSocket && customerSocket.connected) {
-                        updateCustomerLocation();
+
+        // Heartbeat Functions
+        function sendDriverHeartbeat() {
+            if (!driverSocket || !driverSocket.connected) {
+                addLog('driver', 'error', 'Önce bağlantı kurmalısınız!');
+                return;
+            }
+
+            const appState = document.getElementById('driverAppState').value;
+            const heartbeatData = {
+                timestamp: new Date().toISOString(),
+                appState: appState,
+                location: {
+                    latitude: parseFloat(document.getElementById('driverLat').value),
+                    longitude: parseFloat(document.getElementById('driverLng').value),
+                    speed: parseFloat(document.getElementById('driverSpeed').value) || 0,
+                    heading: parseFloat(document.getElementById('driverHeading').value) || 0,
+                    accuracy: 10,
+                    timestamp: new Date().toISOString()
+                }
+            };
+
+            addLog('driver', 'info', `💓 Heartbeat gönderiliyor: ${JSON.stringify(heartbeatData)}`);
+            
+            driverSocket.emit('heartbeat', heartbeatData, (response) => {
+                if (response) {
+                    if (response.success) {
+                        addLog('driver', 'success', `💓 Heartbeat başarılı: ${JSON.stringify(response)}`);
+                    } else {
+                        addLog('driver', 'error', `💓 Heartbeat başarısız: ${response.message}`);
                     }
-                }, 5000); // Her 5 saniyede bir
-                document.getElementById('customerAutoLocationBtn').textContent = 'Otomatik Gönderimi Durdur';
-                addLog('customer', 'info', 'Otomatik konum gönderimi başlatıldı (5s aralık)');
+                }
+            });
+        }
+
+        function sendCustomerHeartbeat() {
+            if (!customerSocket || !customerSocket.connected) {
+                addLog('customer', 'error', 'Önce bağlantı kurmalısınız!');
+                return;
+            }
+
+            const appState = document.getElementById('customerAppState').value;
+            const heartbeatData = {
+                timestamp: new Date().toISOString(),
+                appState: appState,
+                location: {
+                    latitude: parseFloat(document.getElementById('customerLat').value),
+                    longitude: parseFloat(document.getElementById('customerLng').value),
+                    accuracy: parseFloat(document.getElementById('customerAccuracy').value) || 10,
+                    altitude: parseFloat(document.getElementById('customerAltitude').value) || 0,
+                    timestamp: new Date().toISOString()
+                }
+            };
+
+            addLog('customer', 'info', `💓 Heartbeat gönderiliyor: ${JSON.stringify(heartbeatData)}`);
+            
+            customerSocket.emit('heartbeat', heartbeatData, (response) => {
+                if (response) {
+                    if (response.success) {
+                        addLog('customer', 'success', `💓 Heartbeat başarılı: ${JSON.stringify(response)}`);
+                    } else {
+                        addLog('customer', 'error', `💓 Heartbeat başarısız: ${response.message}`);
+                    }
+                }
+            });
+        }
+
+        function toggleDriverAutoHeartbeat() {
+            if (driverHeartbeatInterval) {
+                clearInterval(driverHeartbeatInterval);
+                driverHeartbeatInterval = null;
+                document.getElementById('driverAutoHeartbeatBtn').textContent = 'Otomatik Heartbeat Başlat';
+                document.getElementById('driverHeartbeatStatus').textContent = 'Heartbeat durumu: Kapalı';
+                addLog('driver', 'info', 'Otomatik heartbeat durduruldu');
+            } else {
+                driverHeartbeatInterval = setInterval(() => {
+                    if (driverSocket && driverSocket.connected) {
+                        sendDriverHeartbeat();
+                    }
+                }, 30000); // Her 30 saniyede bir (gateway'deki HEARTBEAT_INTERVAL)
+                document.getElementById('driverAutoHeartbeatBtn').textContent = 'Otomatik Heartbeat Durdur';
+                document.getElementById('driverHeartbeatStatus').textContent = 'Heartbeat durumu: Aktif (30s aralık)';
+                addLog('driver', 'info', 'Otomatik heartbeat başlatıldı (30s aralık)');
             }
         }
 
-        // Common Functions
-        function updateBasicLocation(userType) {
-            if (userType === 'driver') {
-                if (!driverSocket || !driverSocket.connected) {
-                    addLog('driver', 'error', 'Önce bağlantı kurmalısınız!');
-                    return;
-                }
-
-                const locationData = {
-                    latitude: parseFloat(document.getElementById('driverLat').value),
-                    longitude: parseFloat(document.getElementById('driverLng').value),
-                    timestamp: new Date().toISOString()
-                };
-
-                addLog('driver', 'info', `Basit konum gönderiliyor: ${JSON.stringify(locationData)}`);
-                
-                driverSocket.emit('updateLocation', locationData, (response) => {
-                    if (response) {
-                        if (response.success) {
-                            addLog('driver', 'success', 'Basit konum başarıyla güncellendi');
-                        } else {
-                            addLog('driver', 'error', `Basit konum güncellenemedi: ${response.message}`);
-                        }
+        function toggleCustomerAutoHeartbeat() {
+            if (customerHeartbeatInterval) {
+                clearInterval(customerHeartbeatInterval);
+                customerHeartbeatInterval = null;
+                document.getElementById('customerAutoHeartbeatBtn').textContent = 'Otomatik Heartbeat Başlat';
+                document.getElementById('customerHeartbeatStatus').textContent = 'Heartbeat durumu: Kapalı';
+                addLog('customer', 'info', 'Otomatik heartbeat durduruldu');
+            } else {
+                customerHeartbeatInterval = setInterval(() => {
+                    if (customerSocket && customerSocket.connected) {
+                        sendCustomerHeartbeat();
                     }
-                });
+                }, 30000); // Her 30 saniyede bir (gateway'deki HEARTBEAT_INTERVAL)
+                document.getElementById('customerAutoHeartbeatBtn').textContent = 'Otomatik Heartbeat Durdur';
+                document.getElementById('customerHeartbeatStatus').textContent = 'Heartbeat durumu: Aktif (30s aralık)';
+                addLog('customer', 'info', 'Otomatik heartbeat başlatıldı (30s aralık)');
             }
+        }
+
+        // Driver Login Functions
+        async function initiateDriverLogin() {
+            const apiUrl = document.getElementById('driverApiUrl').value;
+            const phone = document.getElementById('driverPhone').value;
+
+            if (!phone) {
+                addLog('driver', 'error', 'Telefon numarası gerekli!');
+                return;
+            }
+
+            try {
+                addLog('driver', 'info', `Driver login başlatılıyor: ${phone}`);
+                
+                const response = await fetch(`${apiUrl}/auth/driver/initiate-signin`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ phone: phone })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    addLog('driver', 'success', `OTP gönderildi: ${JSON.stringify(data)}`);
+                    
+                    // Show OTP input and buttons
+                    document.getElementById('driverOtpGroup').style.display = 'block';
+                    document.getElementById('driverLoginBtn').style.display = 'none';
+                    document.getElementById('driverOtpBtn').style.display = 'inline-block';
+                    document.getElementById('driverResendBtn').style.display = 'inline-block';
+                } else {
+                    addLog('driver', 'error', `Login başarısız: ${JSON.stringify(data)}`);
+                }
+            } catch (error) {
+                addLog('driver', 'error', `Login hatası: ${error.message}`);
+            }
+        }
+
+        async function completeDriverLogin() {
+            const apiUrl = document.getElementById('driverApiUrl').value;
+            const phone = document.getElementById('driverPhone').value;
+            const otp = document.getElementById('driverOtp').value;
+
+            if (!otp) {
+                addLog('driver', 'error', 'OTP kodu gerekli!');
+                return;
+            }
+
+            try {
+                addLog('driver', 'info', `OTP doğrulanıyor: ${otp}`);
+                
+                const response = await fetch(`${apiUrl}/auth/driver/complete-signin`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'device-id': 'websocket-test-dashboard'
+                    },
+                    body: JSON.stringify({ phone: phone, otp: otp })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.token) {
+                    addLog('driver', 'success', `Login başarılı! Token alındı.`);
+                    
+                    // Display token
+                    document.getElementById('driverTokenDisplay').value = data.token;
+                    document.getElementById('driverTokenGroup').style.display = 'block';
+                    
+                    // Auto-fill token field
+                    document.getElementById('driverToken').value = data.token;
+                    
+                    // Reset UI
+                    document.getElementById('driverOtpGroup').style.display = 'none';
+                    document.getElementById('driverLoginBtn').style.display = 'inline-block';
+                    document.getElementById('driverOtpBtn').style.display = 'none';
+                    document.getElementById('driverResendBtn').style.display = 'none';
+                    document.getElementById('driverOtp').value = '';
+                } else {
+                    addLog('driver', 'error', `OTP doğrulama başarısız: ${JSON.stringify(data)}`);
+                }
+            } catch (error) {
+                addLog('driver', 'error', `OTP doğrulama hatası: ${error.message}`);
+            }
+        }
+
+        async function resendDriverOtp() {
+            const apiUrl = document.getElementById('driverApiUrl').value;
+            const phone = document.getElementById('driverPhone').value;
+
+            try {
+                addLog('driver', 'info', 'OTP yeniden gönderiliyor...');
+                
+                const response = await fetch(`${apiUrl}/auth/driver/resend-otp`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ phone: phone })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    addLog('driver', 'success', `OTP yeniden gönderildi: ${JSON.stringify(data)}`);
+                } else {
+                    addLog('driver', 'error', `OTP yeniden gönderme başarısız: ${JSON.stringify(data)}`);
+                }
+            } catch (error) {
+                addLog('driver', 'error', `OTP yeniden gönderme hatası: ${error.message}`);
+            }
+        }
+
+        function copyDriverToken() {
+            const tokenDisplay = document.getElementById('driverTokenDisplay');
+            tokenDisplay.select();
+            tokenDisplay.setSelectionRange(0, 99999);
+            navigator.clipboard.writeText(tokenDisplay.value);
+            addLog('driver', 'success', 'Token panoya kopyalandı!');
+        }
+
+        // Customer Login Functions
+        async function initiateCustomerLogin() {
+            const apiUrl = document.getElementById('customerApiUrl').value;
+            const phone = document.getElementById('customerPhone').value;
+
+            if (!phone) {
+                addLog('customer', 'error', 'Telefon numarası gerekli!');
+                return;
+            }
+
+            try {
+                addLog('customer', 'info', `Customer login başlatılıyor: ${phone}`);
+                
+                const response = await fetch(`${apiUrl}/auth/customer/initiate-signin`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ phone: phone })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    addLog('customer', 'success', `OTP gönderildi: ${JSON.stringify(data)}`);
+                    
+                    // Show OTP input and buttons
+                    document.getElementById('customerOtpGroup').style.display = 'block';
+                    document.getElementById('customerLoginBtn').style.display = 'none';
+                    document.getElementById('customerOtpBtn').style.display = 'inline-block';
+                    document.getElementById('customerResendBtn').style.display = 'inline-block';
+                } else {
+                    addLog('customer', 'error', `Login başarısız: ${JSON.stringify(data)}`);
+                }
+            } catch (error) {
+                addLog('customer', 'error', `Login hatası: ${error.message}`);
+            }
+        }
+
+        async function completeCustomerLogin() {
+            const apiUrl = document.getElementById('customerApiUrl').value;
+            const phone = document.getElementById('customerPhone').value;
+            const otp = document.getElementById('customerOtp').value;
+
+            if (!otp) {
+                addLog('customer', 'error', 'OTP kodu gerekli!');
+                return;
+            }
+
+            try {
+                addLog('customer', 'info', `OTP doğrulanıyor: ${otp}`);
+                
+                const response = await fetch(`${apiUrl}/auth/customer/complete-signin`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'device-id': 'websocket-test-dashboard'
+                    },
+                    body: JSON.stringify({ phone: phone, otp: otp })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.token) {
+                    addLog('customer', 'success', `Login başarılı! Token alındı.`);
+                    
+                    // Display token
+                    document.getElementById('customerTokenDisplay').value = data.token;
+                    document.getElementById('customerTokenGroup').style.display = 'block';
+                    
+                    // Auto-fill token field
+                    document.getElementById('customerToken').value = data.token;
+                    
+                    // Reset UI
+                    document.getElementById('customerOtpGroup').style.display = 'none';
+                    document.getElementById('customerLoginBtn').style.display = 'inline-block';
+                    document.getElementById('customerOtpBtn').style.display = 'none';
+                    document.getElementById('customerResendBtn').style.display = 'none';
+                    document.getElementById('customerOtp').value = '';
+                } else {
+                    addLog('customer', 'error', `OTP doğrulama başarısız: ${JSON.stringify(data)}`);
+                }
+            } catch (error) {
+                addLog('customer', 'error', `OTP doğrulama hatası: ${error.message}`);
+            }
+        }
+
+        async function resendCustomerOtp() {
+            const apiUrl = document.getElementById('customerApiUrl').value;
+            const phone = document.getElementById('customerPhone').value;
+
+            try {
+                addLog('customer', 'info', 'OTP yeniden gönderiliyor...');
+                
+                const response = await fetch(`${apiUrl}/auth/customer/resend-otp`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ phone: phone })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    addLog('customer', 'success', `OTP yeniden gönderildi: ${JSON.stringify(data)}`);
+                } else {
+                    addLog('customer', 'error', `OTP yeniden gönderme başarısız: ${JSON.stringify(data)}`);
+                }
+            } catch (error) {
+                addLog('customer', 'error', `OTP yeniden gönderme hatası: ${error.message}`);
+            }
+        }
+
+        function copyCustomerToken() {
+            const tokenDisplay = document.getElementById('customerTokenDisplay');
+            tokenDisplay.select();
+            tokenDisplay.setSelectionRange(0, 99999);
+            navigator.clipboard.writeText(tokenDisplay.value);
+            addLog('customer', 'success', 'Token panoya kopyalandı!');
         }
 
         // Initialize page

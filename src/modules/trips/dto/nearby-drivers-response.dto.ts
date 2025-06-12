@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsNotEmpty, IsNumber } from 'class-validator';
-import { DriverAvailabilityStatus } from 'src/websocket/dto/driver-location.dto';
+import { DriverAvailabilityStatus } from 'src/common/enums/driver-availability-status.enum';
 
 export class LocationDto {
   @ApiProperty({ description: 'Latitude coordinate of the driver' })
