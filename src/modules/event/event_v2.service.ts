@@ -12,6 +12,7 @@ import {
   EventDeliveryMethod,
 } from './constants/trip.constant';
 import { UserType } from 'src/common/user-type.enum';
+import { AppState } from 'src/common/enums/app-state.enum';
 
 @Injectable()
 export class Event2Service {
@@ -166,17 +167,32 @@ export class Event2Service {
     userId: string,
     userType: UserType,
   ): Promise<EventDeliveryMethod> {
+    const isUserActiveAndReady = await this.isUserActiveAndReady(
+      userId,
+      userType,
+    );
+    return isUserActiveAndReady
+      ? EventDeliveryMethod.WEBSOCKET
+      : EventDeliveryMethod.PUSH;
+  }
+
+  /**
+   * Common method to check if user is both active and has ACTIVE app state
+   */
+  private async isUserActiveAndReady(
+    userId: string,
+    userType: UserType,
+  ): Promise<boolean> {
     if (userType === UserType.DRIVER) {
       const isActive = await this.driverStatusService.isDriverActive(userId);
-      return isActive
-        ? EventDeliveryMethod.WEBSOCKET
-        : EventDeliveryMethod.PUSH;
+      const appState = await this.driverStatusService.getDriverAppState(userId);
+      return isActive && appState === AppState.ACTIVE;
     } else {
       const isActive =
         await this.customerStatusService.isCustomerActive(userId);
-      return isActive
-        ? EventDeliveryMethod.WEBSOCKET
-        : EventDeliveryMethod.PUSH;
+      const appState =
+        await this.customerStatusService.getCustomerAppState(userId);
+      return isActive && appState === AppState.ACTIVE;
     }
   }
 
@@ -184,40 +200,24 @@ export class Event2Service {
     userIds: string[],
     userType: UserType,
   ): Promise<{ activeUsers: string[]; inactiveUsers: string[] }> {
-    if (userType === UserType.DRIVER) {
-      const driversStatus =
-        await this.driverStatusService.checkDriversActiveStatus(userIds);
-      return driversStatus.reduce<{
-        activeUsers: string[];
-        inactiveUsers: string[];
-      }>(
-        (result, driver) => {
-          if (driver.isActive) {
-            result.activeUsers.push(driver.driverId);
-          } else {
-            result.inactiveUsers.push(driver.driverId);
-          }
-          return result;
-        },
-        { activeUsers: [], inactiveUsers: [] },
+    const activeUsers: string[] = [];
+    const inactiveUsers: string[] = [];
+
+    // Use common method to check each user's status
+    for (const userId of userIds) {
+      const isActiveAndReady = await this.isUserActiveAndReady(
+        userId,
+        userType,
       );
-    } else {
-      // For customers, check individually
-      const activeUsers: string[] = [];
-      const inactiveUsers: string[] = [];
 
-      for (const userId of userIds) {
-        const isActive =
-          await this.customerStatusService.isCustomerActive(userId);
-        if (isActive) {
-          activeUsers.push(userId);
-        } else {
-          inactiveUsers.push(userId);
-        }
+      if (isActiveAndReady) {
+        activeUsers.push(userId);
+      } else {
+        inactiveUsers.push(userId);
       }
-
-      return { activeUsers, inactiveUsers };
     }
+
+    return { activeUsers, inactiveUsers };
   }
 
   // ================================
@@ -245,19 +245,40 @@ export class Event2Service {
     data: any,
   ): Promise<void> {
     const customer = await this.customersService.findOne(customerId);
-    if (customer && customer.expoToken) {
-      const { title, body } = this.getNotificationContent(eventType);
-      await this.expoNotificationsService.sendNotification(
-        customer.expoToken,
-        title,
-        body,
-        {
-          ...data,
-          type: eventType,
-          timestamp: new Date().toISOString(),
-        },
-      );
+
+    if (!customer) {
+      this.logger.warn(`Customer ${customerId} not found`);
+      return;
     }
+
+    // Check notification permissions
+    const hasPermission =
+      await this.checkCustomerNotificationPermissions(customer);
+    if (!hasPermission) {
+      this.logger.log(
+        `Customer ${customerId} does not have notification permissions, requesting...`,
+      );
+      await this.requestNotificationPermissions(customerId);
+      return;
+    }
+
+    // Check expo token
+    if (!customer.expoToken) {
+      this.logger.warn(`Customer ${customerId} has no expo token`);
+      return;
+    }
+
+    const { title, body } = this.getNotificationContent(eventType);
+
+    await this.expoNotificationsService.sendNotification(
+      customer.expoToken,
+      title,
+      body,
+      {
+        type: eventType,
+        timestamp: new Date().toISOString(),
+      },
+    );
   }
 
   private getNotificationContent(eventType: EventType): {
@@ -302,6 +323,46 @@ export class Event2Service {
       }
     );
   }
+
+  // ================================
+  // CUSTOMER NOTIFICATION HELPERS
+  // ================================
+
+  /**
+   * Check if customer has mobile notification permissions
+   */
+  private async checkCustomerNotificationPermissions(
+    customer: any,
+  ): Promise<boolean> {
+    try {
+      //return customer?.mobileNotificationPermission === true;
+      return true;
+    } catch (error) {
+      this.logger.error(
+        `Error checking notification permissions for customer ${customer._id}: ${error.message}`,
+      );
+      return false;
+    }
+  }
+
+  /**
+   * Dummy method to request notification permissions from customer
+   * In a real implementation, this would trigger a permission request flow
+   */
+  private async requestNotificationPermissions(
+    customerId: string,
+  ): Promise<void> {
+    this.logger.log(
+      `Requesting notification permissions for customer ${customerId}`,
+    );
+    // TODO: Implement actual permission request logic
+    // This could involve:
+    // - Sending a WebSocket message to request permissions
+    // - Storing a pending permission request in database
+    // - Triggering a push notification asking for permissions
+    // - Updating customer preferences when permissions are granted
+  }
+
   // ================================
   // UTILITY METHODS
   // ================================
