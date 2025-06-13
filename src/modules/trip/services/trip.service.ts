@@ -483,7 +483,7 @@ export class TripService {
                 );
 
                 throw new BadRequestException(
-                  'Penalty payment failed. Trip cannot be cancelled until penalty is paid.',
+                  'Penalty payment failed. Please try again.',
                 );
               }
             }
@@ -501,6 +501,88 @@ export class TripService {
         );
       },
       'Trip cancellation is currently being processed. Please try again.',
+      30000,
+      2,
+    );
+  }
+
+  async retryCancelTripByCustomer(
+    customerId: string,
+    paymentMethodId?: string,
+  ): Promise<TripOperationResult> {
+    return this.lockService.executeWithLock(
+      `customer:${customerId}:retry-cancel`,
+      async () => {
+        return this.executeWithErrorHandling(
+          'retrying trip cancellation by customer',
+          async () => {
+            const tripId = await this.getUserActiveTripId(
+              customerId,
+              UserType.CUSTOMER,
+            );
+            const trip = await this.getTrip(tripId);
+
+            // Validate trip is in PAYMENT_RETRY or CANCELLED_PAYMENT status
+            if (
+              trip.status !== TripStatus.PAYMENT_RETRY &&
+              trip.status !== TripStatus.CANCELLED_PAYMENT
+            ) {
+              throw new BadRequestException(
+                `Trip is not in payment retry or cancelled payment status. Current status: ${trip.status}`,
+              );
+            }
+
+            // Determine payment amount based on trip status
+            let paymentAmount = 15; // Default penalty amount
+            if (trip.status === TripStatus.PAYMENT_RETRY && trip.finalCost) {
+              paymentAmount = trip.finalCost;
+            }
+
+            // Retry payment processing
+            try {
+              await this.processCustomerRetryPayment(
+                tripId,
+                customerId,
+                paymentAmount,
+                paymentMethodId,
+              );
+              this.logger.log(
+                `Payment retry successful for customer ${customerId}, trip ${tripId}, amount: ${paymentAmount}`,
+              );
+            } catch (paymentError) {
+              this.logger.error(
+                `Payment retry failed for customer ${customerId}: ${paymentError.message}`,
+              );
+              throw new BadRequestException(
+                'Payment retry failed. Please try again.',
+              );
+            }
+
+            // Complete the remaining operations
+            await this.activeTripService.removeUserActiveTrip(
+              customerId,
+              UserType.CUSTOMER,
+            );
+
+            // Determine final status based on original trip status
+            const finalStatus =
+              trip.status === TripStatus.CANCELLED_PAYMENT
+                ? TripStatus.CANCELLED
+                : TripStatus.COMPLETED;
+
+            const updatedTrip = await this.updateTripWithData(tripId, {
+              status: finalStatus,
+            });
+
+            this.logger.log(
+              `Trip retry completed successfully for customer ${customerId}, trip ${tripId}`,
+            );
+
+            return { success: true, trip: updatedTrip };
+          },
+        );
+      },
+      'Trip retry is currently being processed. Please try again.',
       30000,
       2,
     );
@@ -1644,6 +1726,75 @@ export class TripService {
       );
     } catch (error) {
       this.logger.error(`Penalty payment processing failed: ${error.message}`);
+      throw error;
+    }
+  }
+
+  private async processCustomerRetryPayment(
+    tripId: string,
+    userId: string,
+    amount: number,
+    paymentMethodId?: string,
+  ): Promise<void> {
+    try {
+      // Get payment method - use provided one or default
+      let paymentMethod;
+      if (paymentMethodId) {
+        const paymentMethods =
+          await this.paymentMethodService.getPaymentMethods(userId);
+        paymentMethod = paymentMethods.find(
+          (pm: any) => pm._id.toString() === paymentMethodId,
+        );
+        if (!paymentMethod) {
+          throw new BadRequestException(
+            'Payment method not found or does not belong to this customer',
+          );
+        }
+      } else {
+        paymentMethod =
+          await this.paymentMethodService.getDefaultPaymentMethod(userId);
+        if (!paymentMethod) {
+          throw new BadRequestException(
+            'No payment method found for retry payment',
+          );
+        }
+      }
+
+      // Get customer's Stripe customer ID
+      const customer = await this.customersClient.findOne(userId, [
+        'stripeCustomerId',
+      ]);
+
+      if (!customer?.stripeCustomerId) {
+        throw new BadRequestException(
+          'Customer does not have a Stripe account',
+        );
+      }
+
+      // Create payment intent for the specified amount
+      const paymentIntent = await this.stripeService.createPaymentIntent(
+        Math.round(amount * 100), // Convert to cents
+        'aed',
+        customer.stripeCustomerId,
+        paymentMethod.stripePaymentMethodId,
+        {
+          user_id: userId,
+          trip_id: tripId,
+          retry_payment: 'true',
+        },
+      );
+
+      if (paymentIntent.status !== 'succeeded') {
+        throw new BadRequestException(
+          `Retry payment failed: ${paymentIntent.status}`,
+        );
+      }
+
+      this.logger.log(
+        `Retry payment successful for customer ${userId}: ${amount} AED`,
+      );
+    } catch (error) {
+      this.logger.error(`Retry payment processing failed: ${error.message}`);
       throw error;
     }
   }

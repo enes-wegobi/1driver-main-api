@@ -283,8 +283,22 @@ export class TripPaymentService {
       return;
     }
 
-    // Update trip payment status to failed (keep trip status as PAYMENT for retry)
-    await this.updateTripPaymentStatus(trip._id, PaymentStatus.FAILED);
+    // Update trip status to PAYMENT_RETRY and payment status to failed
+    await this.tripService.updateTripWithData(trip._id.toString(), {
+      status: TripStatus.PAYMENT_RETRY,
+      paymentStatus: PaymentStatus.FAILED,
+    });
+
+    // Remove driver's active trip
+    if (trip.driver && trip.driver.id) {
+      await this.tripService.cleanupCompletedTrip(
+        trip.driver.id,
+        trip.customer.id,
+      );
+      this.logger.log(
+        `Removed driver ${trip.driver.id} active trip due to payment failure`,
+      );
+    }
 
     // Get updated trip
     const updatedTrip = await this.tripService.findById(trip._id);
@@ -293,7 +307,7 @@ export class TripPaymentService {
       return;
     }
 
-    // Notify both customer and driver
+    // Notify customer about payment failure
     const eventData = {
       eventType: EventType.TRIP_PAYMENT_FAILED,
       tripId: trip._id,

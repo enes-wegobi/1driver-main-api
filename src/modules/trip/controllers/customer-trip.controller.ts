@@ -133,6 +133,46 @@ export class CustomersTripsController {
     return await this.tripService.cancelTripByCustomer(user.userId);
   }
 
+  @Post('retry-cancel')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Retry cancelling the active trip',
+    description:
+      'Retry the trip cancellation process when penalty payment failed. This endpoint can be used when the trip is in CANCELLED_PAYMENT or PAYMENT_RETRY status. Optionally provide a payment method ID, otherwise default payment method will be used.',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        paymentMethodId: {
+          type: 'string',
+          description:
+            'Optional payment method ID. If not provided, default payment method will be used.',
+        },
+      },
+    },
+    required: false,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Trip cancellation retry completed successfully',
+  })
+  @ApiResponse({
+    status: 400,
+    description:
+      'Trip not in cancelled payment status or penalty payment retry failed',
+  })
+  async retryCancelTrip(
+    @GetUser() user: IJwtPayload,
+    @Body() body?: { paymentMethodId?: string },
+  ) {
+    return await this.tripService.retryCancelTripByCustomer(
+      user.userId,
+      body?.paymentMethodId,
+    );
+  }
+
   @Post('cancel-request')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
