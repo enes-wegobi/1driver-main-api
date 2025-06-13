@@ -7,6 +7,7 @@ import { TripStatus } from '../../common/enums/trip-status.enum';
 import { TripQueueService } from '../services/trip-queue.service';
 import { EventType } from 'src/modules/event/enum/event-type.enum';
 import { Event2Service } from 'src/modules/event/event_v2.service';
+import { UserType } from 'src/common/user-type.enum';
 
 @Processor('trip-timeouts')
 @Injectable()
@@ -106,6 +107,7 @@ export class TripTimeoutProcessor extends WorkerHost {
               updatedTrip.customer.id,
               EventType.TRIP_DRIVER_NOT_FOUND,
               updatedTrip,
+              UserType.CUSTOMER
             );
             this.logger.log(
               `All drivers rejected for trip ${tripId}, notified customer`,

@@ -15,6 +15,7 @@ import { EventType } from '../../event/enum/event-type.enum';
 import { TripDocument } from '../schemas/trip.schema';
 import { Payment } from '../../payments/schemas/payment.schema';
 import { Event2Service } from 'src/modules/event/event_v2.service';
+import { UserType } from 'src/common/user-type.enum';
 
 export interface TripPaymentResult {
   success: boolean;
@@ -200,8 +201,8 @@ export class TripPaymentService {
       trip,
     };
 
-    await this.event2Service.sendToUser(trip.customer.id, eventType, eventData);
-    await this.event2Service.sendToUser(trip.driver.id, eventType, eventData);
+    await this.event2Service.sendToUser(trip.customer.id, eventType, eventData, UserType.CUSTOMER);
+    await this.event2Service.sendToUser(trip.driver.id, eventType, eventData, UserType.DRIVER);
     //await this.eventService.sendToUser(trip.customer.id, eventType, eventData);
     //await this.eventService.sendToUser(trip.driver.id, eventType, eventData);
   }
@@ -250,11 +251,13 @@ export class TripPaymentService {
       updatedTrip.customer.id,
       EventType.TRIP_PAYMENT_SUCCESS,
       eventData,
+      UserType.CUSTOMER,
     );
     await this.event2Service.sendToUser(
-      trip.driver.id,
+      updatedTrip.driver.id,
       EventType.TRIP_PAYMENT_SUCCESS,
       eventData,
+      UserType.DRIVER,
     );
     /*
     await this.eventService.sendToUser(
@@ -320,11 +323,13 @@ export class TripPaymentService {
       updatedTrip.customer.id,
       EventType.TRIP_PAYMENT_FAILED,
       eventData,
+      UserType.CUSTOMER,
     );
     await this.event2Service.sendToUser(
       trip.driver.id,
       EventType.TRIP_PAYMENT_FAILED,
       eventData,
+      UserType.DRIVER,
     );
     /*
     await this.eventService.sendToUser(

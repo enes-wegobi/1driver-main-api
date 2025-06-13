@@ -12,6 +12,7 @@ import { EventType } from 'src/modules/event/enum/event-type.enum';
 import { RedisService } from 'src/redis/redis.service';
 import { MapsService } from 'src/clients/maps/maps.service';
 import { BatchDistanceRequest } from 'src/clients/maps/maps.interface';
+import { UserType } from 'src/common/user-type.enum';
 
 @Processor('trip-requests')
 @Injectable()
@@ -119,7 +120,7 @@ export class TripRequestProcessor extends WorkerHost {
       await this.event2Service.sendToUser(driverId, EventType.TRIP_REQUESTED, {
         ...trip,
         driverDistanceInfo,
-      });
+      },UserType.DRIVER);
 
       this.logger.log(
         `Successfully sent trip request ${tripId} to driver ${driverId}`,
@@ -232,6 +233,7 @@ export class TripRequestProcessor extends WorkerHost {
           trip.customer.id,
           EventType.TRIP_DRIVER_NOT_FOUND,
           trip,
+          UserType.CUSTOMER
         );
       }
 

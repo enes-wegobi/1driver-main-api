@@ -6,11 +6,7 @@ import { ExpoNotificationsService } from 'src/modules/expo-notifications/expo-no
 import { DriverStatusService } from 'src/redis/services/driver-status.service';
 import { CustomerStatusService } from 'src/redis/services/customer-status.service';
 import { EventType } from './enum/event-type.enum';
-import {
-  EVENT_CONFIG,
-  EventConfig,
-  EventDeliveryMethod,
-} from './constants/trip.constant';
+import { EventDeliveryMethod } from './constants/trip.constant';
 import { UserType } from 'src/common/user-type.enum';
 import { AppState } from 'src/common/enums/app-state.enum';
 
@@ -38,13 +34,12 @@ export class Event2Service {
     userId: string,
     eventType: EventType,
     data: any,
+    userType: UserType,
   ): Promise<void> {
     try {
-      const config = this.getEventConfig(eventType);
-
       await this.deliverEventToUser(
         userId,
-        config.targetUserType,
+        userType,
         eventType,
         data,
       );
@@ -64,13 +59,12 @@ export class Event2Service {
     userIds: string[],
     eventType: EventType,
     data: any,
+    userType: UserType,
   ): Promise<void> {
     try {
-      const config = this.getEventConfig(eventType);
-
       await this.broadcastEvent(
         userIds,
-        config.targetUserType,
+        userType,
         eventType,
         data,
       );
@@ -361,17 +355,5 @@ export class Event2Service {
     // - Storing a pending permission request in database
     // - Triggering a push notification asking for permissions
     // - Updating customer preferences when permissions are granted
-  }
-
-  // ================================
-  // UTILITY METHODS
-  // ================================
-
-  private getEventConfig(eventType: EventType): EventConfig {
-    const config = EVENT_CONFIG[eventType];
-    if (!config) {
-      throw new Error(`No configuration found for event type: ${eventType}`);
-    }
-    return config;
   }
 }
