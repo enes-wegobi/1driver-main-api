@@ -4,8 +4,9 @@ import { Job } from 'bullmq';
 import { TripTimeoutJob, JobResult } from '../interfaces/queue-job.interface';
 import { TripService } from '../../modules/trip/services/trip.service';
 import { TripStatus } from '../../common/enums/trip-status.enum';
-import { EventService } from '../../modules/event/event.service';
 import { TripQueueService } from '../services/trip-queue.service';
+import { EventType } from 'src/modules/event/enum/event-type.enum';
+import { Event2Service } from 'src/modules/event/event_v2.service';
 
 @Processor('trip-timeouts')
 @Injectable()
@@ -14,7 +15,7 @@ export class TripTimeoutProcessor extends WorkerHost {
 
   constructor(
     private readonly tripService: TripService,
-    private readonly eventService: EventService,
+    private readonly event2Service: Event2Service,
     private readonly tripQueueService: TripQueueService,
   ) {
     super();
@@ -95,9 +96,16 @@ export class TripTimeoutProcessor extends WorkerHost {
           const updatedTrip = result.trip;
 
           if (this.areAllDriversRejected(updatedTrip)) {
+            /*
             await this.eventService.notifyCustomerDriverNotFound(
               updatedTrip,
               updatedTrip.customer.id,
+            );
+            */
+            await this.event2Service.sendToUser(
+              updatedTrip.customer.id,
+              EventType.TRIP_DRIVER_NOT_FOUND,
+              updatedTrip,
             );
             this.logger.log(
               `All drivers rejected for trip ${tripId}, notified customer`,

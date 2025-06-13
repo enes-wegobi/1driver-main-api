@@ -256,6 +256,7 @@ export class WebSocketGateway
 
       // Update user status based on type
       if (userType === UserType.DRIVER) {
+        //avability status her haeart beatda ttl refresh olsun
         await this.driverStatusService.updateDriverLastSeen(userId, new Date());
         await this.driverStatusService.updateDriverAppState(
           userId,

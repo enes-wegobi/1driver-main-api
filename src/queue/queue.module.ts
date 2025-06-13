@@ -7,6 +7,7 @@ import { TripTimeoutProcessor } from './processors/trip-timeout.processor';
 import { TripModule } from 'src/modules/trip/trip.module';
 import { RedisModule } from 'src/redis/redis.module';
 import { EventModule } from 'src/modules/event/event.module';
+import { MapsModule } from 'src/clients/maps/maps.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { EventModule } from 'src/modules/event/event.module';
     forwardRef(() => TripModule),
     RedisModule,
     EventModule,
+    MapsModule,
   ],
   providers: [TripQueueService, TripRequestProcessor, TripTimeoutProcessor],
   exports: [TripQueueService],

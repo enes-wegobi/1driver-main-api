@@ -4,10 +4,14 @@ import { Job } from 'bullmq';
 import { TripRequestJob, JobResult } from '../interfaces/queue-job.interface';
 import { TripService } from '../../modules/trip/services/trip.service';
 import { DriverStatusService } from '../../redis/services/driver-status.service';
-import { EventService } from '../../modules/event/event.service';
 import { TripStatus } from '../../common/enums/trip-status.enum';
 import { TripQueueService } from '../services/trip-queue.service';
 import { DriverAvailabilityStatus } from 'src/common/enums/driver-availability-status.enum';
+import { Event2Service } from 'src/modules/event/event_v2.service';
+import { EventType } from 'src/modules/event/enum/event-type.enum';
+import { RedisService } from 'src/redis/redis.service';
+import { MapsService } from 'src/clients/maps/maps.service';
+import { BatchDistanceRequest } from 'src/clients/maps/maps.interface';
 
 @Processor('trip-requests')
 @Injectable()
@@ -17,8 +21,10 @@ export class TripRequestProcessor extends WorkerHost {
   constructor(
     private readonly tripService: TripService,
     private readonly driverStatusService: DriverStatusService,
-    private readonly eventService: EventService,
+    private readonly event2Service: Event2Service,
     private readonly tripQueueService: TripQueueService,
+    private readonly redisService: RedisService,
+    private readonly mapsService: MapsService,
   ) {
     super();
   }
@@ -102,8 +108,18 @@ export class TripRequestProcessor extends WorkerHost {
         };
       }
 
+      const driverDistanceInfo = await this.calculateDistanceForDriver(
+        driverId,
+        {
+          lat: trip.route[0].lat,
+          lon: trip.route[0].lon,
+        },
+      );
       // 4. Send trip request notification to driver
-      await this.eventService.notifyNewTripRequest(trip, [driverId]);
+      await this.event2Service.sendToUser(driverId, EventType.TRIP_REQUESTED, {
+        ...trip,
+        driverDistanceInfo,
+      });
 
       this.logger.log(
         `Successfully sent trip request ${tripId} to driver ${driverId}`,
@@ -206,9 +222,16 @@ export class TripRequestProcessor extends WorkerHost {
       // Notify customer that no driver was found
       const trip = await this.tripService.findById(tripId);
       if (trip) {
+        /*
         await this.eventService.notifyCustomerDriverNotFound(
           trip,
           trip.customer.id,
+        );
+        */
+        await this.event2Service.sendToUser(
+          trip.customer.id,
+          EventType.TRIP_DRIVER_NOT_FOUND,
+          trip,
         );
       }
 
@@ -217,6 +240,53 @@ export class TripRequestProcessor extends WorkerHost {
       this.logger.error(
         `Error handling exhausted job for trip ${tripId}: ${error.message}`,
       );
+    }
+  }
+
+  private async calculateDistanceForDriver(
+    driverId: string,
+    referencePoint: { lat: number; lon: number },
+  ): Promise<{ distance?: number; duration?: number }> {
+    try {
+      const driverLocationsMap = await this.redisService.getUserLocations([
+        driverId,
+      ]);
+      const driverLocation = driverLocationsMap[driverId];
+
+      if (
+        !driverLocation ||
+        !driverLocation.latitude ||
+        !driverLocation.longitude
+      ) {
+        return {};
+      }
+
+      const batchDistanceRequest: BatchDistanceRequest = {
+        referencePoint,
+        driverLocations: [
+          {
+            driverId,
+            coordinates: {
+              lat: driverLocation.latitude,
+              lon: driverLocation.longitude,
+            },
+          },
+        ],
+      };
+
+      const distanceResults =
+        await this.mapsService.getBatchDistances(batchDistanceRequest);
+      const driverDistanceInfo = distanceResults.results?.[driverId];
+
+      return {
+        distance: driverDistanceInfo?.distance,
+        duration: driverDistanceInfo?.duration,
+      };
+    } catch (error) {
+      this.logger.error(
+        `Error calculating distance for driver ${driverId}: ${error.message}`,
+      );
+      return {};
     }
   }
 }

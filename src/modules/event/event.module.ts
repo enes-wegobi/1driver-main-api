@@ -7,6 +7,7 @@ import { ExpoNotificationsModule } from 'src/modules/expo-notifications/expo-not
 import { MapsModule } from 'src/clients/maps/maps.module';
 import { S3Module } from 'src/s3/s3.module';
 import { EventService } from './event.service';
+import { Event2Service } from './event_v2.service';
 
 @Module({
   imports: [
@@ -18,7 +19,7 @@ import { EventService } from './event.service';
     MapsModule,
     S3Module,
   ],
-  providers: [EventService],
-  exports: [EventService],
+  providers: [EventService, Event2Service],
+  exports: [EventService, Event2Service],
 })
 export class EventModule {}

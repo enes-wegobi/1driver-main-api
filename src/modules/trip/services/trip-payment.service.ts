@@ -8,13 +8,13 @@ import {
 import { TripService } from './trip.service';
 import { PaymentsService } from '../../payments/services/payments.service';
 import { PaymentMethodService } from '../../payments/services/payment-method.service';
-import { EventService } from '../../event/event.service';
 import { LockService } from 'src/common/lock/lock.service';
 import { TripStatus } from 'src/common/enums/trip-status.enum';
 import { PaymentStatus } from 'src/common/enums/payment-status.enum';
 import { EventType } from '../../event/enum/event-type.enum';
 import { TripDocument } from '../schemas/trip.schema';
 import { Payment } from '../../payments/schemas/payment.schema';
+import { Event2Service } from 'src/modules/event/event_v2.service';
 
 export interface TripPaymentResult {
   success: boolean;
@@ -35,7 +35,7 @@ export class TripPaymentService {
     @Inject(forwardRef(() => PaymentsService))
     private readonly paymentsService: PaymentsService,
     private readonly paymentMethodService: PaymentMethodService,
-    private readonly eventService: EventService,
+    private readonly event2Service: Event2Service,
     private readonly lockService: LockService,
   ) {}
 
@@ -200,8 +200,10 @@ export class TripPaymentService {
       trip,
     };
 
-    await this.eventService.sendToUser(trip.customer.id, eventType, eventData);
-    await this.eventService.sendToUser(trip.driver.id, eventType, eventData);
+    await this.event2Service.sendToUser(trip.customer.id, eventType, eventData);
+    await this.event2Service.sendToUser(trip.driver.id, eventType, eventData);
+    //await this.eventService.sendToUser(trip.customer.id, eventType, eventData);
+    //await this.eventService.sendToUser(trip.driver.id, eventType, eventData);
   }
 
   async handlePaymentSuccess(payment: Payment): Promise<void> {
@@ -244,7 +246,17 @@ export class TripPaymentService {
       payment,
       trip: updatedTrip,
     };
-
+    await this.event2Service.sendToUser(
+      updatedTrip.customer.id,
+      EventType.TRIP_PAYMENT_SUCCESS,
+      eventData,
+    );
+    await this.event2Service.sendToUser(
+      trip.driver.id,
+      EventType.TRIP_PAYMENT_SUCCESS,
+      eventData,
+    );
+    /*
     await this.eventService.sendToUser(
       trip.customer.id,
       EventType.TRIP_PAYMENT_SUCCESS,
@@ -255,6 +267,7 @@ export class TripPaymentService {
       EventType.TRIP_PAYMENT_SUCCESS,
       eventData,
     );
+    */
   }
 
   async handlePaymentFailure(payment: Payment): Promise<void> {
@@ -289,6 +302,17 @@ export class TripPaymentService {
       trip: updatedTrip,
     };
 
+    await this.event2Service.sendToUser(
+      updatedTrip.customer.id,
+      EventType.TRIP_PAYMENT_FAILED,
+      eventData,
+    );
+    await this.event2Service.sendToUser(
+      trip.driver.id,
+      EventType.TRIP_PAYMENT_FAILED,
+      eventData,
+    );
+    /*
     await this.eventService.sendToUser(
       trip.customer.id,
       EventType.TRIP_PAYMENT_FAILED,
@@ -299,5 +323,6 @@ export class TripPaymentService {
       EventType.TRIP_PAYMENT_FAILED,
       eventData,
     );
+    */
   }
 }

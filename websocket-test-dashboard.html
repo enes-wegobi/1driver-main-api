@@ -348,6 +348,13 @@
             margin-bottom: 10px;
         }
 
+        .location-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
         @media (max-width: 768px) {
             .main-content {
                 grid-template-columns: 1fr;
@@ -361,6 +368,14 @@
             .panel:last-child {
                 border-bottom: none;
             }
+            
+            .location-controls {
+                flex-direction: column;
+            }
+            
+            .location-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
@@ -368,7 +383,7 @@
     <div class="container">
         <div class="header">
             <h1>🚗 WebSocket Test Dashboard</h1>
-            <p>Driver & Customer WebSocket Bağlantı Test Aracı</p>
+            <p>Driver & Customer WebSocket Bağlantı Test Aracı - Gateway Uyumlu</p>
         </div>
 
         <div class="main-content">
@@ -457,12 +472,12 @@
                 <div id="driverHeartbeatStatus" class="location-info">Heartbeat durumu: Kapalı</div>
 
                 <div class="location-section">
-                    <div class="section-title">Konum Güncelleme</div>
+                    <div class="section-title">Konum Kontrolü</div>
                     
                     <div class="auto-location">
                         <h4>🌍 Otomatik Konum</h4>
                         <div class="location-info" id="driverLocationInfo">Konum bilgisi alınmadı</div>
-                        <button class="btn btn-primary" onclick="getDriverLocation()">Konumu Al</button>
+                        <button class="btn btn-primary" onclick="getDriverLocation()">GPS Konumu Al</button>
                     </div>
 
                     <div class="location-grid">
@@ -484,7 +499,13 @@
                         </div>
                     </div>
 
-                    <div class="location-info">ℹ️ Konum artık heartbeat ile otomatik gönderilir</div>
+                    <div class="location-controls">
+                        <button class="btn btn-primary" onclick="sendDriverLocationUpdate()">📍 Manuel Konum Gönder</button>
+                        <button class="btn btn-success" onclick="toggleDriverAutoLocation()" id="driverAutoLocationBtn">Otomatik Konum Başlat</button>
+                    </div>
+
+                    <div class="location-info">ℹ️ Konum heartbeat ile de otomatik gönderilir</div>
+                    <div id="driverLocationStatus" class="location-info">Otomatik konum: Kapalı</div>
                 </div>
 
                 <div class="logs-container">
@@ -576,12 +597,12 @@
                 <div id="customerHeartbeatStatus" class="location-info">Heartbeat durumu: Kapalı</div>
 
                 <div class="location-section">
-                    <div class="section-title">Konum Güncelleme</div>
+                    <div class="section-title">Konum Kontrolü</div>
                     
                     <div class="auto-location">
                         <h4>🌍 Otomatik Konum</h4>
                         <div class="location-info" id="customerLocationInfo">Konum bilgisi alınmadı</div>
-                        <button class="btn btn-primary" onclick="getCustomerLocation()">Konumu Al</button>
+                        <button class="btn btn-primary" onclick="getCustomerLocation()">GPS Konumu Al</button>
                     </div>
 
                     <div class="location-grid">
@@ -603,7 +624,13 @@
                         </div>
                     </div>
 
-                    <div class="location-info">ℹ️ Konum artık heartbeat ile otomatik gönderilir</div>
+                    <div class="location-controls">
+                        <button class="btn btn-primary" onclick="sendCustomerLocationUpdate()">📍 Manuel Konum Gönder</button>
+                        <button class="btn btn-success" onclick="toggleCustomerAutoLocation()" id="customerAutoLocationBtn">Otomatik Konum Başlat</button>
+                    </div>
+
+                    <div class="location-info">ℹ️ Konum heartbeat ile de otomatik gönderilir</div>
+                    <div id="customerLocationStatus" class="location-info">Otomatik konum: Kapalı</div>
                 </div>
 
                 <div class="logs-container">
@@ -624,6 +651,8 @@
         let customerSocket = null;
         let driverHeartbeatInterval = null;
         let customerHeartbeatInterval = null;
+        let driverLocationInterval = null;
+        let customerLocationInterval = null;
 
         // App States
         const AppState = {
@@ -656,12 +685,9 @@
             statusElement.textContent = status;
         }
 
-        function displayLocationFromHeartbeat(panel, location) {
-            if (location) {
-                const locationInfo = document.getElementById(`${panel}LocationInfo`);
-                locationInfo.textContent = `💓 Heartbeat Konum: Lat: ${location.latitude?.toFixed(6)}, Lng: ${location.longitude?.toFixed(6)}`;
-                addLog(panel, 'info', `📍 Heartbeat ile konum alındı: ${JSON.stringify(location)}`);
-            }
+        function updateLocationStatus(panel, status) {
+            const statusElement = document.getElementById(`${panel}LocationStatus`);
+            statusElement.textContent = status;
         }
 
         function updateConnectionStatus(panel, status) {
@@ -773,12 +799,19 @@
                 addLog('driver', 'info', 'Bağlantı kapatıldı');
             }
             
-
+            // Stop all intervals
             if (driverHeartbeatInterval) {
                 clearInterval(driverHeartbeatInterval);
                 driverHeartbeatInterval = null;
                 document.getElementById('driverAutoHeartbeatBtn').textContent = 'Otomatik Heartbeat Başlat';
-                document.getElementById('driverHeartbeatStatus').textContent = 'Heartbeat durumu: Kapalı';
+                updateHeartbeatStatus('driver', 'Heartbeat durumu: Kapalı');
+            }
+
+            if (driverLocationInterval) {
+                clearInterval(driverLocationInterval);
+                driverLocationInterval = null;
+                document.getElementById('driverAutoLocationBtn').textContent = 'Otomatik Konum Başlat';
+                updateLocationStatus('driver', 'Otomatik konum: Kapalı');
             }
         }
 
@@ -807,7 +840,6 @@
             statusElement.textContent = status.toUpperCase();
             statusElement.className = `availability-status status-${status}`;
         }
-
 
         function getDriverLocation() {
             if (navigator.geolocation) {
@@ -840,6 +872,54 @@
             }
         }
 
+        // NEW: Driver Location Update Function (Gateway compatible)
+        function sendDriverLocationUpdate() {
+            if (!driverSocket || !driverSocket.connected) {
+                addLog('driver', 'error', 'Önce bağlantı kurmalısınız!');
+                return;
+            }
+
+            const locationData = {
+                latitude: parseFloat(document.getElementById('driverLat').value),
+                longitude: parseFloat(document.getElementById('driverLng').value),
+                speed: parseFloat(document.getElementById('driverSpeed').value) || 0,
+                heading: parseFloat(document.getElementById('driverHeading').value) || 0,
+                accuracy: 10, // Default accuracy
+                timestamp: new Date().toISOString()
+            };
+
+            addLog('driver', 'info', `📍 Konum güncelleme gönderiliyor: ${JSON.stringify(locationData)}`);
+            
+            driverSocket.emit('updateLocation', locationData, (response) => {
+                if (response) {
+                    if (response.success) {
+                        addLog('driver', 'success', `📍 Konum güncellendi başarıyla`);
+                    } else {
+                        addLog('driver', 'error', `📍 Konum güncellenemedi: ${response.message}`);
+                    }
+                }
+            });
+        }
+
+        // NEW: Toggle Driver Auto Location Updates
+        function toggleDriverAutoLocation() {
+            if (driverLocationInterval) {
+                clearInterval(driverLocationInterval);
+                driverLocationInterval = null;
+                document.getElementById('driverAutoLocationBtn').textContent = 'Otomatik Konum Başlat';
+                updateLocationStatus('driver', 'Otomatik konum: Kapalı');
+                addLog('driver', 'info', 'Otomatik konum güncellemesi durduruldu');
+            } else {
+                driverLocationInterval = setInterval(() => {
+                    if (driverSocket && driverSocket.connected) {
+                        sendDriverLocationUpdate();
+                    }
+                }, 10000); // Her 10 saniyede bir konum gönder
+                document.getElementById('driverAutoLocationBtn').textContent = 'Otomatik Konum Durdur';
+                updateLocationStatus('driver', 'Otomatik konum: Aktif (10s aralık)');
+                addLog('driver', 'info', 'Otomatik konum güncellemesi başlatıldı (10s aralık)');
+            }
+        }
 
         // Customer Functions
         function connectCustomer() {
@@ -954,15 +1034,21 @@
                 addLog('customer', 'info', 'Bağlantı kapatıldı');
             }
             
-
+            // Stop all intervals
             if (customerHeartbeatInterval) {
                 clearInterval(customerHeartbeatInterval);
                 customerHeartbeatInterval = null;
                 document.getElementById('customerAutoHeartbeatBtn').textContent = 'Otomatik Heartbeat Başlat';
-                document.getElementById('customerHeartbeatStatus').textContent = 'Heartbeat durumu: Kapalı';
+                updateHeartbeatStatus('customer', 'Heartbeat durumu: Kapalı');
+            }
+
+            if (customerLocationInterval) {
+                clearInterval(customerLocationInterval);
+                customerLocationInterval = null;
+                document.getElementById('customerAutoLocationBtn').textContent = 'Otomatik Konum Başlat';
+                updateLocationStatus('customer', 'Otomatik konum: Kapalı');
             }
         }
-
 
         function getCustomerLocation() {
             if (navigator.geolocation) {
@@ -994,8 +1080,55 @@
             }
         }
 
+        // NEW: Customer Location Update Function (Gateway compatible)
+        function sendCustomerLocationUpdate() {
+            if (!customerSocket || !customerSocket.connected) {
+                addLog('customer', 'error', 'Önce bağlantı kurmalısınız!');
+                return;
+            }
 
-        // Heartbeat Functions
+            const locationData = {
+                latitude: parseFloat(document.getElementById('customerLat').value),
+                longitude: parseFloat(document.getElementById('customerLng').value),
+                accuracy: parseFloat(document.getElementById('customerAccuracy').value) || 10,
+                altitude: parseFloat(document.getElementById('customerAltitude').value) || 0,
+                timestamp: new Date().toISOString()
+            };
+
+            addLog('customer', 'info', `📍 Konum güncelleme gönderiliyor: ${JSON.stringify(locationData)}`);
+            
+            customerSocket.emit('updateLocation', locationData, (response) => {
+                if (response) {
+                    if (response.success) {
+                        addLog('customer', 'success', `📍 Konum güncellendi başarıyla`);
+                    } else {
+                        addLog('customer', 'error', `📍 Konum güncellenemedi: ${response.message}`);
+                    }
+                }
+            });
+        }
+
+        // NEW: Toggle Customer Auto Location Updates
+        function toggleCustomerAutoLocation() {
+            if (customerLocationInterval) {
+                clearInterval(customerLocationInterval);
+                customerLocationInterval = null;
+                document.getElementById('customerAutoLocationBtn').textContent = 'Otomatik Konum Başlat';
+                updateLocationStatus('customer', 'Otomatik konum: Kapalı');
+                addLog('customer', 'info', 'Otomatik konum güncellemesi durduruldu');
+            } else {
+                customerLocationInterval = setInterval(() => {
+                    if (customerSocket && customerSocket.connected) {
+                        sendCustomerLocationUpdate();
+                    }
+                }, 15000); // Her 15 saniyede bir konum gönder
+                document.getElementById('customerAutoLocationBtn').textContent = 'Otomatik Konum Durdur';
+                updateLocationStatus('customer', 'Otomatik konum: Aktif (15s aralık)');
+                addLog('customer', 'info', 'Otomatik konum güncellemesi başlatıldı (15s aralık)');
+            }
+        }
+
+        // Heartbeat Functions (Updated to include location)
         function sendDriverHeartbeat() {
             if (!driverSocket || !driverSocket.connected) {
                 addLog('driver', 'error', 'Önce bağlantı kurmalısınız!');
@@ -1066,7 +1199,7 @@
                 clearInterval(driverHeartbeatInterval);
                 driverHeartbeatInterval = null;
                 document.getElementById('driverAutoHeartbeatBtn').textContent = 'Otomatik Heartbeat Başlat';
-                document.getElementById('driverHeartbeatStatus').textContent = 'Heartbeat durumu: Kapalı';
+                updateHeartbeatStatus('driver', 'Heartbeat durumu: Kapalı');
                 addLog('driver', 'info', 'Otomatik heartbeat durduruldu');
             } else {
                 driverHeartbeatInterval = setInterval(() => {
@@ -1075,7 +1208,7 @@
                     }
                 }, 30000); // Her 30 saniyede bir (gateway'deki HEARTBEAT_INTERVAL)
                 document.getElementById('driverAutoHeartbeatBtn').textContent = 'Otomatik Heartbeat Durdur';
-                document.getElementById('driverHeartbeatStatus').textContent = 'Heartbeat durumu: Aktif (30s aralık)';
+                updateHeartbeatStatus('driver', 'Heartbeat durumu: Aktif (30s aralık)');
                 addLog('driver', 'info', 'Otomatik heartbeat başlatıldı (30s aralık)');
             }
         }
@@ -1085,7 +1218,7 @@
                 clearInterval(customerHeartbeatInterval);
                 customerHeartbeatInterval = null;
                 document.getElementById('customerAutoHeartbeatBtn').textContent = 'Otomatik Heartbeat Başlat';
-                document.getElementById('customerHeartbeatStatus').textContent = 'Heartbeat durumu: Kapalı';
+                updateHeartbeatStatus('customer', 'Heartbeat durumu: Kapalı');
                 addLog('customer', 'info', 'Otomatik heartbeat durduruldu');
             } else {
                 customerHeartbeatInterval = setInterval(() => {
@@ -1094,7 +1227,7 @@
                     }
                 }, 30000); // Her 30 saniyede bir (gateway'deki HEARTBEAT_INTERVAL)
                 document.getElementById('customerAutoHeartbeatBtn').textContent = 'Otomatik Heartbeat Durdur';
-                document.getElementById('customerHeartbeatStatus').textContent = 'Heartbeat durumu: Aktif (30s aralık)';
+                updateHeartbeatStatus('customer', 'Heartbeat durumu: Aktif (30s aralık)');
                 addLog('customer', 'info', 'Otomatik heartbeat başlatıldı (30s aralık)');
             }
         }
@@ -1347,9 +1480,11 @@
         document.addEventListener('DOMContentLoaded', function() {
             updateConnectionStatus('driver', 'disconnected');
             updateConnectionStatus('customer', 'disconnected');
+            updateLocationStatus('driver', 'Otomatik konum: Kapalı');
+            updateLocationStatus('customer', 'Otomatik konum: Kapalı');
             
-            addLog('driver', 'info', 'WebSocket Test Dashboard başlatıldı');
-            addLog('customer', 'info', 'WebSocket Test Dashboard başlatıldı');
+            addLog('driver', 'info', 'WebSocket Test Dashboard başlatıldı - Gateway Uyumlu');
+            addLog('customer', 'info', 'WebSocket Test Dashboard başlatıldı - Gateway Uyumlu');
         });
     </script>
 </body>

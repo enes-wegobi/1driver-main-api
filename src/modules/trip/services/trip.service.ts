@@ -20,7 +20,6 @@ import { EstimateTripDto } from '../../trips/dto';
 import { PaymentStatus } from 'src/common/enums/payment-status.enum';
 import { ConfigService } from 'src/config/config.service';
 import { MapsService } from 'src/clients/maps/maps.service';
-import { EventService } from '../../event/event.service';
 import { RedisException } from 'src/common/redis.exception';
 import { RedisErrors } from 'src/common/redis-errors';
 import {
@@ -45,6 +44,7 @@ import {
 import { DriverStatisticsQueryDto } from '../dto/driver-statistics-query.dto';
 import { DriverStatisticsResponseDto } from '../dto/driver-statistics-response.dto';
 import { DriverAvailabilityStatus } from 'src/common/enums/driver-availability-status.enum';
+import { Event2Service } from 'src/modules/event/event_v2.service';
 
 export interface TripOperationResult {
   success: boolean;
@@ -87,13 +87,13 @@ export class TripService {
     private readonly nearbySearchService: NearbySearchService,
     private readonly configService: ConfigService,
     private readonly mapsService: MapsService,
-    private readonly eventService: EventService,
     private readonly locationService: LocationService,
     private readonly paymentMethodService: PaymentMethodService,
     private readonly driverStatusService: DriverStatusService,
     private readonly stripeService: StripeService,
     private readonly tripQueueService: TripQueueService,
     private readonly driverTripQueueService: DriverTripQueueService,
+    private readonly event2Service: Event2Service,
   ) {}
 
   // ================================
@@ -339,10 +339,17 @@ export class TripService {
 
         const updatedTrip = await this.updateTripWithData(tripId, updateData);
 
+        /*
         await this.eventService.notifyCustomer(
           updatedTrip,
           updatedTrip.customer.id,
           EventType.TRIP_PAYMENT_REQUIRED,
+        );
+        */
+        await this.event2Service.sendToUser(
+          updatedTrip.customer.id,
+          EventType.TRIP_PAYMENT_REQUIRED,
+          updatedTrip,
         );
 
         return { success: true, trip: updatedTrip };
@@ -395,11 +402,17 @@ export class TripService {
 
             // 6. Clean up active trips
             await this.cleanupCancelledTrip(driverId, trip.customer.id);
-
+            /*
             await this.eventService.notifyCustomer(
               updatedTrip,
               trip.customer.id,
               EventType.TRIP_CANCELLED,
+            );
+            */
+            await this.event2Service.sendToUser(
+              updatedTrip.customer.id,
+              EventType.TRIP_CANCELLED,
+              updatedTrip,
             );
 
             return { success: true, trip: updatedTrip };
@@ -430,7 +443,14 @@ export class TripService {
               trip.driver.id,
               UserType.DRIVER,
             );
+            /*
             await this.eventService.sendToUser(
+              trip.driver.id,
+              EventType.TRIP_CANCELLED,
+              { trip: trip, cancelledBy: 'customer' },
+            );
+            */
+            await this.event2Service.sendToUser(
               trip.driver.id,
               EventType.TRIP_CANCELLED,
               { trip: trip, cancelledBy: 'customer' },
@@ -524,9 +544,16 @@ export class TripService {
             );
 
             if (driversToNotify.length > 0) {
+              /*
               await this.eventService.notifyTripAlreadyTaken(
                 updatedTrip,
                 driversToNotify,
+              );
+              */
+              await this.event2Service.sendToUsers(
+                driversToNotify,
+                EventType.TRIP_ALREADY_TAKEN,
+                updatedTrip,
               );
               this.logger.log(
                 `Notified ${driversToNotify.length} drivers that trip ${tripId} request was cancelled`,
@@ -876,9 +903,16 @@ export class TripService {
         updatedTrip.customer.id,
         UserType.CUSTOMER,
       );
+      /*
       await this.eventService.notifyCustomerDriverNotFound(
         updatedTrip,
         updatedTrip.customer.id,
+      );
+      */
+      await this.event2Service.sendToUser(
+        updatedTrip.customer.id,
+        EventType.TRIP_DRIVER_NOT_FOUND,
+        updatedTrip,
       );
     }
 
@@ -951,10 +985,17 @@ export class TripService {
     await this.tripQueueService.removeJobsByTripId(updatedTrip._id);
 
     await this.notifyRemainingDrivers(updatedTrip, driverId);
+    /*
     await this.eventService.notifyCustomer(
       updatedTrip,
       updatedTrip.customer.id,
       EventType.TRIP_DRIVER_ASSIGNED,
+    );
+    */
+    await this.event2Service.sendToUser(
+      updatedTrip.customer.id,
+      EventType.TRIP_DRIVER_ASSIGNED,
+      updatedTrip,
     );
     await this.sendDriverLocationToCustomer(
       updatedTrip.customer.id,
@@ -973,9 +1014,16 @@ export class TripService {
     );
 
     if (remainingDriverIds.length > 0) {
+      /*
       await this.eventService.notifyTripAlreadyTaken(
         updatedTrip,
         remainingDriverIds,
+      );
+      */
+      await this.event2Service.sendToUsers(
+        remainingDriverIds,
+        EventType.TRIP_ALREADY_TAKEN,
+        updatedTrip,
       );
     }
   }
@@ -993,7 +1041,14 @@ export class TripService {
         location: driverLocation,
         timestamp: new Date().toISOString(),
       };
+      /*
       await this.eventService.sendToUser(
+        customerId,
+        EventType.DRIVER_LOCATION_UPDATED,
+        data,
+      );
+      */
+      await this.event2Service.sendToUser(
         customerId,
         EventType.DRIVER_LOCATION_UPDATED,
         data,
@@ -1062,7 +1117,8 @@ export class TripService {
   ): Promise<void> {
     const customerId = trip.customer.id;
     await this.refreshUsersTripExpiry(driverId, customerId);
-    await this.eventService.notifyCustomer(trip, customerId, eventType);
+    await this.event2Service.sendToUser(customerId, eventType, trip);
+    //await this.eventService.notifyCustomer(trip, customerId, eventType);
   }
 
   async cleanupCompletedTrip(
