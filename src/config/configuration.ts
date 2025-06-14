@@ -80,6 +80,9 @@ export default () => ({
     mongoPassword: process.env.TRIP_MONGODB_PASSWORD,
   },
   tripCostPerMinute: parseFloat(process.env.TRIP_COST_PER_MINUTE || '1'),
+  driverEarnings: {
+    perMinuteRate: parseFloat(process.env.DRIVER_EARNINGS_PER_MINUTE || '0.5'),
+  },
   tripDriverResponseTimeout: parseInt(
     process.env.TRIP_DRIVER_RESPONSE_TIMEOUT || '120',
     10,

@@ -16,6 +16,7 @@ import { TripDocument } from '../schemas/trip.schema';
 import { Payment } from '../../payments/schemas/payment.schema';
 import { Event2Service } from 'src/modules/event/event_v2.service';
 import { UserType } from 'src/common/user-type.enum';
+import { DriverEarningsService } from 'src/modules/drivers/services/driver-earnings.service';
 
 export interface TripPaymentResult {
   success: boolean;
@@ -38,6 +39,7 @@ export class TripPaymentService {
     private readonly paymentMethodService: PaymentMethodService,
     private readonly event2Service: Event2Service,
     private readonly lockService: LockService,
+    private readonly driverEarningsService: DriverEarningsService,
   ) {}
 
   /**
@@ -228,6 +230,31 @@ export class TripPaymentService {
     if (!trip) {
       this.logger.warn(`Trip not found for payment ${payment._id}`);
       return;
+    }
+
+    // Calculate driver earnings
+    if (trip.driver?.id && trip.actualDuration) {
+      try {
+        const earningsCalculation = this.driverEarningsService.calculateTripEarnings(trip.actualDuration);
+
+        // Add to driver's weekly earnings
+        await this.driverEarningsService.addTripToWeeklyEarnings(trip.driver.id, {
+          tripId: trip._id.toString(),
+          tripDate: trip.tripEndTime || new Date(),
+          duration: trip.actualDuration,
+          multiplier: earningsCalculation.multiplier,
+          earnings: earningsCalculation.earnings,
+        });
+
+        this.logger.log(
+          `Driver earnings calculated for trip ${trip._id}: ${earningsCalculation.earnings} TL (${trip.actualDuration}s × ${earningsCalculation.multiplier})`,
+        );
+      } catch (error) {
+        this.logger.error(
+          `Error calculating driver earnings for trip ${trip._id}: ${error.message}`,
+          error.stack,
+        );
+      }
     }
 
     const updatedTrip = await this.tripService.updateTripWithData(

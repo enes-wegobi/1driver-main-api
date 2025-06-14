@@ -7,6 +7,7 @@ import { RedisModule } from '../../redis/redis.module';
 import { ConfigModule } from '../../config/config.module';
 import { JwtModule } from '../../jwt/jwt.module';
 import { PaymentsModule } from '../payments/payments.module';
+import { DriversModule } from '../drivers/drivers.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { PaymentsModule } from '../payments/payments.module';
     ConfigModule,
     JwtModule,
     forwardRef(() => PaymentsModule),
+    forwardRef(() => DriversModule),
   ],
   controllers: [AuthCustomerController, AuthDriverController],
   providers: [AuthService],

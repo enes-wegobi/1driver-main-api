@@ -21,6 +21,7 @@ import { EventModule } from '../event/event.module';
 import { JwtModule } from 'src/jwt/jwt.module';
 import { PaymentsModule } from '../payments/payments.module';
 import { QueueModule } from '../../queue/queue.module';
+import { DriversModule } from '../drivers/drivers.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { QueueModule } from '../../queue/queue.module';
     JwtModule,
     forwardRef(() => PaymentsModule),
     forwardRef(() => QueueModule),
+    forwardRef(() => DriversModule),
   ],
   providers: [
     TripService,

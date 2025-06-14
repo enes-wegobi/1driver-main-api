@@ -5,6 +5,7 @@ import { CreateDriverDto } from '../../clients/auth/dto/create-driver.dto';
 import { ValidateOtpDto } from '../../clients/auth/dto/validate-otp.dto';
 import { SigninDto } from '../../clients/auth/dto/signin.dto';
 import { PaymentsService } from '../payments/services/payments.service';
+import { DriverEarningsService } from '../drivers/services/driver-earnings.service';
 
 @Injectable()
 export class AuthService {
@@ -13,6 +14,7 @@ export class AuthService {
   constructor(
     private readonly authClient: AuthClient,
     private readonly paymentsService: PaymentsService,
+    private readonly driverEarningsService: DriverEarningsService,
   ) {}
 
   // Customer Auth Methods
@@ -65,7 +67,32 @@ export class AuthService {
   }
 
   async completeDriverSignup(validateOtpDto: ValidateOtpDto) {
-    return this.authClient.completeDriverSignup(validateOtpDto);
+    const result = await this.authClient.completeDriverSignup(validateOtpDto);
+
+    // Create initial weekly earnings record after successful driver signup
+    if (result && result.token && result.driver) {
+      try {
+        this.logger.log(
+          `Creating initial weekly earnings record for driver ${result.driver._id}`,
+        );
+        await this.driverEarningsService.findOrCreateCurrentWeekRecord(
+          result.driver._id,
+        );
+        this.logger.log(
+          `Successfully created initial weekly earnings record for driver ${result.driver._id}`,
+        );
+      } catch (error) {
+        // Log error but don't fail the signup
+        this.logger.error(
+          `Failed to create initial weekly earnings record: ${error.message}`,
+          error.stack,
+        );
+      }
+
+      return { token: result.token };
+    }
+
+    return result;
   }
 
   async signinDriver(signinDto: SigninDto) {
