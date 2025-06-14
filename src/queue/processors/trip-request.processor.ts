@@ -117,10 +117,15 @@ export class TripRequestProcessor extends WorkerHost {
         },
       );
       // 4. Send trip request notification to driver
-      await this.event2Service.sendToUser(driverId, EventType.TRIP_REQUESTED, {
-        ...trip,
-        driverDistanceInfo,
-      },UserType.DRIVER);
+      await this.event2Service.sendToUser(
+        driverId,
+        EventType.TRIP_REQUESTED,
+        {
+          ...trip,
+          driverDistanceInfo,
+        },
+        UserType.DRIVER,
+      );
 
       this.logger.log(
         `Successfully sent trip request ${tripId} to driver ${driverId}`,
@@ -233,7 +238,7 @@ export class TripRequestProcessor extends WorkerHost {
           trip.customer.id,
           EventType.TRIP_DRIVER_NOT_FOUND,
           trip,
-          UserType.CUSTOMER
+          UserType.CUSTOMER,
         );
       }
 

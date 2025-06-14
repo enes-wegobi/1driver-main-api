@@ -414,7 +414,7 @@ export class TripService {
               updatedTrip.customer.id,
               EventType.TRIP_CANCELLED,
               updatedTrip,
-              UserType.CUSTOMER
+              UserType.CUSTOMER,
             );
 
             return { success: true, trip: updatedTrip };
@@ -456,7 +456,7 @@ export class TripService {
               trip.driver.id,
               EventType.TRIP_CANCELLED,
               { trip: trip, cancelledBy: 'customer' },
-              UserType.DRIVER
+              UserType.DRIVER,
             );
             let timeDifferenceMinutes = 0;
             if (trip.tripStartTime) {
@@ -639,7 +639,7 @@ export class TripService {
                 driversToNotify,
                 EventType.TRIP_ALREADY_TAKEN,
                 updatedTrip,
-                UserType.DRIVER
+                UserType.DRIVER,
               );
               this.logger.log(
                 `Notified ${driversToNotify.length} drivers that trip ${tripId} request was cancelled`,
@@ -999,7 +999,7 @@ export class TripService {
         updatedTrip.customer.id,
         EventType.TRIP_DRIVER_NOT_FOUND,
         updatedTrip,
-        UserType.CUSTOMER
+        UserType.CUSTOMER,
       );
     }
 
@@ -1083,7 +1083,7 @@ export class TripService {
       updatedTrip.customer.id,
       EventType.TRIP_DRIVER_ASSIGNED,
       updatedTrip,
-      UserType.CUSTOMER
+      UserType.CUSTOMER,
     );
     await this.sendDriverLocationToCustomer(
       updatedTrip.customer.id,
@@ -1112,7 +1112,7 @@ export class TripService {
         remainingDriverIds,
         EventType.TRIP_ALREADY_TAKEN,
         updatedTrip,
-        UserType.DRIVER
+        UserType.DRIVER,
       );
     }
   }
@@ -1141,7 +1141,7 @@ export class TripService {
         customerId,
         EventType.DRIVER_LOCATION_UPDATED,
         data,
-        UserType.CUSTOMER
+        UserType.CUSTOMER,
       );
     }
   }
@@ -1207,7 +1207,12 @@ export class TripService {
   ): Promise<void> {
     const customerId = trip.customer.id;
     await this.refreshUsersTripExpiry(driverId, customerId);
-    await this.event2Service.sendToUser(customerId, eventType, trip, UserType.CUSTOMER);
+    await this.event2Service.sendToUser(
+      customerId,
+      eventType,
+      trip,
+      UserType.CUSTOMER,
+    );
     //await this.eventService.notifyCustomer(trip, customerId, eventType);
   }
 

@@ -37,12 +37,7 @@ export class Event2Service {
     userType: UserType,
   ): Promise<void> {
     try {
-      await this.deliverEventToUser(
-        userId,
-        userType,
-        eventType,
-        data,
-      );
+      await this.deliverEventToUser(userId, userType, eventType, data);
 
       this.logger.log(`Sent ${eventType} to user ${userId}`);
     } catch (error) {
@@ -62,12 +57,7 @@ export class Event2Service {
     userType: UserType,
   ): Promise<void> {
     try {
-      await this.broadcastEvent(
-        userIds,
-        userType,
-        eventType,
-        data,
-      );
+      await this.broadcastEvent(userIds, userType, eventType, data);
 
       this.logger.log(`Sent ${eventType} to ${userIds.length} users`);
     } catch (error) {

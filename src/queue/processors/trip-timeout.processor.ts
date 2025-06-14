@@ -107,7 +107,7 @@ export class TripTimeoutProcessor extends WorkerHost {
               updatedTrip.customer.id,
               EventType.TRIP_DRIVER_NOT_FOUND,
               updatedTrip,
-              UserType.CUSTOMER
+              UserType.CUSTOMER,
             );
             this.logger.log(
               `All drivers rejected for trip ${tripId}, notified customer`,

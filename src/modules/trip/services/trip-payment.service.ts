@@ -201,8 +201,18 @@ export class TripPaymentService {
       trip,
     };
 
-    await this.event2Service.sendToUser(trip.customer.id, eventType, eventData, UserType.CUSTOMER);
-    await this.event2Service.sendToUser(trip.driver.id, eventType, eventData, UserType.DRIVER);
+    await this.event2Service.sendToUser(
+      trip.customer.id,
+      eventType,
+      eventData,
+      UserType.CUSTOMER,
+    );
+    await this.event2Service.sendToUser(
+      trip.driver.id,
+      eventType,
+      eventData,
+      UserType.DRIVER,
+    );
     //await this.eventService.sendToUser(trip.customer.id, eventType, eventData);
     //await this.eventService.sendToUser(trip.driver.id, eventType, eventData);
   }
