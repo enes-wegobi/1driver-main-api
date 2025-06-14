@@ -122,9 +122,8 @@ export class DriverEarningsService {
     earnings: number;
     multiplier: number;
   } {
-    const multiplier = this.configService.get<number>(
-      'driverEarnings.perMinuteRate',
-    ) || 0.5; // Default fallback
+    const multiplier =
+      this.configService.get<number>('driverEarnings.perMinuteRate') || 0.5; // Default fallback
     const durationMinutes = durationSeconds / 60;
     const earnings = Math.round(durationMinutes * multiplier * 100) / 100; // Round to 2 decimal places
 
@@ -141,7 +140,8 @@ export class DriverEarningsService {
     driverId: string,
   ): Promise<DriverWeeklyEarningsDocument> {
     // Try to find existing active record
-    let weeklyRecord = await this.driverWeeklyEarningsRepository.findActiveByDriverId(driverId);
+    let weeklyRecord =
+      await this.driverWeeklyEarningsRepository.findActiveByDriverId(driverId);
 
     if (!weeklyRecord) {
       // Create new record for current week
@@ -186,7 +186,8 @@ export class DriverEarningsService {
 
     try {
       // 1. Mark all ACTIVE records as COMPLETED and UNPAID
-      const updateResult = await this.driverWeeklyEarningsRepository.updateManyActiveToCompleted();
+      const updateResult =
+        await this.driverWeeklyEarningsRepository.updateManyActiveToCompleted();
 
       this.logger.log(
         `Marked ${updateResult.modifiedCount} weekly records as COMPLETED`,
@@ -223,9 +224,12 @@ export class DriverEarningsService {
    * Get all driver IDs
    */
   private async getAllDriverIds(): Promise<string[]> {
-    const existingDrivers = await this.driverWeeklyEarningsRepository.getDistinctDriverIds();
+    const existingDrivers =
+      await this.driverWeeklyEarningsRepository.getDistinctDriverIds();
 
-    this.logger.log(`Found ${existingDrivers.length} drivers with earnings records`);
+    this.logger.log(
+      `Found ${existingDrivers.length} drivers with earnings records`,
+    );
     return existingDrivers;
   }
 }

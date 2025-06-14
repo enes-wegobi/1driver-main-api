@@ -22,7 +22,8 @@ export class TripEarningDetail {
   earnings: number;
 }
 
-export const TripEarningDetailSchema = SchemaFactory.createForClass(TripEarningDetail);
+export const TripEarningDetailSchema =
+  SchemaFactory.createForClass(TripEarningDetail);
 
 @Schema({ timestamps: true })
 export class DriverWeeklyEarnings extends EntityDocumentHelper {
@@ -57,7 +58,8 @@ export class DriverWeeklyEarnings extends EntityDocumentHelper {
   paidAt?: Date;
 }
 
-export const DriverWeeklyEarningsSchema = SchemaFactory.createForClass(DriverWeeklyEarnings);
+export const DriverWeeklyEarningsSchema =
+  SchemaFactory.createForClass(DriverWeeklyEarnings);
 
 // Indexes for performance
 DriverWeeklyEarningsSchema.index({ driverId: 1, status: 1 });

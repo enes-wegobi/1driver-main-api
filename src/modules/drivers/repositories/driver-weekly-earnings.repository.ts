@@ -42,7 +42,7 @@ export class DriverWeeklyEarningsRepository {
     const skip = (page - 1) * limit;
     const sortObj: any = {};
     sortObj[sortBy] = sortOrder === 'asc' ? 1 : -1;
-    
+
     return this.model
       .find({ driverId, status: 'COMPLETED' })
       .sort(sortObj)

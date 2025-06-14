@@ -235,16 +235,20 @@ export class TripPaymentService {
     // Calculate driver earnings
     if (trip.driver?.id && trip.actualDuration) {
       try {
-        const earningsCalculation = this.driverEarningsService.calculateTripEarnings(trip.actualDuration);
+        const earningsCalculation =
+          this.driverEarningsService.calculateTripEarnings(trip.actualDuration);
 
         // Add to driver's weekly earnings
-        await this.driverEarningsService.addTripToWeeklyEarnings(trip.driver.id, {
-          tripId: trip._id.toString(),
-          tripDate: trip.tripEndTime || new Date(),
-          duration: trip.actualDuration,
-          multiplier: earningsCalculation.multiplier,
-          earnings: earningsCalculation.earnings,
-        });
+        await this.driverEarningsService.addTripToWeeklyEarnings(
+          trip.driver.id,
+          {
+            tripId: trip._id.toString(),
+            tripDate: trip.tripEndTime || new Date(),
+            duration: trip.actualDuration,
+            multiplier: earningsCalculation.multiplier,
+            earnings: earningsCalculation.earnings,
+          },
+        );
 
         this.logger.log(
           `Driver earnings calculated for trip ${trip._id}: ${earningsCalculation.earnings} TL (${trip.actualDuration}s × ${earningsCalculation.multiplier})`,
