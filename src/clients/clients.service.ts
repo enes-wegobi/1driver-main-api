@@ -3,13 +3,17 @@ import { ConfigService } from '@nestjs/config';
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosError } from 'axios';
 import * as http from 'http';
 import * as https from 'https';
+import { SimpleLoggerService } from '../logger/simple-logger.service';
 
 @Injectable()
 export class ClientsService implements OnModuleInit {
   private readonly logger = new Logger(ClientsService.name);
   private readonly clients: Map<string, AxiosInstance> = new Map();
 
-  constructor(private configService: ConfigService) {}
+  constructor(
+    private configService: ConfigService,
+    private simpleLogger: SimpleLoggerService,
+  ) {}
 
   /**
    * Initialize and warm up connections to all services when the application starts
@@ -66,6 +70,7 @@ export class ClientsService implements OnModuleInit {
     return client;
   }
 
+
   /**
    * Internal method to create an HTTP client without caching
    */
@@ -100,54 +105,93 @@ export class ClientsService implements OnModuleInit {
 
     const client = axios.create(config);
 
+    // Request interceptor - add request ID and start time
     client.interceptors.request.use(
       (config) => {
-        this.logger.debug(
-          `[${serviceName}] Request: ${config.method?.toUpperCase()} ${config.url}`,
-        );
+        // Add start time for duration calculation
+        (config as any).startTime = Date.now();
+        
+        // Forward request ID if available in headers
+        const requestId = config.headers['x-request-id'];
+        
+        this.simpleLogger.info(`[${serviceName}] Request started: ${config.method?.toUpperCase()} ${config.url}`, {
+          requestId: requestId as string,
+          serviceName,
+          method: config.method?.toUpperCase(),
+          url: config.url,
+        });
+        
         return config;
       },
       (error) => {
-        this.logger.error(`[${serviceName}] Request error:`, error);
+        this.simpleLogger.error(`[${serviceName}] Request error: ${error.message}`, {
+          serviceName,
+          error: error.message,
+        });
         return Promise.reject(error);
       },
     );
 
+    // Response interceptor - log service calls with duration
     client.interceptors.response.use(
       (response) => {
-        this.logger.debug(
-          `[${serviceName}] Response: ${response.status} ${response.statusText} for ${response.config.method?.toUpperCase()} ${response.config.url}`,
+        const duration = Date.now() - (response.config as any).startTime;
+        const requestId = response.config.headers['x-request-id'] as string;
+        
+        this.simpleLogger.logServiceCall(
+          serviceName,
+          response.config.method?.toUpperCase() || 'UNKNOWN',
+          response.config.url || 'UNKNOWN',
+          response.status,
+          duration,
+          requestId || 'unknown'
         );
+        
         return response;
       },
       (error: AxiosError) => {
         const request = error.config;
         const method = request?.method?.toUpperCase() || 'UNKNOWN';
         const url = request?.url || 'UNKNOWN';
+        const duration = request ? Date.now() - (request as any).startTime : 0;
+        const requestId = request?.headers['x-request-id'] as string;
 
+        // Log service call even for errors
+        this.simpleLogger.logServiceCall(
+          serviceName,
+          method,
+          url,
+          error.response?.status || 0,
+          duration,
+          requestId || 'unknown'
+        );
+
+        // Log detailed error
         if (error.code === 'ECONNRESET') {
-          this.logger.error(
-            `[${serviceName}] Connection reset for ${method} ${url}. This might indicate that the service is unavailable or overloaded.`,
+          this.simpleLogger.error(
+            `[${serviceName}] Connection reset for ${method} ${url}`,
+            { requestId, serviceName, method, url, error: 'ECONNRESET' }
           );
         } else if (error.code === 'ECONNREFUSED') {
-          this.logger.error(
-            `[${serviceName}] Connection refused for ${method} ${url}. The service might be down or not running.`,
+          this.simpleLogger.error(
+            `[${serviceName}] Connection refused for ${method} ${url}`,
+            { requestId, serviceName, method, url, error: 'ECONNREFUSED' }
           );
         } else if (error.code === 'ETIMEDOUT') {
-          this.logger.error(
-            `[${serviceName}] Request timeout for ${method} ${url}. The service might be slow or unresponsive.`,
+          this.simpleLogger.error(
+            `[${serviceName}] Request timeout for ${method} ${url}`,
+            { requestId, serviceName, method, url, error: 'ETIMEDOUT' }
           );
         } else if (error.response) {
           const responseData = error.response.data as any;
-          this.logger.error(
-            `[${serviceName}] HTTP error ${error.response.status} for ${method} ${url}: ${
-              responseData?.message || error.message
-            }`,
+          this.simpleLogger.error(
+            `[${serviceName}] HTTP error ${error.response.status} for ${method} ${url}: ${responseData?.message || error.message}`,
+            { requestId, serviceName, method, url, statusCode: error.response.status, error: responseData?.message || error.message }
           );
         } else {
-          this.logger.error(
+          this.simpleLogger.error(
             `[${serviceName}] Error for ${method} ${url}: ${error.message}`,
-            error.stack,
+            { requestId, serviceName, method, url, error: error.message }
           );
         }
 

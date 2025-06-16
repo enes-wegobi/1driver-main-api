@@ -66,6 +66,16 @@ export default () => ({
   logging: {
     level: process.env.LOG_LEVEL || 'info',
   },
+  datadog: {
+    enabled: process.env.DATADOG_ENABLED === 'true',
+    apiKey: process.env.DATADOG_API_KEY,
+    service: process.env.DATADOG_SERVICE || 'customer-api-gateway',
+    env: process.env.DATADOG_ENV || process.env.NODE_ENV || 'development',
+    version: process.env.DATADOG_VERSION || '1.0.0',
+    hostname: process.env.DATADOG_HOSTNAME || require('os').hostname(),
+    logLevel: process.env.DATADOG_LOG_LEVEL || 'info',
+    tags: process.env.DATADOG_TAGS || '',
+  },
   spaces: {
     region: process.env.SPACES_REGION,
     endpoint: process.env.SPACES_ENDPOINT,

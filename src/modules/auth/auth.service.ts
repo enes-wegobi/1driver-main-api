@@ -6,6 +6,7 @@ import { ValidateOtpDto } from '../../clients/auth/dto/validate-otp.dto';
 import { SigninDto } from '../../clients/auth/dto/signin.dto';
 import { PaymentsService } from '../payments/services/payments.service';
 import { DriverEarningsService } from '../drivers/services/driver-earnings.service';
+import { SimpleLoggerService } from '../../logger/simple-logger.service';
 
 @Injectable()
 export class AuthService {
@@ -15,6 +16,7 @@ export class AuthService {
     private readonly authClient: AuthClient,
     private readonly paymentsService: PaymentsService,
     private readonly driverEarningsService: DriverEarningsService,
+    private readonly simpleLogger: SimpleLoggerService,
   ) {}
 
   // Customer Auth Methods
@@ -28,23 +30,34 @@ export class AuthService {
     // Create Stripe customer after successful signup
     if (result && result.token && result.customer) {
       try {
-        this.logger.log(
+        this.simpleLogger.info(
           `Creating Stripe customer for user ${result.customer._id}`,
+          {
+            userId: result.customer._id,
+            userType: 'customer',
+            action: 'create_stripe_customer',
+          }
         );
         await this.paymentsService.createStripeCustomer(result.customer._id, {
           name: `${result.customer.name} ${result.customer.surname}`,
           email: result.customer.email,
           phone: result.customer.phone,
         });
-        this.logger.log(
+        this.simpleLogger.info(
           `Successfully created Stripe customer for user ${result.customer._id}`,
+          {
+            userId: result.customer._id,
+            userType: 'customer',
+            action: 'create_stripe_customer_success',
+          }
         );
       } catch (error) {
         // Log error but don't fail the signup
-        this.logger.error(
-          `Failed to create Stripe customer: ${error.message}`,
-          error.stack,
-        );
+        this.simpleLogger.logError(error, {
+          userId: result.customer._id,
+          userType: 'customer',
+          action: 'create_stripe_customer_failed',
+        });
       }
 
       return { token: result.token };
@@ -72,21 +85,32 @@ export class AuthService {
     // Create initial weekly earnings record after successful driver signup
     if (result && result.token && result.driver) {
       try {
-        this.logger.log(
+        this.simpleLogger.info(
           `Creating initial weekly earnings record for driver ${result.driver._id}`,
+          {
+            userId: result.driver._id,
+            userType: 'driver',
+            action: 'create_weekly_earnings_record',
+          }
         );
         await this.driverEarningsService.findOrCreateCurrentWeekRecord(
           result.driver._id,
         );
-        this.logger.log(
+        this.simpleLogger.info(
           `Successfully created initial weekly earnings record for driver ${result.driver._id}`,
+          {
+            userId: result.driver._id,
+            userType: 'driver',
+            action: 'create_weekly_earnings_record_success',
+          }
         );
       } catch (error) {
         // Log error but don't fail the signup
-        this.logger.error(
-          `Failed to create initial weekly earnings record: ${error.message}`,
-          error.stack,
-        );
+        this.simpleLogger.logError(error, {
+          userId: result.driver._id,
+          userType: 'driver',
+          action: 'create_weekly_earnings_record_failed',
+        });
       }
 
       return { token: result.token };
