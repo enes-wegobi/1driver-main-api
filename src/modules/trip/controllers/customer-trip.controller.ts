@@ -23,7 +23,6 @@ import { JwtAuthGuard } from 'src/jwt/jwt.guard';
 import { GetUser } from 'src/jwt/user.decoretor';
 import { EstimateTripDto } from '../dto/estimate-trip.dto';
 import { IJwtPayload } from 'src/jwt/jwt-payload.interface';
-import { RequestDriverDto } from '../../trips/dto/request-driver.dto';
 import { TripService } from '../services/trip.service';
 import { TripPaymentService } from '../services/trip-payment.service';
 import { ProcessTripPaymentDto } from '../dto/process-trip-payment.dto';
@@ -31,6 +30,7 @@ import { TripHistoryQueryDto } from '../dto/trip-history-query.dto';
 import { TripHistoryResponseDto } from '../dto/trip-history-response.dto';
 import { AddTripCommentDto } from '../dto/add-trip-comment.dto';
 import { UpdateRateDto } from 'src/common/dto/update-rate.dto';
+import { RequestDriverDto } from '../dto/request-driver.dto';
 
 @ApiTags('customer-trips')
 @Controller('customer-trips')

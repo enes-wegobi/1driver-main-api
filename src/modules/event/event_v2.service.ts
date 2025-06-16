@@ -88,11 +88,7 @@ export class Event2Service {
     if (activeUsers.length > 0) {
       if (userType === UserType.DRIVER) {
         promises.push(
-          this.webSocketService.broadcastTripRequest(
-            data,
-            activeUsers,
-            eventType,
-          ),
+          this.webSocketService.broadcastToUsers(data, activeUsers, eventType),
         );
       } else {
         // For customers, send individually even in broadcast mode

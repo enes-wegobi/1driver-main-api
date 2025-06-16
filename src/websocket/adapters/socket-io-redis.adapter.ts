@@ -18,7 +18,6 @@ export class SocketIORedisAdapter extends IoAdapter {
   async connectToRedis() {
     const configService = this.app.get(ConfigService);
 
-    // Use only Valkey configuration
     const host = configService.get('valkey.host', 'localhost');
     const port = configService.get('valkey.port', 6379);
     const username = configService.get('valkey.username', '');

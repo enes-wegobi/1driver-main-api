@@ -120,7 +120,7 @@ export class WebSocketGateway
           message: 'Connection successful',
         });
 
-        await this.setHeartbeatInRedis(payload.userId, userType);
+        await this.driverStatusService.updateDriverHeartbeat(payload.userId);
       } else if (userType === UserType.CUSTOMER) {
         await this.customerStatusService.markCustomerAsActive(payload.userId);
         await this.customerStatusService.setCustomerAppStateOnConnect(
@@ -134,8 +134,7 @@ export class WebSocketGateway
           heartbeatInterval: HEARTBEAT_INTERVAL,
           message: 'Connection successful',
         });
-
-        await this.setHeartbeatInRedis(payload.userId, userType);
+        await this.customerStatusService.markCustomerAsActive(payload.userId);
       }
 
       this.logger.debug(
@@ -154,10 +153,6 @@ export class WebSocketGateway
     const userId = client.data.userId;
     const userType = client.data.userType;
 
-    if (userId && userType) {
-      await this.removeHeartbeatFromRedis(userId, userType);
-    }
-
     if (userId) {
       if (userType === UserType.DRIVER) {
         await this.driverStatusService.markDriverAsDisconnected(userId);
@@ -170,7 +165,7 @@ export class WebSocketGateway
             DriverAvailabilityStatus.BUSY,
           );
         }
-        await this.driverStatusService.updateDriverLastSeen(userId, new Date());
+        await this.driverStatusService.updateDriverHeartbeat(userId);
         this.logger.debug(`Driver ${userId} marked as disconnected`);
       } else if (userType === UserType.CUSTOMER) {
         await this.customerStatusService.markCustomerAsInactive(userId);
@@ -252,12 +247,9 @@ export class WebSocketGateway
     }
 
     try {
-      await this.refreshHeartbeatInRedis(userId, userType);
-
-      // Update user status based on type
       if (userType === UserType.DRIVER) {
         //avability status her haeart beatda ttl refresh olsun
-        await this.driverStatusService.updateDriverLastSeen(userId, new Date());
+        await this.driverStatusService.updateDriverHeartbeat(userId);
         await this.driverStatusService.updateDriverAppState(
           userId,
           payload.appState,
@@ -267,6 +259,7 @@ export class WebSocketGateway
           `Heartbeat from driver ${userId}, appState: ${payload.appState}`,
         );
       } else if (userType === UserType.CUSTOMER) {
+        await this.customerStatusService.markCustomerAsActive(userId);
         await this.customerStatusService.updateCustomerAppState(
           userId,
           payload.appState,
@@ -366,52 +359,6 @@ export class WebSocketGateway
         success: false,
         message: 'Failed to update availability status',
       };
-    }
-  }
-
-  private async setHeartbeatInRedis(userId: string, userType: UserType) {
-    try {
-      if (userType === UserType.DRIVER) {
-        await this.driverStatusService.updateDriverHeartbeat(userId);
-      } else if (userType === UserType.CUSTOMER) {
-        await this.customerStatusService.markCustomerAsActive(userId);
-      }
-
-      this.logger.debug(`Heartbeat tracking started for ${userType} ${userId}`);
-    } catch (error) {
-      this.logger.error(`Error setting heartbeat in Redis: ${error.message}`);
-    }
-  }
-
-  private async refreshHeartbeatInRedis(userId: string, userType: string) {
-    try {
-      if (userType === UserType.DRIVER) {
-        await this.driverStatusService.updateDriverHeartbeat(userId);
-      } else if (userType === UserType.CUSTOMER) {
-        await this.customerStatusService.markCustomerAsActive(userId);
-      }
-
-      this.logger.debug(`Heartbeat refreshed for ${userType} ${userId}`);
-    } catch (error) {
-      this.logger.error(
-        `Error refreshing heartbeat in Redis: ${error.message}`,
-      );
-    }
-  }
-
-  private async removeHeartbeatFromRedis(userId: string, userType: string) {
-    try {
-      if (userType === UserType.DRIVER) {
-        await this.driverStatusService.markDriverAsDisconnected(userId);
-      } else if (userType === UserType.CUSTOMER) {
-        await this.customerStatusService.markCustomerAsInactive(userId);
-      }
-
-      this.logger.debug(`Heartbeat tracking removed for ${userType} ${userId}`);
-    } catch (error) {
-      this.logger.error(
-        `Error removing heartbeat from Redis: ${error.message}`,
-      );
     }
   }
 

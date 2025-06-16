@@ -41,7 +41,8 @@ export class HeartbeatController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'Send heartbeat to maintain user session',
-    description: 'Updates user status and app state for both drivers and customers',
+    description:
+      'Updates user status and app state for both drivers and customers',
   })
   @ApiBody({ type: HeartbeatDto })
   @ApiResponse({
@@ -79,11 +80,9 @@ export class HeartbeatController {
     }
 
     try {
-      await this.refreshHeartbeatInRedis(userId, userType);
-
       // Update user status based on type
       if (userType === UserType.DRIVER) {
-        await this.driverStatusService.updateDriverLastSeen(userId, new Date());
+        await this.driverStatusService.updateDriverHeartbeat(userId);
         await this.driverStatusService.updateDriverAppState(
           userId,
           payload.appState,
@@ -93,6 +92,7 @@ export class HeartbeatController {
           `Heartbeat from driver ${userId}, appState: ${payload.appState}`,
         );
       } else if (userType === UserType.CUSTOMER) {
+        await this.customerStatusService.markCustomerAsActive(userId);
         await this.customerStatusService.updateCustomerAppState(
           userId,
           payload.appState,
@@ -115,23 +115,6 @@ export class HeartbeatController {
         'Failed to process heartbeat',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
-    }
-  }
-
-  private async refreshHeartbeatInRedis(userId: string, userType: UserType) {
-    try {
-      if (userType === UserType.DRIVER) {
-        await this.driverStatusService.updateDriverHeartbeat(userId);
-      } else if (userType === UserType.CUSTOMER) {
-        await this.customerStatusService.markCustomerAsActive(userId);
-      }
-
-      this.logger.debug(`Heartbeat refreshed for ${userType} ${userId}`);
-    } catch (error) {
-      this.logger.error(
-        `Error refreshing heartbeat in Redis: ${error.message}`,
-      );
-      throw error;
     }
   }
 }

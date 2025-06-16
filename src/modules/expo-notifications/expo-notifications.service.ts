@@ -1,11 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from 'src/config/config.service';
-import {
-  Expo,
-  ExpoPushMessage,
-  ExpoPushTicket,
-  ExpoPushReceipt,
-} from 'expo-server-sdk';
+import { Expo, ExpoPushMessage } from 'expo-server-sdk';
 import { EventType } from 'src/modules/event/enum/event-type.enum';
 
 @Injectable()

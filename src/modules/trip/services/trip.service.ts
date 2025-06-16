@@ -10,13 +10,11 @@ import { TripDocument } from '../schemas/trip.schema';
 import { UpdateTripDto } from '../dto/update-trip.dto';
 import { CustomersClient } from 'src/clients/customer/customers.client';
 import { DriversClient } from 'src/clients/driver/drivers.client';
-import { LockService } from 'src/common/lock/lock.service';
 import { TripErrors } from '../exceptions/trip-errors';
 import { TripStatus } from 'src/common/enums/trip-status.enum';
 import { ActiveTripService } from 'src/redis/services/active-trip.service';
 import { UserType } from 'src/common/user-type.enum';
 import { NearbySearchService } from 'src/redis/services/nearby-search.service';
-import { EstimateTripDto } from '../../trips/dto';
 import { PaymentStatus } from 'src/common/enums/payment-status.enum';
 import { ConfigService } from 'src/config/config.service';
 import { MapsService } from 'src/clients/maps/maps.service';
@@ -45,6 +43,8 @@ import { DriverStatisticsQueryDto } from '../dto/driver-statistics-query.dto';
 import { DriverStatisticsResponseDto } from '../dto/driver-statistics-response.dto';
 import { DriverAvailabilityStatus } from 'src/common/enums/driver-availability-status.enum';
 import { Event2Service } from 'src/modules/event/event_v2.service';
+import { EstimateTripDto } from '../dto/estimate-trip.dto';
+import { LockService } from 'src/lock/lock.service';
 
 export interface TripOperationResult {
   success: boolean;

@@ -76,11 +76,6 @@ export class DriverStatusService extends BaseRedisService {
     await pipeline.exec();
   }
 
-  @WithErrorHandling()
-  async updateDriverLastSeen(driverId: string, timestamp: Date): Promise<void> {
-    await this.updateDriverHeartbeat(driverId);
-  }
-
   @WithErrorHandling(false)
   async isDriverHeartbeatActive(driverId: string): Promise<boolean> {
     return await this.isDriverActive(driverId);

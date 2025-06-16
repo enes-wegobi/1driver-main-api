@@ -1,12 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { RedisService } from 'src/redis/redis.service';
+import { BaseRedisService } from 'src/redis/services/base-redis.service';
 
 @Injectable()
 export class LockService {
   private readonly logger = new Logger(LockService.name);
   private readonly lockPrefix = 'trip:lock:';
 
-  constructor(private readonly redisService: RedisService) {}
+  constructor(private readonly baseRedisService: BaseRedisService) {}
 
   /**
    * Acquires a lock for the given key
@@ -26,7 +26,7 @@ export class LockService {
     let attempt = 0;
 
     while (attempt < retries) {
-      const result = await this.redisService
+      const result = await this.baseRedisService
         .getRedisClient()
         .set(lockKey, Date.now().toString(), 'PX', ttl, 'NX');
 
@@ -54,7 +54,7 @@ export class LockService {
    */
   async releaseLock(key: string): Promise<boolean> {
     const lockKey = `${this.lockPrefix}${key}`;
-    const result = await this.redisService.getRedisClient().del(lockKey);
+    const result = await this.baseRedisService.getRedisClient().del(lockKey);
 
     const released = result === 1;
     this.logger.debug(
@@ -70,7 +70,7 @@ export class LockService {
    */
   async getLockTTL(key: string): Promise<number> {
     const lockKey = `${this.lockPrefix}${key}`;
-    return this.redisService.getRedisClient().pttl(lockKey);
+    return this.baseRedisService.getRedisClient().pttl(lockKey);
   }
 
   /**

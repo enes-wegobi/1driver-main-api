@@ -3,7 +3,6 @@ import axios from 'axios';
 import {
   BatchDistanceRequest,
   BatchDistanceResponse,
-  Coordinates,
   DistanceResponse,
   RoutePoint,
 } from './maps.interface';

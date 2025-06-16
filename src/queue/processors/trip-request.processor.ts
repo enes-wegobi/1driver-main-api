@@ -9,10 +9,10 @@ import { TripQueueService } from '../services/trip-queue.service';
 import { DriverAvailabilityStatus } from 'src/common/enums/driver-availability-status.enum';
 import { Event2Service } from 'src/modules/event/event_v2.service';
 import { EventType } from 'src/modules/event/enum/event-type.enum';
-import { RedisService } from 'src/redis/redis.service';
 import { MapsService } from 'src/clients/maps/maps.service';
 import { BatchDistanceRequest } from 'src/clients/maps/maps.interface';
 import { UserType } from 'src/common/user-type.enum';
+import { LocationService } from 'src/redis/services/location.service';
 
 @Processor('trip-requests')
 @Injectable()
@@ -24,7 +24,7 @@ export class TripRequestProcessor extends WorkerHost {
     private readonly driverStatusService: DriverStatusService,
     private readonly event2Service: Event2Service,
     private readonly tripQueueService: TripQueueService,
-    private readonly redisService: RedisService,
+    private readonly locationService: LocationService,
     private readonly mapsService: MapsService,
   ) {
     super();
@@ -255,10 +255,8 @@ export class TripRequestProcessor extends WorkerHost {
     referencePoint: { lat: number; lon: number },
   ): Promise<{ distance?: number; duration?: number }> {
     try {
-      const driverLocationsMap = await this.redisService.getUserLocations([
-        driverId,
-      ]);
-      const driverLocation = driverLocationsMap[driverId];
+      const driverLocation =
+        await this.locationService.getUserLocation(driverId);
 
       if (
         !driverLocation ||

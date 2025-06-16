@@ -9,7 +9,6 @@ import { DriverPenaltyService } from './services/driver-penalty.service';
 import { ClientsModule } from 'src/clients/clients.module';
 import { ConfigModule } from 'src/config/config.module';
 import { MapsModule } from 'src/clients/maps/maps.module';
-import { LockModule } from 'src/common/lock/lock.module';
 import { TripStatusService } from './services/trip-status.service';
 import { TripPaymentService } from './services/trip-payment.service';
 import { DriversTripsController } from './controllers/driver-trip.controller';
@@ -22,6 +21,7 @@ import { JwtModule } from 'src/jwt/jwt.module';
 import { PaymentsModule } from '../payments/payments.module';
 import { QueueModule } from '../../queue/queue.module';
 import { DriversModule } from '../drivers/drivers.module';
+import { LockModule } from 'src/lock/lock.module';
 
 @Module({
   imports: [

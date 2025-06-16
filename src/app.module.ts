@@ -13,7 +13,6 @@ import { PromotionsModule } from './modules/promotions/promotions.module';
 import { ExpoNotificationsModule } from './modules/expo-notifications/expo-notifications.module';
 import { TripModule } from './modules/trip/trip.module';
 import { SupportTicketsModule } from './modules/support-tickets/support-tickets.module';
-import { TestModule } from './modules/test/test.module';
 import { LocationModule } from './modules/location/location.module';
 import { QueueModule } from './queue/queue.module';
 import { HeartbeatModule } from './modules/common/heartbeat.module';
@@ -34,7 +33,6 @@ import { HeartbeatModule } from './modules/common/heartbeat.module';
     PromotionsModule,
     ExpoNotificationsModule,
     SupportTicketsModule,
-    TestModule,
     LocationModule,
     QueueModule,
     HeartbeatModule,

@@ -8,7 +8,6 @@ import {
 import { TripService } from './trip.service';
 import { PaymentsService } from '../../payments/services/payments.service';
 import { PaymentMethodService } from '../../payments/services/payment-method.service';
-import { LockService } from 'src/common/lock/lock.service';
 import { TripStatus } from 'src/common/enums/trip-status.enum';
 import { PaymentStatus } from 'src/common/enums/payment-status.enum';
 import { EventType } from '../../event/enum/event-type.enum';
@@ -17,6 +16,7 @@ import { Payment } from '../../payments/schemas/payment.schema';
 import { Event2Service } from 'src/modules/event/event_v2.service';
 import { UserType } from 'src/common/user-type.enum';
 import { DriverEarningsService } from 'src/modules/drivers/services/driver-earnings.service';
+import { LockService } from 'src/lock/lock.service';
 
 export interface TripPaymentResult {
   success: boolean;
