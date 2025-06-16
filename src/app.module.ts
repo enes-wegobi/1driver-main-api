@@ -16,6 +16,7 @@ import { SupportTicketsModule } from './modules/support-tickets/support-tickets.
 import { TestModule } from './modules/test/test.module';
 import { LocationModule } from './modules/location/location.module';
 import { QueueModule } from './queue/queue.module';
+import { HeartbeatModule } from './modules/common/heartbeat.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { QueueModule } from './queue/queue.module';
     TestModule,
     LocationModule,
     QueueModule,
+    HeartbeatModule,
   ],
 })
 export class AppModule {}
