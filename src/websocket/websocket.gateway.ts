@@ -120,7 +120,6 @@ export class WebSocketGateway
           availabilityStatus: status,
           message: 'Connection successful',
         });
-
       } else if (userType === UserType.CUSTOMER) {
         await this.customerStatusService.markCustomerAsActive(payload.userId);
         await this.customerStatusService.setCustomerAppStateOnConnect(

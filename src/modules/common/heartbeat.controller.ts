@@ -29,12 +29,10 @@ import { LoggerService } from 'src/logger/logger.service';
 @Controller('heartbeat')
 @UseGuards(JwtAuthGuard)
 export class HeartbeatController {
-
   constructor(
     private readonly driverStatusService: DriverStatusService,
     private readonly customerStatusService: CustomerStatusService,
     private readonly logger: LoggerService,
-    
   ) {}
 
   @Post()
@@ -92,7 +90,6 @@ export class HeartbeatController {
           userId,
           payload.appState,
         );
-
       }
       this.logger.debug(
         `Heartbeat from user ${userId}, user type ${userType} appState: ${payload.appState}`,

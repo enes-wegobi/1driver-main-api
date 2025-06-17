@@ -17,18 +17,20 @@ export class ExpoNotificationsService implements OnModuleInit {
   async onModuleInit() {
     try {
       const accessToken = this.configService.get<string>('expo.accessToken');
-      
+
       if (!accessToken) {
-        this.logger.warn('Expo access token not provided. Push notifications will be disabled.');
+        this.logger.warn(
+          'Expo access token not provided. Push notifications will be disabled.',
+        );
         this.expoEnabled = false;
         return;
       }
 
       // Initialize Expo client with access token
       this.expo = new Expo({
-        accessToken: accessToken
+        accessToken: accessToken,
       });
-      
+
       this.expoEnabled = true;
       this.logger.info('Expo SDK initialized successfully with access token');
     } catch (error) {
