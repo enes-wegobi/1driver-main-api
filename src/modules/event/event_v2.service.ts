@@ -187,11 +187,11 @@ export class Event2Service {
   ): Promise<boolean> {
     if (userType === UserType.DRIVER) {
       const appState = await this.driverStatusService.getDriverAppState(userId);
-      return appState === AppState.ACTIVE;
+      return appState === AppState.FOREGROUND;
     } else {
       const appState =
         await this.customerStatusService.getCustomerAppState(userId);
-      return appState === AppState.ACTIVE;
+      return appState === AppState.FOREGROUND;
     }
   }
 

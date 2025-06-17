@@ -368,7 +368,9 @@ export class DriverTripQueueService extends BaseRedisService {
     }
 
     if (cleanedCount > 0) {
-      this.customLogger.info(`Cleaned up ${cleanedCount} expired processing trips`);
+      this.customLogger.info(
+        `Cleaned up ${cleanedCount} expired processing trips`,
+      );
     }
 
     return cleanedCount;

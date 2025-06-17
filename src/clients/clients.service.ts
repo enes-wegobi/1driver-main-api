@@ -125,13 +125,10 @@ export class ClientsService implements OnModuleInit {
         return config;
       },
       (error) => {
-        this.logger.error(
-          `[${serviceName}] Request error: ${error.message}`,
-          {
-            serviceName,
-            error: error.message,
-          },
-        );
+        this.logger.error(`[${serviceName}] Request error: ${error.message}`, {
+          serviceName,
+          error: error.message,
+        });
         return Promise.reject(error);
       },
     );

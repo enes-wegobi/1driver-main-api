@@ -6,7 +6,6 @@ import {
   WebSocketServer,
   SubscribeMessage,
 } from '@nestjs/websockets';
-import { Logger } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import { WebSocketService } from './websocket.service';
 import { JwtService } from 'src/jwt/jwt.service';
@@ -18,13 +17,11 @@ import { ActiveTripService } from 'src/redis/services/active-trip.service';
 import { UserType } from 'src/common/user-type.enum';
 import { TripService } from 'src/modules/trip/services/trip.service';
 import { EventType } from 'src/modules/event/enum/event-type.enum';
-import { HeartbeatDto } from './dto/heartbeat.dto';
 import { DriverAvailabilityStatus } from 'src/common/enums/driver-availability-status.enum';
 import { LoggerService } from 'src/logger/logger.service';
 
 const PING_INTERVAL = 25000;
 const PING_TIMEOUT = 10000;
-const HEARTBEAT_INTERVAL = 30000; // 30 seconds
 
 @NestWebSocketGateway({
   cors: {
@@ -116,11 +113,9 @@ export class WebSocketGateway
           clientId: clientId,
           userType: userType,
           availabilityStatus: status,
-          heartbeatInterval: HEARTBEAT_INTERVAL,
           message: 'Connection successful',
         });
 
-        await this.driverStatusService.updateDriverHeartbeat(payload.userId);
       } else if (userType === UserType.CUSTOMER) {
         await this.customerStatusService.markCustomerAsActive(payload.userId);
         await this.customerStatusService.setCustomerAppStateOnConnect(
@@ -131,10 +126,8 @@ export class WebSocketGateway
           status: 'connected',
           clientId: clientId,
           userType: userType,
-          heartbeatInterval: HEARTBEAT_INTERVAL,
           message: 'Connection successful',
         });
-        await this.customerStatusService.markCustomerAsActive(payload.userId);
       }
 
       this.logger.debug(
@@ -160,12 +153,8 @@ export class WebSocketGateway
         const status =
           await this.driverStatusService.getDriverAvailability(userId);
         if (status !== DriverAvailabilityStatus.ON_TRIP) {
-          await this.driverStatusService.updateDriverAvailability(
-            userId,
-            DriverAvailabilityStatus.BUSY,
-          );
+          await this.driverStatusService.deleteDriverAvailability(userId);
         }
-        await this.driverStatusService.updateDriverHeartbeat(userId);
         this.logger.debug(`Driver ${userId} marked as disconnected`);
       } else if (userType === UserType.CUSTOMER) {
         await this.customerStatusService.markCustomerAsInactive(userId);
@@ -233,59 +222,6 @@ export class WebSocketGateway
         `Error processing driver location update: ${error.message}`,
       );
       return { success: false, message: 'Failed to process location update' };
-    }
-  }
-
-  @SubscribeMessage('heartbeat')
-  async handleHeartbeat(client: Socket, payload: HeartbeatDto) {
-    const userId = client.data.userId;
-    const userType = client.data.userType;
-
-    if (!userId) {
-      client.emit('error', { message: 'User not authenticated' });
-      return { success: false, message: 'User not authenticated' };
-    }
-
-    try {
-      if (userType === UserType.DRIVER) {
-        //avability status her haeart beatda ttl refresh olsun
-        await this.driverStatusService.updateDriverHeartbeat(userId);
-        await this.driverStatusService.updateDriverAppState(
-          userId,
-          payload.appState,
-        );
-
-        this.logger.debug(
-          `Heartbeat from driver ${userId}, appState: ${payload.appState}`,
-        );
-      } else if (userType === UserType.CUSTOMER) {
-        await this.customerStatusService.markCustomerAsActive(userId);
-        await this.customerStatusService.updateCustomerAppState(
-          userId,
-          payload.appState,
-        );
-        this.logger.debug(
-          `Heartbeat from customer ${userId}, appState: ${payload.appState}`,
-        );
-      }
-      client.emit('heartbeat-ack', {
-        timestamp: new Date().toISOString(),
-        nextHeartbeatIn: HEARTBEAT_INTERVAL,
-      });
-
-      return {
-        success: true,
-        timestamp: new Date().toISOString(),
-        nextHeartbeatIn: HEARTBEAT_INTERVAL,
-      };
-    } catch (error) {
-      this.logger.error(
-        `Error processing heartbeat from user ${userId}: ${error.message}`,
-      );
-      return {
-        success: false,
-        message: 'Failed to process heartbeat',
-      };
     }
   }
 

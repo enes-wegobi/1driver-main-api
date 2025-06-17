@@ -123,6 +123,30 @@ export class DriverStatusService extends BaseRedisService {
     return true;
   }
 
+  @WithErrorHandling()
+  async deleteDriverAvailability(driverId: string): Promise<boolean> {
+    const pipeline = this.client.multi();
+    const key = RedisKeyGenerator.driverStatus(driverId);
+
+    // Delete the status key
+    pipeline.del(key);
+
+    // Also update the location data to remove availability status
+    const locationKey = RedisKeyGenerator.userLocation(driverId);
+    const locationData = await this.client.get(locationKey);
+
+    if (locationData) {
+      const parsedData = JSON.parse(locationData);
+      delete parsedData.availabilityStatus;
+
+      pipeline.set(locationKey, JSON.stringify(parsedData));
+      pipeline.expire(locationKey, this.DRIVER_LOCATION_EXPIRY);
+    }
+
+    await pipeline.exec();
+    return true;
+  }
+
   @WithErrorHandling(DriverAvailabilityStatus.BUSY)
   async getDriverAvailability(
     driverId: string,
@@ -353,22 +377,36 @@ export class DriverStatusService extends BaseRedisService {
     );
   }
 
-  @WithErrorHandling(AppState.INACTIVE)
+  @WithErrorHandling()
   async getDriverAppState(driverId: string): Promise<AppState> {
     const key = RedisKeyGenerator.driverAppState(driverId);
     const appState = await this.client.get(key);
 
-    return (appState as AppState) || AppState.INACTIVE;
+    return (appState as AppState) || null;
   }
 
   @WithErrorHandling()
   async setDriverAppStateOnConnect(driverId: string): Promise<void> {
-    await this.updateDriverAppState(driverId, AppState.ACTIVE);
+    await this.updateDriverAppState(driverId, AppState.FOREGROUND);
   }
 
   @WithErrorHandling()
   async setDriverAppStateOnDisconnect(driverId: string): Promise<void> {
-    await this.updateDriverAppState(driverId, AppState.INACTIVE);
+    const key = RedisKeyGenerator.driverAppState(driverId);
+    const pipeline = this.client.multi();
+
+    pipeline.del(key);
+
+    await pipeline.exec();
+
+    this.customLogger.debug(
+      `Driver ${driverId} app state deleted on disconnect`,
+      {
+        userId: driverId,
+        userType: 'driver',
+        action: 'delete_app_state_on_disconnect',
+      },
+    );
   }
 
   @WithErrorHandling({

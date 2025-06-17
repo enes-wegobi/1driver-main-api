@@ -73,21 +73,35 @@ export class CustomerStatusService extends BaseRedisService {
     );
   }
 
-  @WithErrorHandling(AppState.INACTIVE)
+  @WithErrorHandling()
   async getCustomerAppState(customerId: string): Promise<AppState> {
     const key = RedisKeyGenerator.customerAppState(customerId);
     const appState = await this.client.get(key);
 
-    return (appState as AppState) || AppState.INACTIVE;
+    return (appState as AppState) || null;
   }
 
   @WithErrorHandling()
   async setCustomerAppStateOnConnect(customerId: string): Promise<void> {
-    await this.updateCustomerAppState(customerId, AppState.ACTIVE);
+    await this.updateCustomerAppState(customerId, AppState.FOREGROUND);
   }
 
   @WithErrorHandling()
   async setCustomerAppStateOnDisconnect(customerId: string): Promise<void> {
-    await this.updateCustomerAppState(customerId, AppState.INACTIVE);
+    const key = RedisKeyGenerator.customerAppState(customerId);
+    const pipeline = this.client.multi();
+
+    pipeline.del(key);
+
+    await pipeline.exec();
+
+    this.customLogger.debug(
+      `Customer ${customerId} app state deleted on disconnect`,
+      {
+        userId: customerId,
+        userType: 'customer',
+        action: 'delete_app_state_on_disconnect',
+      },
+    );
   }
 }

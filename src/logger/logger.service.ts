@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as winston from 'winston';
 import * as DatadogWinston from 'datadog-winston';
+import * as DailyRotateFile from 'winston-daily-rotate-file';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface SimpleLogContext {
@@ -41,6 +42,38 @@ export class LoggerService {
           : winston.format.json(),
       }),
     );
+
+    // File transports with rotation (if enabled)
+    if (this.configService.get('logging.fileEnabled', true)) {
+      // General application logs
+      transports.push(
+        new DailyRotateFile({
+          filename: 'logs/application-%DATE%.log',
+          datePattern: 'YYYY-MM-DD',
+          maxSize: this.configService.get('logging.maxSize', '20m'),
+          maxFiles: this.configService.get('logging.maxFiles', '14d'),
+          format: winston.format.combine(
+            winston.format.timestamp(),
+            winston.format.json(),
+          ),
+        }),
+      );
+
+      // Error logs (separate file)
+      transports.push(
+        new DailyRotateFile({
+          filename: 'logs/error-%DATE%.log',
+          datePattern: 'YYYY-MM-DD',
+          level: 'error',
+          maxSize: this.configService.get('logging.maxSize', '20m'),
+          maxFiles: this.configService.get('logging.errorMaxFiles', '30d'),
+          format: winston.format.combine(
+            winston.format.timestamp(),
+            winston.format.json(),
+          ),
+        }),
+      );
+    }
 
     // DataDog transport for production
     if (

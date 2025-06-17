@@ -65,6 +65,10 @@ export default () => ({
   },
   logging: {
     level: process.env.LOG_LEVEL || 'info',
+    fileEnabled: process.env.LOGGING_FILE_ENABLED !== 'false',
+    maxSize: process.env.LOG_MAX_SIZE || '20m',
+    maxFiles: process.env.LOG_MAX_FILES || '14d',
+    errorMaxFiles: process.env.LOG_ERROR_MAX_FILES || '30d',
   },
   datadog: {
     enabled: process.env.DATADOG_ENABLED === 'true',

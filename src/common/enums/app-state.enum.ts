@@ -1,4 +1,4 @@
 export enum AppState {
-  ACTIVE = 'active',
-  INACTIVE = 'inactive',
+  FOREGROUND = 'foreground',
+  BACKGROUND = 'background',
 }
