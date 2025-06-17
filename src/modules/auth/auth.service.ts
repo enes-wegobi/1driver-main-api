@@ -36,7 +36,7 @@ export class AuthService {
             userId: result.customer._id,
             userType: 'customer',
             action: 'create_stripe_customer',
-          }
+          },
         );
         await this.paymentsService.createStripeCustomer(result.customer._id, {
           name: `${result.customer.name} ${result.customer.surname}`,
@@ -49,7 +49,7 @@ export class AuthService {
             userId: result.customer._id,
             userType: 'customer',
             action: 'create_stripe_customer_success',
-          }
+          },
         );
       } catch (error) {
         // Log error but don't fail the signup
@@ -91,7 +91,7 @@ export class AuthService {
             userId: result.driver._id,
             userType: 'driver',
             action: 'create_weekly_earnings_record',
-          }
+          },
         );
         await this.driverEarningsService.findOrCreateCurrentWeekRecord(
           result.driver._id,
@@ -102,7 +102,7 @@ export class AuthService {
             userId: result.driver._id,
             userType: 'driver',
             action: 'create_weekly_earnings_record_success',
-          }
+          },
         );
       } catch (error) {
         // Log error but don't fail the signup

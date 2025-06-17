@@ -51,54 +51,57 @@ export class MapsService {
         );
       }
 
-
       // Build Routes API request body
       const requestBody = {
-        origins: [{
-          waypoint: {
-            location: {
-              latLng: {
-                latitude: origin.lat,
-                longitude: origin.lon
-              }
-            }
-          }
-        }],
-        destinations: [{
-          waypoint: {
-            location: {
-              latLng: {
-                latitude: destination.lat,
-                longitude: destination.lon
-              }
-            }
-          }
-        }],
+        origins: [
+          {
+            waypoint: {
+              location: {
+                latLng: {
+                  latitude: origin.lat,
+                  longitude: origin.lon,
+                },
+              },
+            },
+          },
+        ],
+        destinations: [
+          {
+            waypoint: {
+              location: {
+                latLng: {
+                  latitude: destination.lat,
+                  longitude: destination.lon,
+                },
+              },
+            },
+          },
+        ],
         travelMode: 'DRIVE',
-        routingPreference: 'TRAFFIC_AWARE'
+        routingPreference: 'TRAFFIC_AWARE',
       };
 
       // Add intermediate waypoints if they exist
       if (waypoints.length > 0) {
-        requestBody.destinations = waypoints.map(wp => ({
+        requestBody.destinations = waypoints.map((wp) => ({
           waypoint: {
             location: {
               latLng: {
                 latitude: wp.lat,
-                longitude: wp.lon
-              }
-            }
-          }
+                longitude: wp.lon,
+              },
+            },
+          },
         }));
         requestBody.destinations.push({
           waypoint: {
             location: {
               latLng: {
                 latitude: destination.lat,
-                longitude: destination.lon
-              }
-            }
-          }
+                longitude: destination.lon,
+              },
+            },
+          },
         });
       }
 
@@ -110,9 +113,10 @@ export class MapsService {
           headers: {
             'Content-Type': 'application/json',
             'X-Goog-Api-Key': this.configService.googleMapsApiKey,
-            'X-Goog-FieldMask': 'originIndex,destinationIndex,duration,distanceMeters,status,condition'
-          }
-        }
+            'X-Goog-FieldMask':
+              'originIndex,destinationIndex,duration,distanceMeters,status,condition',
+          },
+        },
       );
 
       // Check if we have valid results
@@ -141,7 +145,9 @@ export class MapsService {
       const destCoords = `${destination.lat},${destination.lon}`;
 
       // Convert duration from seconds string to readable format
-      const durationSeconds = parseInt(routeResult.duration?.replace('s', '') || '0');
+      const durationSeconds = parseInt(
+        routeResult.duration?.replace('s', '') || '0',
+      );
       const durationText = this.formatDuration(durationSeconds);
 
       // Convert distance from meters to readable format
@@ -152,27 +158,27 @@ export class MapsService {
         success: true,
         origin: {
           coordinates: originCoords,
-          address: origin.name || 'Origin'
+          address: origin.name || 'Origin',
         },
         destination: {
           coordinates: destCoords,
-          address: destination.name || 'Destination'
+          address: destination.name || 'Destination',
         },
         distance: {
           text: distanceText,
-          value: distanceMeters
+          value: distanceMeters,
         },
         duration: {
           text: durationText,
-          value: durationSeconds
-        }
+          value: durationSeconds,
+        },
       };
 
       // Add waypoints information if available
       if (waypoints.length > 0) {
-        result.waypoints = waypoints.map(wp => ({
+        result.waypoints = waypoints.map((wp) => ({
           coordinates: `${wp.lat},${wp.lon}`,
-          address: wp.name || 'Waypoint'
+          address: wp.name || 'Waypoint',
         }));
       }
 
@@ -188,7 +194,9 @@ export class MapsService {
       // Otherwise, wrap it in a RedisException
       throw new RedisException(
         RedisErrors.INVALID_REQUEST.code,
-        error.response?.data?.error?.message || error.message || RedisErrors.INVALID_REQUEST.message,
+        error.response?.data?.error?.message ||
+          error.message ||
+          RedisErrors.INVALID_REQUEST.message,
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -213,28 +221,30 @@ export class MapsService {
 
       // Build Routes API request body
       const requestBody = {
-        origins: [{
-          waypoint: {
-            location: {
-              latLng: {
-                latitude: request.referencePoint.lat,
-                longitude: request.referencePoint.lon
-              }
-            }
-          }
-        }],
-        destinations: request.driverLocations.map(driver => ({
+        origins: [
+          {
+            waypoint: {
+              location: {
+                latLng: {
+                  latitude: request.referencePoint.lat,
+                  longitude: request.referencePoint.lon,
+                },
+              },
+            },
+          },
+        ],
+        destinations: request.driverLocations.map((driver) => ({
           waypoint: {
             location: {
               latLng: {
                 latitude: driver.coordinates.lat,
-                longitude: driver.coordinates.lon
-              }
-            }
-          }
+                longitude: driver.coordinates.lon,
+              },
+            },
+          },
         })),
         travelMode: 'DRIVE',
-        routingPreference: 'TRAFFIC_AWARE'
+        routingPreference: 'TRAFFIC_AWARE',
       };
 
       // Send request to Google Routes API
@@ -245,9 +255,10 @@ export class MapsService {
           headers: {
             'Content-Type': 'application/json',
             'X-Goog-Api-Key': this.configService.googleMapsApiKey,
-            'X-Goog-FieldMask': 'originIndex,destinationIndex,duration,distanceMeters,status,condition'
-          }
-        }
+            'X-Goog-FieldMask':
+              'originIndex,destinationIndex,duration,distanceMeters,status,condition',
+          },
+        },
       );
 
       // Check if we have valid results
@@ -263,10 +274,15 @@ export class MapsService {
       const results = {};
 
       response.data.forEach((routeResult, index) => {
-        if (index < request.driverLocations.length && routeResult.condition === 'ROUTE_EXISTS') {
+        if (
+          index < request.driverLocations.length &&
+          routeResult.condition === 'ROUTE_EXISTS'
+        ) {
           const driver = request.driverLocations[index];
-          const durationSeconds = parseInt(routeResult.duration?.replace('s', '') || '0');
-          
+          const durationSeconds = parseInt(
+            routeResult.duration?.replace('s', '') || '0',
+          );
+
           results[driver.driverId] = {
             coordinates: driver.coordinates,
             distance: routeResult.distanceMeters || 0,
@@ -291,7 +307,9 @@ export class MapsService {
       // Otherwise, wrap it in a RedisException
       throw new RedisException(
         RedisErrors.INVALID_REQUEST.code,
-        error.response?.data?.error?.message || error.message || RedisErrors.INVALID_REQUEST.message,
+        error.response?.data?.error?.message ||
+          error.message ||
+          RedisErrors.INVALID_REQUEST.message,
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -301,20 +319,20 @@ export class MapsService {
     if (seconds < 60) {
       return `${seconds} sec${seconds !== 1 ? 's' : ''}`;
     }
-    
+
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
-    
+
     if (minutes < 60) {
       if (remainingSeconds === 0) {
         return `${minutes} min${minutes !== 1 ? 's' : ''}`;
       }
       return `${minutes} min${minutes !== 1 ? 's' : ''} ${remainingSeconds} sec${remainingSeconds !== 1 ? 's' : ''}`;
     }
-    
+
     const hours = Math.floor(minutes / 60);
     const remainingMinutes = minutes % 60;
-    
+
     if (remainingMinutes === 0) {
       return `${hours} hour${hours !== 1 ? 's' : ''}`;
     }
@@ -325,7 +343,7 @@ export class MapsService {
     if (meters < 1000) {
       return `${meters} m`;
     }
-    
+
     const kilometers = (meters / 1000).toFixed(1);
     return `${kilometers} km`;
   }

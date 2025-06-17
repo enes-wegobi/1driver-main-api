@@ -15,7 +15,7 @@ export class RequestIdInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     // Check if this is an HTTP context
     const contextType = context.getType();
-    
+
     if (contextType !== 'http') {
       // For non-HTTP contexts (WebSocket, GraphQL, etc.), just pass through
       return next.handle();
@@ -40,7 +40,9 @@ export class RequestIdInterceptor implements NestInterceptor {
         response.setHeader('x-request-id', requestId);
       } catch (error) {
         // Silently ignore header setting errors for non-HTTP responses
-        this.logger.debug('Could not set response header', { error: error.message });
+        this.logger.debug('Could not set response header', {
+          error: error.message,
+        });
       }
     }
 

@@ -111,19 +111,19 @@ async function bootstrap() {
   const host = configService.get('HOST', '0.0.0.0');
 
   await app.listen(port, host);
-  
+
   // Get logger service for startup logs
   const logger = app.get(SimpleLoggerService);
-  logger.info(`API Gateway started: ${await app.getUrl()}`, { 
-    port, 
-    host, 
-    type: 'startup' 
+  logger.info(`API Gateway started: ${await app.getUrl()}`, {
+    port,
+    host,
+    type: 'startup',
   });
-  logger.info(`Swagger documentation: ${await app.getUrl()}/api/docs`, { 
-    type: 'startup' 
+  logger.info(`Swagger documentation: ${await app.getUrl()}/api/docs`, {
+    type: 'startup',
   });
-  logger.info(`WebSocket server is running with Redis adapter`, { 
-    type: 'startup' 
+  logger.info(`WebSocket server is running with Redis adapter`, {
+    type: 'startup',
   });
 }
 

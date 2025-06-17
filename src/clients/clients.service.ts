@@ -70,7 +70,6 @@ export class ClientsService implements OnModuleInit {
     return client;
   }
 
-
   /**
    * Internal method to create an HTTP client without caching
    */
@@ -110,24 +109,30 @@ export class ClientsService implements OnModuleInit {
       (config) => {
         // Add start time for duration calculation
         (config as any).startTime = Date.now();
-        
+
         // Forward request ID if available in headers
         const requestId = config.headers['x-request-id'];
-        
-        this.simpleLogger.info(`[${serviceName}] Request started: ${config.method?.toUpperCase()} ${config.url}`, {
-          requestId: requestId as string,
-          serviceName,
-          method: config.method?.toUpperCase(),
-          url: config.url,
-        });
-        
+
+        this.simpleLogger.info(
+          `[${serviceName}] Request started: ${config.method?.toUpperCase()} ${config.url}`,
+          {
+            requestId: requestId as string,
+            serviceName,
+            method: config.method?.toUpperCase(),
+            url: config.url,
+          },
+        );
+
         return config;
       },
       (error) => {
-        this.simpleLogger.error(`[${serviceName}] Request error: ${error.message}`, {
-          serviceName,
-          error: error.message,
-        });
+        this.simpleLogger.error(
+          `[${serviceName}] Request error: ${error.message}`,
+          {
+            serviceName,
+            error: error.message,
+          },
+        );
         return Promise.reject(error);
       },
     );
@@ -137,16 +142,16 @@ export class ClientsService implements OnModuleInit {
       (response) => {
         const duration = Date.now() - (response.config as any).startTime;
         const requestId = response.config.headers['x-request-id'] as string;
-        
+
         this.simpleLogger.logServiceCall(
           serviceName,
           response.config.method?.toUpperCase() || 'UNKNOWN',
           response.config.url || 'UNKNOWN',
           response.status,
           duration,
-          requestId || 'unknown'
+          requestId || 'unknown',
         );
-        
+
         return response;
       },
       (error: AxiosError) => {
@@ -163,35 +168,42 @@ export class ClientsService implements OnModuleInit {
           url,
           error.response?.status || 0,
           duration,
-          requestId || 'unknown'
+          requestId || 'unknown',
         );
 
         // Log detailed error
         if (error.code === 'ECONNRESET') {
           this.simpleLogger.error(
             `[${serviceName}] Connection reset for ${method} ${url}`,
-            { requestId, serviceName, method, url, error: 'ECONNRESET' }
+            { requestId, serviceName, method, url, error: 'ECONNRESET' },
           );
         } else if (error.code === 'ECONNREFUSED') {
           this.simpleLogger.error(
             `[${serviceName}] Connection refused for ${method} ${url}`,
-            { requestId, serviceName, method, url, error: 'ECONNREFUSED' }
+            { requestId, serviceName, method, url, error: 'ECONNREFUSED' },
           );
         } else if (error.code === 'ETIMEDOUT') {
           this.simpleLogger.error(
             `[${serviceName}] Request timeout for ${method} ${url}`,
-            { requestId, serviceName, method, url, error: 'ETIMEDOUT' }
+            { requestId, serviceName, method, url, error: 'ETIMEDOUT' },
           );
         } else if (error.response) {
           const responseData = error.response.data as any;
           this.simpleLogger.error(
             `[${serviceName}] HTTP error ${error.response.status} for ${method} ${url}: ${responseData?.message || error.message}`,
-            { requestId, serviceName, method, url, statusCode: error.response.status, error: responseData?.message || error.message }
+            {
+              requestId,
+              serviceName,
+              method,
+              url,
+              statusCode: error.response.status,
+              error: responseData?.message || error.message,
+            },
           );
         } else {
           this.simpleLogger.error(
             `[${serviceName}] Error for ${method} ${url}: ${error.message}`,
-            { requestId, serviceName, method, url, error: error.message }
+            { requestId, serviceName, method, url, error: error.message },
           );
         }
 
