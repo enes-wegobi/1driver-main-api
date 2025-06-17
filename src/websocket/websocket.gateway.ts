@@ -104,6 +104,11 @@ export class WebSocketGateway
           payload.userId,
         );
 
+        await this.driverStatusService.updateDriverAvailability(
+          payload.userId,
+          DriverAvailabilityStatus.BUSY,
+        );
+
         const status = await this.driverStatusService.getDriverAvailability(
           payload.userId,
         );
