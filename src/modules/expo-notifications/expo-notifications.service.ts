@@ -26,8 +26,7 @@ export class ExpoNotificationsService implements OnModuleInit {
 
       // Initialize Expo client with access token
       this.expo = new Expo({
-        accessToken: accessToken,
-        useFcmV1: this.configService.get<boolean>('expo.useFcmV1', false),
+        accessToken: accessToken
       });
       
       this.expoEnabled = true;
