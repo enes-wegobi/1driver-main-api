@@ -7,7 +7,6 @@ import {
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 import { LoggerService } from '../../logger/logger.service';
-import { SimpleLogContext } from '../../logger/logger.service';
 
 @Injectable()
 export class BaseRedisService implements OnModuleInit, OnModuleDestroy {

@@ -22,19 +22,19 @@ import { HeartbeatDto } from 'src/websocket/dto/heartbeat.dto';
 import { DriverStatusService } from 'src/redis/services/driver-status.service';
 import { CustomerStatusService } from 'src/redis/services/customer-status.service';
 import { UserType } from 'src/common/user-type.enum';
-
-const HEARTBEAT_INTERVAL = 30000; // 30 seconds
+import { LoggerService } from 'src/logger/logger.service';
 
 @ApiTags('heartbeat')
 @ApiBearerAuth()
 @Controller('heartbeat')
 @UseGuards(JwtAuthGuard)
 export class HeartbeatController {
-  private readonly logger = new Logger(HeartbeatController.name);
 
   constructor(
     private readonly driverStatusService: DriverStatusService,
     private readonly customerStatusService: CustomerStatusService,
+    private readonly logger: LoggerService,
+    
   ) {}
 
   @Post()
@@ -80,16 +80,11 @@ export class HeartbeatController {
     }
 
     try {
-      // Update user status based on type
       if (userType === UserType.DRIVER) {
         await this.driverStatusService.updateDriverHeartbeat(userId);
         await this.driverStatusService.updateDriverAppState(
           userId,
           payload.appState,
-        );
-
-        this.logger.debug(
-          `Heartbeat from driver ${userId}, appState: ${payload.appState}`,
         );
       } else if (userType === UserType.CUSTOMER) {
         await this.customerStatusService.markCustomerAsActive(userId);
@@ -97,15 +92,14 @@ export class HeartbeatController {
           userId,
           payload.appState,
         );
-        this.logger.debug(
-          `Heartbeat from customer ${userId}, appState: ${payload.appState}`,
-        );
-      }
 
+      }
+      this.logger.debug(
+        `Heartbeat from user ${userId}, user type ${userType} appState: ${payload.appState}`,
+      );
       return {
         success: true,
         timestamp: new Date().toISOString(),
-        nextHeartbeatIn: HEARTBEAT_INTERVAL,
       };
     } catch (error) {
       this.logger.error(
