@@ -73,7 +73,7 @@ export default () => ({
   datadog: {
     enabled: process.env.DATADOG_ENABLED === 'true',
     apiKey: process.env.DATADOG_API_KEY,
-    service: process.env.DATADOG_SERVICE || 'customer-api-gateway',
+    service: process.env.DATADOG_SERVICE || '1driver-main-api',
     env: process.env.DATADOG_ENV || process.env.NODE_ENV || 'development',
     version: process.env.DATADOG_VERSION || '1.0.0',
     hostname: process.env.DATADOG_HOSTNAME || require('os').hostname(),

@@ -4,7 +4,6 @@ import {
   Body,
   HttpException,
   HttpStatus,
-  Logger,
   Headers,
   UseGuards,
 } from '@nestjs/common';
@@ -72,7 +71,6 @@ export class AuthCustomerController {
       const result =
         await this.authService.completeCustomerSignup(validateOtpDto);
 
-      // If successful, store the token
       if (result && result.token && result.customer) {
         await this.tokenManagerService.storeActiveToken(
           result.customer.id,
@@ -125,7 +123,6 @@ export class AuthCustomerController {
       const result =
         await this.authService.completeCustomerSignin(validateOtpDto);
 
-      // If successful, invalidate any existing token and store the new one
       if (result && result.token && result.customer) {
         await this.tokenManagerService.invalidateActiveToken(
           result.customer._id,
