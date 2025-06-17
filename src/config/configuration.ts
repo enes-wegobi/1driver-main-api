@@ -135,4 +135,8 @@ export default () => ({
       },
     },
   },
+  expo: {
+    accessToken: process.env.EXPO_ACCESS_TOKEN,
+    useFcmV1: process.env.EXPO_USE_FCM_V1 === 'true',
+  },
 });

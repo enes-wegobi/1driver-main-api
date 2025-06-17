@@ -1,4 +1,5 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Expo, ExpoPushMessage } from 'expo-server-sdk';
 import { LoggerService } from 'src/logger/logger.service';
 import { EventType } from 'src/modules/event/enum/event-type.enum';
@@ -8,15 +9,32 @@ export class ExpoNotificationsService implements OnModuleInit {
   private expo: Expo;
   private expoEnabled = false;
 
-  constructor(private readonly logger: LoggerService) {}
+  constructor(
+    private readonly logger: LoggerService,
+    private readonly configService: ConfigService,
+  ) {}
 
   async onModuleInit() {
     try {
-      this.expo = new Expo();
+      const accessToken = this.configService.get<string>('expo.accessToken');
+      
+      if (!accessToken) {
+        this.logger.warn('Expo access token not provided. Push notifications will be disabled.');
+        this.expoEnabled = false;
+        return;
+      }
+
+      // Initialize Expo client with access token
+      this.expo = new Expo({
+        accessToken: accessToken,
+        useFcmV1: this.configService.get<boolean>('expo.useFcmV1', false),
+      });
+      
       this.expoEnabled = true;
-      this.logger.info('Expo SDK initialized successfully');
+      this.logger.info('Expo SDK initialized successfully with access token');
     } catch (error) {
       this.logger.error(`Failed to initialize Expo SDK: ${error.message}`);
+      this.expoEnabled = false;
     }
   }
 
