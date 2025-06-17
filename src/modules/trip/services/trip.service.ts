@@ -445,6 +445,10 @@ export class TripService {
               trip.driver.id,
               UserType.DRIVER,
             );
+            await this.driverStatusService.updateDriverAvailability(
+              trip.driver.id,
+              DriverAvailabilityStatus.AVAILABLE,
+            );
             /*
             await this.eventService.sendToUser(
               trip.driver.id,

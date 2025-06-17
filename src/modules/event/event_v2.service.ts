@@ -104,18 +104,40 @@ export class Event2Service {
     if (inactiveUsers.length > 0) {
       if (userType === UserType.DRIVER) {
         const driverInfos = await this.driversService.findMany(inactiveUsers);
+        const { title, body } = this.getNotificationContent(eventType);
         promises.push(
-          this.expoNotificationsService.sendTripRequestNotificationsToInactiveDrivers(
+          this.expoNotificationsService.sendMulticastNotification(
             driverInfos,
-            data,
-            eventType,
+            title,
+            body,
+            {
+              type: eventType,
+              timestamp: new Date().toISOString(),
+            },
           ),
         );
-      } else {
-        // For customers, send individually
-        for (const userId of inactiveUsers) {
+      } else if (userType === UserType.CUSTOMER) {
+        // For customers, fetch individually and send as batch
+        const customerPromises = inactiveUsers.map((userId) =>
+          this.customersService.findOne(userId),
+        );
+        const customerInfos = await Promise.all(customerPromises);
+        const validExpoTokens = customerInfos
+          .filter((info) => info && info.expoToken)
+          .map((info) => info.expoToken);
+
+        if (validExpoTokens.length > 0) {
+          const { title, body } = this.getNotificationContent(eventType);
           promises.push(
-            this.sendPushNotificationToCustomer(userId, eventType, data),
+            this.expoNotificationsService.sendMulticastNotification(
+              validExpoTokens,
+              title,
+              body,
+              {
+                type: eventType,
+                timestamp: new Date().toISOString(),
+              },
+            ),
           );
         }
       }
@@ -136,9 +158,9 @@ export class Event2Service {
       await this.webSocketService.sendToUser(userId, eventType, data);
     } else {
       if (userType === UserType.DRIVER) {
-        await this.sendPushNotificationToDriver(userId, eventType, data);
-      } else {
-        await this.sendPushNotificationToCustomer(userId, eventType, data);
+        await this.sendPushNotificationToDriver(userId, eventType);
+      } else if (userType === UserType.CUSTOMER) {
+        await this.sendPushNotificationToCustomer(userId, eventType);
       }
     }
   }
@@ -164,15 +186,12 @@ export class Event2Service {
     userType: UserType,
   ): Promise<boolean> {
     if (userType === UserType.DRIVER) {
-      const isActive = await this.driverStatusService.isDriverActive(userId);
       const appState = await this.driverStatusService.getDriverAppState(userId);
-      return isActive && appState === AppState.ACTIVE;
+      return appState === AppState.ACTIVE;
     } else {
-      const isActive =
-        await this.customerStatusService.isCustomerActive(userId);
       const appState =
         await this.customerStatusService.getCustomerAppState(userId);
-      return isActive && appState === AppState.ACTIVE;
+      return appState === AppState.ACTIVE;
     }
   }
 
@@ -207,14 +226,33 @@ export class Event2Service {
   private async sendPushNotificationToDriver(
     driverId: string,
     eventType: EventType,
-    data: any,
   ): Promise<void> {
     const driver = await this.driversService.findOne(driverId);
+    // Check notification permissions
+    const hasPermission =
+      await this.checkCustomerNotificationPermissions(driver);
+    if (!hasPermission) {
+      this.logger.log(
+        `Driver ${driver} does not have notification permissions, requesting...`,
+      );
+      return;
+    }
+
+    if (!driver.expoToken) {
+      this.logger.warn(`Driver ${driverId} has no expo token`);
+      return;
+    }
+
     if (driver) {
-      await this.expoNotificationsService.sendTripRequestNotificationToInactiveDriver(
-        driver,
-        data,
-        eventType,
+      const { title, body } = this.getNotificationContent(eventType);
+      await this.expoNotificationsService.sendNotification(
+        driver.expoToken,
+        title,
+        body,
+        {
+          type: eventType,
+          timestamp: new Date().toISOString()
+        },
       );
     }
   }
@@ -222,7 +260,6 @@ export class Event2Service {
   private async sendPushNotificationToCustomer(
     customerId: string,
     eventType: EventType,
-    data: any,
   ): Promise<void> {
     const customer = await this.customersService.findOne(customerId);
 
@@ -238,7 +275,6 @@ export class Event2Service {
       this.logger.log(
         `Customer ${customerId} does not have notification permissions, requesting...`,
       );
-      await this.requestNotificationPermissions(customerId);
       return;
     }
 
@@ -256,7 +292,7 @@ export class Event2Service {
       body,
       {
         type: eventType,
-        timestamp: new Date().toISOString(),
+        timestamp: new Date().toISOString()
       },
     );
   }
@@ -323,23 +359,5 @@ export class Event2Service {
       );
       return false;
     }
-  }
-
-  /**
-   * Dummy method to request notification permissions from customer
-   * In a real implementation, this would trigger a permission request flow
-   */
-  private async requestNotificationPermissions(
-    customerId: string,
-  ): Promise<void> {
-    this.logger.log(
-      `Requesting notification permissions for customer ${customerId}`,
-    );
-    // TODO: Implement actual permission request logic
-    // This could involve:
-    // - Sending a WebSocket message to request permissions
-    // - Storing a pending permission request in database
-    // - Triggering a push notification asking for permissions
-    // - Updating customer preferences when permissions are granted
   }
 }

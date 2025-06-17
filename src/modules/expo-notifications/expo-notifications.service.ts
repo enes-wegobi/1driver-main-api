@@ -1,5 +1,4 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { ConfigService } from 'src/config/config.service';
 import { Expo, ExpoPushMessage } from 'expo-server-sdk';
 import { EventType } from 'src/modules/event/enum/event-type.enum';
 
@@ -9,7 +8,7 @@ export class ExpoNotificationsService implements OnModuleInit {
   private expo: Expo;
   private expoEnabled = false;
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor() {}
 
   async onModuleInit() {
     try {
@@ -139,78 +138,39 @@ export class ExpoNotificationsService implements OnModuleInit {
     }
   }
 
-  async sendTripRequestNotificationToInactiveDriver(
-    driverInfo: any, // Single driver info
-    tripData: any, // Customized trip data for this specific driver
+  /**
+   * Send notifications to multiple users (generic method)
+   */
+  async sendNotificationsToUsers(
+    userInfos: any[],
     eventType: EventType,
-  ): Promise<boolean> {
-    this.logger.log(
-      `Sending ${eventType} notification to inactive driver ${driverInfo._id || 'unknown'}`,
-    );
-
-    if (!driverInfo || !driverInfo.expoToken) {
-      this.logger.warn('No valid Expo token found for inactive driver');
-      return false;
-    }
-
-    // Determine title and body based on event type
-    let title = 'New Notification';
-    let body = 'You have a new notification';
-
-    if (eventType === EventType.TRIP_REQUESTED) {
-      title = 'New Trip Request';
-      body = 'New trip request!';
-    }
-
-    const data = {
-      ...tripData,
-      type: eventType,
-      timestamp: new Date().toISOString(),
-    };
-
-    return this.sendNotification(driverInfo.expoToken, title, body, data);
-  }
-
-  // Keeping this method for backward compatibility
-  async sendTripRequestNotificationsToInactiveDrivers(
-    driverInfos: any[],
-    event: any,
-    eventType: EventType = EventType.TRIP_REQUESTED,
+    customTitle?: string,
+    customBody?: string,
+    customData?: Record<string, any>,
   ): Promise<{ success: number; failure: number }> {
     this.logger.log(
-      `Sending ${eventType} notifications to ${driverInfos.length} inactive drivers`,
+      `Sending ${eventType} notifications to ${userInfos.length} users`,
     );
 
-    const validExpoTokens = driverInfos
+    const validExpoTokens = userInfos
       .filter((info) => info && info.expoToken)
       .map((info) => info.expoToken);
 
     if (validExpoTokens.length === 0) {
-      this.logger.warn('No valid Expo tokens found for inactive drivers');
+      this.logger.warn('No valid Expo tokens found for users');
       return { success: 0, failure: 0 };
     }
 
-    // Determine title and body based on event type
-    let title = 'New Notification';
-    let body = 'You have a new notification';
-
-    if (eventType === EventType.TRIP_REQUESTED) {
-      title = 'New Trip Request';
-      body = 'New trip request!';
-    }
+    // Use custom title/body if provided, otherwise use defaults
+    const title = customTitle || 'New Notification';
+    const body = customBody || 'You have a new notification';
 
     const data = {
-      ...event,
       type: eventType,
       timestamp: new Date().toISOString(),
+      ...customData,
     };
 
-    const result = await this.sendMulticastNotification(
-      validExpoTokens,
-      title,
-      body,
-      data,
-    );
-    return result;
+    return this.sendMulticastNotification(validExpoTokens, title, body, data);
   }
 }
