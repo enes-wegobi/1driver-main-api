@@ -20,6 +20,7 @@ import { TripService } from 'src/modules/trip/services/trip.service';
 import { EventType } from 'src/modules/event/enum/event-type.enum';
 import { HeartbeatDto } from './dto/heartbeat.dto';
 import { DriverAvailabilityStatus } from 'src/common/enums/driver-availability-status.enum';
+import { LoggerService } from 'src/logger/logger.service';
 
 const PING_INTERVAL = 25000;
 const PING_TIMEOUT = 10000;
@@ -41,8 +42,6 @@ const HEARTBEAT_INTERVAL = 30000; // 30 seconds
 export class WebSocketGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
-  private readonly logger = new Logger(WebSocketGateway.name);
-
   constructor(
     private readonly webSocketService: WebSocketService,
     private readonly driverStatusService: DriverStatusService,
@@ -51,13 +50,14 @@ export class WebSocketGateway
     private readonly jwtService: JwtService,
     private readonly activeTripService: ActiveTripService,
     private readonly tripService: TripService,
+    private readonly logger: LoggerService,
   ) {}
 
   @WebSocketServer()
   server: Server;
 
   afterInit(server: Server) {
-    this.logger.log('Socket.IO Server initialized with Redis Adapter');
+    this.logger.info('Socket.IO Server initialized with Redis Adapter');
     this.webSocketService.setServer(server);
   }
 
@@ -176,7 +176,7 @@ export class WebSocketGateway
       }
     }
 
-    this.logger.log(`Client disconnected: ${client.id}`);
+    this.logger.info(`Client disconnected: ${client.id}`);
   }
 
   @SubscribeMessage('updateLocation')

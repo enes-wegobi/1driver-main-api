@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { AuthClient } from '../../clients/auth/auth.client';
 import { CreateCustomerDto } from '../../clients/auth/dto/create-customer.dto';
 import { CreateDriverDto } from '../../clients/auth/dto/create-driver.dto';
@@ -6,17 +6,15 @@ import { ValidateOtpDto } from '../../clients/auth/dto/validate-otp.dto';
 import { SigninDto } from '../../clients/auth/dto/signin.dto';
 import { PaymentsService } from '../payments/services/payments.service';
 import { DriverEarningsService } from '../drivers/services/driver-earnings.service';
-import { SimpleLoggerService } from '../../logger/simple-logger.service';
+import { LoggerService } from '../../logger/logger.service';
 
 @Injectable()
 export class AuthService {
-  private readonly logger = new Logger(AuthService.name);
-
   constructor(
     private readonly authClient: AuthClient,
     private readonly paymentsService: PaymentsService,
     private readonly driverEarningsService: DriverEarningsService,
-    private readonly simpleLogger: SimpleLoggerService,
+    private readonly logger: LoggerService,
   ) {}
 
   // Customer Auth Methods
@@ -30,7 +28,7 @@ export class AuthService {
     // Create Stripe customer after successful signup
     if (result && result.token && result.customer) {
       try {
-        this.simpleLogger.info(
+        this.logger.info(
           `Creating Stripe customer for user ${result.customer._id}`,
           {
             userId: result.customer._id,
@@ -43,7 +41,7 @@ export class AuthService {
           email: result.customer.email,
           phone: result.customer.phone,
         });
-        this.simpleLogger.info(
+        this.logger.info(
           `Successfully created Stripe customer for user ${result.customer._id}`,
           {
             userId: result.customer._id,
@@ -53,7 +51,7 @@ export class AuthService {
         );
       } catch (error) {
         // Log error but don't fail the signup
-        this.simpleLogger.logError(error, {
+        this.logger.logError(error, {
           userId: result.customer._id,
           userType: 'customer',
           action: 'create_stripe_customer_failed',
@@ -85,7 +83,7 @@ export class AuthService {
     // Create initial weekly earnings record after successful driver signup
     if (result && result.token && result.driver) {
       try {
-        this.simpleLogger.info(
+        this.logger.info(
           `Creating initial weekly earnings record for driver ${result.driver._id}`,
           {
             userId: result.driver._id,
@@ -96,7 +94,7 @@ export class AuthService {
         await this.driverEarningsService.findOrCreateCurrentWeekRecord(
           result.driver._id,
         );
-        this.simpleLogger.info(
+        this.logger.info(
           `Successfully created initial weekly earnings record for driver ${result.driver._id}`,
           {
             userId: result.driver._id,
@@ -106,7 +104,7 @@ export class AuthService {
         );
       } catch (error) {
         // Log error but don't fail the signup
-        this.simpleLogger.logError(error, {
+        this.logger.logError(error, {
           userId: result.driver._id,
           userType: 'driver',
           action: 'create_weekly_earnings_record_failed',

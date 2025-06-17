@@ -6,7 +6,6 @@ import {
   HttpCode,
   HttpStatus,
   UseGuards,
-  Logger,
   Param,
   Delete,
   HttpException,
@@ -23,15 +22,17 @@ import { GetUser } from 'src/jwt/user.decoretor';
 import { IJwtPayload } from 'src/jwt/jwt-payload.interface';
 import { PaymentMethodService } from '../services/payment-method.service';
 import { CreateSetupIntentDto, SavePaymentMethodDto } from '../dto';
+import { LoggerService } from 'src/logger/logger.service';
 
 @ApiTags('payment-methods')
 @ApiBearerAuth()
 @Controller('payment-methods')
 @UseGuards(JwtAuthGuard)
 export class PaymentMethodController {
-  private readonly logger = new Logger(PaymentMethodController.name);
-
-  constructor(private readonly paymentMethodService: PaymentMethodService) {}
+  constructor(
+    private readonly paymentMethodService: PaymentMethodService,
+    private readonly logger: LoggerService,
+  ) {}
 
   @Post()
   @HttpCode(HttpStatus.OK)

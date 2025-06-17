@@ -6,6 +6,8 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
+import { LoggerService } from '../../logger/logger.service';
+import { SimpleLogContext } from '../../logger/logger.service';
 
 @Injectable()
 export class BaseRedisService implements OnModuleInit, OnModuleDestroy {
@@ -20,13 +22,17 @@ export class BaseRedisService implements OnModuleInit, OnModuleDestroy {
     return BaseRedisService.redisClient;
   }
 
-  protected readonly logger = new Logger(BaseRedisService.name);
+  protected readonly customLogger?: LoggerService;
   protected DRIVER_LOCATION_EXPIRY: number;
   protected ACTIVE_DRIVER_EXPIRY: number;
   protected ACTIVE_CUSTOMER_EXPIRY: number;
   protected ACTIVE_TRIP_EXPIRY: number;
 
-  constructor(protected configService: ConfigService) {
+  constructor(
+    protected configService: ConfigService,
+    customLogger?: LoggerService,
+  ) {
+    this.customLogger = customLogger;
     // Initialize the Redis client only once (singleton pattern)
     if (!BaseRedisService.redisClient) {
       BaseRedisService.redisClient = new Redis({
@@ -40,12 +46,22 @@ export class BaseRedisService implements OnModuleInit, OnModuleDestroy {
       });
 
       // Set up event listeners only once
-      BaseRedisService.redisClient.on('error', (err) =>
-        this.logger.error('Valkey Client Error', err),
-      );
+      BaseRedisService.redisClient.on('error', (err) => {
+        if (this.customLogger) {
+          this.customLogger.logError(err, {
+            type: 'redis_connection_error',
+            service: 'valkey',
+          });
+        }
+      });
 
       BaseRedisService.redisClient.on('connect', () => {
-        this.logger.log('Valkey connection successful');
+        if (this.customLogger) {
+          this.customLogger.info('Valkey connection established', {
+            type: 'redis_connection_success',
+            service: 'valkey',
+          });
+        }
       });
     }
 

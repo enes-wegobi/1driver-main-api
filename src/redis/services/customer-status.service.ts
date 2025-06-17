@@ -4,11 +4,15 @@ import { BaseRedisService } from './base-redis.service';
 import { RedisKeyGenerator } from '../redis-key.generator';
 import { WithErrorHandling } from '../decorators/with-error-handling.decorator';
 import { AppState } from 'src/common/enums/app-state.enum';
+import { LoggerService } from 'src/logger/logger.service';
 
 @Injectable()
 export class CustomerStatusService extends BaseRedisService {
-  constructor(configService: ConfigService) {
-    super(configService);
+  constructor(
+    configService: ConfigService,
+    protected readonly customLogger: LoggerService,
+  ) {
+    super(configService, customLogger);
   }
 
   @WithErrorHandling()
@@ -64,7 +68,7 @@ export class CustomerStatusService extends BaseRedisService {
 
     await pipeline.exec();
 
-    this.logger.debug(
+    this.customLogger.debug(
       `Customer ${customerId} app state updated to: ${appState}`,
     );
   }

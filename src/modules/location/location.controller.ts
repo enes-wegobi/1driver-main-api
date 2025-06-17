@@ -20,15 +20,17 @@ import { IJwtPayload } from 'src/jwt/jwt-payload.interface';
 import { LocationService } from './location.service';
 import { UserType } from 'src/common/user-type.enum';
 import { DriverLocationDto } from 'src/websocket/dto/driver-location.dto';
+import { LoggerService } from 'src/logger/logger.service';
 
 @ApiTags('location')
 @ApiBearerAuth()
 @Controller('location')
 @UseGuards(JwtAuthGuard)
 export class LocationController {
-  private readonly logger = new Logger(LocationController.name);
-
-  constructor(private readonly locationService: LocationService) {}
+  constructor(
+    private readonly locationService: LocationService,
+    private readonly logger: LoggerService,
+  ) {}
 
   @Post('driver')
   @HttpCode(HttpStatus.OK)
@@ -80,7 +82,7 @@ export class LocationController {
       };
     }
 
-    this.logger.log(
+    this.logger.info(
       `Driver location update from ${user.userId}: ${JSON.stringify(payload)}`,
     );
 

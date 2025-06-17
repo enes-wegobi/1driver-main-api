@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { CustomersClient } from 'src/clients/customer/customers.client';
 import { CompleteEmailUpdateDto } from 'src/clients/customer/dto/complete-email-update.dto';
 import { CompletePhoneUpdateDto } from 'src/clients/customer/dto/complete-phone-update.dto';
@@ -7,12 +7,14 @@ import { InitiateEmailUpdateDto } from 'src/clients/customer/dto/initiate-email-
 import { InitiatePhoneUpdateDto } from 'src/clients/customer/dto/initiate-phone-update.dto';
 import { UpdateCustomerDto } from 'src/clients/customer/dto/update-customer.dto';
 import { UpdateNotificationPermissionsDto } from 'src/clients/customer/dto/update-notification-permissions.dto';
+import { LoggerService } from 'src/logger/logger.service';
 
 @Injectable()
 export class CustomersService {
-  private readonly logger = new Logger(CustomersService.name);
-
-  constructor(private readonly customersClient: CustomersClient) {}
+  constructor(
+    private readonly customersClient: CustomersClient,
+    private readonly logger: LoggerService,
+  ) {}
 
   async findOne(id: string, fields?: string | string[]) {
     return this.customersClient.findOne(id, fields);
@@ -61,22 +63,22 @@ export class CustomersService {
   }
 
   async updatePhoto(customerId: string, photoUrl: string): Promise<any> {
-    this.logger.log(`Updating photo for customer ${customerId}`);
+    this.logger.info(`Updating photo for customer ${customerId}`);
     return this.customersClient.updatePhoto(customerId, photoUrl);
   }
 
   async deletePhoto(customerId: string): Promise<any> {
-    this.logger.log(`Deleting photo for customer ${customerId}`);
+    this.logger.info(`Deleting photo for customer ${customerId}`);
     return this.customersClient.deletePhoto(customerId);
   }
 
   async updateExpoToken(customerId: string, expoToken: string): Promise<any> {
-    this.logger.log(`Updating expo token for customer ${customerId}`);
+    this.logger.info(`Updating expo token for customer ${customerId}`);
     return this.customersClient.updateExpoToken(customerId, expoToken);
   }
 
   async deleteExpoToken(customerId: string): Promise<any> {
-    this.logger.log(`Deleting expo token for customer ${customerId}`);
+    this.logger.info(`Deleting expo token for customer ${customerId}`);
     return this.customersClient.deleteExpoToken(customerId);
   }
 
@@ -84,7 +86,7 @@ export class CustomersService {
     customerId: string,
     stripeCustomerId: string,
   ): Promise<any> {
-    this.logger.log(`Updating Stripe customer ID for customer ${customerId}`);
+    this.logger.info(`Updating Stripe customer ID for customer ${customerId}`);
     return this.customersClient.updateStripeCustomerId(
       customerId,
       stripeCustomerId,
@@ -95,7 +97,7 @@ export class CustomersService {
     customerId: string,
     defaultPaymentMethodId: string,
   ): Promise<any> {
-    this.logger.log(
+    this.logger.info(
       `Updating default payment method for customer ${customerId}`,
     );
     return this.customersClient.updateDefaultPaymentMethod(

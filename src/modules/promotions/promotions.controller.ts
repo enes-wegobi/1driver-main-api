@@ -3,13 +3,11 @@ import {
   Get,
   Post,
   Body,
-  Logger,
   UseGuards,
   HttpException,
   HttpStatus,
   UploadedFile,
   UseInterceptors,
-  BadRequestException,
   Param,
   NotFoundException,
 } from '@nestjs/common';
@@ -30,16 +28,16 @@ import { FileInterceptor } from '@nest-lab/fastify-multer';
 import { S3Service } from 'src/s3/s3.service';
 import { v4 as uuidv4 } from 'uuid';
 import { PromotionClient } from 'src/clients/promotion/promotion.client';
+import { LoggerService } from 'src/logger/logger.service';
 
 @ApiTags('promotions')
 @Controller('promotions')
 export class PromotionsController {
-  private readonly logger = new Logger(PromotionsController.name);
-
   constructor(
     private readonly promotionsService: PromotionsService,
     private readonly s3Service: S3Service,
     private readonly promotionClient: PromotionClient,
+    private readonly logger: LoggerService,
   ) {}
 
   @Get('all')
@@ -50,7 +48,7 @@ export class PromotionsController {
   })
   async getAllPromotions() {
     try {
-      this.logger.log('Getting all promotions');
+      this.logger.info('Getting all promotions');
       const promotions = await this.promotionsService.getAllPromotions();
 
       // Add signed URLs for promotions with photos
@@ -94,7 +92,7 @@ export class PromotionsController {
   })
   async getMyPromotions(@GetUser() user: IJwtPayload) {
     try {
-      this.logger.log(`Getting promotions for customer ID: ${user.userId}`);
+      this.logger.info(`Getting promotions for customer ID: ${user.userId}`);
       const result = await this.promotionsService.getCustomerPromotions(
         user.userId,
       );
@@ -145,7 +143,7 @@ export class PromotionsController {
   })
   async getPromotionById(@Param('id') id: string) {
     try {
-      this.logger.log(`Getting promotion with ID: ${id}`);
+      this.logger.info(`Getting promotion with ID: ${id}`);
 
       const promotion = await this.promotionClient.findById(id);
 
@@ -269,14 +267,14 @@ export class PromotionsController {
         endDate: body.endDate ? new Date(body.endDate) : undefined,
       };
 
-      this.logger.log(`Creating new promotion: ${createPromotionDto.name}`);
+      this.logger.info(`Creating new promotion: ${createPromotionDto.name}`);
 
       // If a file is provided, upload it to S3 and get the key
       if (file) {
         const fileKey = `promotions/${uuidv4()}-${file.originalname}`;
         await this.s3Service.uploadFileWithKey(file, fileKey);
         createPromotionDto.photoKey = fileKey;
-        this.logger.log(`Uploaded promotion image with key: ${fileKey}`);
+        this.logger.info(`Uploaded promotion image with key: ${fileKey}`);
       }
 
       const promotion =

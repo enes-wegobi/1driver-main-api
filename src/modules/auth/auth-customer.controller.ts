@@ -22,19 +22,18 @@ import { TokenManagerService } from '../../redis/services/token-manager.service'
 import { UserType } from '../../common/user-type.enum';
 import { ConfigService } from '@nestjs/config';
 import { LogoutGuard } from '../../jwt/logout.guard';
-import { JwtService } from '../../jwt/jwt.service';
+import { LoggerService } from 'src/logger/logger.service';
 
 @ApiTags('auth-customer')
 @Controller('auth/customer')
 export class AuthCustomerController {
-  private readonly logger = new Logger(AuthCustomerController.name);
   private readonly jwtExpiresIn: number;
 
   constructor(
     private readonly authService: AuthService,
     private readonly tokenManagerService: TokenManagerService,
     private readonly configService: ConfigService,
-    private readonly jwtService: JwtService,
+    private readonly logger: LoggerService,
   ) {
     this.jwtExpiresIn = this.configService.get<number>('jwt.expiresIn', 86400); // Default: 24 hours
   }

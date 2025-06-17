@@ -1,13 +1,13 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Server } from 'socket.io';
+import { LoggerService } from 'src/logger/logger.service';
 import { EventType } from 'src/modules/event/enum/event-type.enum';
 
 @Injectable()
 export class WebSocketService {
-  private readonly logger = new Logger(WebSocketService.name);
   private server: Server;
 
-  constructor() {}
+  constructor(private readonly logger: LoggerService) {}
 
   setServer(server: Server) {
     this.server = server;
@@ -35,7 +35,7 @@ export class WebSocketService {
         server.to(`user:${driverId}`).emit(eventType, event);
       });
 
-      this.logger.log(
+      this.logger.info(
         `Sent ${eventType} to ${activeDrivers.length} active drivers via WebSocket`,
       );
       resolve();

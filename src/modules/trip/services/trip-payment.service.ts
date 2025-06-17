@@ -17,6 +17,7 @@ import { Event2Service } from 'src/modules/event/event_v2.service';
 import { UserType } from 'src/common/user-type.enum';
 import { DriverEarningsService } from 'src/modules/drivers/services/driver-earnings.service';
 import { LockService } from 'src/lock/lock.service';
+import { LoggerService } from 'src/logger/logger.service';
 
 export interface TripPaymentResult {
   success: boolean;
@@ -30,8 +31,6 @@ export interface TripPaymentResult {
 
 @Injectable()
 export class TripPaymentService {
-  private readonly logger = new Logger(TripPaymentService.name);
-
   constructor(
     private readonly tripService: TripService,
     @Inject(forwardRef(() => PaymentsService))
@@ -40,6 +39,7 @@ export class TripPaymentService {
     private readonly event2Service: Event2Service,
     private readonly lockService: LockService,
     private readonly driverEarningsService: DriverEarningsService,
+    private readonly logger: LoggerService,
   ) {}
 
   /**
@@ -49,7 +49,7 @@ export class TripPaymentService {
     customerId: string,
     paymentMethodId: string,
   ): Promise<TripPaymentResult> {
-    this.logger.log(
+    this.logger.info(
       `Processing trip payment for customer ${customerId} with payment method ${paymentMethodId}`,
     );
 
@@ -224,7 +224,7 @@ export class TripPaymentService {
       return;
     }
 
-    this.logger.log(`Handling payment success for trip ${payment.tripId}`);
+    this.logger.info(`Handling payment success for trip ${payment.tripId}`);
 
     const trip = await this.tripService.findById(payment.tripId);
     if (!trip) {
@@ -250,7 +250,7 @@ export class TripPaymentService {
           },
         );
 
-        this.logger.log(
+        this.logger.info(
           `Driver earnings calculated for trip ${trip._id}: ${earningsCalculation.earnings} TL (${trip.actualDuration}s × ${earningsCalculation.multiplier})`,
         );
       } catch (error) {
@@ -319,7 +319,7 @@ export class TripPaymentService {
       return;
     }
 
-    this.logger.log(`Handling payment failure for trip ${payment.tripId}`);
+    this.logger.info(`Handling payment failure for trip ${payment.tripId}`);
 
     const trip = await this.tripService.findById(payment.tripId);
     if (!trip) {
@@ -339,7 +339,7 @@ export class TripPaymentService {
         trip.driver.id,
         trip.customer.id,
       );
-      this.logger.log(
+      this.logger.info(
         `Removed driver ${trip.driver.id} active trip due to payment failure`,
       );
     }

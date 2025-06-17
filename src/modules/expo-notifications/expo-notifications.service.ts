@@ -1,20 +1,20 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { Expo, ExpoPushMessage } from 'expo-server-sdk';
+import { LoggerService } from 'src/logger/logger.service';
 import { EventType } from 'src/modules/event/enum/event-type.enum';
 
 @Injectable()
 export class ExpoNotificationsService implements OnModuleInit {
-  private readonly logger = new Logger(ExpoNotificationsService.name);
   private expo: Expo;
   private expoEnabled = false;
 
-  constructor() {}
+  constructor(private readonly logger: LoggerService) {}
 
   async onModuleInit() {
     try {
       this.expo = new Expo();
       this.expoEnabled = true;
-      this.logger.log('Expo SDK initialized successfully');
+      this.logger.info('Expo SDK initialized successfully');
     } catch (error) {
       this.logger.error(`Failed to initialize Expo SDK: ${error.message}`);
     }
@@ -148,7 +148,7 @@ export class ExpoNotificationsService implements OnModuleInit {
     customBody?: string,
     customData?: Record<string, any>,
   ): Promise<{ success: number; failure: number }> {
-    this.logger.log(
+    this.logger.info(
       `Sending ${eventType} notifications to ${userInfos.length} users`,
     );
 

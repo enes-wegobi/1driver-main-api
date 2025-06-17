@@ -1,12 +1,14 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { CustomersClient } from 'src/clients/customer/customers.client';
 import { UserType } from 'src/common/user-type.enum';
+import { LoggerService } from 'src/logger/logger.service';
 
 @Injectable()
 export class SupportTicketsService {
-  private readonly logger = new Logger(SupportTicketsService.name);
-
-  constructor(private readonly customersClient: CustomersClient) {}
+  constructor(
+    private readonly customersClient: CustomersClient,
+    private readonly logger: LoggerService,
+  ) {}
 
   async create(
     userId: string,
@@ -15,7 +17,7 @@ export class SupportTicketsService {
     description: string,
     fileUrl: string | null,
   ) {
-    this.logger.log(
+    this.logger.info(
       `Creating support ticket for ${userType} ${userId} with subject ${subject}`,
     );
 

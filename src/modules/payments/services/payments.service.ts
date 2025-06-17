@@ -5,16 +5,16 @@ import { PaymentRepository } from '../repositories/payment.repository';
 import { PaymentStatus } from 'src/common/enums/payment-status.enum';
 import { Payment } from '../schemas/payment.schema';
 import { WebhookHandlerService } from './webhook-handler.service';
+import { LoggerService } from 'src/logger/logger.service';
 
 @Injectable()
 export class PaymentsService {
-  private readonly logger = new Logger(PaymentsService.name);
-
   constructor(
     private readonly stripeService: StripeService,
     private readonly customersService: CustomersService,
     private readonly paymentRepository: PaymentRepository,
     private readonly webhookHandlerService: WebhookHandlerService,
+    private readonly logger: LoggerService,
   ) {}
 
   /**
@@ -28,7 +28,7 @@ export class PaymentsService {
       phone?: string;
     },
   ): Promise<any> {
-    this.logger.log(`Creating Stripe customer for user ${customerId}`);
+    this.logger.info(`Creating Stripe customer for user ${customerId}`);
 
     const stripeCustomer = await this.stripeService.createCustomer({
       name: customerData.name,
@@ -56,7 +56,7 @@ export class PaymentsService {
     paymentMethodId?: string,
     metadata?: Record<string, string>,
   ): Promise<any> {
-    this.logger.log(
+    this.logger.info(
       `Processing payment of ${amount} ${currency} for customer ${customerId}`,
     );
 
@@ -73,7 +73,7 @@ export class PaymentsService {
     // If no payment method is specified, use the default one
     let methodToUse = paymentMethodId;
     if (!methodToUse && customer.defaultPaymentMethodId) {
-      this.logger.log(
+      this.logger.info(
         `Using default payment method ${customer.defaultPaymentMethodId}`,
       );
       methodToUse = customer.defaultPaymentMethodId;
@@ -92,7 +92,7 @@ export class PaymentsService {
    * Get payment intent details
    */
   async getPaymentIntent(paymentIntentId: string): Promise<any> {
-    this.logger.log(`Getting payment intent ${paymentIntentId}`);
+    this.logger.info(`Getting payment intent ${paymentIntentId}`);
 
     return this.stripeService.getPaymentIntent(paymentIntentId);
   }
@@ -114,7 +114,7 @@ export class PaymentsService {
     clientSecret?: string;
     paymentIntentId: string;
   }> {
-    this.logger.log(
+    this.logger.info(
       `Creating off-session trip payment for customer ${customerId}, trip ${tripId}, amount ${amount} ${currency}`,
     );
 
@@ -210,7 +210,7 @@ export class PaymentsService {
    * Handle Stripe webhook events
    */
   async handleWebhookEvent(signature: string, payload: Buffer): Promise<any> {
-    this.logger.log('Handling Stripe webhook event');
+    this.logger.info('Handling Stripe webhook event');
 
     try {
       const event = await this.stripeService.handleWebhookEvent(
@@ -245,7 +245,7 @@ export class PaymentsService {
             event.data.object,
           );
         default:
-          this.logger.log(`Unhandled webhook event type: ${event.type}`);
+          this.logger.info(`Unhandled webhook event type: ${event.type}`);
           return { received: true, type: event.type };
       }
     } catch (error) {
@@ -261,7 +261,7 @@ export class PaymentsService {
    * Get customer's payment history
    */
   async getPaymentHistory(customerId: string): Promise<Payment[]> {
-    this.logger.log(`Getting payment history for customer ${customerId}`);
+    this.logger.info(`Getting payment history for customer ${customerId}`);
     return this.paymentRepository.findByCustomerId(customerId);
   }
 
@@ -269,7 +269,7 @@ export class PaymentsService {
    * Get payment details by ID
    */
   async getPaymentById(paymentId: string): Promise<Payment | null> {
-    this.logger.log(`Getting payment details for ${paymentId}`);
+    this.logger.info(`Getting payment details for ${paymentId}`);
     return this.paymentRepository.findById(paymentId);
   }
 }

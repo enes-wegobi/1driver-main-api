@@ -3,20 +3,21 @@ import {
   Post,
   Headers,
   Req,
-  Logger,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { PaymentsService } from '../services/payments.service';
 import { FastifyRequest } from 'fastify';
+import { LoggerService } from 'src/logger/logger.service';
 
 @ApiTags('webhooks')
 @Controller('webhooks')
 export class WebhookController {
-  private readonly logger = new Logger(WebhookController.name);
-
-  constructor(private readonly paymentsService: PaymentsService) {}
+  constructor(
+    private readonly paymentsService: PaymentsService,
+    private readonly logger: LoggerService,
+  ) {}
 
   @Post('stripe')
   @HttpCode(HttpStatus.OK)
@@ -34,7 +35,7 @@ export class WebhookController {
     @Req() request: FastifyRequest,
   ) {
     try {
-      this.logger.log('Received Stripe webhook');
+      this.logger.info('Received Stripe webhook');
 
       if (!signature) {
         this.logger.error('Missing Stripe signature header');

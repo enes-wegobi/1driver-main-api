@@ -9,13 +9,15 @@ import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ContentService } from './content.service';
 import { FaqItemDto } from './dto/faq.dto';
 import { BankDto } from './dto/bank.dto';
+import { LoggerService } from 'src/logger/logger.service';
 
 @ApiTags('content')
 @Controller('content')
 export class ContentController {
-  private readonly logger = new Logger(ContentController.name);
-
-  constructor(private readonly contentService: ContentService) {}
+  constructor(
+    private readonly contentService: ContentService,
+    private readonly logger: LoggerService,
+  ) {}
 
   @Get('faqs')
   @ApiOperation({ summary: 'Get all frequently asked questions' })

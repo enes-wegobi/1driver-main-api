@@ -9,12 +9,10 @@ import {
   Patch,
   Post,
   HttpException,
-  Logger,
   UseGuards,
   UseInterceptors,
   UploadedFile,
   BadRequestException,
-  NotFoundException,
   Put,
 } from '@nestjs/common';
 import {
@@ -33,7 +31,6 @@ import { v4 as uuidv4 } from 'uuid';
 import { GetUser } from 'src/jwt/user.decoretor';
 import { IJwtPayload } from 'src/jwt/jwt-payload.interface';
 import { UpdateNotificationPermissionsDto } from 'src/clients/customer/dto/update-notification-permissions.dto';
-import { SubscribeToNearbyDriversDto } from './dto/nearby-drivers.dto';
 import { UpdateCustomerExpoTokenDto } from './dto/update-customer-expo-token.dto';
 import {
   CompleteEmailUpdateDto,
@@ -44,17 +41,17 @@ import {
   UpdateCustomerDto,
 } from 'src/clients/customer/dto';
 import { UpdateRateDto } from 'src/common/dto/update-rate.dto';
+import { LoggerService } from 'src/logger/logger.service';
 
 @ApiTags('customer')
 @ApiBearerAuth()
 @Controller('customer')
 @UseGuards(JwtAuthGuard)
 export class CustomersController {
-  private readonly logger = new Logger(CustomersController.name);
-
   constructor(
     private readonly customersService: CustomersService,
     private readonly s3Service: S3Service,
+    private readonly logger: LoggerService,
   ) {}
 
   @Get('me')
@@ -62,7 +59,7 @@ export class CustomersController {
   @UseGuards(JwtAuthGuard)
   async getProfile(@GetUser() user: IJwtPayload) {
     try {
-      this.logger.log(`Getting profile for customer ID: ${user.userId}`);
+      this.logger.info(`Getting profile for customer ID: ${user.userId}`);
       return await this.customersService.findOne(user.userId);
     } catch (error) {
       this.logger.error(
@@ -269,7 +266,7 @@ export class CustomersController {
     @Body() addressDto: CreateAddressDto,
   ) {
     try {
-      this.logger.log(`Adding address for user ID: ${user.userId}`);
+      this.logger.info(`Adding address for user ID: ${user.userId}`);
       return await this.customersService.addAddress(user.userId, addressDto);
     } catch (error) {
       this.logger.error(`Error adding address: ${error.message}`, error.stack);
@@ -293,7 +290,7 @@ export class CustomersController {
   })
   async deleteAddress(@GetUser() user, @Param('addressId') addressId: string) {
     try {
-      this.logger.log(
+      this.logger.info(
         `Deleting address ${addressId} for user ID: ${user.userId}`,
       );
       return await this.customersService.deleteAddress(user.userId, addressId);
@@ -325,7 +322,7 @@ export class CustomersController {
     @Body() permissionsDto: UpdateNotificationPermissionsDto,
   ) {
     try {
-      this.logger.log(
+      this.logger.info(
         `Updating notification permissions for user ID: ${user.userId}`,
       );
       return await this.customersService.updateNotificationPermissions(
@@ -475,7 +472,7 @@ export class CustomersController {
     @Body() updateExpoTokenDto: UpdateCustomerExpoTokenDto,
   ) {
     try {
-      this.logger.log(`Updating expo token for user ID: ${user.userId}`);
+      this.logger.info(`Updating expo token for user ID: ${user.userId}`);
       await this.customersService.updateExpoToken(
         user.userId,
         updateExpoTokenDto.expoToken,
@@ -509,7 +506,7 @@ export class CustomersController {
   })
   async deleteExpoToken(@GetUser() user: IJwtPayload) {
     try {
-      this.logger.log(`Deleting expo token for user ID: ${user.userId}`);
+      this.logger.info(`Deleting expo token for user ID: ${user.userId}`);
       await this.customersService.deleteExpoToken(user.userId);
       return {
         success: true,
@@ -548,7 +545,7 @@ export class CustomersController {
     @GetUser() user: IJwtPayload,
   ) {
     try {
-      this.logger.log(
+      this.logger.info(
         `Customer ${user.userId} updating driver ${driverId} rating to ${updateRateDto.rate}`,
       );
       await this.customersService.updateDriverRate(

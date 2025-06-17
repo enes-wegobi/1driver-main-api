@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { BaseRedisService } from './base-redis.service';
 import { RedisKeyGenerator } from '../redis-key.generator';
 import { WithErrorHandling } from '../decorators/with-error-handling.decorator';
+import { LoggerService } from 'src/logger/logger.service';
 
 export interface DriverQueueItem {
   tripId: string;
@@ -23,10 +24,12 @@ export interface DriverQueueStatus {
 
 @Injectable()
 export class DriverTripQueueService extends BaseRedisService {
-  constructor(configService: ConfigService) {
-    super(configService);
+  constructor(
+    configService: ConfigService,
+    protected readonly customLogger: LoggerService,
+  ) {
+    super(configService, customLogger);
   }
-
   /**
    * Add a trip to driver's queue with priority
    */
@@ -52,7 +55,7 @@ export class DriverTripQueueService extends BaseRedisService {
     // Set expiry for queue (24 hours)
     await this.client.expire(queueKey, 24 * 60 * 60);
 
-    this.logger.debug(
+    this.customLogger.debug(
       `Added trip ${tripId} to driver ${driverId} queue with priority ${priority}`,
     );
   }
@@ -77,7 +80,7 @@ export class DriverTripQueueService extends BaseRedisService {
       const queueItem: DriverQueueItem = JSON.parse(result[0]);
       return queueItem;
     } catch (error) {
-      this.logger.error(
+      this.customLogger.error(
         `Error parsing queue item for driver ${driverId}:`,
         error,
       );
@@ -107,12 +110,12 @@ export class DriverTripQueueService extends BaseRedisService {
       // Save the popped trip as last request for recovery
       await this.setDriverLastRequest(driverId, queueItem);
 
-      this.logger.debug(
+      this.customLogger.debug(
         `Popped trip ${queueItem.tripId} from driver ${driverId} queue`,
       );
       return queueItem;
     } catch (error) {
-      this.logger.error(
+      this.customLogger.error(
         `Error parsing popped queue item for driver ${driverId}:`,
         error,
       );
@@ -136,7 +139,7 @@ export class DriverTripQueueService extends BaseRedisService {
     const results = await pipeline.exec();
     const queueCount = results ? (results[0][1] as number) : 0;
 
-    this.logger.debug(
+    this.customLogger.debug(
       `Removed ${queueCount} trips from driver ${driverId} queue`,
     );
 
@@ -161,13 +164,13 @@ export class DriverTripQueueService extends BaseRedisService {
         const queueItem: DriverQueueItem = JSON.parse(item);
         if (queueItem.tripId === tripId) {
           const removed = await this.client.zrem(queueKey, item);
-          this.logger.debug(
+          this.customLogger.debug(
             `Removed trip ${tripId} from driver ${driverId} queue`,
           );
           return removed > 0;
         }
       } catch (error) {
-        this.logger.error(`Error parsing queue item:`, error);
+        this.customLogger.error(`Error parsing queue item:`, error);
       }
     }
 
@@ -215,7 +218,7 @@ export class DriverTripQueueService extends BaseRedisService {
 
     await this.client.setex(processingKey, timeoutSeconds, tripId);
 
-    this.logger.debug(
+    this.customLogger.debug(
       `Set driver ${driverId} as processing trip ${tripId} with ${timeoutSeconds}s timeout`,
     );
   }
@@ -228,7 +231,7 @@ export class DriverTripQueueService extends BaseRedisService {
     const processingKey = RedisKeyGenerator.driverProcessingTrip(driverId);
     await this.client.del(processingKey);
 
-    this.logger.debug(`Cleared processing trip for driver ${driverId}`);
+    this.customLogger.debug(`Cleared processing trip for driver ${driverId}`);
   }
 
   /**
@@ -270,7 +273,7 @@ export class DriverTripQueueService extends BaseRedisService {
         const queueItem: DriverQueueItem = JSON.parse(queueItems[i]);
         nextTrips.push(queueItem);
       } catch (error) {
-        this.logger.error(`Error parsing queue item:`, error);
+        this.customLogger.error(`Error parsing queue item:`, error);
       }
     }
 
@@ -315,7 +318,7 @@ export class DriverTripQueueService extends BaseRedisService {
             break;
           }
         } catch (error) {
-          this.logger.error(`Error parsing queue item:`, error);
+          this.customLogger.error(`Error parsing queue item:`, error);
         }
       }
     }
@@ -338,7 +341,7 @@ export class DriverTripQueueService extends BaseRedisService {
       }
     }
 
-    this.logger.debug(
+    this.customLogger.debug(
       `Removed trip ${tripId} from ${totalRemoved} driver queues`,
     );
 
@@ -365,7 +368,7 @@ export class DriverTripQueueService extends BaseRedisService {
     }
 
     if (cleanedCount > 0) {
-      this.logger.log(`Cleaned up ${cleanedCount} expired processing trips`);
+      this.customLogger.info(`Cleaned up ${cleanedCount} expired processing trips`);
     }
 
     return cleanedCount;
@@ -384,7 +387,7 @@ export class DriverTripQueueService extends BaseRedisService {
     // Store with 3 minutes TTL
     await this.client.setex(lastRequestKey, 180, JSON.stringify(queueItem));
 
-    this.logger.debug(
+    this.customLogger.debug(
       `Saved last request for driver ${driverId}: trip ${queueItem.tripId}`,
     );
   }
@@ -405,12 +408,12 @@ export class DriverTripQueueService extends BaseRedisService {
 
     try {
       const queueItem: DriverQueueItem = JSON.parse(result);
-      this.logger.debug(
+      this.customLogger.debug(
         `Retrieved last request for driver ${driverId}: trip ${queueItem.tripId}`,
       );
       return queueItem;
     } catch (error) {
-      this.logger.error(
+      this.customLogger.error(
         `Error parsing last request for driver ${driverId}:`,
         error,
       );
@@ -426,6 +429,6 @@ export class DriverTripQueueService extends BaseRedisService {
     const lastRequestKey = RedisKeyGenerator.driverLastRequest(driverId);
     await this.client.del(lastRequestKey);
 
-    this.logger.debug(`Cleared last request for driver ${driverId}`);
+    this.customLogger.debug(`Cleared last request for driver ${driverId}`);
   }
 }

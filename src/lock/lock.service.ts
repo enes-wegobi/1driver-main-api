@@ -1,12 +1,15 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import { LoggerService } from 'src/logger/logger.service';
 import { BaseRedisService } from 'src/redis/services/base-redis.service';
 
 @Injectable()
 export class LockService {
-  private readonly logger = new Logger(LockService.name);
   private readonly lockPrefix = 'trip:lock:';
 
-  constructor(private readonly baseRedisService: BaseRedisService) {}
+  constructor(
+    private readonly baseRedisService: BaseRedisService,
+    private readonly logger: LoggerService,
+  ) {}
 
   /**
    * Acquires a lock for the given key

@@ -1,13 +1,16 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from 'src/config/config.service';
+import { LoggerService } from 'src/logger/logger.service';
 import Stripe from 'stripe';
 
 @Injectable()
 export class StripeService {
-  private readonly logger = new Logger(StripeService.name);
   private readonly stripe: Stripe;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly logger: LoggerService,
+  ) {
     this.stripe = new Stripe(this.configService.stripeSecretKey, {
       apiVersion: this.configService.stripeApiVersion as any,
     });
@@ -22,7 +25,7 @@ export class StripeService {
     phone?: string;
     metadata?: Record<string, string>;
   }): Promise<Stripe.Customer> {
-    this.logger.log(`Creating Stripe customer for ${customer.email}`);
+    this.logger.info(`Creating Stripe customer for ${customer.email}`);
 
     return this.stripe.customers.create({
       name: customer.name,
@@ -39,7 +42,7 @@ export class StripeService {
     customerId: string,
     paymentMethodId: string,
   ): Promise<Stripe.PaymentMethod> {
-    this.logger.log(
+    this.logger.info(
       `Attaching payment method ${paymentMethodId} to customer ${customerId}`,
     );
 
@@ -60,7 +63,7 @@ export class StripeService {
     customerId: string,
     paymentMethodId: string,
   ): Promise<Stripe.Customer> {
-    this.logger.log(
+    this.logger.info(
       `Setting payment method ${paymentMethodId} as default for customer ${customerId}`,
     );
 
@@ -78,7 +81,7 @@ export class StripeService {
     customerId: string,
     type: 'card' = 'card',
   ): Promise<Stripe.PaymentMethod[]> {
-    this.logger.log(`Getting payment methods for customer ${customerId}`);
+    this.logger.info(`Getting payment methods for customer ${customerId}`);
 
     const paymentMethods = await this.stripe.paymentMethods.list({
       customer: customerId,
@@ -94,7 +97,7 @@ export class StripeService {
   async getPaymentMethod(
     paymentMethodId: string,
   ): Promise<Stripe.PaymentMethod> {
-    this.logger.log(`Getting payment method ${paymentMethodId}`);
+    this.logger.info(`Getting payment method ${paymentMethodId}`);
 
     return this.stripe.paymentMethods.retrieve(paymentMethodId);
   }
@@ -109,7 +112,7 @@ export class StripeService {
     paymentMethodId?: string,
     metadata?: Record<string, string>,
   ): Promise<Stripe.PaymentIntent> {
-    this.logger.log(
+    this.logger.info(
       `Creating payment intent for customer ${customerId} for amount ${amount} ${currency}`,
     );
 
@@ -135,7 +138,7 @@ export class StripeService {
   async deletePaymentMethod(
     paymentMethodId: string,
   ): Promise<Stripe.PaymentMethod> {
-    this.logger.log(`Detaching payment method ${paymentMethodId}`);
+    this.logger.info(`Detaching payment method ${paymentMethodId}`);
 
     return this.stripe.paymentMethods.detach(paymentMethodId);
   }
@@ -146,7 +149,7 @@ export class StripeService {
   async getPaymentIntent(
     paymentIntentId: string,
   ): Promise<Stripe.PaymentIntent> {
-    this.logger.log(`Getting payment intent ${paymentIntentId}`);
+    this.logger.info(`Getting payment intent ${paymentIntentId}`);
 
     return this.stripe.paymentIntents.retrieve(paymentIntentId);
   }
@@ -158,7 +161,7 @@ export class StripeService {
     signature: string,
     payload: Buffer,
   ): Promise<Stripe.Event> {
-    this.logger.log('Processing Stripe webhook event');
+    this.logger.info('Processing Stripe webhook event');
 
     try {
       this.logger.debug(
@@ -175,7 +178,7 @@ export class StripeService {
         this.configService.stripeWebhookSecret,
       );
 
-      this.logger.log(`Webhook event type: ${event.type}`);
+      this.logger.info(`Webhook event type: ${event.type}`);
       return event;
     } catch (error) {
       this.logger.error(`Webhook error: ${error.message}`, error.stack);
@@ -193,7 +196,7 @@ export class StripeService {
     paymentIntentId: string,
     updateData: Stripe.PaymentIntentUpdateParams,
   ): Promise<Stripe.PaymentIntent> {
-    this.logger.log(`Updating payment intent ${paymentIntentId}`);
+    this.logger.info(`Updating payment intent ${paymentIntentId}`);
 
     return this.stripe.paymentIntents.update(paymentIntentId, updateData);
   }
@@ -205,7 +208,7 @@ export class StripeService {
     paymentIntentId: string,
     paymentMethodId?: string,
   ): Promise<Stripe.PaymentIntent> {
-    this.logger.log(`Confirming payment intent ${paymentIntentId}`);
+    this.logger.info(`Confirming payment intent ${paymentIntentId}`);
 
     const confirmParams: Stripe.PaymentIntentConfirmParams = {};
 
@@ -223,7 +226,7 @@ export class StripeService {
     paymentIntentId: string,
     cancellationReason?: string,
   ): Promise<Stripe.PaymentIntent> {
-    this.logger.log(`Cancelling payment intent ${paymentIntentId}`);
+    this.logger.info(`Cancelling payment intent ${paymentIntentId}`);
 
     return this.stripe.paymentIntents.cancel(paymentIntentId, {
       cancellation_reason: cancellationReason as any,
@@ -237,7 +240,7 @@ export class StripeService {
     customerId: string,
     metadata?: Record<string, string>,
   ): Promise<Stripe.SetupIntent> {
-    this.logger.log(`Creating setup intent for customer ${customerId}`);
+    this.logger.info(`Creating setup intent for customer ${customerId}`);
 
     return this.stripe.setupIntents.create({
       customer: customerId,
@@ -253,7 +256,7 @@ export class StripeService {
   async retrieveSetupIntent(
     setupIntentId: string,
   ): Promise<Stripe.SetupIntent> {
-    this.logger.log(`Retrieving setup intent ${setupIntentId}`);
+    this.logger.info(`Retrieving setup intent ${setupIntentId}`);
 
     return this.stripe.setupIntents.retrieve(setupIntentId);
   }
@@ -268,7 +271,7 @@ export class StripeService {
     paymentMethodId: string,
     metadata?: Record<string, string>,
   ): Promise<Stripe.PaymentIntent> {
-    this.logger.log(
+    this.logger.info(
       `Creating off-session payment intent for customer ${customerId} with amount ${amount} ${currency}`,
     );
 
@@ -291,7 +294,7 @@ export class StripeService {
     paymentMethodId: string,
     customerId: string,
   ): Promise<Stripe.PaymentMethod> {
-    this.logger.log(
+    this.logger.info(
       `Attaching payment method ${paymentMethodId} to customer ${customerId}`,
     );
 

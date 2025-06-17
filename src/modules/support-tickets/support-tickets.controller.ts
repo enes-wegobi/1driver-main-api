@@ -7,7 +7,6 @@ import {
   BadRequestException,
   HttpCode,
   HttpStatus,
-  Logger,
   Body,
 } from '@nestjs/common';
 import { GetUser } from 'src/jwt/user.decoretor';
@@ -27,17 +26,17 @@ import { IJwtPayload } from 'src/jwt/jwt-payload.interface';
 import { S3Service } from 'src/s3/s3.service';
 import { v4 as uuidv4 } from 'uuid';
 import { UserType } from 'src/common/user-type.enum';
+import { LoggerService } from 'src/logger/logger.service';
 
 @ApiTags('support-tickets')
 @ApiBearerAuth()
 @Controller('support-tickets')
 @UseGuards(JwtAuthGuard)
 export class SupportTicketsController {
-  private readonly logger = new Logger(SupportTicketsController.name);
-
   constructor(
     private readonly supportTicketsService: SupportTicketsService,
     private readonly s3Service: S3Service,
+    private readonly logger: LoggerService,
   ) {}
 
   @Post()
@@ -75,7 +74,7 @@ export class SupportTicketsController {
     @GetUser() user: IJwtPayload,
     @Body() createSupportTicketDto: CreateSupportTicketDto,
   ) {
-    this.logger.log(`Creating support ticket for customer ID: ${user.userId}`);
+    this.logger.info(`Creating support ticket for customer ID: ${user.userId}`);
 
     let fileKey: string | null = null;
     let fileUrl: string | null = null;
@@ -135,7 +134,7 @@ export class SupportTicketsController {
     @GetUser() user: IJwtPayload,
     @Body() createSupportTicketDto: CreateSupportTicketDto,
   ) {
-    this.logger.log(`Creating support ticket for driver ID: ${user.userId}`);
+    this.logger.info(`Creating support ticket for driver ID: ${user.userId}`);
 
     let fileKey: string | null = null;
     let fileUrl: string | null = null;

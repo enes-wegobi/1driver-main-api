@@ -6,11 +6,11 @@ import {
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
-import { SimpleLoggerService } from './simple-logger.service';
+import { LoggerService } from './logger.service';
 
 @Injectable()
 export class RequestIdInterceptor implements NestInterceptor {
-  constructor(private readonly logger: SimpleLoggerService) {}
+  constructor(private readonly logger: LoggerService) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     // Check if this is an HTTP context

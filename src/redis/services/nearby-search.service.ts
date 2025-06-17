@@ -7,6 +7,7 @@ import { FindNearbyUsersResult } from '../dto/nearby-user.dto';
 import { WithErrorHandling } from '../decorators/with-error-handling.decorator';
 import { NearbyUserDto } from '../dto/nearby-user.dto';
 import { DriverAvailabilityStatus } from 'src/common/enums/driver-availability-status.enum';
+import { LoggerService } from 'src/logger/logger.service';
 
 interface ParsedLocationData {
   availabilityStatus?: DriverAvailabilityStatus;
@@ -39,8 +40,11 @@ const VALIDATION_LIMITS = {
 
 @Injectable()
 export class NearbySearchService extends BaseRedisService {
-  constructor(configService: ConfigService) {
-    super(configService);
+  constructor(
+    configService: ConfigService,
+    protected readonly customLogger: LoggerService,
+  ) {
+    super(configService, customLogger);
   }
 
   @WithErrorHandling([])

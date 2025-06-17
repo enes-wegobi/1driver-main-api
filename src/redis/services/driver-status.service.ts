@@ -5,11 +5,15 @@ import { RedisKeyGenerator } from '../redis-key.generator';
 import { WithErrorHandling } from '../decorators/with-error-handling.decorator';
 import { DriverAvailabilityStatus } from 'src/common/enums/driver-availability-status.enum';
 import { AppState } from 'src/common/enums/app-state.enum';
+import { LoggerService } from '../../logger/logger.service';
 
 @Injectable()
 export class DriverStatusService extends BaseRedisService {
-  constructor(configService: ConfigService) {
-    super(configService);
+  constructor(
+    configService: ConfigService,
+    protected readonly customLogger: LoggerService,
+  ) {
+    super(configService, customLogger);
   }
 
   @WithErrorHandling()
@@ -248,8 +252,13 @@ export class DriverStatusService extends BaseRedisService {
         await this.markDriverAsDisconnected(driverId);
         cleanedDrivers.push(driverId);
 
-        this.logger.log(
+        this.customLogger.info(
           `Driver ${driverId} cleaned up due to heartbeat timeout`,
+          {
+            userId: driverId,
+            userType: 'driver',
+            action: 'cleanup_stale_driver',
+          },
         );
       }
     }
@@ -277,8 +286,13 @@ export class DriverStatusService extends BaseRedisService {
         await this.markDriverAsDisconnected(driverId);
         heartbeatExpired.push(driverId);
 
-        this.logger.warn(
+        this.customLogger.warn(
           `Driver ${driverId} disconnected due to heartbeat timeout`,
+          {
+            userId: driverId,
+            userType: 'driver',
+            action: 'heartbeat_timeout',
+          },
         );
       } else {
         // 2. Check if driver is available but hasn't been active for too long
@@ -296,8 +310,14 @@ export class DriverStatusService extends BaseRedisService {
             );
             availabilityChanged.push(driverId);
 
-            this.logger.log(
+            this.customLogger.info(
               `Driver ${driverId} automatically set to BUSY due to inactivity`,
+              {
+                userId: driverId,
+                userType: 'driver',
+                action: 'auto_set_busy',
+                newStatus: DriverAvailabilityStatus.BUSY,
+              },
             );
           }
         }
@@ -322,7 +342,15 @@ export class DriverStatusService extends BaseRedisService {
 
     await pipeline.exec();
 
-    this.logger.debug(`Driver ${driverId} app state updated to: ${appState}`);
+    this.customLogger.debug(
+      `Driver ${driverId} app state updated to: ${appState}`,
+      {
+        userId: driverId,
+        userType: 'driver',
+        action: 'update_app_state',
+        appState,
+      },
+    );
   }
 
   @WithErrorHandling(AppState.INACTIVE)

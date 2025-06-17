@@ -9,22 +9,22 @@ import { PaymentMethodRepository } from '../repositories/payment-method.reposito
 import { PaymentMethod } from '../schemas/payment-method.schema';
 import { CustomersService } from '../../customers/customers.service';
 import { StripeService } from './stripe.service';
+import { LoggerService } from 'src/logger/logger.service';
 
 @Injectable()
 export class PaymentMethodService {
-  private readonly logger = new Logger(PaymentMethodService.name);
-
   constructor(
     private readonly paymentMethodRepository: PaymentMethodRepository,
     private readonly stripeService: StripeService,
     private readonly customersService: CustomersService,
+    private readonly logger: LoggerService,
   ) {}
 
   /**
    * Get all payment methods for a customer
    */
   async getPaymentMethods(customerId: string): Promise<PaymentMethod[]> {
-    this.logger.log(`Getting payment methods for customer ${customerId}`);
+    this.logger.info(`Getting payment methods for customer ${customerId}`);
     return this.paymentMethodRepository.findByCustomerId(customerId);
   }
 
@@ -34,7 +34,7 @@ export class PaymentMethodService {
   async getDefaultPaymentMethod(
     customerId: string,
   ): Promise<PaymentMethod | null> {
-    this.logger.log(
+    this.logger.info(
       `Getting default payment method for customer ${customerId}`,
     );
     return this.paymentMethodRepository.findDefaultByCustomerId(customerId);
@@ -46,7 +46,7 @@ export class PaymentMethodService {
   async getPaymentMethodById(
     paymentMethodId: string,
   ): Promise<PaymentMethod | null> {
-    this.logger.log(`Getting payment method by ID ${paymentMethodId}`);
+    this.logger.info(`Getting payment method by ID ${paymentMethodId}`);
     return this.paymentMethodRepository.findById(paymentMethodId);
   }
 
@@ -57,7 +57,7 @@ export class PaymentMethodService {
     customerId: string,
     paymentMethodId: string,
   ): Promise<PaymentMethod> {
-    this.logger.log(
+    this.logger.info(
       `Setting payment method ${paymentMethodId} as default for customer ${customerId}`,
     );
 
@@ -94,7 +94,7 @@ export class PaymentMethodService {
     customerId: string,
     paymentMethodId: string,
   ): Promise<{ success: boolean }> {
-    this.logger.log(
+    this.logger.info(
       `Deleting payment method ${paymentMethodId} for customer ${customerId}`,
     );
 
@@ -116,13 +116,13 @@ export class PaymentMethodService {
       await this.stripeService.deletePaymentMethod(
         paymentMethod.stripePaymentMethodId,
       );
-      this.logger.log(
+      this.logger.info(
         `Successfully detached payment method ${paymentMethod.stripePaymentMethodId} from Stripe`,
       );
     } catch (error) {
       // Just log the error and continue - this could happen in test environments
       // or if the payment method was already detached
-      this.logger.log(`Note: Could not detach from Stripe: ${error.message}`);
+      this.logger.info(`Note: Could not detach from Stripe: ${error.message}`);
       // Continue with local deletion even if Stripe deletion fails
     }
 
@@ -152,7 +152,7 @@ export class PaymentMethodService {
     customerId: string,
     metadata?: Record<string, string>,
   ): Promise<{ client_secret: string; setup_intent_id: string }> {
-    this.logger.log(`Creating setup intent for customer ${customerId}`);
+    this.logger.info(`Creating setup intent for customer ${customerId}`);
 
     // Get customer's Stripe customer ID
     const customer = await this.customersService.findOne(customerId, [
@@ -191,7 +191,7 @@ export class PaymentMethodService {
     paymentMethodId: string,
     name?: string,
   ): Promise<PaymentMethod> {
-    this.logger.log(
+    this.logger.info(
       `Saving payment method from setup intent ${setupIntentId} for customer ${customerId}`,
     );
 
@@ -233,7 +233,7 @@ export class PaymentMethodService {
       );
 
     if (existingPaymentMethod) {
-      this.logger.log(
+      this.logger.info(
         'Payment method already exists, returning existing record',
       );
       return existingPaymentMethod;
@@ -272,7 +272,7 @@ export class PaymentMethodService {
       isActive: true,
     });
 
-    this.logger.log(
+    this.logger.info(
       `Successfully saved payment method ${paymentMethodId} for customer ${customerId}`,
     );
 

@@ -1,16 +1,20 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { BaseRedisService } from './base-redis.service';
 import { UserType } from '../../common/user-type.enum';
 import { WithErrorHandling } from '../decorators/with-error-handling.decorator';
 import { RedisKeyGenerator } from '../redis-key.generator';
+import { LoggerService } from 'src/logger/logger.service';
 
 @Injectable()
 export class TokenManagerService extends BaseRedisService {
   private readonly TOKEN_EXPIRY_BUFFER = 60; // 1 minute buffer
 
-  constructor(configService: ConfigService) {
-    super(configService);
+  constructor(
+    configService: ConfigService,
+    protected readonly customLogger: LoggerService,
+  ) {
+    super(configService, customLogger);
   }
 
   /**
@@ -102,7 +106,7 @@ export class TokenManagerService extends BaseRedisService {
     const defaultExpirySeconds = 86400; // 24 hours in seconds
 
     if (!expirationTime) {
-      this.logger.warn(
+      this.customLogger.warn(
         `No expiration time provided for blacklisting token, using default expiry of ${defaultExpirySeconds} seconds`,
       );
 

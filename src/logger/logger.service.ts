@@ -2,250 +2,151 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as winston from 'winston';
 import * as DatadogWinston from 'datadog-winston';
-import * as moment from 'moment';
-import {
-  LogContext,
-  LogMessage,
-  LogCategory,
-  LogLevel,
-} from './logger.interface';
+import { v4 as uuidv4 } from 'uuid';
+
+export interface SimpleLogContext {
+  requestId?: string;
+  userId?: string;
+  userType?: 'customer' | 'driver';
+  tripId?: string;
+  method?: string;
+  url?: string;
+  statusCode?: number;
+  duration?: number;
+  [key: string]: any;
+}
 
 @Injectable()
 export class LoggerService {
   private logger: winston.Logger;
   private readonly isDevelopment: boolean;
-  private readonly isProduction: boolean;
-  private readonly datadogEnabled: boolean;
 
   constructor(private configService: ConfigService) {
     this.isDevelopment = this.configService.get('NODE_ENV') === 'development';
-    this.isProduction = this.configService.get('NODE_ENV') === 'production';
-    this.datadogEnabled = this.configService.get('datadog.enabled', false);
-
     this.logger = this.createLogger();
   }
 
   private createLogger(): winston.Logger {
     const transports: winston.transport[] = [];
-    const logLevel = this.configService.get('logging.level', 'info');
 
-    // Console transport - always enabled
+    // Console transport
     transports.push(
       new winston.transports.Console({
-        level: logLevel,
         format: this.isDevelopment
           ? winston.format.combine(
               winston.format.timestamp(),
               winston.format.colorize(),
-              winston.format.printf(
-                ({ timestamp, level, message, ...meta }) => {
-                  const metaStr = Object.keys(meta).length
-                    ? JSON.stringify(meta, null, 2)
-                    : '';
-                  return `${timestamp} [${level}]: ${message} ${metaStr}`;
-                },
-              ),
+              winston.format.simple(),
             )
-          : winston.format.combine(
-              winston.format.timestamp(),
-              winston.format.json(),
-            ),
+          : winston.format.json(),
       }),
     );
 
-    // File transport for development
-    if (this.isDevelopment) {
-      transports.push(
-        new winston.transports.File({
-          filename: 'logs/error.log',
-          level: 'error',
-          format: winston.format.combine(
-            winston.format.timestamp(),
-            winston.format.json(),
-          ),
-        }),
-        new winston.transports.File({
-          filename: 'logs/combined.log',
-          format: winston.format.combine(
-            winston.format.timestamp(),
-            winston.format.json(),
-          ),
-        }),
-      );
-    }
-
     // DataDog transport for production
-    if (this.datadogEnabled && this.configService.get('datadog.apiKey')) {
+    if (
+      this.configService.get('datadog.enabled') &&
+      this.configService.get('datadog.apiKey')
+    ) {
       transports.push(
         new DatadogWinston({
           apiKey: this.configService.get('datadog.apiKey'),
           hostname: this.configService.get('datadog.hostname'),
           service: this.configService.get('datadog.service'),
           ddsource: 'nodejs',
-          ddtags: this.buildDatadogTags(),
-          level: this.configService.get('datadog.logLevel', 'info'),
+          ddtags: `env:${this.configService.get('datadog.env')},service:${this.configService.get('datadog.service')}`,
         }),
       );
     }
 
     return winston.createLogger({
-      level: logLevel,
+      level: this.configService.get('logging.level', 'info'),
       format: winston.format.combine(
         winston.format.timestamp(),
-        winston.format.errors({ stack: true }),
         winston.format.json(),
       ),
-      defaultMeta: {
-        service: this.configService.get(
-          'datadog.service',
-          'customer-api-gateway',
-        ),
-        environment: this.configService.get('datadog.env', 'development'),
-        version: this.configService.get('datadog.version', '1.0.0'),
-      },
       transports,
     });
   }
 
-  private buildDatadogTags(): string {
-    const baseTags = [
-      `env:${this.configService.get('datadog.env', 'development')}`,
-      `service:${this.configService.get('datadog.service', 'customer-api-gateway')}`,
-      `version:${this.configService.get('datadog.version', '1.0.0')}`,
-    ];
-
-    const customTags = this.configService.get('datadog.tags', '');
-    if (customTags) {
-      baseTags.push(...customTags.split(',').map((tag) => tag.trim()));
-    }
-
-    return baseTags.join(',');
+  // Request ID generator
+  generateRequestId(): string {
+    return uuidv4();
   }
 
-  private sanitizeContext(context: LogContext): LogContext {
-    const sanitized = { ...context };
-
-    // Remove sensitive information
-    if (sanitized.metadata) {
-      const { password, token, apiKey, secret, ...safeMeta } =
-        sanitized.metadata;
-      sanitized.metadata = safeMeta;
-    }
-
-    return sanitized;
+  // Basic logging methods
+  info(message: string, context?: SimpleLogContext): void {
+    this.logger.info(message, context);
   }
 
-  private formatMessage(message: string, context?: LogContext): any {
-    const sanitizedContext = context ? this.sanitizeContext(context) : {};
-
-    return {
-      message,
-      timestamp: moment().toISOString(),
-      ...sanitizedContext,
-      // Add DataDog trace correlation if available
-      dd: this.getDatadogTraceInfo(),
-    };
+  error(message: string, context?: SimpleLogContext): void {
+    this.logger.error(message, context);
   }
 
-  private getDatadogTraceInfo(): any {
-    try {
-      const tracer = require('dd-trace');
-      const span = tracer.scope().active();
-      if (span) {
-        return {
-          trace_id: span.context().toTraceId(),
-          span_id: span.context().toSpanId(),
-        };
-      }
-    } catch (error) {
-      // dd-trace not available or no active span
-    }
-    return {};
+  warn(message: string, context?: SimpleLogContext): void {
+    this.logger.warn(message, context);
   }
 
-  // Main logging methods
-  error(message: string, context?: LogContext): void {
-    this.logger.error(this.formatMessage(message, context));
-  }
-
-  warn(message: string, context?: LogContext): void {
-    this.logger.warn(this.formatMessage(message, context));
-  }
-
-  info(message: string, context?: LogContext): void {
-    this.logger.info(this.formatMessage(message, context));
-  }
-
-  debug(message: string, context?: LogContext): void {
-    this.logger.debug(this.formatMessage(message, context));
-  }
-
-  // Category-specific logging methods
-  logAuth(message: string, context?: LogContext): void {
-    this.info(message, { ...context, category: LogCategory.AUTH });
-  }
-
-  logTrip(message: string, context?: LogContext): void {
-    this.info(message, { ...context, category: LogCategory.TRIP });
-  }
-
-  logPayment(message: string, context?: LogContext): void {
-    this.info(message, { ...context, category: LogCategory.PAYMENT });
-  }
-
-  logWebSocket(message: string, context?: LogContext): void {
-    this.info(message, { ...context, category: LogCategory.WEBSOCKET });
-  }
-
-  logQueue(message: string, context?: LogContext): void {
-    this.info(message, { ...context, category: LogCategory.QUEUE });
-  }
-
-  logDatabase(message: string, context?: LogContext): void {
-    this.info(message, { ...context, category: LogCategory.DATABASE });
-  }
-
-  logExternalAPI(message: string, context?: LogContext): void {
-    this.info(message, { ...context, category: LogCategory.EXTERNAL_API });
-  }
-
-  logRedis(message: string, context?: LogContext): void {
-    this.info(message, { ...context, category: LogCategory.REDIS });
-  }
-
-  logSystem(message: string, context?: LogContext): void {
-    this.info(message, { ...context, category: LogCategory.SYSTEM });
-  }
-
-  logSecurity(message: string, context?: LogContext): void {
-    this.warn(message, { ...context, category: LogCategory.SECURITY });
-  }
-
-  logPerformance(message: string, context?: LogContext): void {
-    this.info(message, { ...context, category: LogCategory.PERFORMANCE });
+  debug(message: string, context?: SimpleLogContext): void {
+    this.logger.debug(message, context);
   }
 
   // HTTP Request logging
-  logHttpRequest(req: any, res: any, duration: number): void {
-    const context: LogContext = {
-      method: req.method,
-      url: req.url,
-      statusCode: res.statusCode,
+  logRequest(
+    method: string,
+    url: string,
+    statusCode: number,
+    duration: number,
+    context?: SimpleLogContext,
+  ): void {
+    const logContext = {
+      method,
+      url,
+      statusCode,
       duration,
-      userId: req.user?.id,
-      userType: req.user?.type,
-      requestId: req.id,
+      ...context,
     };
 
-    if (res.statusCode >= 400) {
-      this.error(`HTTP ${req.method} ${req.url} - ${res.statusCode}`, context);
+    if (statusCode >= 400) {
+      this.error(
+        `${method} ${url} - ${statusCode} (${duration}ms)`,
+        logContext,
+      );
     } else {
-      this.info(`HTTP ${req.method} ${req.url} - ${res.statusCode}`, context);
+      this.info(`${method} ${url} - ${statusCode} (${duration}ms)`, logContext);
     }
   }
 
-  // Error logging with stack trace
-  logError(error: Error, context?: LogContext): void {
+  // Service call logging (for external services)
+  logServiceCall(
+    serviceName: string,
+    method: string,
+    url: string,
+    statusCode: number,
+    duration: number,
+    requestId: string,
+  ): void {
+    this.info(`External Service Call: ${serviceName}`, {
+      requestId,
+      serviceName,
+      method,
+      url,
+      statusCode,
+      duration,
+      type: 'external_service_call',
+    });
+  }
+
+  // Business event logging
+  logBusinessEvent(event: string, context?: SimpleLogContext): void {
+    this.info(`Business Event: ${event}`, {
+      ...context,
+      type: 'business_event',
+      event,
+    });
+  }
+
+  // Error with stack trace
+  logError(error: Error, context?: SimpleLogContext): void {
     this.error(error.message, {
       ...context,
       error: {
@@ -254,23 +155,5 @@ export class LoggerService {
         stack: error.stack,
       },
     });
-  }
-
-  // Performance monitoring
-  logPerformanceMetric(
-    operation: string,
-    duration: number,
-    context?: LogContext,
-  ): void {
-    this.logPerformance(`${operation} completed in ${duration}ms`, {
-      ...context,
-      duration,
-      operation,
-    });
-  }
-
-  // Business logic logging
-  logBusinessEvent(event: string, context?: LogContext): void {
-    this.info(`Business Event: ${event}`, context);
   }
 }

@@ -3,27 +3,28 @@ import {
   Get,
   Query,
   UseGuards,
-  Logger,
   ParseIntPipe,
 } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/jwt/jwt.guard';
 import { GetUser } from 'src/jwt/user.decoretor';
 import { IJwtPayload } from 'src/jwt/jwt-payload.interface';
 import { DriverEarningsService } from '../services/driver-earnings.service';
+import { LoggerService } from 'src/logger/logger.service';
 
 @Controller('drivers/earnings')
 @UseGuards(JwtAuthGuard)
 export class DriverEarningsController {
-  private readonly logger = new Logger(DriverEarningsController.name);
-
-  constructor(private readonly driverEarningsService: DriverEarningsService) {}
+  constructor(
+    private readonly driverEarningsService: DriverEarningsService,
+    private readonly logger: LoggerService,
+  ) {}
 
   /**
    * Get current week earnings for driver
    */
   @Get('current-week')
   async getCurrentWeekEarnings(@GetUser() user: IJwtPayload) {
-    this.logger.log(`Getting current week earnings for driver ${user.userId}`);
+    this.logger.info(`Getting current week earnings for driver ${user.userId}`);
 
     const earnings = await this.driverEarningsService.getCurrentWeekEarnings(
       user.userId,
@@ -75,7 +76,7 @@ export class DriverEarningsController {
       sortOrder = 'desc';
     }
 
-    this.logger.log(
+    this.logger.info(
       `Getting earnings history for driver ${user.userId} - page: ${page}, limit: ${limit}, sortOrder: ${sortOrder}`,
     );
 

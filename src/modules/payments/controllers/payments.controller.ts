@@ -6,7 +6,6 @@ import {
   HttpCode,
   HttpStatus,
   UseGuards,
-  Logger,
   Param,
   HttpException,
 } from '@nestjs/common';
@@ -21,15 +20,17 @@ import { GetUser } from 'src/jwt/user.decoretor';
 import { IJwtPayload } from 'src/jwt/jwt-payload.interface';
 import { PaymentsService } from '../services/payments.service';
 import { CreatePaymentIntentDto } from '../dto';
+import { LoggerService } from 'src/logger/logger.service';
 
 @ApiTags('payments')
 @ApiBearerAuth()
 @Controller('payments')
 @UseGuards(JwtAuthGuard)
 export class PaymentsController {
-  private readonly logger = new Logger(PaymentsController.name);
-
-  constructor(private readonly paymentsService: PaymentsService) {}
+  constructor(
+    private readonly paymentsService: PaymentsService,
+    private readonly logger: LoggerService,
+  ) {}
 
   @Post('payment-intent')
   @HttpCode(HttpStatus.OK)

@@ -15,7 +15,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { WebSocketModule } from './websocket/websocket.module';
-import { SimpleLoggerService } from './logger/simple-logger.service';
+import { LoggerService } from './logger/logger.service';
 import rawBody from 'fastify-raw-body';
 
 async function bootstrap() {
@@ -113,7 +113,7 @@ async function bootstrap() {
   await app.listen(port, host);
 
   // Get logger service for startup logs
-  const logger = app.get(SimpleLoggerService);
+  const logger = app.get(LoggerService);
   logger.info(`API Gateway started: ${await app.getUrl()}`, {
     port,
     host,

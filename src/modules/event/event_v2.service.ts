@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { WebSocketService } from 'src/websocket/websocket.service';
 import { DriversService } from 'src/modules/drivers/drivers.service';
 import { CustomersService } from 'src/modules/customers/customers.service';
@@ -9,11 +9,10 @@ import { EventType } from './enum/event-type.enum';
 import { EventDeliveryMethod } from './constants/trip.constant';
 import { UserType } from 'src/common/user-type.enum';
 import { AppState } from 'src/common/enums/app-state.enum';
+import { LoggerService } from 'src/logger/logger.service';
 
 @Injectable()
 export class Event2Service {
-  private readonly logger = new Logger(Event2Service.name);
-
   constructor(
     private readonly webSocketService: WebSocketService,
     private readonly driverStatusService: DriverStatusService,
@@ -21,6 +20,7 @@ export class Event2Service {
     private readonly driversService: DriversService,
     private readonly customersService: CustomersService,
     private readonly expoNotificationsService: ExpoNotificationsService,
+    private readonly logger: LoggerService,
   ) {}
 
   // ================================
@@ -39,7 +39,7 @@ export class Event2Service {
     try {
       await this.deliverEventToUser(userId, userType, eventType, data);
 
-      this.logger.log(`Sent ${eventType} to user ${userId}`);
+      this.logger.info(`Sent ${eventType} to user ${userId}`);
     } catch (error) {
       this.logger.error(
         `Error sending ${eventType} to user ${userId}: ${error.message}`,
@@ -59,7 +59,7 @@ export class Event2Service {
     try {
       await this.broadcastEvent(userIds, userType, eventType, data);
 
-      this.logger.log(`Sent ${eventType} to ${userIds.length} users`);
+      this.logger.info(`Sent ${eventType} to ${userIds.length} users`);
     } catch (error) {
       this.logger.error(
         `Error sending ${eventType} to users: ${error.message}`,
@@ -232,7 +232,7 @@ export class Event2Service {
     const hasPermission =
       await this.checkCustomerNotificationPermissions(driver);
     if (!hasPermission) {
-      this.logger.log(
+      this.logger.info(
         `Driver ${driver} does not have notification permissions, requesting...`,
       );
       return;
@@ -272,7 +272,7 @@ export class Event2Service {
     const hasPermission =
       await this.checkCustomerNotificationPermissions(customer);
     if (!hasPermission) {
-      this.logger.log(
+      this.logger.info(
         `Customer ${customerId} does not have notification permissions, requesting...`,
       );
       return;

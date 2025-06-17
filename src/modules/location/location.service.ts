@@ -6,16 +6,16 @@ import { TripService } from 'src/modules/trip/services/trip.service';
 import { WebSocketService } from 'src/websocket/websocket.service';
 import { UserType } from 'src/common/user-type.enum';
 import { EventType } from 'src/modules/event/enum/event-type.enum';
+import { LoggerService } from 'src/logger/logger.service';
 
 @Injectable()
 export class LocationService {
-  private readonly logger = new Logger(LocationService.name);
-
   constructor(
     private readonly redisLocationService: RedisLocationService,
     private readonly activeTripService: ActiveTripService,
     private readonly tripService: TripService,
     private readonly webSocketService: WebSocketService,
+    private readonly logger: LoggerService,
   ) {}
 
   async updateDriverLocation(userId: string, payload: DriverLocationDto) {

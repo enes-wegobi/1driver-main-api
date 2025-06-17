@@ -45,6 +45,7 @@ import { DriverAvailabilityStatus } from 'src/common/enums/driver-availability-s
 import { Event2Service } from 'src/modules/event/event_v2.service';
 import { EstimateTripDto } from '../dto/estimate-trip.dto';
 import { LockService } from 'src/lock/lock.service';
+import { LoggerService } from 'src/logger/logger.service';
 
 export interface TripOperationResult {
   success: boolean;
@@ -74,8 +75,6 @@ export interface LocationCoords {
 
 @Injectable()
 export class TripService {
-  private readonly logger = new Logger(TripService.name);
-
   constructor(
     private readonly tripRepository: TripRepository,
     private readonly lockService: LockService,
@@ -94,6 +93,7 @@ export class TripService {
     private readonly tripQueueService: TripQueueService,
     private readonly driverTripQueueService: DriverTripQueueService,
     private readonly event2Service: Event2Service,
+    private readonly logger: LoggerService,
   ) {}
 
   // ================================
@@ -178,7 +178,7 @@ export class TripService {
             2, // Normal priority
           );
 
-          this.logger.log(
+          this.logger.info(
             `Added trip ${tripId} to ${driverIds.length} driver queues sequentially`,
           );
 
@@ -391,7 +391,7 @@ export class TripService {
                 trip,
                 timeDifferenceMinutes,
               );
-              this.logger.log(
+              this.logger.info(
                 `Penalty applied to driver ${driverId} for late cancellation: ${timeDifferenceMinutes} minutes`,
               );
             }
@@ -553,7 +553,7 @@ export class TripService {
                 paymentAmount,
                 paymentMethodId,
               );
-              this.logger.log(
+              this.logger.info(
                 `Payment retry successful for customer ${customerId}, trip ${tripId}, amount: ${paymentAmount}`,
               );
             } catch (paymentError) {
@@ -581,7 +581,7 @@ export class TripService {
               status: finalStatus,
             });
 
-            this.logger.log(
+            this.logger.info(
               `Trip retry completed successfully for customer ${customerId}, trip ${tripId}`,
             );
 
@@ -645,12 +645,12 @@ export class TripService {
                 updatedTrip,
                 UserType.DRIVER,
               );
-              this.logger.log(
+              this.logger.info(
                 `Notified ${driversToNotify.length} drivers that trip ${tripId} request was cancelled`,
               );
             }
 
-            this.logger.log(
+            this.logger.info(
               `Trip request ${tripId} cancelled by customer ${customerId}, status reset to DRAFT`,
             );
 
@@ -763,7 +763,7 @@ export class TripService {
             await this.paymentMethodService.getPaymentMethodById(
               trip.paymentMethodId,
             );
-          this.logger.log(
+          this.logger.info(
             `Retrieved payment method for trip ${tripId}: ${paymentMethod?.name || 'Unknown'}`,
           );
 
@@ -1738,7 +1738,7 @@ export class TripService {
         );
       }
 
-      this.logger.log(
+      this.logger.info(
         `Penalty payment successful for customer ${userId}: 15 AED`,
       );
     } catch (error) {
@@ -1807,7 +1807,7 @@ export class TripService {
         );
       }
 
-      this.logger.log(
+      this.logger.info(
         `Retry payment successful for customer ${userId}: ${amount} AED`,
       );
     } catch (error) {
@@ -2073,7 +2073,7 @@ export class TripService {
                 trip.driver.id,
                 rating,
               );
-              this.logger.log(
+              this.logger.info(
                 `Updated driver ${trip.driver.id} rating to ${rating} for trip ${tripId}`,
               );
             } catch (error) {
@@ -2131,7 +2131,7 @@ export class TripService {
                   trip.customer.id,
                   rating,
                 );
-                this.logger.log(
+                this.logger.info(
                   `Updated customer ${trip.customer.id} rating to ${rating} for trip ${tripId}`,
                 );
               } catch (error) {

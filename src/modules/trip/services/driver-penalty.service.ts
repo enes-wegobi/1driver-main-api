@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { DriverPenaltyRepository } from '../repositories/driver-penalty.repository';
 import { TripDocument } from '../schemas/trip.schema';
 import {
@@ -7,13 +7,13 @@ import {
   PenaltyStatus,
 } from '../schemas/penalty.schema';
 import { UserType } from 'src/common/user-type.enum';
+import { LoggerService } from 'src/logger/logger.service';
 
 @Injectable()
 export class DriverPenaltyService {
-  private readonly logger = new Logger(DriverPenaltyService.name);
-
   constructor(
     private readonly driverPenaltyRepository: DriverPenaltyRepository,
+    private readonly logger: LoggerService,
   ) {}
 
   async createPenalty(
@@ -50,7 +50,7 @@ export class DriverPenaltyService {
       status,
     };
 
-    this.logger.log(
+    this.logger.info(
       `Creating penalty for ${userType.toLowerCase()} ${userId}: ${penaltyAmount} AED for ${timeDifferenceMinutes} minutes late cancellation`,
     );
 

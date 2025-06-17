@@ -1,23 +1,23 @@
-import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, Inject, forwardRef } from '@nestjs/common';
 import { PaymentRepository } from '../repositories/payment.repository';
 import { PaymentStatus } from 'src/common/enums/payment-status.enum';
 import { TripPaymentService } from '../../trip/services/trip-payment.service';
+import { LoggerService } from 'src/logger/logger.service';
 
 @Injectable()
 export class WebhookHandlerService {
-  private readonly logger = new Logger(WebhookHandlerService.name);
-
   constructor(
     private readonly paymentRepository: PaymentRepository,
     @Inject(forwardRef(() => TripPaymentService))
     private readonly tripPaymentService: TripPaymentService,
+    private readonly logger: LoggerService,
   ) {}
 
   /**
    * Handle successful payment webhook
    */
   async handlePaymentSuccess(paymentIntent: any): Promise<any> {
-    this.logger.log(`Payment succeeded for intent ${paymentIntent.id}`);
+    this.logger.info(`Payment succeeded for intent ${paymentIntent.id}`);
 
     const payment = await this.paymentRepository.findByPaymentIntentId(
       paymentIntent.id,
@@ -38,7 +38,7 @@ export class WebhookHandlerService {
     // If this payment is for a trip, handle trip payment success
     if (updatedPayment && updatedPayment.tripId) {
       await this.tripPaymentService.handlePaymentSuccess(updatedPayment);
-      this.logger.log(
+      this.logger.info(
         `Handled trip payment success for trip ${updatedPayment.tripId}`,
       );
     }
@@ -50,7 +50,7 @@ export class WebhookHandlerService {
    * Handle failed payment webhook
    */
   async handlePaymentFailure(paymentIntent: any): Promise<any> {
-    this.logger.log(`Payment failed for intent ${paymentIntent.id}`);
+    this.logger.info(`Payment failed for intent ${paymentIntent.id}`);
 
     const payment = await this.paymentRepository.findByPaymentIntentId(
       paymentIntent.id,
@@ -76,7 +76,7 @@ export class WebhookHandlerService {
     // If this payment is for a trip, handle trip payment failure
     if (updatedPayment && updatedPayment.tripId) {
       await this.tripPaymentService.handlePaymentFailure(updatedPayment);
-      this.logger.log(
+      this.logger.info(
         `Handled trip payment failure for trip ${updatedPayment.tripId}`,
       );
     }
@@ -88,7 +88,7 @@ export class WebhookHandlerService {
    * Handle cancelled payment webhook
    */
   async handlePaymentCancellation(paymentIntent: any): Promise<any> {
-    this.logger.log(`Payment cancelled for intent ${paymentIntent.id}`);
+    this.logger.info(`Payment cancelled for intent ${paymentIntent.id}`);
 
     const payment = await this.paymentRepository.findByPaymentIntentId(
       paymentIntent.id,
@@ -109,7 +109,7 @@ export class WebhookHandlerService {
     // For trip payments, cancellation is handled similar to failure
     if (updatedPayment && updatedPayment.tripId) {
       await this.tripPaymentService.handlePaymentFailure(updatedPayment);
-      this.logger.log(
+      this.logger.info(
         `Handled trip payment cancellation for trip ${updatedPayment.tripId}`,
       );
     }
@@ -121,7 +121,7 @@ export class WebhookHandlerService {
    * Handle Setup Intent succeeded webhook (for payment method addition)
    */
   async handleSetupIntentSuccess(setupIntent: any): Promise<any> {
-    this.logger.log(`Setup Intent succeeded for ${setupIntent.id}`);
+    this.logger.info(`Setup Intent succeeded for ${setupIntent.id}`);
 
     // Setup Intent success is handled on the frontend when saving payment method
     // This webhook is mainly for logging and monitoring
@@ -136,7 +136,7 @@ export class WebhookHandlerService {
    * Handle Payment Intent requires action (3D Secure)
    */
   async handlePaymentRequiresAction(paymentIntent: any): Promise<any> {
-    this.logger.log(`Payment requires action for intent ${paymentIntent.id}`);
+    this.logger.info(`Payment requires action for intent ${paymentIntent.id}`);
 
     const payment = await this.paymentRepository.findByPaymentIntentId(
       paymentIntent.id,
@@ -155,7 +155,7 @@ export class WebhookHandlerService {
       'Waiting for 3D Secure authentication',
     );
 
-    this.logger.log(
+    this.logger.info(
       `Payment ${payment._id} updated to pending status for 3D Secure`,
     );
 
@@ -166,7 +166,7 @@ export class WebhookHandlerService {
    * Handle Payment Intent processing
    */
   async handlePaymentProcessing(paymentIntent: any): Promise<any> {
-    this.logger.log(`Payment processing for intent ${paymentIntent.id}`);
+    this.logger.info(`Payment processing for intent ${paymentIntent.id}`);
 
     const payment = await this.paymentRepository.findByPaymentIntentId(
       paymentIntent.id,
@@ -184,7 +184,7 @@ export class WebhookHandlerService {
       PaymentStatus.PROCESSING,
     );
 
-    this.logger.log(`Payment ${payment._id} updated to processing status`);
+    this.logger.info(`Payment ${payment._id} updated to processing status`);
 
     return updatedPayment;
   }

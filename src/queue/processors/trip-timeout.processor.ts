@@ -8,26 +8,26 @@ import { TripQueueService } from '../services/trip-queue.service';
 import { EventType } from 'src/modules/event/enum/event-type.enum';
 import { Event2Service } from 'src/modules/event/event_v2.service';
 import { UserType } from 'src/common/user-type.enum';
+import { LoggerService } from 'src/logger/logger.service';
 
 @Processor('trip-timeouts')
 @Injectable()
 export class TripTimeoutProcessor extends WorkerHost {
-  private readonly logger = new Logger(TripTimeoutProcessor.name);
-
   constructor(
     private readonly tripService: TripService,
     private readonly event2Service: Event2Service,
     private readonly tripQueueService: TripQueueService,
+    private readonly logger: LoggerService,
   ) {
     super();
     // WORKER BAŞLANGICI KONTROLÜ
-    this.logger.log(
+    this.logger.info(
       '🚀 TIMEOUT PROCESSOR INITIALIZED - Worker is ready to process jobs',
     );
   }
 
   async process(job: Job<TripTimeoutJob, any, string>): Promise<JobResult> {
-    this.logger.log(
+    this.logger.info(
       `🔥 TIMEOUT PROCESSOR STARTED: jobId=${job.id}, jobName=${job.name}, data=${JSON.stringify(job.data)}`,
     );
 
@@ -47,7 +47,7 @@ export class TripTimeoutProcessor extends WorkerHost {
   ): Promise<JobResult> {
     const { tripId, driverId, timeoutType } = job.data;
 
-    this.logger.log(
+    this.logger.info(
       `⏰ TIMEOUT PROCESSOR: Processing trip timeout: tripId=${tripId}, driverId=${driverId}, type=${timeoutType}`,
     );
 
@@ -109,11 +109,11 @@ export class TripTimeoutProcessor extends WorkerHost {
               updatedTrip,
               UserType.CUSTOMER,
             );
-            this.logger.log(
+            this.logger.info(
               `All drivers rejected for trip ${tripId}, notified customer`,
             );
           }
-          this.logger.log(
+          this.logger.info(
             `Driver ${driverId} timed out for trip ${tripId}, processing next trip in queue`,
           );
         }
@@ -137,7 +137,7 @@ export class TripTimeoutProcessor extends WorkerHost {
   // WORKER EVENT'LERİNE DETAYLI LOGLAR
   @OnWorkerEvent('ready')
   onReady() {
-    this.logger.log(
+    this.logger.info(
       '✅ TIMEOUT WORKER READY - Worker is now listening for jobs',
     );
   }
@@ -154,14 +154,14 @@ export class TripTimeoutProcessor extends WorkerHost {
 
   @OnWorkerEvent('active')
   onActive(job: Job<TripTimeoutJob>) {
-    this.logger.log(
+    this.logger.info(
       `🔥 TIMEOUT PROCESSOR ACTIVE: Processing timeout job ${job.id}: tripId=${job.data.tripId}, driverId=${job.data.driverId}, type=${job.data.timeoutType}`,
     );
   }
 
   @OnWorkerEvent('completed')
   onCompleted(job: Job<TripTimeoutJob>, result: JobResult) {
-    this.logger.log(
+    this.logger.info(
       `✅ TIMEOUT PROCESSOR COMPLETED: job ${job.id}: ${result.message}`,
     );
   }

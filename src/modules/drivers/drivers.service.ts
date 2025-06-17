@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { DriversClient } from 'src/clients/driver/drivers.client';
 import { FileType } from './enum/file-type.enum';
 import { CreateBankInformationDto } from './dto/bank-information.dto';
@@ -8,19 +8,21 @@ import { InitiatePhoneUpdateDto } from 'src/clients/customer/dto/initiate-phone-
 import { CompletePhoneUpdateDto } from 'src/clients/customer/dto/complete-phone-update.dto';
 import { UpdateNotificationPermissionsDto } from 'src/clients/driver/dto/update-notification-permissions.dto';
 import { UpdateDriverProfileDto } from './dto/update-driver-profile.dto';
+import { LoggerService } from 'src/logger/logger.service';
 
 @Injectable()
 export class DriversService {
-  private readonly logger = new Logger(DriversService.name);
-
-  constructor(private readonly driversClient: DriversClient) {}
+  constructor(
+    private readonly driversClient: DriversClient,
+    private readonly logger: LoggerService,
+  ) {}
 
   async findOne(id: string, fields?: string | string[]) {
     return this.driversClient.findOne(id, fields);
   }
 
   async findMany(driverIds: string[]) {
-    this.logger.log(`Fetching information for ${driverIds.length} drivers`);
+    this.logger.info(`Fetching information for ${driverIds.length} drivers`);
     return this.driversClient.findMany(driverIds);
   }
 
@@ -150,17 +152,17 @@ export class DriversService {
   }
 
   async updatePhoto(driverId: string, photoUrl: string): Promise<any> {
-    this.logger.log(`Updating photo for driver ${driverId}`);
+    this.logger.info(`Updating photo for driver ${driverId}`);
     return this.driversClient.updatePhoto(driverId, photoUrl);
   }
 
   async deletePhoto(driverId: string): Promise<any> {
-    this.logger.log(`Deleting photo for driver ${driverId}`);
+    this.logger.info(`Deleting photo for driver ${driverId}`);
     return this.driversClient.deletePhoto(driverId);
   }
 
   async updateExpoToken(driverId: string, expoToken: string): Promise<any> {
-    this.logger.log(`Updating expo token for driver ${driverId}`);
+    this.logger.info(`Updating expo token for driver ${driverId}`);
     return this.driversClient.updateExpoToken(driverId, expoToken);
   }
 

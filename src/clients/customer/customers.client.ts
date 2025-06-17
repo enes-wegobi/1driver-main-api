@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { AxiosInstance } from 'axios';
 import { ClientsService } from '../clients.service';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
@@ -9,13 +9,16 @@ import { CompletePhoneUpdateDto } from './dto/complete-phone-update.dto';
 import { CreateAddressDto } from './dto/create-address.dto';
 import { UpdateNotificationPermissionsDto } from './dto/update-notification-permissions.dto';
 import { SetActiveTripDto } from './dto/set-active-trip.dto';
+import { LoggerService } from 'src/logger/logger.service';
 
 @Injectable()
 export class CustomersClient {
-  private readonly logger = new Logger(CustomersClient.name);
   private readonly httpClient: AxiosInstance;
 
-  constructor(private readonly clientsService: ClientsService) {
+  constructor(
+    private readonly clientsService: ClientsService,
+    private readonly logger: LoggerService,
+  ) {
     this.httpClient = this.clientsService.createHttpClient('users');
   }
 
@@ -118,42 +121,42 @@ export class CustomersClient {
   }
 
   async updatePhoto(customerId: string, photoUrl: string): Promise<any> {
-    this.logger.log(`Updating photo for customer ${customerId}`);
+    this.logger.info(`Updating photo for customer ${customerId}`);
     const { data } = await this.httpClient.put(
       `/customers/${customerId}/photo`,
       { photoUrl },
     );
-    this.logger.log(`Successfully updated photo for customer ${customerId}`);
+    this.logger.info(`Successfully updated photo for customer ${customerId}`);
     return data;
   }
 
   async deletePhoto(customerId: string): Promise<any> {
-    this.logger.log(`Deleting photo for customer ${customerId}`);
+    this.logger.info(`Deleting photo for customer ${customerId}`);
     const { data } = await this.httpClient.delete(
       `/customers/${customerId}/photo`,
     );
-    this.logger.log(`Successfully deleted photo for customer ${customerId}`);
+    this.logger.info(`Successfully deleted photo for customer ${customerId}`);
     return data;
   }
 
   async updateExpoToken(customerId: string, expoToken: string): Promise<any> {
-    this.logger.log(`Updating expo token for customer ${customerId}`);
+    this.logger.info(`Updating expo token for customer ${customerId}`);
     const { data } = await this.httpClient.put(
       `/customers/${customerId}/expo-token`,
       { expoToken },
     );
-    this.logger.log(
+    this.logger.info(
       `Successfully updated expo token for customer ${customerId}`,
     );
     return data;
   }
 
   async deleteExpoToken(customerId: string): Promise<any> {
-    this.logger.log(`Deleting expo token for customer ${customerId}`);
+    this.logger.info(`Deleting expo token for customer ${customerId}`);
     const { data } = await this.httpClient.delete(
       `/customers/${customerId}/expo-token`,
     );
-    this.logger.log(
+    this.logger.info(
       `Successfully deleted expo token for customer ${customerId}`,
     );
     return data;
@@ -166,7 +169,7 @@ export class CustomersClient {
     fileUrl: string | null,
     userType?: string,
   ): Promise<any> {
-    this.logger.log(`Creating support ticket for user ${userId}`);
+    this.logger.info(`Creating support ticket for user ${userId}`);
     const { data } = await this.httpClient.post(`/support`, {
       userId: userId,
       subject,
@@ -174,26 +177,26 @@ export class CustomersClient {
       fileUrl,
       userType,
     });
-    this.logger.log(`Successfully created support ticket for user ${userId}`);
+    this.logger.info(`Successfully created support ticket for user ${userId}`);
     return data;
   }
 
   async setActiveTrip(customerId: string, dto: SetActiveTripDto): Promise<any> {
-    this.logger.log(`Setting active trip for customer ${customerId}`);
+    this.logger.info(`Setting active trip for customer ${customerId}`);
     const { data } = await this.httpClient.put(
       `/customers/${customerId}/active-trip`,
       dto,
     );
-    this.logger.log(`Successfully set active trip for customer ${customerId}`);
+    this.logger.info(`Successfully set active trip for customer ${customerId}`);
     return data;
   }
 
   async removeActiveTrip(customerId: string): Promise<any> {
-    this.logger.log(`Removing active trip for customer ${customerId}`);
+    this.logger.info(`Removing active trip for customer ${customerId}`);
     const { data } = await this.httpClient.delete(
       `/customers/${customerId}/active-trip`,
     );
-    this.logger.log(
+    this.logger.info(
       `Successfully removed active trip for customer ${customerId}`,
     );
     return data;
@@ -203,12 +206,12 @@ export class CustomersClient {
     customerId: string,
     stripeCustomerId: string,
   ): Promise<any> {
-    this.logger.log(`Updating Stripe customer ID for customer ${customerId}`);
+    this.logger.info(`Updating Stripe customer ID for customer ${customerId}`);
     const { data } = await this.httpClient.patch(
       `/customers/${customerId}/stripe-customer-id`,
       { stripeCustomerId },
     );
-    this.logger.log(
+    this.logger.info(
       `Successfully updated Stripe customer ID for customer ${customerId}`,
     );
     return data;
@@ -218,25 +221,25 @@ export class CustomersClient {
     customerId: string,
     defaultPaymentMethodId: string,
   ): Promise<any> {
-    this.logger.log(
+    this.logger.info(
       `Updating default payment method for customer ${customerId}`,
     );
     const { data } = await this.httpClient.patch(
       `/customers/${customerId}/default-payment-method`,
       { defaultPaymentMethodId },
     );
-    this.logger.log(
+    this.logger.info(
       `Successfully updated default payment method for customer ${customerId}`,
     );
     return data;
   }
 
   async updateDriverRate(driverId: string, rate: number): Promise<any> {
-    this.logger.log(`Updating driver rate for driver ${driverId}`);
+    this.logger.info(`Updating driver rate for driver ${driverId}`);
     const { data } = await this.httpClient.patch(`/drivers/${driverId}/rate`, {
       rate,
     });
-    this.logger.log(`Successfully updated driver rate for driver ${driverId}`);
+    this.logger.info(`Successfully updated driver rate for driver ${driverId}`);
     return data;
   }
 }

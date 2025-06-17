@@ -13,12 +13,11 @@ import { MapsService } from 'src/clients/maps/maps.service';
 import { BatchDistanceRequest } from 'src/clients/maps/maps.interface';
 import { UserType } from 'src/common/user-type.enum';
 import { LocationService } from 'src/redis/services/location.service';
+import { LoggerService } from 'src/logger/logger.service';
 
 @Processor('trip-requests')
 @Injectable()
 export class TripRequestProcessor extends WorkerHost {
-  private readonly logger = new Logger(TripRequestProcessor.name);
-
   constructor(
     private readonly tripService: TripService,
     private readonly driverStatusService: DriverStatusService,
@@ -26,6 +25,7 @@ export class TripRequestProcessor extends WorkerHost {
     private readonly tripQueueService: TripQueueService,
     private readonly locationService: LocationService,
     private readonly mapsService: MapsService,
+    private readonly logger: LoggerService,
   ) {
     super();
   }
@@ -127,7 +127,7 @@ export class TripRequestProcessor extends WorkerHost {
         UserType.DRIVER,
       );
 
-      this.logger.log(
+      this.logger.info(
         `Successfully sent trip request ${tripId} to driver ${driverId}`,
       );
 
@@ -163,7 +163,7 @@ export class TripRequestProcessor extends WorkerHost {
   @OnWorkerEvent('completed')
   onCompleted(job: Job<TripRequestJob>, result: JobResult) {
     if (result.success) {
-      this.logger.log(
+      this.logger.info(
         `Completed job ${job.id}: tripId=${job.data.tripId}, driverId=${job.data.driverId}`,
       );
     } else {
@@ -212,7 +212,7 @@ export class TripRequestProcessor extends WorkerHost {
             originalDriverIds,
           });
 
-          this.logger.log(
+          this.logger.info(
             `Created job for next driver ${nextDriverId} for trip ${tripId}`,
           );
           return;

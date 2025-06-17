@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cron } from '@nestjs/schedule';
 import { Types } from 'mongoose';
@@ -8,6 +8,7 @@ import {
   TripEarningDetail,
 } from '../schemas/driver-weekly-earnings.schema';
 import { DriverWeeklyEarningsRepository } from '../repositories/driver-weekly-earnings.repository';
+import { LoggerService } from 'src/logger/logger.service';
 
 export interface TripEarningData {
   tripId: string;
@@ -19,11 +20,10 @@ export interface TripEarningData {
 
 @Injectable()
 export class DriverEarningsService {
-  private readonly logger = new Logger(DriverEarningsService.name);
-
   constructor(
     private readonly driverWeeklyEarningsRepository: DriverWeeklyEarningsRepository,
     private readonly configService: ConfigService,
+    private readonly logger: LoggerService,
   ) {}
 
   /**
@@ -33,7 +33,7 @@ export class DriverEarningsService {
     driverId: string,
     tripData: TripEarningData,
   ): Promise<void> {
-    this.logger.log(
+    this.logger.info(
       `Adding trip earnings for driver ${driverId}: ${tripData.earnings} TL`,
     );
 
@@ -55,7 +55,7 @@ export class DriverEarningsService {
       tripDetail,
     );
 
-    this.logger.log(
+    this.logger.info(
       `Updated weekly earnings for driver ${driverId}. Trip earnings: ${tripData.earnings} TL`,
     );
   }
@@ -160,7 +160,7 @@ export class DriverEarningsService {
     const weekStart = moment().startOf('isoWeek').toDate();
     const weekEnd = moment().endOf('isoWeek').toDate();
 
-    this.logger.log(
+    this.logger.info(
       `Creating new week record for driver ${driverId} (${weekStart.toISOString()} - ${weekEnd.toISOString()})`,
     );
 
@@ -182,14 +182,14 @@ export class DriverEarningsService {
    */
   @Cron('0 0 9 * * MON')
   async handleWeeklyTransition(): Promise<void> {
-    this.logger.log('Starting weekly transition process...');
+    this.logger.info('Starting weekly transition process...');
 
     try {
       // 1. Mark all ACTIVE records as COMPLETED and UNPAID
       const updateResult =
         await this.driverWeeklyEarningsRepository.updateManyActiveToCompleted();
 
-      this.logger.log(
+      this.logger.info(
         `Marked ${updateResult.modifiedCount} weekly records as COMPLETED`,
       );
 
@@ -209,7 +209,7 @@ export class DriverEarningsService {
         }
       }
 
-      this.logger.log(
+      this.logger.info(
         `Weekly transition completed. Created ${createdCount} new week records for ${allDrivers.length} drivers.`,
       );
     } catch (error) {
@@ -227,7 +227,7 @@ export class DriverEarningsService {
     const existingDrivers =
       await this.driverWeeklyEarningsRepository.getDistinctDriverIds();
 
-    this.logger.log(
+    this.logger.info(
       `Found ${existingDrivers.length} drivers with earnings records`,
     );
     return existingDrivers;
