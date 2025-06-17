@@ -251,7 +251,7 @@ export class Event2Service {
         body,
         {
           type: eventType,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         },
       );
     }
@@ -292,7 +292,7 @@ export class Event2Service {
       body,
       {
         type: eventType,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       },
     );
   }
