@@ -8,13 +8,14 @@ import { ExpoNotificationsModule } from 'src/modules/expo-notifications/expo-not
 import { MapsModule } from 'src/clients/maps/maps.module';
 import { S3Module } from 'src/s3/s3.module';
 import { Event2Service } from './event_v2.service';
-import { ReliableEventService } from './services/reliable-event.service';
-import { EventRetryService } from './services/event-retry.service';
+import { AckTimeoutService } from './services/ack-timeout.service';
+import { TripModule } from '../trip/trip.module';
 
 @Module({
   imports: [
     ScheduleModule.forRoot(),
     forwardRef(() => WebSocketModule),
+    forwardRef(() => TripModule),
     RedisModule,
     DriversModule,
     CustomersModule,
@@ -22,7 +23,7 @@ import { EventRetryService } from './services/event-retry.service';
     MapsModule,
     S3Module,
   ],
-  providers: [Event2Service, ReliableEventService, EventRetryService],
-  exports: [Event2Service, ReliableEventService],
+  providers: [Event2Service, AckTimeoutService],
+  exports: [Event2Service, AckTimeoutService],
 })
 export class EventModule {}

@@ -11,6 +11,7 @@ export interface PendingEvent {
   retryCount: number;
   maxRetries: number;
   requiresAck: boolean;
+  tripId?: string; // Trip ID eklendi
 }
 
 export interface EventDeliveryResult {

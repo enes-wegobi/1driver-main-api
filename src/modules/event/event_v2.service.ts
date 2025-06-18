@@ -5,13 +5,13 @@ import { CustomersService } from 'src/modules/customers/customers.service';
 import { ExpoNotificationsService } from 'src/modules/expo-notifications/expo-notifications.service';
 import { DriverStatusService } from 'src/redis/services/driver-status.service';
 import { CustomerStatusService } from 'src/redis/services/customer-status.service';
-import { EventType, isCriticalEvent } from './enum/event-type.enum';
+import { SmartEventService } from 'src/redis/services/smart-event.service';
+import { EventType } from './enum/event-type.enum';
 import { EventDeliveryMethod } from './constants/trip.constant';
 import { UserType } from 'src/common/user-type.enum';
 import { AppState } from 'src/common/enums/app-state.enum';
 import { LoggerService } from 'src/logger/logger.service';
-import { ReliableEventService } from './services/reliable-event.service';
-import { EventDeliveryResult } from './interfaces/reliable-event.interface';
+import { PendingEvent } from './interfaces/reliable-event.interface';
 
 @Injectable()
 export class Event2Service {
@@ -23,32 +23,67 @@ export class Event2Service {
     private readonly customersService: CustomersService,
     private readonly expoNotificationsService: ExpoNotificationsService,
     private readonly logger: LoggerService,
-    private readonly reliableEventService: ReliableEventService,
+    private readonly smartEventService: SmartEventService,
   ) {}
 
-  // ================================
-  // PUBLIC API METHODS
-  // ================================
-
-  /**
-   * Sends event to a single user (with reliability for critical events)
-   */
   async sendToUser(
     userId: string,
     eventType: EventType,
     data: any,
     userType: UserType,
+    tripId?: string,
   ): Promise<void> {
     try {
-      // Use reliable delivery for critical events
-      if (isCriticalEvent(eventType)) {
-        await this.sendReliableEventToUser(userId, userType, eventType, data);
-      } else {
-        await this.deliverEventToUser(userId, userType, eventType, data);
-      }
+      const deliveryMethod = await this.determineDeliveryMethod(userId, userType);
 
-      this.logger.info(`Sent ${eventType} to user ${userId}`);
-    } catch (error) {
+      if (deliveryMethod === EventDeliveryMethod.WEBSOCKET) {
+        // For WebSocket delivery, create event with ACK tracking
+        const event: PendingEvent = {
+          id: this.smartEventService.generateEventId(),
+          userId,
+          userType,
+          eventType,
+          data,
+          timestamp: new Date(),
+          retryCount: 0,
+          maxRetries: 3,
+          requiresAck: true, // Only WebSocket events require ACK
+          tripId,
+        };
+
+        // Log event to Redis Streams for ACK tracking
+        await this.smartEventService.sendEventWithLogging(event);
+
+        // Add eventId to the data at the same level as eventType
+        const eventDataWithId = {
+          eventId: event.id,
+          eventType,
+          ...data,
+        };
+
+        await this.webSocketService.sendToUser(userId, eventType, eventDataWithId);
+
+        this.logger.info(`Sent ${eventType} to user ${userId} via WebSocket with ACK tracking`, {
+          eventId: event.id,
+          tripId,
+          eventType,
+          userId
+        });
+      } else {
+        // For Push notification, no ACK tracking needed
+        if (userType === UserType.DRIVER) {
+          await this.sendPushNotificationToDriver(userId, eventType);
+        } else if (userType === UserType.CUSTOMER) {
+          await this.sendPushNotificationToCustomer(userId, eventType);
+        }
+
+        this.logger.info(`Sent ${eventType} to user ${userId} via Push Notification (no ACK)`, {
+          tripId,
+          eventType,
+          userId
+        });
+      }
+    } catch (error: any) {
       this.logger.error(
         `Error sending ${eventType} to user ${userId}: ${error.message}`,
       );
@@ -56,23 +91,76 @@ export class Event2Service {
   }
 
   /**
-   * Sends event to multiple users (with reliability for critical events)
+   * Handles user acknowledgment for events
    */
+  async handleUserAcknowledgment(eventId: string, userId: string): Promise<boolean> {
+    try {
+      return await this.smartEventService.handleUserAcknowledgment(eventId, userId);
+    } catch (error: any) {
+      this.logger.error(
+        `Error handling ACK for event ${eventId} from user ${userId}: ${error.message}`,
+      );
+      return false;
+    }
+  }
+
   async sendToUsers(
     userIds: string[],
     eventType: EventType,
     data: any,
     userType: UserType,
+    tripId?: string,
   ): Promise<void> {
     try {
-      // Use reliable delivery for critical events
-      if (isCriticalEvent(eventType)) {
-        await this.sendReliableEventToUsers(userIds, userType, eventType, data);
-      } else {
-        await this.broadcastEvent(userIds, userType, eventType, data);
-      }
+      // First categorize users by their status
+      const { activeUsers, inactiveUsers } = await this.categorizeUsersByStatus(
+        userIds,
+        userType,
+      );
 
-      this.logger.info(`Sent ${eventType} to ${userIds.length} users`);
+      // For active users (WebSocket), create events with ACK tracking
+      const activeUserEventPromises = activeUsers.map(async (userId) => {
+        const event: PendingEvent = {
+          id: this.smartEventService.generateEventId(),
+          userId,
+          userType,
+          eventType,
+          data,
+          timestamp: new Date(),
+          retryCount: 0,
+          maxRetries: 3,
+          requiresAck: true, // Only WebSocket events require ACK
+          tripId,
+        };
+
+        // Log event to Redis Streams for ACK tracking
+        await this.smartEventService.sendEventWithLogging(event);
+
+        // Add eventId to the data at the same level as eventType
+        const eventDataWithId = {
+          eventId: event.id,
+          eventType,
+          ...data,
+        };
+
+        return { userId, eventDataWithId };
+      });
+
+      // Create events for active users in parallel
+      const activeEventsWithData = await Promise.all(activeUserEventPromises);
+      const userEventDataMap = new Map(
+        activeEventsWithData.map(({ userId, eventDataWithId }) => [userId, eventDataWithId])
+      );
+
+      await this.broadcastEventWithAck(activeUsers, inactiveUsers, userType, eventType, userEventDataMap, data);
+      
+      this.logger.info(`Sent ${eventType} to ${userIds.length} users (${activeUsers.length} active with ACK, ${inactiveUsers.length} inactive via push)`, {
+        eventType,
+        userCount: userIds.length,
+        activeUsers: activeUsers.length,
+        inactiveUsers: inactiveUsers.length,
+        tripId
+      });
     } catch (error) {
       this.logger.error(
         `Error sending ${eventType} to users: ${error.message}`,
@@ -80,119 +168,78 @@ export class Event2Service {
     }
   }
 
-  /**
-   * Send reliable event to a single user with acknowledgment tracking
-   */
-  async sendReliableEventToUser(
-    userId: string,
-    userType: UserType,
-    eventType: EventType,
-    data: any,
-    requiresAck?: boolean,
-  ): Promise<EventDeliveryResult> {
-    try {
-      const result = await this.reliableEventService.sendReliableEvent(
-        userId,
-        userType,
-        eventType,
-        data,
-        requiresAck,
-      );
-
-      this.logger.info(
-        `Reliable event ${eventType} sent to user ${userId}`,
-        {
-          eventId: result.eventId,
-          deliveryMethod: result.deliveryMethod,
-          success: result.success,
-        },
-      );
-
-      return result;
-    } catch (error) {
-      this.logger.error(
-        `Error sending reliable event ${eventType} to user ${userId}: ${error.message}`,
-      );
-      throw error;
-    }
-  }
-
-  /**
-   * Send reliable events to multiple users
-   */
-  async sendReliableEventToUsers(
-    userIds: string[],
-    userType: UserType,
-    eventType: EventType,
-    data: any,
-    requiresAck?: boolean,
-  ): Promise<EventDeliveryResult[]> {
-    try {
-      const promises = userIds.map(userId =>
-        this.reliableEventService.sendReliableEvent(
-          userId,
-          userType,
-          eventType,
-          data,
-          requiresAck,
-        ),
-      );
-
-      const results = await Promise.allSettled(promises);
-      const deliveryResults: EventDeliveryResult[] = [];
-
-      results.forEach((result, index) => {
-        const userId = userIds[index];
-        if (result.status === 'fulfilled') {
-          deliveryResults.push(result.value);
-          this.logger.info(
-            `Reliable event ${eventType} sent to user ${userId}`,
-            {
-              eventId: result.value.eventId,
-              deliveryMethod: result.value.deliveryMethod,
-              success: result.value.success,
-            },
-          );
-        } else {
-          this.logger.error(
-            `Failed to send reliable event ${eventType} to user ${userId}: ${result.reason}`,
-          );
-          deliveryResults.push({
-            success: false,
-            eventId: '',
-            deliveryMethod: 'websocket',
-            acknowledged: false,
-            error: result.reason,
-          });
-        }
-      });
-
-      return deliveryResults;
-    } catch (error) {
-      this.logger.error(
-        `Error sending reliable events ${eventType} to users: ${error.message}`,
-      );
-      throw error;
-    }
-  }
-
-  /**
-   * Get pending events for a user
-   */
-  async getPendingEventsForUser(userId: string) {
-    return this.reliableEventService.getPendingEvents(userId);
-  }
-
-  /**
-   * Acknowledge an event
-   */
-  async acknowledgeEvent(userId: string, eventId: string): Promise<boolean> {
-    return this.reliableEventService.acknowledgeEvent(userId, eventId);
-  }
-
   // ================================
   // PRIVATE DELIVERY METHODS
   // ================================
+
+  private async broadcastEventWithAck(
+    activeUsers: string[],
+    inactiveUsers: string[],
+    userType: UserType,
+    eventType: EventType,
+    userEventDataMap: Map<string, any>,
+    originalData: any,
+  ): Promise<void> {
+    const promises: Promise<any>[] = [];
+
+    // Send to active users via WebSocket with ACK tracking
+    if (activeUsers.length > 0) {
+      // For both drivers and customers, send individually to include unique eventId
+      for (const userId of activeUsers) {
+        const eventData = userEventDataMap.get(userId);
+        if (eventData) {
+          promises.push(
+            this.webSocketService.sendToUser(userId, eventType, eventData),
+          );
+        }
+      }
+    }
+
+    // Send to inactive users via Push Notification (no ACK needed)
+    if (inactiveUsers.length > 0) {
+      if (userType === UserType.DRIVER) {
+        const driverInfos = await this.driversService.findMany(inactiveUsers);
+        const { title, body } = this.getNotificationContent(eventType);
+        promises.push(
+          this.expoNotificationsService.sendMulticastNotification(
+            driverInfos,
+            title,
+            body,
+            {
+              type: eventType,
+              timestamp: new Date().toISOString(),
+            },
+          ),
+        );
+      } else if (userType === UserType.CUSTOMER) {
+        // For customers, fetch individually and send as batch
+        const customerPromises = inactiveUsers.map((userId) =>
+          this.customersService.findOne(userId),
+        );
+        const customerInfos = await Promise.all(customerPromises);
+        const validExpoTokens = customerInfos
+          .filter((info) => info && info.expoToken)
+          .map((info) => info.expoToken);
+
+        if (validExpoTokens.length > 0) {
+          const { title, body } = this.getNotificationContent(eventType);
+          promises.push(
+            this.expoNotificationsService.sendMulticastNotification(
+              validExpoTokens,
+              title,
+              body,
+              {
+                type: eventType,
+                timestamp: new Date().toISOString(),
+              },
+            ),
+          );
+        }
+      }
+    }
+
+    await Promise.all(promises);
+  }
 
   private async broadcastEvent(
     userIds: string[],
@@ -269,24 +316,6 @@ export class Event2Service {
     await Promise.all(promises);
   }
 
-  private async deliverEventToUser(
-    userId: string,
-    userType: UserType,
-    eventType: EventType,
-    data: any,
-  ): Promise<void> {
-    const deliveryMethod = await this.determineDeliveryMethod(userId, userType);
-
-    if (deliveryMethod === EventDeliveryMethod.WEBSOCKET) {
-      await this.webSocketService.sendToUser(userId, eventType, data);
-    } else {
-      if (userType === UserType.DRIVER) {
-        await this.sendPushNotificationToDriver(userId, eventType);
-      } else if (userType === UserType.CUSTOMER) {
-        await this.sendPushNotificationToCustomer(userId, eventType);
-      }
-    }
-  }
 
   private async determineDeliveryMethod(
     userId: string,

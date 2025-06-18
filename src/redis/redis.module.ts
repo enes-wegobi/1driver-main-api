@@ -8,6 +8,8 @@ import { NearbySearchService } from './services/nearby-search.service';
 import { ActiveTripService } from './services/active-trip.service';
 import { TokenManagerService } from './services/token-manager.service';
 import { DriverTripQueueService } from './services/driver-trip-queue.service';
+import { RedisStreamsEventService } from './services/redis-streams-event.service';
+import { SmartEventService } from './services/smart-event.service';
 
 @Module({
   imports: [ConfigModule],
@@ -20,6 +22,8 @@ import { DriverTripQueueService } from './services/driver-trip-queue.service';
     ActiveTripService,
     TokenManagerService,
     DriverTripQueueService,
+    RedisStreamsEventService,
+    SmartEventService,
   ],
   exports: [
     BaseRedisService,
@@ -30,6 +34,8 @@ import { DriverTripQueueService } from './services/driver-trip-queue.service';
     ActiveTripService,
     TokenManagerService,
     DriverTripQueueService,
+    RedisStreamsEventService,
+    SmartEventService,
   ],
 })
 export class RedisModule {}
