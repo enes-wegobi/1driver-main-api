@@ -1,6 +1,7 @@
 // Initialize DataDog tracer first (before any other imports)
 import './tracer';
 
+import { config } from 'dotenv';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import {
@@ -18,6 +19,7 @@ import { WebSocketModule } from './websocket/websocket.module';
 import { LoggerService } from './logger/logger.service';
 import rawBody from 'fastify-raw-body';
 
+config();
 async function bootstrap() {
   const fastifyAdapter = new FastifyAdapter();
   const webhookRoutes = ['/api/webhooks/stripe'];

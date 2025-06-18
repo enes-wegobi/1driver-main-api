@@ -59,7 +59,7 @@ export class ConfigService {
 
   get googleMapsApiKey(): string {
     return this.configService.get<string>(
-      'GOOGLE_MAPS_API_KEY',
+      'googleMapsApiKey',
       'googlemapssecretkey',
     );
   }
@@ -104,11 +104,11 @@ export class ConfigService {
   }
 
   get tripMongoUser(): string {
-    return this.configService.get('trip.mongoUser')!;
+    return this.configService.get('trip.mongoUser')!!;
   }
 
   get tripMongoUri(): string {
-    return this.configService.get('trip.mongoUrl')!; // Consistent with TRIP_MONGODB_URI env var
+    return this.configService.get('trip.mongoUrl')!; 
   }
 
   get tripMongoPassword(): string {

@@ -27,7 +27,6 @@ const envSchema = z.object({
   VALKEY_PASSWORD: z.string().optional(),
   VALKEY_USERNAME: z.string().optional(),
   VALKEY_TLS: z.string().optional().default('false'),
-  TRIP_MONGODB_URI: z.string().url(),
   TRIP_MONGODB_USER: z.string().min(1),
   TRIP_MONGODB_PASSWORD: z.string().min(1),
   TRIP_COST_PER_MINUTE: z.coerce.number().positive().optional().default(1),
