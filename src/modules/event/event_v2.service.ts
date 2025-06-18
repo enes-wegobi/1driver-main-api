@@ -5,11 +5,13 @@ import { CustomersService } from 'src/modules/customers/customers.service';
 import { ExpoNotificationsService } from 'src/modules/expo-notifications/expo-notifications.service';
 import { DriverStatusService } from 'src/redis/services/driver-status.service';
 import { CustomerStatusService } from 'src/redis/services/customer-status.service';
-import { EventType } from './enum/event-type.enum';
+import { EventType, isCriticalEvent } from './enum/event-type.enum';
 import { EventDeliveryMethod } from './constants/trip.constant';
 import { UserType } from 'src/common/user-type.enum';
 import { AppState } from 'src/common/enums/app-state.enum';
 import { LoggerService } from 'src/logger/logger.service';
+import { ReliableEventService } from './services/reliable-event.service';
+import { EventDeliveryResult } from './interfaces/reliable-event.interface';
 
 @Injectable()
 export class Event2Service {
@@ -21,6 +23,7 @@ export class Event2Service {
     private readonly customersService: CustomersService,
     private readonly expoNotificationsService: ExpoNotificationsService,
     private readonly logger: LoggerService,
+    private readonly reliableEventService: ReliableEventService,
   ) {}
 
   // ================================
@@ -28,7 +31,7 @@ export class Event2Service {
   // ================================
 
   /**
-   * Sends event to a single user
+   * Sends event to a single user (with reliability for critical events)
    */
   async sendToUser(
     userId: string,
@@ -37,7 +40,12 @@ export class Event2Service {
     userType: UserType,
   ): Promise<void> {
     try {
-      await this.deliverEventToUser(userId, userType, eventType, data);
+      // Use reliable delivery for critical events
+      if (isCriticalEvent(eventType)) {
+        await this.sendReliableEventToUser(userId, userType, eventType, data);
+      } else {
+        await this.deliverEventToUser(userId, userType, eventType, data);
+      }
 
       this.logger.info(`Sent ${eventType} to user ${userId}`);
     } catch (error) {
@@ -48,7 +56,7 @@ export class Event2Service {
   }
 
   /**
-   * Sends event to multiple users
+   * Sends event to multiple users (with reliability for critical events)
    */
   async sendToUsers(
     userIds: string[],
@@ -57,7 +65,12 @@ export class Event2Service {
     userType: UserType,
   ): Promise<void> {
     try {
-      await this.broadcastEvent(userIds, userType, eventType, data);
+      // Use reliable delivery for critical events
+      if (isCriticalEvent(eventType)) {
+        await this.sendReliableEventToUsers(userIds, userType, eventType, data);
+      } else {
+        await this.broadcastEvent(userIds, userType, eventType, data);
+      }
 
       this.logger.info(`Sent ${eventType} to ${userIds.length} users`);
     } catch (error) {
@@ -65,6 +78,116 @@ export class Event2Service {
         `Error sending ${eventType} to users: ${error.message}`,
       );
     }
+  }
+
+  /**
+   * Send reliable event to a single user with acknowledgment tracking
+   */
+  async sendReliableEventToUser(
+    userId: string,
+    userType: UserType,
+    eventType: EventType,
+    data: any,
+    requiresAck?: boolean,
+  ): Promise<EventDeliveryResult> {
+    try {
+      const result = await this.reliableEventService.sendReliableEvent(
+        userId,
+        userType,
+        eventType,
+        data,
+        requiresAck,
+      );
+
+      this.logger.info(
+        `Reliable event ${eventType} sent to user ${userId}`,
+        {
+          eventId: result.eventId,
+          deliveryMethod: result.deliveryMethod,
+          success: result.success,
+        },
+      );
+
+      return result;
+    } catch (error) {
+      this.logger.error(
+        `Error sending reliable event ${eventType} to user ${userId}: ${error.message}`,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Send reliable events to multiple users
+   */
+  async sendReliableEventToUsers(
+    userIds: string[],
+    userType: UserType,
+    eventType: EventType,
+    data: any,
+    requiresAck?: boolean,
+  ): Promise<EventDeliveryResult[]> {
+    try {
+      const promises = userIds.map(userId =>
+        this.reliableEventService.sendReliableEvent(
+          userId,
+          userType,
+          eventType,
+          data,
+          requiresAck,
+        ),
+      );
+
+      const results = await Promise.allSettled(promises);
+      const deliveryResults: EventDeliveryResult[] = [];
+
+      results.forEach((result, index) => {
+        const userId = userIds[index];
+        if (result.status === 'fulfilled') {
+          deliveryResults.push(result.value);
+          this.logger.info(
+            `Reliable event ${eventType} sent to user ${userId}`,
+            {
+              eventId: result.value.eventId,
+              deliveryMethod: result.value.deliveryMethod,
+              success: result.value.success,
+            },
+          );
+        } else {
+          this.logger.error(
+            `Failed to send reliable event ${eventType} to user ${userId}: ${result.reason}`,
+          );
+          deliveryResults.push({
+            success: false,
+            eventId: '',
+            deliveryMethod: 'websocket',
+            acknowledged: false,
+            error: result.reason,
+          });
+        }
+      });
+
+      return deliveryResults;
+    } catch (error) {
+      this.logger.error(
+        `Error sending reliable events ${eventType} to users: ${error.message}`,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Get pending events for a user
+   */
+  async getPendingEventsForUser(userId: string) {
+    return this.reliableEventService.getPendingEvents(userId);
+  }
+
+  /**
+   * Acknowledge an event
+   */
+  async acknowledgeEvent(userId: string, eventId: string): Promise<boolean> {
+    return this.reliableEventService.acknowledgeEvent(userId, eventId);
   }
 
   // ================================

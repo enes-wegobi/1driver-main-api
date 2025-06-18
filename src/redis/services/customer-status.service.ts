@@ -5,6 +5,7 @@ import { RedisKeyGenerator } from '../redis-key.generator';
 import { WithErrorHandling } from '../decorators/with-error-handling.decorator';
 import { AppState } from 'src/common/enums/app-state.enum';
 import { LoggerService } from 'src/logger/logger.service';
+import { UserType } from 'src/common/user-type.enum';
 
 @Injectable()
 export class CustomerStatusService extends BaseRedisService {
@@ -99,7 +100,7 @@ export class CustomerStatusService extends BaseRedisService {
       `Customer ${customerId} app state deleted on disconnect`,
       {
         userId: customerId,
-        userType: 'customer',
+        userType: UserType.CUSTOMER,
         action: 'delete_app_state_on_disconnect',
       },
     );

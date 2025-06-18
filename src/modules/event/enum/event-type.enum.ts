@@ -27,3 +27,35 @@ export enum EventType {
   NOTIFICATION = 'notification',
   ERROR = 'error',
 }
+
+// Critical events that require acknowledgment
+export const CRITICAL_EVENTS: EventType[] = [
+  EventType.TRIP_DRIVER_ASSIGNED,
+  EventType.TRIP_STARTED,
+  EventType.TRIP_COMPLETED,
+  EventType.TRIP_CANCELLED,
+  EventType.TRIP_DRIVER_ARRIVED,
+  EventType.TRIP_DRIVER_EN_ROUTE,
+  EventType.TRIP_PAYMENT_REQUIRED,
+  EventType.TRIP_PAYMENT_SUCCESS,
+  EventType.TRIP_PAYMENT_FAILED,
+  EventType.TRIP_DRIVER_NOT_FOUND,
+];
+
+// Events that should be retried aggressively
+export const HIGH_PRIORITY_EVENTS: EventType[] = [
+  EventType.TRIP_DRIVER_ASSIGNED,
+  EventType.TRIP_STARTED,
+  EventType.TRIP_COMPLETED,
+  EventType.TRIP_CANCELLED,
+];
+
+// Helper function to check if event is critical
+export function isCriticalEvent(eventType: EventType): boolean {
+  return CRITICAL_EVENTS.includes(eventType);
+}
+
+// Helper function to check if event is high priority
+export function isHighPriorityEvent(eventType: EventType): boolean {
+  return HIGH_PRIORITY_EVENTS.includes(eventType);
+}

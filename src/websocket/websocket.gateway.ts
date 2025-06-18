@@ -19,6 +19,8 @@ import { TripService } from 'src/modules/trip/services/trip.service';
 import { EventType } from 'src/modules/event/enum/event-type.enum';
 import { DriverAvailabilityStatus } from 'src/common/enums/driver-availability-status.enum';
 import { LoggerService } from 'src/logger/logger.service';
+import { Event2Service } from 'src/modules/event/event_v2.service';
+import { EventAckPayload } from 'src/modules/event/interfaces/reliable-event.interface';
 
 const PING_INTERVAL = 25000;
 const PING_TIMEOUT = 10000;
@@ -48,6 +50,7 @@ export class WebSocketGateway
     private readonly activeTripService: ActiveTripService,
     private readonly tripService: TripService,
     private readonly logger: LoggerService,
+    private readonly event2Service: Event2Service,
   ) {}
 
   @WebSocketServer()
@@ -299,6 +302,156 @@ export class WebSocketGateway
         success: false,
         message: 'Failed to update availability status',
       };
+    }
+  }
+
+  /**
+   * Handle event acknowledgment from client
+   */
+  @SubscribeMessage('event_ack')
+  async handleEventAck(client: Socket, payload: EventAckPayload) {
+    const userId = client.data.userId;
+
+    if (!userId) {
+      client.emit('error', { message: 'User not authenticated' });
+      return { success: false, message: 'User not authenticated' };
+    }
+
+    if (!payload.eventId) {
+      client.emit('error', { message: 'Event ID is required' });
+      return { success: false, message: 'Event ID is required' };
+    }
+
+    this.logger.debug(
+      `Event acknowledgment received from user ${userId} for event ${payload.eventId}`,
+      {
+        userId,
+        eventId: payload.eventId,
+        timestamp: payload.timestamp,
+      },
+    );
+
+    try {
+      const acknowledged = await this.event2Service.acknowledgeEvent(
+        userId,
+        payload.eventId,
+      );
+
+      if (acknowledged) {
+        this.logger.info(
+          `Event ${payload.eventId} successfully acknowledged by user ${userId}`,
+        );
+        return { success: true, eventId: payload.eventId };
+      } else {
+        this.logger.warn(
+          `Failed to acknowledge event ${payload.eventId} for user ${userId}`,
+        );
+        return { success: false, message: 'Failed to acknowledge event' };
+      }
+    } catch (error) {
+      this.logger.error(
+        `Error acknowledging event ${payload.eventId} for user ${userId}: ${error.message}`,
+      );
+      return { success: false, message: 'Error acknowledging event' };
+    }
+  }
+
+  /**
+   * Handle request for pending events
+   */
+  @SubscribeMessage('request_pending_events')
+  async handleRequestPendingEvents(client: Socket) {
+    const userId = client.data.userId;
+
+    if (!userId) {
+      client.emit('error', { message: 'User not authenticated' });
+      return { success: false, message: 'User not authenticated' };
+    }
+
+    this.logger.debug(`Pending events requested by user ${userId}`);
+
+    try {
+      const pendingEventsResponse = await this.event2Service.getPendingEventsForUser(userId);
+
+      if (pendingEventsResponse.events.length > 0) {
+        this.logger.info(
+          `Sending ${pendingEventsResponse.events.length} pending events to user ${userId}`,
+        );
+
+        // Send each pending event individually
+        for (const event of pendingEventsResponse.events) {
+          client.emit(event.eventType, {
+            id: event.id,
+            ...event.data,
+            requiresAck: event.requiresAck,
+            timestamp: event.timestamp.toISOString(),
+            isPendingResend: true, // Flag to indicate this is a resend
+          });
+        }
+      }
+
+      return {
+        success: true,
+        totalPendingEvents: pendingEventsResponse.totalCount,
+      };
+    } catch (error) {
+      this.logger.error(
+        `Error retrieving pending events for user ${userId}: ${error.message}`,
+      );
+      return { success: false, message: 'Error retrieving pending events' };
+    }
+  }
+
+  /**
+   * Enhanced heartbeat handler that also checks for pending events
+   */
+  @SubscribeMessage('heartbeat')
+  async handleHeartbeat(client: Socket, payload: any) {
+    const userId = client.data.userId;
+    const userType = client.data.userType;
+
+    if (!userId) {
+      return { success: false, message: 'User not authenticated' };
+    }
+
+    try {
+      // Update heartbeat based on user type
+      if (userType === UserType.DRIVER) {
+        await this.driverStatusService.updateDriverHeartbeat(userId);
+      } else if (userType === UserType.CUSTOMER) {
+        await this.customerStatusService.markCustomerAsActive(userId);
+      }
+
+      // Check for pending events and resend if any
+      const pendingEventsResponse = await this.event2Service.getPendingEventsForUser(userId);
+
+      if (pendingEventsResponse.events.length > 0) {
+        this.logger.debug(
+          `Resending ${pendingEventsResponse.events.length} pending events to user ${userId} during heartbeat`,
+        );
+
+        // Resend pending events
+        for (const event of pendingEventsResponse.events) {
+          client.emit(event.eventType, {
+            id: event.id,
+            ...event.data,
+            requiresAck: event.requiresAck,
+            timestamp: event.timestamp.toISOString(),
+            isPendingResend: true,
+          });
+        }
+      }
+
+      return {
+        success: true,
+        timestamp: new Date().toISOString(),
+        pendingEvents: pendingEventsResponse.totalCount,
+      };
+    } catch (error) {
+      this.logger.error(
+        `Error processing heartbeat for user ${userId}: ${error.message}`,
+      );
+      return { success: false, message: 'Error processing heartbeat' };
     }
   }
 

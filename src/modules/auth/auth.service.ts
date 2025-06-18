@@ -7,6 +7,7 @@ import { SigninDto } from '../../clients/auth/dto/signin.dto';
 import { PaymentsService } from '../payments/services/payments.service';
 import { DriverEarningsService } from '../drivers/services/driver-earnings.service';
 import { LoggerService } from '../../logger/logger.service';
+import { UserType } from 'src/common/user-type.enum';
 
 @Injectable()
 export class AuthService {
@@ -32,7 +33,7 @@ export class AuthService {
           `Creating Stripe customer for user ${result.customer._id}`,
           {
             userId: result.customer._id,
-            userType: 'customer',
+            userType: UserType.CUSTOMER,
             action: 'create_stripe_customer',
           },
         );
@@ -45,7 +46,7 @@ export class AuthService {
           `Successfully created Stripe customer for user ${result.customer._id}`,
           {
             userId: result.customer._id,
-            userType: 'customer',
+            userType: UserType.CUSTOMER,
             action: 'create_stripe_customer_success',
           },
         );
@@ -53,7 +54,7 @@ export class AuthService {
         // Log error but don't fail the signup
         this.logger.logError(error, {
           userId: result.customer._id,
-          userType: 'customer',
+          userType: UserType.CUSTOMER,
           action: 'create_stripe_customer_failed',
         });
       }
@@ -87,7 +88,7 @@ export class AuthService {
           `Creating initial weekly earnings record for driver ${result.driver._id}`,
           {
             userId: result.driver._id,
-            userType: 'driver',
+            userType: UserType.DRIVER,
             action: 'create_weekly_earnings_record',
           },
         );
@@ -98,7 +99,7 @@ export class AuthService {
           `Successfully created initial weekly earnings record for driver ${result.driver._id}`,
           {
             userId: result.driver._id,
-            userType: 'driver',
+            userType: UserType.DRIVER,
             action: 'create_weekly_earnings_record_success',
           },
         );
@@ -106,7 +107,7 @@ export class AuthService {
         // Log error but don't fail the signup
         this.logger.logError(error, {
           userId: result.driver._id,
-          userType: 'driver',
+          userType: UserType.DRIVER,
           action: 'create_weekly_earnings_record_failed',
         });
       }

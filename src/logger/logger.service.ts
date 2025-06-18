@@ -4,11 +4,12 @@ import * as winston from 'winston';
 import * as DatadogWinston from 'datadog-winston';
 import * as DailyRotateFile from 'winston-daily-rotate-file';
 import { v4 as uuidv4 } from 'uuid';
+import { UserType } from 'src/common/user-type.enum';
 
 export interface SimpleLogContext {
   requestId?: string;
   userId?: string;
-  userType?: 'customer' | 'driver';
+  userType?: UserType;
   tripId?: string;
   method?: string;
   url?: string;

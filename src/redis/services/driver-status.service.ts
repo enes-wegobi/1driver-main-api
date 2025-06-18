@@ -6,6 +6,7 @@ import { WithErrorHandling } from '../decorators/with-error-handling.decorator';
 import { DriverAvailabilityStatus } from 'src/common/enums/driver-availability-status.enum';
 import { AppState } from 'src/common/enums/app-state.enum';
 import { LoggerService } from '../../logger/logger.service';
+import { UserType } from 'src/common/user-type.enum';
 
 @Injectable()
 export class DriverStatusService extends BaseRedisService {
@@ -280,7 +281,7 @@ export class DriverStatusService extends BaseRedisService {
           `Driver ${driverId} cleaned up due to heartbeat timeout`,
           {
             userId: driverId,
-            userType: 'driver',
+            userType: UserType.DRIVER,
             action: 'cleanup_stale_driver',
           },
         );
@@ -314,7 +315,7 @@ export class DriverStatusService extends BaseRedisService {
           `Driver ${driverId} disconnected due to heartbeat timeout`,
           {
             userId: driverId,
-            userType: 'driver',
+            userType: UserType.DRIVER,
             action: 'heartbeat_timeout',
           },
         );
@@ -338,7 +339,7 @@ export class DriverStatusService extends BaseRedisService {
               `Driver ${driverId} automatically set to BUSY due to inactivity`,
               {
                 userId: driverId,
-                userType: 'driver',
+                userType: UserType.DRIVER,
                 action: 'auto_set_busy',
                 newStatus: DriverAvailabilityStatus.BUSY,
               },
@@ -370,7 +371,7 @@ export class DriverStatusService extends BaseRedisService {
       `Driver ${driverId} app state updated to: ${appState}`,
       {
         userId: driverId,
-        userType: 'driver',
+        userType: UserType.DRIVER,
         action: 'update_app_state',
         appState,
       },
@@ -403,7 +404,7 @@ export class DriverStatusService extends BaseRedisService {
       `Driver ${driverId} app state deleted on disconnect`,
       {
         userId: driverId,
-        userType: 'driver',
+        userType: UserType.DRIVER,
         action: 'delete_app_state_on_disconnect',
       },
     );
