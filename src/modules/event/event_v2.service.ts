@@ -34,7 +34,10 @@ export class Event2Service {
     tripId?: string,
   ): Promise<void> {
     try {
-      const deliveryMethod = await this.determineDeliveryMethod(userId, userType);
+      const deliveryMethod = await this.determineDeliveryMethod(
+        userId,
+        userType,
+      );
 
       if (deliveryMethod === EventDeliveryMethod.WEBSOCKET) {
         // For WebSocket delivery, create event with ACK tracking
@@ -61,14 +64,21 @@ export class Event2Service {
           ...data,
         };
 
-        await this.webSocketService.sendToUser(userId, eventType, eventDataWithId);
-
-        this.logger.info(`Sent ${eventType} to user ${userId} via WebSocket with ACK tracking`, {
-          eventId: event.id,
-          tripId,
+        await this.webSocketService.sendToUser(
+          userId,
           eventType,
-          userId
-        });
+          eventDataWithId,
+        );
+
+        this.logger.info(
+          `Sent ${eventType} to user ${userId} via WebSocket with ACK tracking`,
+          {
+            eventId: event.id,
+            tripId,
+            eventType,
+            userId,
+          },
+        );
       } else {
         // For Push notification, no ACK tracking needed
         if (userType === UserType.DRIVER) {
@@ -77,11 +87,14 @@ export class Event2Service {
           await this.sendPushNotificationToCustomer(userId, eventType);
         }
 
-        this.logger.info(`Sent ${eventType} to user ${userId} via Push Notification (no ACK)`, {
-          tripId,
-          eventType,
-          userId
-        });
+        this.logger.info(
+          `Sent ${eventType} to user ${userId} via Push Notification (no ACK)`,
+          {
+            tripId,
+            eventType,
+            userId,
+          },
+        );
       }
     } catch (error: any) {
       this.logger.error(
@@ -93,9 +106,15 @@ export class Event2Service {
   /**
    * Handles user acknowledgment for events
    */
-  async handleUserAcknowledgment(eventId: string, userId: string): Promise<boolean> {
+  async handleUserAcknowledgment(
+    eventId: string,
+    userId: string,
+  ): Promise<boolean> {
     try {
-      return await this.smartEventService.handleUserAcknowledgment(eventId, userId);
+      return await this.smartEventService.handleUserAcknowledgment(
+        eventId,
+        userId,
+      );
     } catch (error: any) {
       this.logger.error(
         `Error handling ACK for event ${eventId} from user ${userId}: ${error.message}`,
@@ -149,18 +168,31 @@ export class Event2Service {
       // Create events for active users in parallel
       const activeEventsWithData = await Promise.all(activeUserEventPromises);
       const userEventDataMap = new Map(
-        activeEventsWithData.map(({ userId, eventDataWithId }) => [userId, eventDataWithId])
+        activeEventsWithData.map(({ userId, eventDataWithId }) => [
+          userId,
+          eventDataWithId,
+        ]),
       );
 
-      await this.broadcastEventWithAck(activeUsers, inactiveUsers, userType, eventType, userEventDataMap, data);
-      
-      this.logger.info(`Sent ${eventType} to ${userIds.length} users (${activeUsers.length} active with ACK, ${inactiveUsers.length} inactive via push)`, {
+      await this.broadcastEventWithAck(
+        activeUsers,
+        inactiveUsers,
+        userType,
         eventType,
-        userCount: userIds.length,
-        activeUsers: activeUsers.length,
-        inactiveUsers: inactiveUsers.length,
-        tripId
-      });
+        userEventDataMap,
+        data,
+      );
+
+      this.logger.info(
+        `Sent ${eventType} to ${userIds.length} users (${activeUsers.length} active with ACK, ${inactiveUsers.length} inactive via push)`,
+        {
+          eventType,
+          userCount: userIds.length,
+          activeUsers: activeUsers.length,
+          inactiveUsers: inactiveUsers.length,
+          tripId,
+        },
+      );
     } catch (error) {
       this.logger.error(
         `Error sending ${eventType} to users: ${error.message}`,
@@ -315,7 +347,6 @@ export class Event2Service {
 
     await Promise.all(promises);
   }
-
 
   private async determineDeliveryMethod(
     userId: string,

@@ -95,7 +95,7 @@ export class RedisKeyGenerator {
   }
 
   // ========== EVENT LOGGING KEYS ==========
-  
+
   // Ana event stream
   static eventStream(): string {
     return 'events:stream';

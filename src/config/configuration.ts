@@ -6,10 +6,19 @@ export default () => ({
   port: parseInt(process.env.PORT || '3000', 10),
   host: process.env.HOST || '0.0.0.0',
   corsOrigins: process.env.CORS_ORIGINS || '*',
-  googleMapsApiKey: secretsService.readSecret('google_maps_api_key', 'GOOGLE_MAPS_API_KEY'),
+  googleMapsApiKey: secretsService.readSecret(
+    'google_maps_api_key',
+    'GOOGLE_MAPS_API_KEY',
+  ),
   stripe: {
-    secretKey: secretsService.readSecret('stripe_secret_key', 'STRIPE_SECRET_KEY'),
-    webhookSecret: secretsService.readSecret('stripe_webhook_secret', 'STRIPE_WEBHOOK_SECRET'),
+    secretKey: secretsService.readSecret(
+      'stripe_secret_key',
+      'STRIPE_SECRET_KEY',
+    ),
+    webhookSecret: secretsService.readSecret(
+      'stripe_webhook_secret',
+      'STRIPE_WEBHOOK_SECRET',
+    ),
     apiVersion: '2025-04-30.basil', // Updated to match Stripe's expected version format
   },
   services: {
@@ -43,7 +52,11 @@ export default () => ({
     defaultDelay: parseInt(process.env.DEFAULT_RETRY_DELAY || '1000', 10),
   },
   jwt: {
-    secret: secretsService.readSecretWithDefault('jwt_secret', 'supersecret', 'JWT_SECRET'),
+    secret: secretsService.readSecretWithDefault(
+      'jwt_secret',
+      'supersecret',
+      'JWT_SECRET',
+    ),
     expiresIn: parseInt(process.env.JWT_EXPIRES_IN || '36000', 10),
   },
   redis: {
@@ -64,7 +77,11 @@ export default () => ({
     host: process.env.VALKEY_HOST || 'localhost',
     port: parseInt(process.env.VALKEY_PORT || '6379', 10),
     username: process.env.VALKEY_USERNAME || '',
-    password: secretsService.readSecretWithDefault('valkey_password', '', 'VALKEY_PASSWORD'),
+    password: secretsService.readSecretWithDefault(
+      'valkey_password',
+      '',
+      'VALKEY_PASSWORD',
+    ),
     tls: process.env.VALKEY_TLS === 'true',
   },
   logging: {
@@ -87,15 +104,27 @@ export default () => ({
   spaces: {
     region: process.env.SPACES_REGION,
     endpoint: process.env.SPACES_ENDPOINT,
-    accessKeyId: secretsService.readSecret('spaces_access_key_id', 'SPACES_ACCESS_KEY_ID'),
-    secretAccessKey: secretsService.readSecret('spaces_secret_access_key', 'SPACES_SECRET_ACCESS_KEY'),
+    accessKeyId: secretsService.readSecret(
+      'spaces_access_key_id',
+      'SPACES_ACCESS_KEY_ID',
+    ),
+    secretAccessKey: secretsService.readSecret(
+      'spaces_secret_access_key',
+      'SPACES_SECRET_ACCESS_KEY',
+    ),
     bucketName: process.env.SPACES_BUCKET_NAME,
     cdnEndpoint: process.env.SPACES_CDN_ENDPOINT,
   },
   trip: {
     mongoHost: process.env.TRIP_MONGODB_HOST,
-    mongoUser: secretsService.readSecret('trip_mongodb_user', 'TRIP_MONGODB_USER'),
-    mongoPassword: secretsService.readSecret('trip_mongodb_password', 'TRIP_MONGODB_PASSWORD'),
+    mongoUser: secretsService.readSecret(
+      'trip_mongodb_user',
+      'TRIP_MONGODB_USER',
+    ),
+    mongoPassword: secretsService.readSecret(
+      'trip_mongodb_password',
+      'TRIP_MONGODB_PASSWORD',
+    ),
     mongoDatabase: process.env.TRIP_MONGODB_DATABASE,
     mongoUrl: secretsService.buildMongoURI(),
   },
@@ -122,8 +151,12 @@ export default () => ({
       username:
         process.env.QUEUE_REDIS_USERNAME || process.env.VALKEY_USERNAME || '',
       password:
-        secretsService.readSecret('queue_redis_password', 'QUEUE_REDIS_PASSWORD') || 
-        secretsService.readSecret('valkey_password', 'VALKEY_PASSWORD') || '',
+        secretsService.readSecret(
+          'queue_redis_password',
+          'QUEUE_REDIS_PASSWORD',
+        ) ||
+        secretsService.readSecret('valkey_password', 'VALKEY_PASSWORD') ||
+        '',
       db: parseInt(process.env.QUEUE_REDIS_DB || '1', 10), // Use separate DB for queues
       tls:
         process.env.QUEUE_REDIS_TLS === 'true' ||
@@ -143,6 +176,9 @@ export default () => ({
     },
   },
   expo: {
-    accessToken: secretsService.readSecret('expo_access_token', 'EXPO_ACCESS_TOKEN'),
+    accessToken: secretsService.readSecret(
+      'expo_access_token',
+      'EXPO_ACCESS_TOKEN',
+    ),
   },
 });

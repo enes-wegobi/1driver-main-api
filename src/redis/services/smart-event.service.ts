@@ -18,7 +18,7 @@ export class SmartEventService extends RedisStreamsEventService {
   }
 
   async sendEventWithLogging(event: PendingEvent): Promise<string> {
-    const streamId = await this.logEvent(event);    
+    const streamId = await this.logEvent(event);
     await this.trackPendingAck(event, streamId);
     return streamId;
   }
@@ -27,9 +27,9 @@ export class SmartEventService extends RedisStreamsEventService {
    * Trip status'ü kontrol ederek event'in hala relevant olup olmadığını kontrol eder
    */
   async isEventRelevant(
-    eventType: EventType, 
+    eventType: EventType,
     tripId: string,
-    getCurrentTripStatus: (tripId: string) => Promise<TripStatus>
+    getCurrentTripStatus: (tripId: string) => Promise<TripStatus>,
   ): Promise<boolean> {
     if (!tripId) {
       // Trip ID yoksa (driver location update gibi) her zaman relevant
@@ -40,7 +40,9 @@ export class SmartEventService extends RedisStreamsEventService {
       const currentTripStatus = await getCurrentTripStatus(tripId);
       return isEventStillRelevant(currentTripStatus, eventType);
     } catch (error: any) {
-      this.customLogger.error(`Failed to check trip status for ${tripId}: ${error.message}`);
+      this.customLogger.error(
+        `Failed to check trip status for ${tripId}: ${error.message}`,
+      );
       // Hata durumunda event'i gönder (safe side)
       return true;
     }
@@ -51,10 +53,10 @@ export class SmartEventService extends RedisStreamsEventService {
    */
   async processTimeoutAcks(
     getCurrentTripStatus: (tripId: string) => Promise<TripStatus>,
-    retryCallback: (event: any) => Promise<void>
+    retryCallback: (event: any) => Promise<void>,
   ): Promise<void> {
     const timeoutAcks = await this.getTimeoutAcks();
-    
+
     for (const ackData of timeoutAcks) {
       try {
         // Event hala relevant mi kontrol et
@@ -62,7 +64,7 @@ export class SmartEventService extends RedisStreamsEventService {
           const isRelevant = await this.isEventRelevant(
             ackData.eventType,
             ackData.tripId,
-            getCurrentTripStatus
+            getCurrentTripStatus,
           );
 
           if (!isRelevant) {
@@ -79,9 +81,10 @@ export class SmartEventService extends RedisStreamsEventService {
           // Max retry'a ulaştı, obsolete olarak işaretle
           await this.markEventAsObsolete(ackData, 'max_retries_reached');
         }
-
       } catch (error: any) {
-        this.customLogger.error(`Failed to process timeout ACK ${ackData.eventId}: ${error.message}`);
+        this.customLogger.error(
+          `Failed to process timeout ACK ${ackData.eventId}: ${error.message}`,
+        );
       }
     }
   }
@@ -90,8 +93,8 @@ export class SmartEventService extends RedisStreamsEventService {
    * Event'i obsolete olarak işaretler ve temizler
    */
   private async markEventAsObsolete(
-    ackData: any, 
-    reason: string = 'trip_status_progression'
+    ackData: any,
+    reason: string = 'trip_status_progression',
   ): Promise<void> {
     // Pending ACK'ı sil
     const ackKey = RedisKeyGenerator.pendingAcks(ackData.userId);
@@ -103,7 +106,7 @@ export class SmartEventService extends RedisStreamsEventService {
       eventType: ackData.eventType,
       tripId: ackData.tripId,
       userId: ackData.userId,
-      reason
+      reason,
     });
   }
 
@@ -112,51 +115,59 @@ export class SmartEventService extends RedisStreamsEventService {
    */
   async cleanupObsoleteEventsForTrip(
     tripId: string,
-    newTripStatus: TripStatus
+    newTripStatus: TripStatus,
   ): Promise<number> {
     let cleanedCount = 0;
 
     try {
       // Tüm pending ACK'ları kontrol et
       const keys = await this.client.keys('pending_acks:*');
-      
+
       for (const key of keys) {
         const userId = key.replace('pending_acks:', '');
         const ackData = await this.client.hgetall(key);
-        
+
         for (const [eventId, dataStr] of Object.entries(ackData)) {
           try {
             const data = JSON.parse(dataStr);
-            
+
             // Bu trip'e ait event mi?
             if (data.tripId === tripId) {
-              const isRelevant = isEventStillRelevant(newTripStatus, data.eventType);
-              
+              const isRelevant = isEventStillRelevant(
+                newTripStatus,
+                data.eventType,
+              );
+
               if (!isRelevant) {
                 await this.client.hdel(key, eventId);
                 cleanedCount++;
-                
+
                 this.customLogger.info(`Cleaned obsolete event: ${eventId}`, {
                   eventId,
                   eventType: data.eventType,
                   tripId,
                   oldStatus: 'unknown',
-                  newStatus: newTripStatus
+                  newStatus: newTripStatus,
                 });
               }
             }
           } catch (error: any) {
-            this.customLogger.error(`Failed to parse ACK data for cleanup: ${error.message}`);
+            this.customLogger.error(
+              `Failed to parse ACK data for cleanup: ${error.message}`,
+            );
           }
         }
       }
-
     } catch (error: any) {
-      this.customLogger.error(`Failed to cleanup obsolete events for trip ${tripId}: ${error.message}`);
+      this.customLogger.error(
+        `Failed to cleanup obsolete events for trip ${tripId}: ${error.message}`,
+      );
     }
 
     if (cleanedCount > 0) {
-      this.customLogger.info(`Cleaned ${cleanedCount} obsolete events for trip ${tripId}`);
+      this.customLogger.info(
+        `Cleaned ${cleanedCount} obsolete events for trip ${tripId}`,
+      );
     }
 
     return cleanedCount;
@@ -167,26 +178,27 @@ export class SmartEventService extends RedisStreamsEventService {
    */
   async getEventStats(hours: number = 24): Promise<any> {
     const endTime = Date.now();
-    const startTime = endTime - (hours * 60 * 60 * 1000);
-    
+    const startTime = endTime - hours * 60 * 60 * 1000;
+
     // Stream'den son X saatteki event'leri al
     const events = await this.readEvents('-', '+', 1000);
-    
+
     const stats = {
       totalEvents: 0,
       eventsByType: {} as Record<string, number>,
       pendingAcks: 0,
       timeoutAcks: 0,
-      period: `${hours} hours`
+      period: `${hours} hours`,
     };
 
     // Event'leri filtrele ve analiz et
     for (const event of events) {
       const eventTime = new Date(event.timestamp).getTime();
-      
+
       if (eventTime >= startTime) {
         stats.totalEvents++;
-        stats.eventsByType[event.eventType] = (stats.eventsByType[event.eventType] || 0) + 1;
+        stats.eventsByType[event.eventType] =
+          (stats.eventsByType[event.eventType] || 0) + 1;
       }
     }
 

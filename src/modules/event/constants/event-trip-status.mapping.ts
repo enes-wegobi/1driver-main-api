@@ -10,7 +10,10 @@ export const EVENT_TRIP_STATUS_MAPPING = {
   [EventType.TRIP_DRIVER_EN_ROUTE]: [TripStatus.DRIVER_ON_WAY_TO_PICKUP],
   [EventType.TRIP_DRIVER_ARRIVED]: [TripStatus.ARRIVED_AT_PICKUP],
   [EventType.TRIP_STARTED]: [TripStatus.TRIP_IN_PROGRESS],
-  [EventType.TRIP_PAYMENT_REQUIRED]: [TripStatus.PAYMENT, TripStatus.PAYMENT_RETRY],
+  [EventType.TRIP_PAYMENT_REQUIRED]: [
+    TripStatus.PAYMENT,
+    TripStatus.PAYMENT_RETRY,
+  ],
   [EventType.TRIP_PAYMENT_SUCCESS]: [TripStatus.COMPLETED],
   [EventType.TRIP_COMPLETED]: [TripStatus.COMPLETED],
   [EventType.TRIP_CANCELLED]: [TripStatus.CANCELLED],
@@ -45,14 +48,14 @@ export function isEventStillRelevant(
   eventType: EventType,
 ): boolean {
   const expectedStatuses = EVENT_TRIP_STATUS_MAPPING[eventType];
-  
+
   if (!expectedStatuses) {
     // Mapping'de yoksa (driver location update gibi) her zaman relevant
     return true;
   }
 
   const currentLevel = TRIP_STATUS_HIERARCHY[currentTripStatus];
-  
+
   // Event'in expected status'larından herhangi biri current level'dan büyük veya eşitse relevant
   for (const expectedStatus of expectedStatuses) {
     const expectedLevel = TRIP_STATUS_HIERARCHY[expectedStatus];
@@ -60,6 +63,6 @@ export function isEventStillRelevant(
       return true;
     }
   }
-  
+
   return false;
 }

@@ -38,7 +38,9 @@ export class AckTimeoutService {
       const trip = await this.tripService.findById(tripId);
       return trip?.status || TripStatus.CANCELLED;
     } catch (error: any) {
-      this.logger.error(`Failed to get trip status for ${tripId}: ${error.message}`);
+      this.logger.error(
+        `Failed to get trip status for ${tripId}: ${error.message}`,
+      );
       return TripStatus.CANCELLED;
     }
   }
@@ -49,7 +51,7 @@ export class AckTimeoutService {
   private async retryEvent(ackData: any): Promise<void> {
     try {
       ackData.retryCount = (ackData.retryCount || 0) + 1;
-      
+
       await this.event2Service.sendToUser(
         ackData.userId,
         ackData.eventType,
@@ -58,33 +60,45 @@ export class AckTimeoutService {
         ackData.tripId,
       );
 
-      this.logger.info(`Event ${ackData.eventId} retried (attempt ${ackData.retryCount})`, {
-        eventId: ackData.eventId,
-        userId: ackData.userId,
-        eventType: ackData.eventType,
-        retryCount: ackData.retryCount
-      });
-
+      this.logger.info(
+        `Event ${ackData.eventId} retried (attempt ${ackData.retryCount})`,
+        {
+          eventId: ackData.eventId,
+          userId: ackData.userId,
+          eventType: ackData.eventType,
+          retryCount: ackData.retryCount,
+        },
+      );
     } catch (error: any) {
-      this.logger.error(`Failed to retry event ${ackData.eventId}: ${error.message}`);
+      this.logger.error(
+        `Failed to retry event ${ackData.eventId}: ${error.message}`,
+      );
     }
   }
 
   /**
    * Trip status değiştiğinde obsolete event'leri temizler
    */
-  async onTripStatusChanged(tripId: string, newStatus: TripStatus): Promise<void> {
+  async onTripStatusChanged(
+    tripId: string,
+    newStatus: TripStatus,
+  ): Promise<void> {
     try {
-      const cleanedCount = await this.smartEventService.cleanupObsoleteEventsForTrip(
-        tripId,
-        newStatus
-      );
+      const cleanedCount =
+        await this.smartEventService.cleanupObsoleteEventsForTrip(
+          tripId,
+          newStatus,
+        );
 
       if (cleanedCount > 0) {
-        this.logger.info(`Cleaned ${cleanedCount} obsolete events for trip ${tripId} (new status: ${newStatus})`);
+        this.logger.info(
+          `Cleaned ${cleanedCount} obsolete events for trip ${tripId} (new status: ${newStatus})`,
+        );
       }
     } catch (error: any) {
-      this.logger.error(`Failed to cleanup obsolete events for trip ${tripId}: ${error.message}`);
+      this.logger.error(
+        `Failed to cleanup obsolete events for trip ${tripId}: ${error.message}`,
+      );
     }
   }
 
@@ -102,7 +116,7 @@ export class AckTimeoutService {
         pendingAcks: 0,
         timeoutAcks: 0,
         period: `${hours} hours`,
-        error: error.message
+        error: error.message,
       };
     }
   }

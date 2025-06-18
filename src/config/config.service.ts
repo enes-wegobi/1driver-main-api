@@ -108,7 +108,7 @@ export class ConfigService {
   }
 
   get tripMongoUri(): string {
-    return this.configService.get('trip.mongoUrl')!; 
+    return this.configService.get('trip.mongoUrl')!;
   }
 
   get tripMongoPassword(): string {

@@ -36,27 +36,36 @@ export class RedisStreamsEventService extends BaseRedisService {
   @WithErrorHandling('')
   async logEvent(event: PendingEvent): Promise<string> {
     const streamKey = RedisKeyGenerator.eventStream();
-    
+
     // Stream'e event ekle
-    const streamId = await this.client.xadd(
+    const streamId = (await this.client.xadd(
       streamKey,
       '*', // Auto-generate ID
-      'eventId', event.id,
-      'eventType', event.eventType,
-      'userId', event.userId,
-      'userType', event.userType,
-      'tripId', event.tripId || '',
-      'data', JSON.stringify(event.data),
-      'timestamp', event.timestamp.toISOString(),
-      'requiresAck', event.requiresAck.toString(),
-      'retryCount', event.retryCount.toString()
-    ) as string;
+      'eventId',
+      event.id,
+      'eventType',
+      event.eventType,
+      'userId',
+      event.userId,
+      'userType',
+      event.userType,
+      'tripId',
+      event.tripId || '',
+      'data',
+      JSON.stringify(event.data),
+      'timestamp',
+      event.timestamp.toISOString(),
+      'requiresAck',
+      event.requiresAck.toString(),
+      'retryCount',
+      event.retryCount.toString(),
+    )) as string;
 
     this.customLogger.info(`Event logged to stream: ${event.eventType}`, {
       eventId: event.id,
       streamId,
       userId: event.userId,
-      eventType: event.eventType
+      eventType: event.eventType,
     });
 
     return streamId;
@@ -76,44 +85,47 @@ export class RedisStreamsEventService extends BaseRedisService {
       eventType: event.eventType,
       tripId: event.tripId,
       sentAt: Date.now(),
-      expiresAt: Date.now() + (5 * 60 * 1000),
-      retryCount: event.retryCount
+      expiresAt: Date.now() + 5 * 60 * 1000,
+      retryCount: event.retryCount,
     };
 
     await this.client.hset(ackKey, event.id, JSON.stringify(ackData));
-    
+
     await this.client.expire(ackKey, 300);
 
     this.customLogger.debug(`Tracking ACK for event: ${event.id}`, {
       eventId: event.id,
       userId: event.userId,
-      expiresAt: new Date(ackData.expiresAt).toISOString()
+      expiresAt: new Date(ackData.expiresAt).toISOString(),
     });
   }
 
   @WithErrorHandling(false)
-  async handleUserAcknowledgment(eventId: string, userId: string): Promise<boolean> {
+  async handleUserAcknowledgment(
+    eventId: string,
+    userId: string,
+  ): Promise<boolean> {
     const ackKey = RedisKeyGenerator.pendingAcks(userId);
-    
+
     // Pending ACK'ı al
     const ackDataStr = await this.client.hget(ackKey, eventId);
     if (!ackDataStr) {
       this.customLogger.warn(`ACK received for unknown event: ${eventId}`, {
         eventId,
-        userId
+        userId,
       });
       return false;
     }
 
     const ackData = JSON.parse(ackDataStr);
-    
+
     await this.client.hdel(ackKey, eventId);
-    
+
     this.customLogger.info(`Event acknowledged: ${eventId}`, {
       eventId,
       userId,
       eventType: ackData.eventType,
-      responseTime: Date.now() - ackData.sentAt
+      responseTime: Date.now() - ackData.sentAt,
     });
 
     return true;
@@ -126,17 +138,19 @@ export class RedisStreamsEventService extends BaseRedisService {
   async getPendingAcks(userId: string): Promise<any[]> {
     const ackKey = RedisKeyGenerator.pendingAcks(userId);
     const ackData = await this.client.hgetall(ackKey);
-    
+
     const pendingAcks: any[] = [];
     for (const [eventId, dataStr] of Object.entries(ackData)) {
       try {
         const data = JSON.parse(dataStr);
         pendingAcks.push({
           eventId,
-          ...data
+          ...data,
         });
       } catch (error: any) {
-        this.customLogger.error(`Failed to parse ACK data for event ${eventId}: ${error.message}`);
+        this.customLogger.error(
+          `Failed to parse ACK data for event ${eventId}: ${error.message}`,
+        );
       }
     }
 
@@ -154,11 +168,11 @@ export class RedisStreamsEventService extends BaseRedisService {
     // Tüm user'ların pending ACK'larını kontrol et (bu basit implementasyon)
     // Production'da daha efficient bir yöntem kullanılabilir
     const keys = await this.client.keys('pending_acks:*');
-    
+
     for (const key of keys) {
       const userId = key.replace('pending_acks:', '');
       const ackData = await this.client.hgetall(key);
-      
+
       for (const [eventId, dataStr] of Object.entries(ackData)) {
         try {
           const data = JSON.parse(dataStr);
@@ -166,11 +180,13 @@ export class RedisStreamsEventService extends BaseRedisService {
             timeoutAcks.push({
               userId,
               eventId,
-              ...data
+              ...data,
             });
           }
         } catch (error: any) {
-          this.customLogger.error(`Failed to parse timeout ACK data: ${error.message}`);
+          this.customLogger.error(
+            `Failed to parse timeout ACK data: ${error.message}`,
+          );
         }
       }
     }
@@ -185,12 +201,18 @@ export class RedisStreamsEventService extends BaseRedisService {
   async readEvents(
     startId: string = '-',
     endId: string = '+',
-    count: number = 100
+    count: number = 100,
   ): Promise<StreamEvent[]> {
     const streamKey = RedisKeyGenerator.eventStream();
-    
-    const events = await this.client.xrange(streamKey, startId, endId, 'COUNT', count);
-    
+
+    const events = await this.client.xrange(
+      streamKey,
+      startId,
+      endId,
+      'COUNT',
+      count,
+    );
+
     return events.map(([streamId, fields]) => {
       const eventData = this.parseStreamFields(fields);
       return {
@@ -202,7 +224,7 @@ export class RedisStreamsEventService extends BaseRedisService {
         tripId: eventData.tripId || undefined,
         data: JSON.parse(eventData.data || '{}'),
         timestamp: eventData.timestamp,
-        requiresAck: eventData.requiresAck === 'true'
+        requiresAck: eventData.requiresAck === 'true',
       };
     });
   }
