@@ -316,11 +316,14 @@ export class WebSocketGateway
 
     try {
       await this.keyspaceEventService.removeTTLKey(userId, payload.eventId);
-      
-      this.logger.debug(`Event acknowledged and TTL key cleaned: ${payload.eventId}`, {
-        eventId: payload.eventId,
-        userId,
-      });
+
+      this.logger.debug(
+        `Event acknowledged and TTL key cleaned: ${payload.eventId}`,
+        {
+          eventId: payload.eventId,
+          userId,
+        },
+      );
 
       return {
         success: true,

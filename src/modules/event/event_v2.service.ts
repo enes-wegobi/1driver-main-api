@@ -5,7 +5,10 @@ import { CustomersService } from 'src/modules/customers/customers.service';
 import { ExpoNotificationsService } from 'src/modules/expo-notifications/expo-notifications.service';
 import { DriverStatusService } from 'src/redis/services/driver-status.service';
 import { CustomerStatusService } from 'src/redis/services/customer-status.service';
-import { ExpiredAckData, KeyspaceEventService } from 'src/redis/services/keyspace-event.service';
+import {
+  ExpiredAckData,
+  KeyspaceEventService,
+} from 'src/redis/services/keyspace-event.service';
 import { EventType } from './enum/event-type.enum';
 import { EventDeliveryMethod } from './constants/trip.constant';
 import { UserType } from 'src/common/user-type.enum';
@@ -32,7 +35,7 @@ export class Event2Service implements OnModuleInit {
     this.logger.info('Event2Service initialized with retry callback');
   }
 
-    generateEventId(): string {
+  generateEventId(): string {
     return `evt_${uuidv4().replace(/-/g, '')}`;
   }
 
@@ -50,18 +53,17 @@ export class Event2Service implements OnModuleInit {
       );
 
       if (deliveryMethod === EventDeliveryMethod.WEBSOCKET) {
-
-          const eventData: ExpiredAckData = {
-            eventId:this.generateEventId(),
-            userId,
-            userType,
-            eventType,
-            tripId,
-            retryCount: 0,
-            timestamp: new Date(),
-            data
-          };
-          await this.keyspaceEventService.createTTLKey(eventData);
+        const eventData: ExpiredAckData = {
+          eventId: this.generateEventId(),
+          userId,
+          userType,
+          eventType,
+          tripId,
+          retryCount: 0,
+          timestamp: new Date(),
+          data,
+        };
+        await this.keyspaceEventService.createTTLKey(eventData);
 
         const eventDataWithId = {
           eventId: eventData.eventId,
@@ -124,16 +126,16 @@ export class Event2Service implements OnModuleInit {
       const retryEventData: ExpiredAckData = {
         ...ackData,
         retryCount: ackData.retryCount,
-        timestamp: new Date()
+        timestamp: new Date(),
       };
-      
+
       await this.keyspaceEventService.createTTLKey(retryEventData);
 
       // Event'i tekrar gönder
       const eventDataWithId = {
         eventId: ackData.eventId,
         eventType: ackData.eventType,
-        ...ackData.data || {},
+        ...(ackData.data || {}),
       };
 
       await this.webSocketService.sendToUser(
@@ -142,8 +144,9 @@ export class Event2Service implements OnModuleInit {
         eventDataWithId,
       );
 
-      this.logger.info(`Event ${ackData.eventId} retried successfully (attempt ${ackData.retryCount})`);
-
+      this.logger.info(
+        `Event ${ackData.eventId} retried successfully (attempt ${ackData.retryCount})`,
+      );
     } catch (error: any) {
       this.logger.error(
         `Failed to retry event ${ackData.eventId}: ${error.message}`,
@@ -167,17 +170,17 @@ export class Event2Service implements OnModuleInit {
 
       // For active users (WebSocket), create events with ACK tracking
       const activeUserEventPromises = activeUsers.map(async (userId) => {
-          const eventData: ExpiredAckData = {
-            eventId:this.generateEventId(),
-            userId,
-            userType,
-            eventType,
-            tripId,
-            retryCount: 0,
-            timestamp: new Date(),
-            data
-          };
-          await this.keyspaceEventService.createTTLKey(eventData);
+        const eventData: ExpiredAckData = {
+          eventId: this.generateEventId(),
+          userId,
+          userType,
+          eventType,
+          tripId,
+          retryCount: 0,
+          timestamp: new Date(),
+          data,
+        };
+        await this.keyspaceEventService.createTTLKey(eventData);
 
         // Add eventId to the data at the same level as eventType
         const eventDataWithId = {

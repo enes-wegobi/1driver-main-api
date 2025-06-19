@@ -136,7 +136,10 @@ export class EventTTLConfigUtil {
       return [30, 60, 120][retryCount] || 120;
     }
 
-    return config.intervals[retryCount] || config.intervals[config.intervals.length - 1];
+    return (
+      config.intervals[retryCount] ||
+      config.intervals[config.intervals.length - 1]
+    );
   }
 
   /**
@@ -175,11 +178,13 @@ export class EventTTLConfigUtil {
    * Get full configuration for event type
    */
   static getConfig(eventType: EventType): TTLConfig {
-    return EventTTLConfigUtil.TTL_CONFIGS[eventType] || {
-      intervals: [30, 60, 120],
-      maxRetries: 3,
-      priority: 'NORMAL',
-    };
+    return (
+      EventTTLConfigUtil.TTL_CONFIGS[eventType] || {
+        intervals: [30, 60, 120],
+        maxRetries: 3,
+        priority: 'NORMAL',
+      }
+    );
   }
 
   /**
@@ -202,9 +207,9 @@ export class EventTTLConfigUtil {
   } {
     const configs = Object.values(EventTTLConfigUtil.TTL_CONFIGS);
     return {
-      critical: configs.filter(c => c.priority === 'CRITICAL').length,
-      high: configs.filter(c => c.priority === 'HIGH').length,
-      normal: configs.filter(c => c.priority === 'NORMAL').length,
+      critical: configs.filter((c) => c.priority === 'CRITICAL').length,
+      high: configs.filter((c) => c.priority === 'HIGH').length,
+      normal: configs.filter((c) => c.priority === 'NORMAL').length,
       totalEvents: configs.length,
     };
   }

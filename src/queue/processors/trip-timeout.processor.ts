@@ -96,6 +96,17 @@ export class TripTimeoutProcessor extends WorkerHost {
         if (result.success && result.trip) {
           const updatedTrip = result.trip;
 
+          // Send TRIP_ALREADY_TAKEN event to the timed-out driver
+          await this.event2Service.sendToUser(
+            driverId,
+            EventType.TRIP_ALREADY_TAKEN,
+            updatedTrip,
+            UserType.DRIVER,
+          );
+          this.logger.info(
+            `Sent TRIP_ALREADY_TAKEN event to timed-out driver ${driverId} for trip ${tripId}`,
+          );
+
           if (this.areAllDriversRejected(updatedTrip)) {
             /*
             await this.eventService.notifyCustomerDriverNotFound(

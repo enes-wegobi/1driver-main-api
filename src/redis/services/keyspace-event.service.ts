@@ -25,7 +25,10 @@ export interface ExpiredAckData {
 }
 
 @Injectable()
-export class KeyspaceEventService extends BaseRedisService implements OnModuleInit, OnModuleDestroy {
+export class KeyspaceEventService
+  extends BaseRedisService
+  implements OnModuleInit, OnModuleDestroy
+{
   private subscriber: Redis;
 
   constructor(
@@ -91,11 +94,14 @@ export class KeyspaceEventService extends BaseRedisService implements OnModuleIn
     }
   }
 
-  private async processExpiredEvent(userId: string, eventId: string): Promise<void> {
+  private async processExpiredEvent(
+    userId: string,
+    eventId: string,
+  ): Promise<void> {
     // Get the event data from the backup key (since TTL key is already expired)
     const backupKey = RedisKeyGenerator.eventBackup(userId, eventId);
     const backupDataStr = await this.client.get(backupKey);
-    
+
     if (!backupDataStr) {
       this.logger.warn(`Backup data not found for expired event ${eventId}`, {
         eventId,
@@ -109,35 +115,51 @@ export class KeyspaceEventService extends BaseRedisService implements OnModuleIn
     try {
       ackData = JSON.parse(backupDataStr);
     } catch (error) {
-      this.logger.error(`Failed to parse backup data for event ${eventId}:`, error);
+      this.logger.error(
+        `Failed to parse backup data for event ${eventId}:`,
+        error,
+      );
       return;
     }
 
     const eventType = ackData.eventType as EventType;
-    const maxRetries =EventTTLConfigUtil.getMaxRetries(eventType);
+    const maxRetries = EventTTLConfigUtil.getMaxRetries(eventType);
     const currentRetryCount = ackData.retryCount || 0;
 
     // Check if we've exceeded max retries
     if (currentRetryCount >= maxRetries) {
-      this.logger.info(`Event ${eventId} reached max retries (${maxRetries}), marking as obsolete`);
+      this.logger.info(
+        `Event ${eventId} reached max retries (${maxRetries}), marking as obsolete`,
+      );
       await this.cleanupBackupKey(userId, eventId);
       return;
     }
 
     // Check if event is still relevant (trip status check)
     if (ackData.tripId) {
-      const isRelevant = await this.isEventStillRelevant(eventType, ackData.tripId);
+      const isRelevant = await this.isEventStillRelevant(
+        eventType,
+        ackData.tripId,
+      );
       if (!isRelevant) {
-        this.logger.info(`Event ${eventId} no longer relevant due to trip status progression`);
+        this.logger.info(
+          `Event ${eventId} no longer relevant due to trip status progression`,
+        );
         await this.cleanupBackupKey(userId, eventId);
         return;
       }
     }
 
     // Check if user is ready to receive the retry
-    const shouldRetry = await this.shouldRetryForUser(userId, ackData.userType, eventType);
+    const shouldRetry = await this.shouldRetryForUser(
+      userId,
+      ackData.userType,
+      eventType,
+    );
     if (!shouldRetry) {
-      this.logger.info(`User ${userId} not ready for retry, skipping event ${eventId}`);
+      this.logger.info(
+        `User ${userId} not ready for retry, skipping event ${eventId}`,
+      );
       return;
     }
 
@@ -145,8 +167,11 @@ export class KeyspaceEventService extends BaseRedisService implements OnModuleIn
     await this.retryExpiredEvent(ackData, currentRetryCount + 1);
   }
 
-
-  private async shouldRetryForUser(userId: string, userType: UserType, eventType: EventType): Promise<boolean> {
+  private async shouldRetryForUser(
+    userId: string,
+    userType: UserType,
+    eventType: EventType,
+  ): Promise<boolean> {
     try {
       const isCritical = EventTTLConfigUtil.isCritical(eventType);
 
@@ -164,46 +189,65 @@ export class KeyspaceEventService extends BaseRedisService implements OnModuleIn
     }
   }
 
-  private async isUserReadyForCriticalEvent(userId: string, userType: UserType): Promise<boolean> {
+  private async isUserReadyForCriticalEvent(
+    userId: string,
+    userType: UserType,
+  ): Promise<boolean> {
     try {
       if (userType === UserType.DRIVER) {
-        const appState = await this.driverStatusService.getDriverAppState(userId);
+        const appState =
+          await this.driverStatusService.getDriverAppState(userId);
         // For critical events, retry unless user is completely inactive
         return !appState;
       } else {
-        const appState = await this.customerStatusService.getCustomerAppState(userId);
+        const appState =
+          await this.customerStatusService.getCustomerAppState(userId);
         return !appState;
       }
     } catch (error) {
-      this.logger.error(`Error checking critical event readiness for user ${userId}:`, error);
+      this.logger.error(
+        `Error checking critical event readiness for user ${userId}:`,
+        error,
+      );
       return true; // Default to allowing retry on error
     }
   }
 
-  private async isUserInForeground(userId: string, userType: UserType): Promise<boolean> {
+  private async isUserInForeground(
+    userId: string,
+    userType: UserType,
+  ): Promise<boolean> {
     try {
       if (userType === UserType.DRIVER) {
-        const appState = await this.driverStatusService.getDriverAppState(userId);
+        const appState =
+          await this.driverStatusService.getDriverAppState(userId);
         return appState === AppState.FOREGROUND;
       } else {
-        const appState = await this.customerStatusService.getCustomerAppState(userId);
+        const appState =
+          await this.customerStatusService.getCustomerAppState(userId);
         return appState === AppState.FOREGROUND;
       }
     } catch (error) {
-      this.logger.error(`Error checking foreground status for user ${userId}:`, error);
+      this.logger.error(
+        `Error checking foreground status for user ${userId}:`,
+        error,
+      );
       return false; // Default to not retrying on error for normal events
     }
   }
 
-  private async isEventStillRelevant(eventType: EventType, tripId: string): Promise<boolean> {
+  private async isEventStillRelevant(
+    eventType: EventType,
+    tripId: string,
+  ): Promise<boolean> {
     try {
       // Use callback pattern to avoid circular dependency
       if (this.getTripStatusCallback) {
         const currentTripStatus = await this.getTripStatusCallback(tripId);
-        
+
         // Use the existing mapping function to check if event is still relevant
         const isRelevant = isEventStillRelevant(currentTripStatus, eventType);
-        
+
         this.logger.debug(`Event relevance check for ${eventType}`, {
           tripId,
           currentTripStatus,
@@ -213,16 +257,24 @@ export class KeyspaceEventService extends BaseRedisService implements OnModuleIn
 
         return isRelevant;
       } else {
-        this.logger.warn(`No trip status callback set, assuming event is relevant`);
+        this.logger.warn(
+          `No trip status callback set, assuming event is relevant`,
+        );
         return true; // Default to relevant if no callback
       }
     } catch (error) {
-      this.logger.error(`Error checking event relevance for trip ${tripId}:`, error);
+      this.logger.error(
+        `Error checking event relevance for trip ${tripId}:`,
+        error,
+      );
       return true; // Default to relevant on error (safe side)
     }
   }
 
-  private async retryExpiredEvent(ackData: ExpiredAckData, newRetryCount: number): Promise<void> {
+  private async retryExpiredEvent(
+    ackData: ExpiredAckData,
+    newRetryCount: number,
+  ): Promise<void> {
     try {
       // Update retry count
       const updatedAckData = {
@@ -245,31 +297,45 @@ export class KeyspaceEventService extends BaseRedisService implements OnModuleIn
         this.logger.warn(`No retry callback set for event ${ackData.eventId}`);
       }
     } catch (error) {
-      this.logger.error(`Failed to retry expired event ${ackData.eventId}:`, error);
+      this.logger.error(
+        `Failed to retry expired event ${ackData.eventId}:`,
+        error,
+      );
     }
   }
-
 
   /**
    * Create TTL key for tracking ACK timeout
    */
   async createTTLKey(eventData: ExpiredAckData): Promise<void> {
     try {
-      const ttl = EventTTLConfigUtil.getTTL(eventData.eventType, eventData.retryCount);
-      const ttlKey = RedisKeyGenerator.eventTtl(eventData.userId, eventData.eventId);
-      const backupKey = RedisKeyGenerator.eventBackup(eventData.userId, eventData.eventId);
+      const ttl = EventTTLConfigUtil.getTTL(
+        eventData.eventType,
+        eventData.retryCount,
+      );
+      const ttlKey = RedisKeyGenerator.eventTtl(
+        eventData.userId,
+        eventData.eventId,
+      );
+      const backupKey = RedisKeyGenerator.eventBackup(
+        eventData.userId,
+        eventData.eventId,
+      );
 
       // TTL key: Just a trigger (minimal data)
       await this.client.setex(ttlKey, ttl, 'trigger');
-      
+
       // Backup key: Store actual event data with extra 5 minutes for cleanup
       await this.client.setex(backupKey, ttl + 300, JSON.stringify(eventData));
 
-      this.logger.debug(`Created TTL and backup keys for event ${eventData.eventId}`, {
-        eventId: eventData.eventId,
-        ttl,
-        backupTtl: ttl + 300,
-      });
+      this.logger.debug(
+        `Created TTL and backup keys for event ${eventData.eventId}`,
+        {
+          eventId: eventData.eventId,
+          ttl,
+          backupTtl: ttl + 300,
+        },
+      );
     } catch (error) {
       this.logger.error(`Failed to create TTL key:`, error);
     }
@@ -282,16 +348,19 @@ export class KeyspaceEventService extends BaseRedisService implements OnModuleIn
     try {
       const ttlKey = RedisKeyGenerator.eventTtl(userId, eventId);
       const backupKey = RedisKeyGenerator.eventBackup(userId, eventId);
-      
+
       // Remove both TTL and backup keys
       const results = await this.client.del(ttlKey, backupKey);
-      
+
       if (results > 0) {
-        this.logger.debug(`Removed TTL and backup keys for acknowledged event ${eventId}`, {
-          eventId,
-          userId,
-          keysRemoved: results,
-        });
+        this.logger.debug(
+          `Removed TTL and backup keys for acknowledged event ${eventId}`,
+          {
+            eventId,
+            userId,
+            keysRemoved: results,
+          },
+        );
       }
     } catch (error) {
       this.logger.error(`Failed to remove TTL and backup keys:`, error);
@@ -301,19 +370,28 @@ export class KeyspaceEventService extends BaseRedisService implements OnModuleIn
   /**
    * Clean up backup key when event is no longer needed
    */
-  private async cleanupBackupKey(userId: string, eventId: string): Promise<void> {
+  private async cleanupBackupKey(
+    userId: string,
+    eventId: string,
+  ): Promise<void> {
     try {
       const backupKey = RedisKeyGenerator.eventBackup(userId, eventId);
       const result = await this.client.del(backupKey);
-      
+
       if (result > 0) {
-        this.logger.debug(`Cleaned up backup key for obsolete event ${eventId}`, {
-          eventId,
-          userId,
-        });
+        this.logger.debug(
+          `Cleaned up backup key for obsolete event ${eventId}`,
+          {
+            eventId,
+            userId,
+          },
+        );
       }
     } catch (error) {
-      this.logger.error(`Failed to cleanup backup key for event ${eventId}:`, error);
+      this.logger.error(
+        `Failed to cleanup backup key for event ${eventId}:`,
+        error,
+      );
     }
   }
 
@@ -330,7 +408,9 @@ export class KeyspaceEventService extends BaseRedisService implements OnModuleIn
   /**
    * Set the trip status callback
    */
-  setTripStatusCallback(callback: (tripId: string) => Promise<TripStatus>): void {
+  setTripStatusCallback(
+    callback: (tripId: string) => Promise<TripStatus>,
+  ): void {
     this.getTripStatusCallback = callback;
   }
 
