@@ -94,15 +94,11 @@ export class RedisKeyGenerator {
     return `driver:${driverId}:last-request`;
   }
 
-  // ========== EVENT LOGGING KEYS ==========
-
-  // Ana event stream
-  static eventStream(): string {
-    return 'events:stream';
+  static eventTtl(userId: string, eventId: string): string {
+    return `event_ttl:${userId}:${eventId}`;
   }
 
-  // ACK bekleyen eventler
-  static pendingAcks(userId: string): string {
-    return `pending_acks:${userId}`;
+  static eventBackup(userId: string, eventId: string): string {
+    return `event_backup:${userId}:${eventId}`;
   }
 }

@@ -1,15 +1,14 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { BaseRedisService } from './services/base-redis.service';
-import { LocationService } from './services/location.service';
 import { DriverStatusService } from './services/driver-status.service';
 import { CustomerStatusService } from './services/customer-status.service';
+import { LocationService } from './services/location.service';
 import { NearbySearchService } from './services/nearby-search.service';
 import { ActiveTripService } from './services/active-trip.service';
-import { TokenManagerService } from './services/token-manager.service';
 import { DriverTripQueueService } from './services/driver-trip-queue.service';
-import { RedisStreamsEventService } from './services/redis-streams-event.service';
-import { SmartEventService } from './services/smart-event.service';
+import { TokenManagerService } from './services/token-manager.service';
+import { KeyspaceEventService } from './services/keyspace-event.service';
 
 @Module({
   imports: [ConfigModule],
@@ -22,8 +21,7 @@ import { SmartEventService } from './services/smart-event.service';
     ActiveTripService,
     TokenManagerService,
     DriverTripQueueService,
-    RedisStreamsEventService,
-    SmartEventService,
+    KeyspaceEventService,
   ],
   exports: [
     BaseRedisService,
@@ -34,8 +32,7 @@ import { SmartEventService } from './services/smart-event.service';
     ActiveTripService,
     TokenManagerService,
     DriverTripQueueService,
-    RedisStreamsEventService,
-    SmartEventService,
+    KeyspaceEventService,
   ],
 })
 export class RedisModule {}

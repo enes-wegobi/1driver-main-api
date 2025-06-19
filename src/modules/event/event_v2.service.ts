@@ -1,20 +1,20 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { WebSocketService } from 'src/websocket/websocket.service';
 import { DriversService } from 'src/modules/drivers/drivers.service';
 import { CustomersService } from 'src/modules/customers/customers.service';
 import { ExpoNotificationsService } from 'src/modules/expo-notifications/expo-notifications.service';
 import { DriverStatusService } from 'src/redis/services/driver-status.service';
 import { CustomerStatusService } from 'src/redis/services/customer-status.service';
-import { SmartEventService } from 'src/redis/services/smart-event.service';
+import { ExpiredAckData, KeyspaceEventService } from 'src/redis/services/keyspace-event.service';
 import { EventType } from './enum/event-type.enum';
 import { EventDeliveryMethod } from './constants/trip.constant';
 import { UserType } from 'src/common/user-type.enum';
 import { AppState } from 'src/common/enums/app-state.enum';
 import { LoggerService } from 'src/logger/logger.service';
-import { PendingEvent } from './interfaces/reliable-event.interface';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
-export class Event2Service {
+export class Event2Service implements OnModuleInit {
   constructor(
     private readonly webSocketService: WebSocketService,
     private readonly driverStatusService: DriverStatusService,
@@ -23,8 +23,18 @@ export class Event2Service {
     private readonly customersService: CustomersService,
     private readonly expoNotificationsService: ExpoNotificationsService,
     private readonly logger: LoggerService,
-    private readonly smartEventService: SmartEventService,
+    private readonly keyspaceEventService: KeyspaceEventService,
   ) {}
+
+  async onModuleInit(): Promise<void> {
+    // Set up retry callback to avoid circular dependency
+    this.keyspaceEventService.setRetryCallback(this.retryEvent.bind(this));
+    this.logger.info('Event2Service initialized with retry callback');
+  }
+
+    generateEventId(): string {
+    return `evt_${uuidv4().replace(/-/g, '')}`;
+  }
 
   async sendToUser(
     userId: string,
@@ -40,26 +50,21 @@ export class Event2Service {
       );
 
       if (deliveryMethod === EventDeliveryMethod.WEBSOCKET) {
-        // For WebSocket delivery, create event with ACK tracking
-        const event: PendingEvent = {
-          id: this.smartEventService.generateEventId(),
-          userId,
-          userType,
-          eventType,
-          data,
-          timestamp: new Date(),
-          retryCount: 0,
-          maxRetries: 3,
-          requiresAck: true, // Only WebSocket events require ACK
-          tripId,
-        };
 
-        // Log event to Redis Streams for ACK tracking
-        await this.smartEventService.sendEventWithLogging(event);
+          const eventData: ExpiredAckData = {
+            eventId:this.generateEventId(),
+            userId,
+            userType,
+            eventType,
+            tripId,
+            retryCount: 0,
+            timestamp: new Date(),
+            data
+          };
+          await this.keyspaceEventService.createTTLKey(eventData);
 
-        // Add eventId to the data at the same level as eventType
         const eventDataWithId = {
-          eventId: event.id,
+          eventId: eventData.eventId,
           eventType,
           ...data,
         };
@@ -73,7 +78,7 @@ export class Event2Service {
         this.logger.info(
           `Sent ${eventType} to user ${userId} via WebSocket with ACK tracking`,
           {
-            eventId: event.id,
+            eventId: eventData.eventId,
             tripId,
             eventType,
             userId,
@@ -104,22 +109,45 @@ export class Event2Service {
   }
 
   /**
-   * Handles user acknowledgment for events
+   * Retry event method for TTL-based retries
    */
-  async handleUserAcknowledgment(
-    eventId: string,
-    userId: string,
-  ): Promise<boolean> {
+  async retryEvent(ackData: ExpiredAckData): Promise<void> {
     try {
-      return await this.smartEventService.handleUserAcknowledgment(
-        eventId,
-        userId,
+      this.logger.info(`Retrying event ${ackData.eventId}`, {
+        eventId: ackData.eventId,
+        userId: ackData.userId,
+        eventType: ackData.eventType,
+        retryCount: ackData.retryCount,
+      });
+
+      // Yeni TTL key oluştur (retry count ile)
+      const retryEventData: ExpiredAckData = {
+        ...ackData,
+        retryCount: ackData.retryCount,
+        timestamp: new Date()
+      };
+      
+      await this.keyspaceEventService.createTTLKey(retryEventData);
+
+      // Event'i tekrar gönder
+      const eventDataWithId = {
+        eventId: ackData.eventId,
+        eventType: ackData.eventType,
+        ...ackData.data || {},
+      };
+
+      await this.webSocketService.sendToUser(
+        ackData.userId,
+        ackData.eventType,
+        eventDataWithId,
       );
+
+      this.logger.info(`Event ${ackData.eventId} retried successfully (attempt ${ackData.retryCount})`);
+
     } catch (error: any) {
       this.logger.error(
-        `Error handling ACK for event ${eventId} from user ${userId}: ${error.message}`,
+        `Failed to retry event ${ackData.eventId}: ${error.message}`,
       );
-      return false;
     }
   }
 
@@ -139,25 +167,21 @@ export class Event2Service {
 
       // For active users (WebSocket), create events with ACK tracking
       const activeUserEventPromises = activeUsers.map(async (userId) => {
-        const event: PendingEvent = {
-          id: this.smartEventService.generateEventId(),
-          userId,
-          userType,
-          eventType,
-          data,
-          timestamp: new Date(),
-          retryCount: 0,
-          maxRetries: 3,
-          requiresAck: true, // Only WebSocket events require ACK
-          tripId,
-        };
-
-        // Log event to Redis Streams for ACK tracking
-        await this.smartEventService.sendEventWithLogging(event);
+          const eventData: ExpiredAckData = {
+            eventId:this.generateEventId(),
+            userId,
+            userType,
+            eventType,
+            tripId,
+            retryCount: 0,
+            timestamp: new Date(),
+            data
+          };
+          await this.keyspaceEventService.createTTLKey(eventData);
 
         // Add eventId to the data at the same level as eventType
         const eventDataWithId = {
-          eventId: event.id,
+          eventId: eventData.eventId,
           eventType,
           ...data,
         };

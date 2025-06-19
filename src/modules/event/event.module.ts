@@ -8,7 +8,6 @@ import { ExpoNotificationsModule } from 'src/modules/expo-notifications/expo-not
 import { MapsModule } from 'src/clients/maps/maps.module';
 import { S3Module } from 'src/s3/s3.module';
 import { Event2Service } from './event_v2.service';
-import { AckTimeoutService } from './services/ack-timeout.service';
 import { TripModule } from '../trip/trip.module';
 
 @Module({
@@ -23,7 +22,7 @@ import { TripModule } from '../trip/trip.module';
     MapsModule,
     S3Module,
   ],
-  providers: [Event2Service, AckTimeoutService],
-  exports: [Event2Service, AckTimeoutService],
+  providers: [Event2Service],
+  exports: [Event2Service],
 })
 export class EventModule {}

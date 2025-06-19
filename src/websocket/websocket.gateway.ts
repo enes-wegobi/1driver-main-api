@@ -19,8 +19,8 @@ import { TripService } from 'src/modules/trip/services/trip.service';
 import { EventType } from 'src/modules/event/enum/event-type.enum';
 import { DriverAvailabilityStatus } from 'src/common/enums/driver-availability-status.enum';
 import { LoggerService } from 'src/logger/logger.service';
-import { Event2Service } from 'src/modules/event/event_v2.service';
 import { EventAckPayload } from 'src/modules/event/interfaces/reliable-event.interface';
+import { KeyspaceEventService } from 'src/redis/services/keyspace-event.service';
 
 const PING_INTERVAL = 25000;
 const PING_TIMEOUT = 10000;
@@ -50,7 +50,7 @@ export class WebSocketGateway
     private readonly activeTripService: ActiveTripService,
     private readonly tripService: TripService,
     private readonly logger: LoggerService,
-    private readonly event2Service: Event2Service,
+    private readonly keyspaceEventService: KeyspaceEventService,
   ) {}
 
   @WebSocketServer()
@@ -315,28 +315,17 @@ export class WebSocketGateway
     }
 
     try {
-      const success = await this.event2Service.handleUserAcknowledgment(
-        payload.eventId,
+      await this.keyspaceEventService.removeTTLKey(userId, payload.eventId);
+      
+      this.logger.debug(`Event acknowledged and TTL key cleaned: ${payload.eventId}`, {
+        eventId: payload.eventId,
         userId,
-      );
+      });
 
-      if (success) {
-        this.logger.debug(`Event acknowledged: ${payload.eventId}`, {
-          eventId: payload.eventId,
-          userId,
-        });
-
-        return {
-          success: true,
-          eventId: payload.eventId,
-        };
-      } else {
-        return {
-          success: false,
-          eventId: payload.eventId,
-          message: 'Event not found',
-        };
-      }
+      return {
+        success: true,
+        eventId: payload.eventId,
+      };
     } catch (error) {
       this.logger.error(
         `Error processing ACK for event ${payload.eventId}: ${error.message}`,
