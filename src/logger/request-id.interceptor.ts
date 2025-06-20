@@ -51,6 +51,7 @@ export class RequestIdInterceptor implements NestInterceptor {
         const duration = Date.now() - startTime;
 
         // Log the request (with safe property access)
+        /*
         this.logger.logRequest(
           request?.method || 'UNKNOWN',
           request?.url || 'UNKNOWN',
@@ -62,6 +63,7 @@ export class RequestIdInterceptor implements NestInterceptor {
             userType: request?.user?.type,
           },
         );
+        */
       }),
     );
   }
