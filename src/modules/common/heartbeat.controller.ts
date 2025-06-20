@@ -91,9 +91,6 @@ export class HeartbeatController {
           payload.appState,
         );
       }
-      this.logger.debug(
-        `Heartbeat from user ${userId}, user type ${userType} appState: ${payload.appState}`,
-      );
       return {
         success: true,
         timestamp: new Date().toISOString(),
