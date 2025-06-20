@@ -208,10 +208,6 @@ export class WebSocketGateway
                 timestamp: new Date().toISOString(),
               },
             );
-
-            this.logger.debug(
-              `Driver ${userId} location sent to customer ${customerId} for trip ${tripId}`,
-            );
           }
         }
       }
