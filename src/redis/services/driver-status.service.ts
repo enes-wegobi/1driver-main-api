@@ -366,16 +366,6 @@ export class DriverStatusService extends BaseRedisService {
     pipeline.expire(key, this.ACTIVE_DRIVER_EXPIRY);
 
     await pipeline.exec();
-
-    this.customLogger.debug(
-      `Driver ${driverId} app state updated to: ${appState}`,
-      {
-        userId: driverId,
-        userType: UserType.DRIVER,
-        action: 'update_app_state',
-        appState,
-      },
-    );
   }
 
   @WithErrorHandling()

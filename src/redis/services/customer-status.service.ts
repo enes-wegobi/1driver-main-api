@@ -68,10 +68,6 @@ export class CustomerStatusService extends BaseRedisService {
     pipeline.expire(key, this.ACTIVE_CUSTOMER_EXPIRY);
 
     await pipeline.exec();
-
-    this.customLogger.debug(
-      `Customer ${customerId} app state updated to: ${appState}`,
-    );
   }
 
   @WithErrorHandling()
