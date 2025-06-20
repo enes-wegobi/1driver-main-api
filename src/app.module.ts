@@ -19,6 +19,7 @@ import { QueueModule } from './queue/queue.module';
 import { HeartbeatModule } from './modules/common/heartbeat.module';
 import { LoggerModule } from './logger/logger.module';
 import { RequestIdInterceptor } from './logger/request-id.interceptor';
+import { HealthModule } from './modules/health/health.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { RequestIdInterceptor } from './logger/request-id.interceptor';
     LocationModule,
     QueueModule,
     HeartbeatModule,
+    HealthModule,
   ],
   providers: [
     {
