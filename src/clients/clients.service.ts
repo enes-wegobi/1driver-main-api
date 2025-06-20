@@ -111,7 +111,7 @@ export class ClientsService implements OnModuleInit {
 
         // Forward request ID if available in headers
         const requestId = config.headers['x-request-id'];
-
+        /*
         this.logger.info(
           `[${serviceName}] Request started: ${config.method?.toUpperCase()} ${config.url}`,
           {
@@ -121,6 +121,7 @@ export class ClientsService implements OnModuleInit {
             url: config.url,
           },
         );
+        */
 
         return config;
       },
