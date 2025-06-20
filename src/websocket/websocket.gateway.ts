@@ -185,10 +185,6 @@ export class WebSocketGateway
       return { success: false, message: 'User not authenticated' };
     }
 
-    this.logger.debug(
-      `Driver location update from ${userId}: ${JSON.stringify(payload)}`,
-    );
-
     try {
       if (userType === UserType.DRIVER) {
         const tripId = await this.activeTripService.getUserActiveTripIfExists(

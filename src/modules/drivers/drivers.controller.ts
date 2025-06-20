@@ -64,7 +64,6 @@ export class DriversController {
   @UseGuards(JwtAuthGuard)
   async getProfile(@GetUser() user: IJwtPayload) {
     try {
-      this.logger.info(`Getting profile for customer ID: ${user.userId}`);
       return await this.driversService.findOne(user.userId);
     } catch (error) {
       this.logger.error(
@@ -124,9 +123,7 @@ export class DriversController {
         if (existingFileKey) {
           await this.s3Service.deleteFile(existingFileKey);
         }
-        this.logger.info(
-          `Deleted existing file of type ${fileType} for user ${user.userId}`,
-        );
+
       }
 
       const fileKey = `${user.userId}/${fileType}/${uuidv4()}-${file.originalname}`;
@@ -275,7 +272,6 @@ export class DriversController {
     @GetUser() user: IJwtPayload,
   ) {
     try {
-      this.logger.info(`Adding bank information for driver ID: ${user.userId}`);
       const updatedDriver = await this.driversService.addBankInformation(
         user.userId,
         bankInfoDto,
@@ -307,9 +303,6 @@ export class DriversController {
   })
   async getAllBankInformation(@GetUser() user: IJwtPayload) {
     try {
-      this.logger.info(
-        `Getting bank information for driver ID: ${user.userId}`,
-      );
       return await this.driversService.getAllBankInformation(user.userId);
     } catch (error) {
       this.logger.error(
@@ -339,9 +332,6 @@ export class DriversController {
     @GetUser() user: IJwtPayload,
   ) {
     try {
-      this.logger.info(
-        `Deleting bank information ${bankInfoId} for driver ID: ${user.userId}`,
-      );
       return await this.driversService.deleteBankInformation(
         user.userId,
         bankInfoId,
@@ -375,9 +365,6 @@ export class DriversController {
     @GetUser() user: IJwtPayload,
   ) {
     try {
-      this.logger.info(
-        `Setting bank information ${bankInfoId} as default for driver ID: ${user.userId}`,
-      );
       return await this.driversService.setDefaultBankInformation(
         user.userId,
         bankInfoId,
@@ -534,9 +521,6 @@ export class DriversController {
     @Body() permissionsDto: UpdateNotificationPermissionsDto,
   ) {
     try {
-      this.logger.info(
-        `Updating notification permissions for driver ID: ${user.userId}`,
-      );
       return await this.driversService.updateNotificationPermissions(
         user.userId,
         permissionsDto,
@@ -662,7 +646,6 @@ export class DriversController {
     @Body() updateExpoTokenDto: UpdateDriverExpoTokenDto,
   ) {
     try {
-      this.logger.info(`Updating expo token for driver ID: ${user.userId}`);
       await this.driversService.updateExpoToken(
         user.userId,
         updateExpoTokenDto.expoToken,
@@ -696,7 +679,6 @@ export class DriversController {
   })
   async deleteExpoToken(@GetUser() user: IJwtPayload) {
     try {
-      this.logger.info(`Deleting expo token for driver ID: ${user.userId}`);
       await this.driversService.deleteExpoToken(user.userId);
       return {
         success: true,
@@ -735,9 +717,6 @@ export class DriversController {
     @GetUser() user: IJwtPayload,
   ) {
     try {
-      this.logger.info(
-        `Driver ${user.userId} updating customer ${customerId} rating to ${updateRateDto.rate}`,
-      );
       await this.driversService.updateCustomerRate(
         customerId,
         updateRateDto.rate,

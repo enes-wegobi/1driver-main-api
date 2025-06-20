@@ -138,7 +138,7 @@ export class ClientsService implements OnModuleInit {
       (response) => {
         const duration = Date.now() - (response.config as any).startTime;
         const requestId = response.config.headers['x-request-id'] as string;
-
+        /*
         this.logger.logServiceCall(
           serviceName,
           response.config.method?.toUpperCase() || 'UNKNOWN',
@@ -147,6 +147,7 @@ export class ClientsService implements OnModuleInit {
           duration,
           requestId || 'unknown',
         );
+        */
 
         return response;
       },
@@ -158,6 +159,7 @@ export class ClientsService implements OnModuleInit {
         const requestId = request?.headers['x-request-id'] as string;
 
         // Log service call even for errors
+        /*
         this.logger.logServiceCall(
           serviceName,
           method,
@@ -166,7 +168,7 @@ export class ClientsService implements OnModuleInit {
           duration,
           requestId || 'unknown',
         );
-
+        */
         // Log detailed error
         if (error.code === 'ECONNRESET') {
           this.logger.error(

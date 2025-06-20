@@ -34,7 +34,6 @@ export class LockService {
         .set(lockKey, Date.now().toString(), 'PX', ttl, 'NX');
 
       if (result === 'OK') {
-        this.logger.debug(`Lock acquired for key: ${key}`);
         return true;
       }
 
@@ -44,9 +43,6 @@ export class LockService {
       }
     }
 
-    this.logger.debug(
-      `Failed to acquire lock for key: ${key} after ${retries} attempts`,
-    );
     return false;
   }
 
@@ -60,9 +56,6 @@ export class LockService {
     const result = await this.baseRedisService.getRedisClient().del(lockKey);
 
     const released = result === 1;
-    this.logger.debug(
-      `Lock ${released ? 'released' : 'release failed'} for key: ${key}`,
-    );
     return released;
   }
 
@@ -114,7 +107,6 @@ export class LockService {
     } finally {
       // Always release the lock, even if an error occurred
       await this.releaseLock(key);
-      this.logger.debug(`Released lock for key: ${key}`);
     }
   }
 }

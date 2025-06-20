@@ -63,22 +63,18 @@ export class CustomersService {
   }
 
   async updatePhoto(customerId: string, photoUrl: string): Promise<any> {
-    this.logger.info(`Updating photo for customer ${customerId}`);
     return this.customersClient.updatePhoto(customerId, photoUrl);
   }
 
   async deletePhoto(customerId: string): Promise<any> {
-    this.logger.info(`Deleting photo for customer ${customerId}`);
     return this.customersClient.deletePhoto(customerId);
   }
 
   async updateExpoToken(customerId: string, expoToken: string): Promise<any> {
-    this.logger.info(`Updating expo token for customer ${customerId}`);
     return this.customersClient.updateExpoToken(customerId, expoToken);
   }
 
   async deleteExpoToken(customerId: string): Promise<any> {
-    this.logger.info(`Deleting expo token for customer ${customerId}`);
     return this.customersClient.deleteExpoToken(customerId);
   }
 
@@ -86,7 +82,6 @@ export class CustomersService {
     customerId: string,
     stripeCustomerId: string,
   ): Promise<any> {
-    this.logger.info(`Updating Stripe customer ID for customer ${customerId}`);
     return this.customersClient.updateStripeCustomerId(
       customerId,
       stripeCustomerId,
@@ -97,9 +92,6 @@ export class CustomersService {
     customerId: string,
     defaultPaymentMethodId: string,
   ): Promise<any> {
-    this.logger.info(
-      `Updating default payment method for customer ${customerId}`,
-    );
     return this.customersClient.updateDefaultPaymentMethod(
       customerId,
       defaultPaymentMethodId,

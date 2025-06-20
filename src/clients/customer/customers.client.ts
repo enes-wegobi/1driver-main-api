@@ -121,43 +121,31 @@ export class CustomersClient {
   }
 
   async updatePhoto(customerId: string, photoUrl: string): Promise<any> {
-    this.logger.info(`Updating photo for customer ${customerId}`);
     const { data } = await this.httpClient.put(
       `/customers/${customerId}/photo`,
       { photoUrl },
     );
-    this.logger.info(`Successfully updated photo for customer ${customerId}`);
     return data;
   }
 
   async deletePhoto(customerId: string): Promise<any> {
-    this.logger.info(`Deleting photo for customer ${customerId}`);
     const { data } = await this.httpClient.delete(
       `/customers/${customerId}/photo`,
     );
-    this.logger.info(`Successfully deleted photo for customer ${customerId}`);
     return data;
   }
 
   async updateExpoToken(customerId: string, expoToken: string): Promise<any> {
-    this.logger.info(`Updating expo token for customer ${customerId}`);
     const { data } = await this.httpClient.put(
       `/customers/${customerId}/expo-token`,
       { expoToken },
-    );
-    this.logger.info(
-      `Successfully updated expo token for customer ${customerId}`,
     );
     return data;
   }
 
   async deleteExpoToken(customerId: string): Promise<any> {
-    this.logger.info(`Deleting expo token for customer ${customerId}`);
     const { data } = await this.httpClient.delete(
       `/customers/${customerId}/expo-token`,
-    );
-    this.logger.info(
-      `Successfully deleted expo token for customer ${customerId}`,
     );
     return data;
   }
@@ -169,7 +157,6 @@ export class CustomersClient {
     fileUrl: string | null,
     userType?: string,
   ): Promise<any> {
-    this.logger.info(`Creating support ticket for user ${userId}`);
     const { data } = await this.httpClient.post(`/support`, {
       userId: userId,
       subject,
@@ -177,27 +164,20 @@ export class CustomersClient {
       fileUrl,
       userType,
     });
-    this.logger.info(`Successfully created support ticket for user ${userId}`);
     return data;
   }
 
   async setActiveTrip(customerId: string, dto: SetActiveTripDto): Promise<any> {
-    this.logger.info(`Setting active trip for customer ${customerId}`);
     const { data } = await this.httpClient.put(
       `/customers/${customerId}/active-trip`,
       dto,
     );
-    this.logger.info(`Successfully set active trip for customer ${customerId}`);
     return data;
   }
 
   async removeActiveTrip(customerId: string): Promise<any> {
-    this.logger.info(`Removing active trip for customer ${customerId}`);
     const { data } = await this.httpClient.delete(
       `/customers/${customerId}/active-trip`,
-    );
-    this.logger.info(
-      `Successfully removed active trip for customer ${customerId}`,
     );
     return data;
   }
@@ -206,13 +186,9 @@ export class CustomersClient {
     customerId: string,
     stripeCustomerId: string,
   ): Promise<any> {
-    this.logger.info(`Updating Stripe customer ID for customer ${customerId}`);
     const { data } = await this.httpClient.patch(
       `/customers/${customerId}/stripe-customer-id`,
       { stripeCustomerId },
-    );
-    this.logger.info(
-      `Successfully updated Stripe customer ID for customer ${customerId}`,
     );
     return data;
   }
@@ -221,25 +197,17 @@ export class CustomersClient {
     customerId: string,
     defaultPaymentMethodId: string,
   ): Promise<any> {
-    this.logger.info(
-      `Updating default payment method for customer ${customerId}`,
-    );
     const { data } = await this.httpClient.patch(
       `/customers/${customerId}/default-payment-method`,
       { defaultPaymentMethodId },
-    );
-    this.logger.info(
-      `Successfully updated default payment method for customer ${customerId}`,
     );
     return data;
   }
 
   async updateDriverRate(driverId: string, rate: number): Promise<any> {
-    this.logger.info(`Updating driver rate for driver ${driverId}`);
     const { data } = await this.httpClient.patch(`/drivers/${driverId}/rate`, {
       rate,
     });
-    this.logger.info(`Successfully updated driver rate for driver ${driverId}`);
     return data;
   }
 }

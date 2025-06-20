@@ -59,7 +59,6 @@ export class CustomersController {
   @UseGuards(JwtAuthGuard)
   async getProfile(@GetUser() user: IJwtPayload) {
     try {
-      this.logger.info(`Getting profile for customer ID: ${user.userId}`);
       return await this.customersService.findOne(user.userId);
     } catch (error) {
       this.logger.error(
@@ -266,7 +265,6 @@ export class CustomersController {
     @Body() addressDto: CreateAddressDto,
   ) {
     try {
-      this.logger.info(`Adding address for user ID: ${user.userId}`);
       return await this.customersService.addAddress(user.userId, addressDto);
     } catch (error) {
       this.logger.error(`Error adding address: ${error.message}`, error.stack);
@@ -290,9 +288,6 @@ export class CustomersController {
   })
   async deleteAddress(@GetUser() user, @Param('addressId') addressId: string) {
     try {
-      this.logger.info(
-        `Deleting address ${addressId} for user ID: ${user.userId}`,
-      );
       return await this.customersService.deleteAddress(user.userId, addressId);
     } catch (error) {
       this.logger.error(
@@ -322,9 +317,7 @@ export class CustomersController {
     @Body() permissionsDto: UpdateNotificationPermissionsDto,
   ) {
     try {
-      this.logger.info(
-        `Updating notification permissions for user ID: ${user.userId}`,
-      );
+
       return await this.customersService.updateNotificationPermissions(
         user.userId,
         permissionsDto,
@@ -472,7 +465,6 @@ export class CustomersController {
     @Body() updateExpoTokenDto: UpdateCustomerExpoTokenDto,
   ) {
     try {
-      this.logger.info(`Updating expo token for user ID: ${user.userId}`);
       await this.customersService.updateExpoToken(
         user.userId,
         updateExpoTokenDto.expoToken,
@@ -506,7 +498,6 @@ export class CustomersController {
   })
   async deleteExpoToken(@GetUser() user: IJwtPayload) {
     try {
-      this.logger.info(`Deleting expo token for user ID: ${user.userId}`);
       await this.customersService.deleteExpoToken(user.userId);
       return {
         success: true,
@@ -545,9 +536,6 @@ export class CustomersController {
     @GetUser() user: IJwtPayload,
   ) {
     try {
-      this.logger.info(
-        `Customer ${user.userId} updating driver ${driverId} rating to ${updateRateDto.rate}`,
-      );
       await this.customersService.updateDriverRate(
         driverId,
         updateRateDto.rate,

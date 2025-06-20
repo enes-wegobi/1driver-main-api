@@ -80,18 +80,12 @@ export class DriversClient {
       fileName: fileName,
     };
 
-    this.logger.info(
-      `Notifying file upload for driver ${driverId}, file type ${fileType}`,
-    );
     const { data } = await this.httpClient.post(
       `/drivers/${driverId}/files/notify`,
       notifyDto,
       { timeout: 60000 },
     );
 
-    this.logger.info(
-      `Successfully notified file upload for driver ${driverId}, file type ${fileType}`,
-    );
     return data;
   }
 
@@ -215,58 +209,44 @@ export class DriversClient {
   }
 
   async updatePhoto(driverId: string, photoUrl: string): Promise<any> {
-    this.logger.info(`Updating photo for driver ${driverId}`);
     const { data } = await this.httpClient.put(`/drivers/${driverId}/photo`, {
       photoUrl,
     });
-    this.logger.info(`Successfully updated photo for driver ${driverId}`);
     return data;
   }
 
   async deletePhoto(driverId: string): Promise<any> {
-    this.logger.info(`Deleting photo for driver ${driverId}`);
     const { data } = await this.httpClient.delete(`/drivers/${driverId}/photo`);
-    this.logger.info(`Successfully deleted photo for driver ${driverId}`);
     return data;
   }
 
   async updateExpoToken(driverId: string, expoToken: string): Promise<any> {
-    this.logger.info(`Updating expo token for driver ${driverId}`);
     const { data } = await this.httpClient.put(
       `/drivers/${driverId}/expo-token`,
       { expoToken },
     );
-    this.logger.info(`Successfully updated expo token for driver ${driverId}`);
     return data;
   }
 
   async deleteExpoToken(driverId: string): Promise<any> {
-    this.logger.info(`Deleting expo token for driver ${driverId}`);
     const { data } = await this.httpClient.delete(
       `/drivers/${driverId}/expo-token`,
     );
-    this.logger.info(`Successfully deleted expo token for driver ${driverId}`);
     return data;
   }
 
   async setActiveTrip(driverId: string, dto: SetActiveTripDto): Promise<any> {
-    this.logger.info(`Setting active trip for driver ${driverId}`);
     const { data } = await this.httpClient.put(
       `/drivers/${driverId}/active-trip`,
       dto,
     );
-    this.logger.info(`Successfully set active trip for driver ${driverId}`);
     return data;
   }
 
   async updateCustomerRate(customerId: string, rate: number): Promise<any> {
-    this.logger.info(`Updating customer rate for customer ${customerId}`);
     const { data } = await this.httpClient.patch(
       `/customers/${customerId}/rate`,
       { rate },
-    );
-    this.logger.info(
-      `Successfully updated customer rate for customer ${customerId}`,
     );
     return data;
   }

@@ -29,27 +29,11 @@ export class AuthService {
     // Create Stripe customer after successful signup
     if (result && result.token && result.customer) {
       try {
-        this.logger.info(
-          `Creating Stripe customer for user ${result.customer._id}`,
-          {
-            userId: result.customer._id,
-            userType: UserType.CUSTOMER,
-            action: 'create_stripe_customer',
-          },
-        );
         await this.paymentsService.createStripeCustomer(result.customer._id, {
           name: `${result.customer.name} ${result.customer.surname}`,
           email: result.customer.email,
           phone: result.customer.phone,
         });
-        this.logger.info(
-          `Successfully created Stripe customer for user ${result.customer._id}`,
-          {
-            userId: result.customer._id,
-            userType: UserType.CUSTOMER,
-            action: 'create_stripe_customer_success',
-          },
-        );
       } catch (error) {
         // Log error but don't fail the signup
         this.logger.logError(error, {
@@ -84,24 +68,8 @@ export class AuthService {
     // Create initial weekly earnings record after successful driver signup
     if (result && result.token && result.driver) {
       try {
-        this.logger.info(
-          `Creating initial weekly earnings record for driver ${result.driver._id}`,
-          {
-            userId: result.driver._id,
-            userType: UserType.DRIVER,
-            action: 'create_weekly_earnings_record',
-          },
-        );
         await this.driverEarningsService.findOrCreateCurrentWeekRecord(
           result.driver._id,
-        );
-        this.logger.info(
-          `Successfully created initial weekly earnings record for driver ${result.driver._id}`,
-          {
-            userId: result.driver._id,
-            userType: UserType.DRIVER,
-            action: 'create_weekly_earnings_record_success',
-          },
         );
       } catch (error) {
         // Log error but don't fail the signup

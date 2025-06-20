@@ -82,10 +82,6 @@ export class LocationController {
       };
     }
 
-    this.logger.info(
-      `Driver location update from ${user.userId}: ${JSON.stringify(payload)}`,
-    );
-
     try {
       const result = await this.locationService.updateDriverLocation(
         user.userId,

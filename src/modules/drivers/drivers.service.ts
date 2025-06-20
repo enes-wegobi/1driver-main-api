@@ -22,7 +22,6 @@ export class DriversService {
   }
 
   async findMany(driverIds: string[]) {
-    this.logger.info(`Fetching information for ${driverIds.length} drivers`);
     return this.driversClient.findMany(driverIds);
   }
 
@@ -152,17 +151,14 @@ export class DriversService {
   }
 
   async updatePhoto(driverId: string, photoUrl: string): Promise<any> {
-    this.logger.info(`Updating photo for driver ${driverId}`);
     return this.driversClient.updatePhoto(driverId, photoUrl);
   }
 
   async deletePhoto(driverId: string): Promise<any> {
-    this.logger.info(`Deleting photo for driver ${driverId}`);
     return this.driversClient.deletePhoto(driverId);
   }
 
   async updateExpoToken(driverId: string, expoToken: string): Promise<any> {
-    this.logger.info(`Updating expo token for driver ${driverId}`);
     return this.driversClient.updateExpoToken(driverId, expoToken);
   }
 
