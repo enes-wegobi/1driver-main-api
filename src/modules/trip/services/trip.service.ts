@@ -2,7 +2,6 @@ import {
   BadRequestException,
   HttpStatus,
   Injectable,
-  Logger,
 } from '@nestjs/common';
 import { TripRepository } from '../repositories/trip.repository';
 import { CreateTripDto } from '../dto/create-trip.dto';

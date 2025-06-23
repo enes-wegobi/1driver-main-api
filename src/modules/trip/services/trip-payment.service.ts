@@ -1,6 +1,5 @@
 import {
   Injectable,
-  Logger,
   BadRequestException,
   Inject,
   forwardRef,

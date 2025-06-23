@@ -22,8 +22,8 @@ import { LoggerService } from 'src/logger/logger.service';
 import { EventAckPayload } from 'src/modules/event/interfaces/reliable-event.interface';
 import { KeyspaceEventService } from 'src/redis/services/keyspace-event.service';
 
-const PING_INTERVAL = 25000;
-const PING_TIMEOUT = 10000;
+const PING_INTERVAL = 15000;
+const PING_TIMEOUT = 5000;
 
 @NestWebSocketGateway({
   cors: {

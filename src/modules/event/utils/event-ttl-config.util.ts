@@ -105,9 +105,9 @@ export class EventTTLConfigUtil {
 
     // Less critical trip events
     [EventType.TRIP_REQUESTED]: {
-      intervals: [30, 60, 120],
+      intervals: [20, 40, 50],
       maxRetries: 3,
-      priority: 'NORMAL',
+      priority: 'HIGH',
     },
     [EventType.TRIP_ALREADY_TAKEN]: {
       intervals: [10, 30, 60],

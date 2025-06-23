@@ -155,6 +155,7 @@ export class KeyspaceEventService
       userId,
       ackData.userType,
       eventType,
+      ackData,
     );
     if (!shouldRetry) {
       this.logger.info(
@@ -171,8 +172,21 @@ export class KeyspaceEventService
     userId: string,
     userType: UserType,
     eventType: EventType,
+    ackData?: ExpiredAckData,
   ): Promise<boolean> {
     try {
+      /*
+      // TRIP_REQUESTED için özel driver processing kontrolü
+      if (eventType === EventType.TRIP_REQUESTED && userType === UserType.DRIVER) {
+        const driverProcessingCheck = await this.checkDriverProcessingState(userId, ackData);
+        if (!driverProcessingCheck) {
+          this.logger.info(
+            `Driver ${userId} processing state check failed, skipping retry for event ${ackData?.eventId}`,
+          );
+          return false;
+        }
+      }
+*/
       const isCritical = EventTTLConfigUtil.isCritical(eventType);
 
       if (isCritical) {
@@ -239,6 +253,7 @@ export class KeyspaceEventService
   private async isEventStillRelevant(
     eventType: EventType,
     tripId: string,
+    ackData?: ExpiredAckData,
   ): Promise<boolean> {
     try {
       // Use callback pattern to avoid circular dependency
@@ -247,7 +262,26 @@ export class KeyspaceEventService
 
         // Use the existing mapping function to check if event is still relevant
         const isRelevant = isEventStillRelevant(currentTripStatus, eventType);
-
+/*
+        // TRIP_REQUESTED için ek detaylı kontroller
+        if (eventType === EventType.TRIP_REQUESTED && ackData) {
+          const enhancedRelevance = await this.checkTripRequestRelevance(
+            tripId,
+            currentTripStatus,
+            ackData,
+          );
+          
+          this.logger.debug(`Enhanced relevance check for TRIP_REQUESTED`, {
+            tripId,
+            currentTripStatus,
+            basicRelevance: isRelevant,
+            enhancedRelevance,
+            driverId: ackData.userId,
+          });
+          
+          return isRelevant && enhancedRelevance;
+        }
+*/
         this.logger.debug(`Event relevance check for ${eventType}`, {
           tripId,
           currentTripStatus,
@@ -396,14 +430,142 @@ export class KeyspaceEventService
   }
 
   /**
+   * Check driver processing state for TRIP_REQUESTED events
+   */
+  private async checkDriverProcessingState(
+    driverId: string,
+    ackData?: ExpiredAckData,
+  ): Promise<boolean> {
+    try {
+      // Use callback pattern to avoid circular dependency
+      if (this.driverProcessingCallback) {
+        const isProcessing = await this.driverProcessingCallback.isDriverProcessingTrip(driverId);
+        const processingTrip = await this.driverProcessingCallback.getDriverProcessingTrip(driverId);
+        
+        // Eğer driver başka bir trip işliyorsa retry yapma
+        if (isProcessing && processingTrip !== ackData?.tripId) {
+          this.logger.debug(
+            `Driver ${driverId} is processing different trip ${processingTrip}, expected ${ackData?.tripId}`,
+          );
+          return false;
+        }
+        
+        // Eğer driver hiçbir trip işlemiyorsa da retry yapma (timeout olmuş olabilir)
+        if (!isProcessing) {
+          this.logger.debug(
+            `Driver ${driverId} is not processing any trip, may have timed out`,
+          );
+          return false;
+        }
+        
+        return true;
+      } else {
+        this.logger.warn(
+          `No driver processing callback set, allowing retry for driver ${driverId}`,
+        );
+        return true; // Default to allowing retry if no callback
+      }
+    } catch (error) {
+      this.logger.error(
+        `Error checking driver processing state for ${driverId}:`,
+        error,
+      );
+      return true; // Default to allowing retry on error
+    }
+  }
+
+  /**
+   * Enhanced relevance check for TRIP_REQUESTED events
+   */
+  private async checkTripRequestRelevance(
+    tripId: string,
+    currentTripStatus: TripStatus,
+    ackData: ExpiredAckData,
+  ): Promise<boolean> {
+    try {
+      // 1. Trip hala WAITING_FOR_DRIVER durumunda mı?
+      if (currentTripStatus !== TripStatus.WAITING_FOR_DRIVER) {
+        this.logger.debug(
+          `Trip ${tripId} is no longer waiting for driver, current status: ${currentTripStatus}`,
+        );
+        return false;
+      }
+
+      // 2. Trip details callback kullanarak detaylı kontrol
+      if (this.getTripDetailsCallback) {
+        const tripDetails = await this.getTripDetailsCallback(tripId);
+        
+        if (!tripDetails) {
+          this.logger.debug(`Trip ${tripId} details not found`);
+          return false;
+        }
+
+        // 3. Driver hala called list'te mi?
+        if (!tripDetails.calledDriverIds?.includes(ackData.userId)) {
+          this.logger.debug(
+            `Driver ${ackData.userId} is no longer in called drivers list for trip ${tripId}`,
+          );
+          return false;
+        }
+
+        // 4. Driver rejected list'te mi?
+        if (tripDetails.rejectedDriverIds?.includes(ackData.userId)) {
+          this.logger.debug(
+            `Driver ${ackData.userId} is in rejected drivers list for trip ${tripId}`,
+          );
+          return false;
+        }
+
+        // 5. Trip zaten başka bir driver tarafından kabul edilmiş mi?
+        if (tripDetails.driver && tripDetails.driver.id !== ackData.userId) {
+          this.logger.debug(
+            `Trip ${tripId} already accepted by driver ${tripDetails.driver.id}, not ${ackData.userId}`,
+          );
+          return false;
+        }
+
+        return true;
+      } else {
+        this.logger.warn(
+          `No trip details callback set, using basic relevance check for trip ${tripId}`,
+        );
+        return true; // Default to relevant if no callback
+      }
+    } catch (error) {
+      this.logger.error(
+        `Error in enhanced trip request relevance check for trip ${tripId}:`,
+        error,
+      );
+      return true; // Default to relevant on error (safe side)
+    }
+  }
+
+  /**
    * Callback to get trip status (to avoid circular dependency)
    */
   getTripStatusCallback?: (tripId: string) => Promise<TripStatus>;
 
   /**
+   * Callback to get trip details (to avoid circular dependency)
+   */
+  private getTripDetailsCallback?: (tripId: string) => Promise<{
+    calledDriverIds?: string[];
+    rejectedDriverIds?: string[];
+    driver?: { id: string };
+  } | null>;
+
+  /**
    * Callback to retry events (to avoid circular dependency)
    */
   private retryCallback?: (ackData: ExpiredAckData) => Promise<void>;
+
+  /**
+   * Callback to check driver processing state (to avoid circular dependency)
+   */
+  private driverProcessingCallback?: {
+    isDriverProcessingTrip: (driverId: string) => Promise<boolean>;
+    getDriverProcessingTrip: (driverId: string) => Promise<string | null>;
+  };
 
   /**
    * Set the trip status callback
@@ -419,5 +581,26 @@ export class KeyspaceEventService
    */
   setRetryCallback(callback: (ackData: ExpiredAckData) => Promise<void>): void {
     this.retryCallback = callback;
+  }
+
+  /**
+   * Set the trip details callback
+   */
+  setTripDetailsCallback(callback: (tripId: string) => Promise<{
+    calledDriverIds?: string[];
+    rejectedDriverIds?: string[];
+    driver?: { id: string };
+  } | null>): void {
+    this.getTripDetailsCallback = callback;
+  }
+
+  /**
+   * Set the driver processing callback
+   */
+  setDriverProcessingCallback(callback: {
+    isDriverProcessingTrip: (driverId: string) => Promise<boolean>;
+    getDriverProcessingTrip: (driverId: string) => Promise<string | null>;
+  }): void {
+    this.driverProcessingCallback = callback;
   }
 }

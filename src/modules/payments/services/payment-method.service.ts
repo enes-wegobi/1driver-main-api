@@ -278,4 +278,79 @@ export class PaymentMethodService {
 
     return paymentMethod;
   }
+
+   async saveFakePaymentMethodFromSetupIntent(
+    customerId: string,
+    paymentMethodId: string,
+    name?: string,
+  ): Promise<PaymentMethod> {
+    this.logger.info(
+      `Saving payment method from  for customer ${customerId}`,
+    );
+
+    // Get customer's Stripe customer ID
+    const customer = await this.customersService.findOne(customerId, [
+      'stripeCustomerId',
+    ]);
+
+    if (!customer?.stripeCustomerId) {
+      throw new BadRequestException('Customer does not have a Stripe account');
+    }
+
+    // Get payment method details from Stripe
+    const stripePaymentMethod =
+      await this.stripeService.getPaymentMethod(paymentMethodId);
+
+    // Check if this payment method already exists
+    const existingPaymentMethod =
+      await this.paymentMethodRepository.findByStripePaymentMethodId(
+        paymentMethodId,
+      );
+
+    if (existingPaymentMethod) {
+      this.logger.info(
+        'Payment method already exists, returning existing record',
+      );
+      return existingPaymentMethod;
+    }
+
+    // Attach payment method to customer (if not already attached)
+    if (!stripePaymentMethod.customer) {
+      await this.stripeService.attachPaymentMethod(
+        paymentMethodId,
+        customer.stripeCustomerId,
+      );
+    }
+
+    // Check if this is the first payment method for the customer
+    const existingMethods =
+      await this.paymentMethodRepository.findByCustomerId(customerId);
+    const isFirstPaymentMethod = existingMethods.length === 0;
+
+    // If this is not the first payment method, unset the previous default
+    if (!isFirstPaymentMethod) {
+      await this.paymentMethodRepository.unsetDefault(customerId);
+    }
+
+    // Create payment method record
+    const paymentMethod = await this.paymentMethodRepository.create({
+      customerId,
+      stripePaymentMethodId: paymentMethodId,
+      name:
+        name ||
+        `${stripePaymentMethod.card?.brand} ending in ${stripePaymentMethod.card?.last4}`,
+      brand: stripePaymentMethod.card?.brand,
+      last4: stripePaymentMethod.card?.last4,
+      expiryMonth: stripePaymentMethod.card?.exp_month,
+      expiryYear: stripePaymentMethod.card?.exp_year,
+      isDefault: true, // Always set as default (newest one is default)
+      isActive: true,
+    });
+
+    this.logger.info(
+      `Successfully saved payment method ${paymentMethodId} for customer ${customerId}`,
+    );
+
+    return paymentMethod;
+  }
 }

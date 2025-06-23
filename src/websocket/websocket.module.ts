@@ -4,7 +4,6 @@ import { WebSocketService } from './websocket.service';
 import { RedisModule } from '../redis/redis.module';
 import { ClientsModule } from '../clients/clients.module';
 import { TripModule } from 'src/modules/trip/trip.module';
-import { EventModule } from 'src/modules/event/event.module';
 import { SocketIORedisAdapter } from './adapters/socket-io-redis.adapter';
 import { JwtModule } from 'src/jwt/jwt.module';
 
@@ -14,7 +13,6 @@ import { JwtModule } from 'src/jwt/jwt.module';
     RedisModule,
     ClientsModule,
     forwardRef(() => TripModule),
-    forwardRef(() => EventModule),
   ],
   providers: [WebSocketGateway, WebSocketService, SocketIORedisAdapter],
   exports: [WebSocketService, SocketIORedisAdapter],

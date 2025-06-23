@@ -23,6 +23,7 @@ import { IJwtPayload } from 'src/jwt/jwt-payload.interface';
 import { PaymentMethodService } from '../services/payment-method.service';
 import { CreateSetupIntentDto, SavePaymentMethodDto } from '../dto';
 import { LoggerService } from 'src/logger/logger.service';
+import { FakeSavePaymentMethodDto } from '../dto/fake.dto';
 
 @ApiTags('payment-methods')
 @ApiBearerAuth()
@@ -61,6 +62,48 @@ export class PaymentMethodController {
       return await this.paymentMethodService.savePaymentMethodFromSetupIntent(
         user.userId,
         body.setupIntentId,
+        body.paymentMethodId,
+        body.name,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Error saving payment method from setup intent: ${error.message}`,
+        error.stack,
+      );
+      throw new HttpException(
+        error.message || 'An error occurred while saving payment method',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+
+  @Post('fake')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Save payment method from Setup Intent (Uber-style)',
+    description:
+      'Validates the Setup Intent and saves the payment method to the customer account',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Payment method saved successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Setup Intent validation failed',
+  })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'Setup Intent does not belong to this customer',
+  })
+  async addFakePaymentMethod(
+    @GetUser() user: IJwtPayload,
+    @Body() body: FakeSavePaymentMethodDto,
+  ) {
+    try {
+      return await this.paymentMethodService.saveFakePaymentMethodFromSetupIntent(
+        user.userId,
         body.paymentMethodId,
         body.name,
       );
