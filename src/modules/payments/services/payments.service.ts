@@ -126,20 +126,21 @@ export class PaymentsService {
       throw new Error('Customer does not have a Stripe account');
     }
 
+    let paymentIntent: any = null;
+
     try {
       // Create off-session Payment Intent
-      const paymentIntent =
-        await this.stripeService.createOffSessionPaymentIntent(
-          Math.round(amount * 100), // Convert to cents
-          currency,
-          customer.stripeCustomerId,
-          stripePaymentMethodId,
-          {
-            trip_id: tripId,
-            customer_id: customerId,
-            ...metadata,
-          },
-        );
+      paymentIntent = await this.stripeService.createOffSessionPaymentIntent(
+        Math.round(amount * 100),
+        currency,
+        customer.stripeCustomerId,
+        stripePaymentMethodId,
+        {
+          trip_id: tripId,
+          customer_id: customerId,
+          ...metadata,
+        },
+      );
 
       // Create payment record
       const payment = await this.paymentRepository.create({
@@ -175,7 +176,8 @@ export class PaymentsService {
         tripId,
         amount,
         currency,
-        paymentMethodId: stripePaymentMethodId,
+        paymentMethodId,
+        stripePaymentIntentId: paymentIntent?.id || null, // PaymentIntent ID'yi kaydet (varsa)
         status: PaymentStatus.FAILED,
         errorMessage: error.message,
         metadata,
