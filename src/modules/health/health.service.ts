@@ -192,11 +192,12 @@ export class HealthService {
    * Check all dependencies health
    */
   private async checkDependencies(): Promise<HealthStatus['dependencies']> {
-    const [redisHealthy, queueHealthy, websocketHealthy] = await Promise.allSettled([
-      this.checkRedisHealth(),
-      this.checkQueueHealth(),
-      this.checkWebSocketHealth(),
-    ]);
+    const [redisHealthy, queueHealthy, websocketHealthy] =
+      await Promise.allSettled([
+        this.checkRedisHealth(),
+        this.checkQueueHealth(),
+        this.checkWebSocketHealth(),
+      ]);
 
     return {
       redis: this.getStatusFromResult(redisHealthy),
@@ -250,7 +251,7 @@ export class HealthService {
   async getWebSocketHealthStatus(): Promise<WebSocketHealthStatus> {
     try {
       const server = this.webSocketService.getServer();
-      
+
       if (!server) {
         throw new HttpException(
           {
@@ -266,7 +267,7 @@ export class HealthService {
       const sockets = await server.fetchSockets();
       const connections = this.analyzeConnections(sockets);
       const redisStatus = await this.checkRedisAdapterStatus();
-      
+
       const status = this.determineWebSocketStatus(connections, redisStatus);
       const uptime = this.formatUptime(Date.now() - this.startTime);
 
@@ -313,7 +314,7 @@ export class HealthService {
   async getWebSocketConnections(): Promise<WebSocketConnectionsStatus> {
     try {
       const server = this.webSocketService.getServer();
-      
+
       if (!server) {
         throw new HttpException(
           {
@@ -331,7 +332,7 @@ export class HealthService {
       for (const socket of sockets) {
         const userType = socket.data?.userType;
         const userId = socket.data?.userId;
-        
+
         if (userType === 'driver') drivers++;
         if (userType === 'customer') customers++;
 
@@ -399,10 +400,10 @@ export class HealthService {
 
     for (const socket of sockets) {
       const userType = socket.data?.userType;
-      
+
       if (userType === 'driver') drivers++;
       if (userType === 'customer') customers++;
-      
+
       // RemoteSocket objects are always healthy/connected
       totalPingTime += 25; // Default ping time
       pingCount++;
@@ -414,7 +415,8 @@ export class HealthService {
       customers,
       healthy,
       unhealthy,
-      averagePingTime: pingCount > 0 ? Math.round(totalPingTime / pingCount) : 0,
+      averagePingTime:
+        pingCount > 0 ? Math.round(totalPingTime / pingCount) : 0,
     };
   }
 
@@ -425,7 +427,9 @@ export class HealthService {
     try {
       const redisHealthy = await this.checkRedisHealth();
       return {
-        adapter: redisHealthy ? 'connected' as const : 'disconnected' as const,
+        adapter: redisHealthy
+          ? ('connected' as const)
+          : ('disconnected' as const),
         pubClient: redisHealthy,
         subClient: redisHealthy,
       };
@@ -448,11 +452,11 @@ export class HealthService {
     if (!redisStatus.adapter || redisStatus.adapter === 'disconnected') {
       return 'degraded';
     }
-    
+
     if (connections.unhealthy > connections.healthy * 0.1) {
       return 'degraded';
     }
-    
+
     return 'healthy';
   }
 
@@ -464,7 +468,7 @@ export class HealthService {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const remainingSeconds = seconds % 60;
-    
+
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
   }
 }

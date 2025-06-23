@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  HttpStatus,
-  Injectable,
-} from '@nestjs/common';
+import { BadRequestException, HttpStatus, Injectable } from '@nestjs/common';
 import { TripRepository } from '../repositories/trip.repository';
 import { CreateTripDto } from '../dto/create-trip.dto';
 import { TripDocument } from '../schemas/trip.schema';
@@ -194,6 +190,7 @@ export class TripService {
     const result = await this.getUserActiveTrip(customerId, UserType.CUSTOMER);
 
     // If trip exists and has a driver, fetch driver location
+    //buradatrip statusu drivera uygunsa gösterelim
     if (result.success && result.trip && result.trip.driver) {
       try {
         const driverLocation = await this.locationService.getUserLocation(
@@ -1219,6 +1216,19 @@ export class TripService {
     //await this.eventService.notifyCustomer(trip, customerId, eventType);
   }
 
+  async cleanupDriverTrip(driverId: string): Promise<void> {
+    await this.activeTripService.removeUserActiveTrip(
+      driverId,
+      UserType.DRIVER,
+    );
+
+    // Set driver status back to AVAILABLE when trip is completed
+    await this.driverStatusService.updateDriverAvailability(
+      driverId,
+      DriverAvailabilityStatus.AVAILABLE,
+    );
+  }
+
   async cleanupCompletedTrip(
     driverId: string,
     customerId: string,
@@ -1805,7 +1815,7 @@ export class TripService {
           `Retry payment failed: ${paymentIntent.status}`,
         );
       }
-
+      //paymentStatus update et
       this.logger.info(
         `Retry payment successful for customer ${userId}: ${amount} AED`,
       );

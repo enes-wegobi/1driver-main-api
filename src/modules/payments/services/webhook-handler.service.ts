@@ -19,23 +19,41 @@ export class WebhookHandlerService {
   async handlePaymentSuccess(paymentIntent: any): Promise<any> {
     this.logger.info(`Payment succeeded for intent ${paymentIntent.id}`);
 
-    const payment = await this.paymentRepository.findByPaymentIntentId(
+    let payment = await this.paymentRepository.findByPaymentIntentId(
       paymentIntent.id,
     );
+
+    if (!payment && paymentIntent.metadata?.payment_record_id) {
+      this.logger.info(
+        `Payment not found by intent ID, trying to find by payment record ID: ${paymentIntent.metadata.payment_record_id}`,
+      );
+      payment = await this.paymentRepository.findById(
+        paymentIntent.metadata.payment_record_id,
+      );
+
+      if (payment) {
+        await this.paymentRepository.updatePaymentIntent(
+          payment._id.toString(),
+          paymentIntent.id,
+        );
+        this.logger.info(
+          `Updated payment ${payment._id} with payment intent ID ${paymentIntent.id}`,
+        );
+      }
+    }
+
     if (!payment) {
       this.logger.warn(
-        `No payment record found for intent ${paymentIntent.id}`,
+        `No payment record found for intent ${paymentIntent.id} and metadata ${JSON.stringify(paymentIntent.metadata)}`,
       );
       return null;
     }
 
-    // Update payment status
     const updatedPayment = await this.paymentRepository.updateStatus(
       payment._id,
       PaymentStatus.PAID,
     );
 
-    // If this payment is for a trip, handle trip payment success
     if (updatedPayment && updatedPayment.tripId) {
       await this.tripPaymentService.handlePaymentSuccess(updatedPayment);
       this.logger.info(
@@ -52,28 +70,45 @@ export class WebhookHandlerService {
   async handlePaymentFailure(paymentIntent: any): Promise<any> {
     this.logger.info(`Payment failed for intent ${paymentIntent.id}`);
 
-    const payment = await this.paymentRepository.findByPaymentIntentId(
+    let payment = await this.paymentRepository.findByPaymentIntentId(
       paymentIntent.id,
     );
+
+    if (!payment && paymentIntent.metadata?.payment_record_id) {
+      this.logger.info(
+        `Payment not found by intent ID, trying to find by payment record ID: ${paymentIntent.metadata.payment_record_id}`,
+      );
+      payment = await this.paymentRepository.findById(
+        paymentIntent.metadata.payment_record_id,
+      );
+
+      if (payment) {
+        await this.paymentRepository.updatePaymentIntent(
+          payment._id.toString(),
+          paymentIntent.id,
+        );
+        this.logger.info(
+          `Updated payment ${payment._id} with payment intent ID ${paymentIntent.id}`,
+        );
+      }
+    }
+
     if (!payment) {
       this.logger.warn(
-        `No payment record found for intent ${paymentIntent.id}`,
+        `No payment record found for intent ${paymentIntent.id} and metadata ${JSON.stringify(paymentIntent.metadata)}`,
       );
       return null;
     }
 
-    // Get error message
     const errorMessage =
       paymentIntent.last_payment_error?.message || 'Payment failed';
 
-    // Update payment status
     const updatedPayment = await this.paymentRepository.updateStatus(
       payment._id,
       PaymentStatus.FAILED,
       errorMessage,
     );
 
-    // If this payment is for a trip, handle trip payment failure
     if (updatedPayment && updatedPayment.tripId) {
       await this.tripPaymentService.handlePaymentFailure(updatedPayment);
       this.logger.info(
@@ -90,23 +125,41 @@ export class WebhookHandlerService {
   async handlePaymentCancellation(paymentIntent: any): Promise<any> {
     this.logger.info(`Payment cancelled for intent ${paymentIntent.id}`);
 
-    const payment = await this.paymentRepository.findByPaymentIntentId(
+    let payment = await this.paymentRepository.findByPaymentIntentId(
       paymentIntent.id,
     );
+
+    if (!payment && paymentIntent.metadata?.payment_record_id) {
+      this.logger.info(
+        `Payment not found by intent ID, trying to find by payment record ID: ${paymentIntent.metadata.payment_record_id}`,
+      );
+      payment = await this.paymentRepository.findById(
+        paymentIntent.metadata.payment_record_id,
+      );
+
+      if (payment) {
+        await this.paymentRepository.updatePaymentIntent(
+          payment._id.toString(),
+          paymentIntent.id,
+        );
+        this.logger.info(
+          `Updated payment ${payment._id} with payment intent ID ${paymentIntent.id}`,
+        );
+      }
+    }
+
     if (!payment) {
       this.logger.warn(
-        `No payment record found for intent ${paymentIntent.id}`,
+        `No payment record found for intent ${paymentIntent.id} and metadata ${JSON.stringify(paymentIntent.metadata)}`,
       );
       return null;
     }
 
-    // Update payment status
     const updatedPayment = await this.paymentRepository.updateStatus(
       payment._id,
       PaymentStatus.CANCELLED,
     );
 
-    // For trip payments, cancellation is handled similar to failure
     if (updatedPayment && updatedPayment.tripId) {
       await this.tripPaymentService.handlePaymentFailure(updatedPayment);
       this.logger.info(
@@ -138,17 +191,36 @@ export class WebhookHandlerService {
   async handlePaymentRequiresAction(paymentIntent: any): Promise<any> {
     this.logger.info(`Payment requires action for intent ${paymentIntent.id}`);
 
-    const payment = await this.paymentRepository.findByPaymentIntentId(
+    let payment = await this.paymentRepository.findByPaymentIntentId(
       paymentIntent.id,
     );
+
+    if (!payment && paymentIntent.metadata?.payment_record_id) {
+      this.logger.info(
+        `Payment not found by intent ID, trying to find by payment record ID: ${paymentIntent.metadata.payment_record_id}`,
+      );
+      payment = await this.paymentRepository.findById(
+        paymentIntent.metadata.payment_record_id,
+      );
+
+      if (payment) {
+        await this.paymentRepository.updatePaymentIntent(
+          payment._id.toString(),
+          paymentIntent.id,
+        );
+        this.logger.info(
+          `Updated payment ${payment._id} with payment intent ID ${paymentIntent.id}`,
+        );
+      }
+    }
+
     if (!payment) {
       this.logger.warn(
-        `No payment record found for intent ${paymentIntent.id}`,
+        `No payment record found for intent ${paymentIntent.id} and metadata ${JSON.stringify(paymentIntent.metadata)}`,
       );
       return null;
     }
 
-    // Update payment status to pending (waiting for 3D Secure)
     const updatedPayment = await this.paymentRepository.updateStatus(
       payment._id,
       PaymentStatus.PENDING,
@@ -168,17 +240,36 @@ export class WebhookHandlerService {
   async handlePaymentProcessing(paymentIntent: any): Promise<any> {
     this.logger.info(`Payment processing for intent ${paymentIntent.id}`);
 
-    const payment = await this.paymentRepository.findByPaymentIntentId(
+    let payment = await this.paymentRepository.findByPaymentIntentId(
       paymentIntent.id,
     );
+
+    if (!payment && paymentIntent.metadata?.payment_record_id) {
+      this.logger.info(
+        `Payment not found by intent ID, trying to find by payment record ID: ${paymentIntent.metadata.payment_record_id}`,
+      );
+      payment = await this.paymentRepository.findById(
+        paymentIntent.metadata.payment_record_id,
+      );
+
+      if (payment) {
+        await this.paymentRepository.updatePaymentIntent(
+          payment._id.toString(),
+          paymentIntent.id,
+        );
+        this.logger.info(
+          `Updated payment ${payment._id} with payment intent ID ${paymentIntent.id}`,
+        );
+      }
+    }
+
     if (!payment) {
       this.logger.warn(
-        `No payment record found for intent ${paymentIntent.id}`,
+        `No payment record found for intent ${paymentIntent.id} and metadata ${JSON.stringify(paymentIntent.metadata)}`,
       );
       return null;
     }
 
-    // Update payment status to processing
     const updatedPayment = await this.paymentRepository.updateStatus(
       payment._id,
       PaymentStatus.PROCESSING,

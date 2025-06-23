@@ -80,6 +80,8 @@ export class TripRepository {
             TripStatus.ARRIVED_AT_PICKUP,
             TripStatus.TRIP_IN_PROGRESS,
             TripStatus.PAYMENT,
+            TripStatus.PAYMENT_RETRY,
+            TripStatus.CANCELLED_PAYMENT,
           ],
         },
       })

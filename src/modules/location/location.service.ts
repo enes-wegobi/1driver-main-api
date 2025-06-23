@@ -42,7 +42,6 @@ export class LocationService {
               timestamp: new Date().toISOString(),
             },
           );
-
         }
       }
 

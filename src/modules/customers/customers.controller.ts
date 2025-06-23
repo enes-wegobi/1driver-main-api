@@ -317,7 +317,6 @@ export class CustomersController {
     @Body() permissionsDto: UpdateNotificationPermissionsDto,
   ) {
     try {
-
       return await this.customersService.updateNotificationPermissions(
         user.userId,
         permissionsDto,

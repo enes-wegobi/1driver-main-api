@@ -126,39 +126,59 @@ export class PaymentsService {
       throw new Error('Customer does not have a Stripe account');
     }
 
-    let paymentIntent: any = null;
+    // Step 1: Create payment record first (without Stripe payment intent ID)
+    const payment = await this.paymentRepository.create({
+      customerId,
+      tripId,
+      amount,
+      currency,
+      paymentMethodId,
+      stripePaymentIntentId: undefined, // Will be updated after Stripe payment intent creation
+      status: PaymentStatus.PENDING,
+      metadata,
+    });
+
+    this.logger.info(
+      `Created payment record ${payment._id} for trip ${tripId}`,
+    );
 
     try {
-      // Create off-session Payment Intent
-      paymentIntent = await this.stripeService.createOffSessionPaymentIntent(
-        Math.round(amount * 100),
-        currency,
-        customer.stripeCustomerId,
-        stripePaymentMethodId,
-        {
-          trip_id: tripId,
-          customer_id: customerId,
-          ...metadata,
-        },
+      // Step 2: Create Stripe payment intent
+      const paymentIntent =
+        await this.stripeService.createOffSessionPaymentIntent(
+          Math.round(amount * 100),
+          currency,
+          customer.stripeCustomerId,
+          stripePaymentMethodId,
+          {
+            trip_id: tripId,
+            customer_id: customerId,
+            payment_record_id: payment._id.toString(), // Add payment record ID to metadata
+            ...metadata,
+          },
+        );
+
+      this.logger.info(
+        `Created Stripe payment intent ${paymentIntent.id} for payment ${payment._id}`,
       );
 
-      // Create payment record
-      const payment = await this.paymentRepository.create({
-        customerId,
-        tripId,
-        amount,
-        currency,
-        paymentMethodId,
-        stripePaymentIntentId: paymentIntent.id,
-        status: this.getPaymentStatusFromStripe(paymentIntent.status),
-        metadata,
-      });
+      // Step 3: Update payment record with Stripe payment intent ID and status
+      const updatedPayment = await this.paymentRepository.updatePaymentIntent(
+        payment._id.toString(),
+        paymentIntent.id,
+      );
+
+      // Update status based on payment intent status
+      const finalPayment = await this.paymentRepository.updateStatus(
+        payment._id.toString(),
+        this.getPaymentStatusFromStripe(paymentIntent.status),
+      );
 
       // Check if 3D Secure is required
       const requiresAction = paymentIntent.status === 'requires_action';
 
       return {
-        payment,
+        payment: finalPayment || updatedPayment || payment,
         requiresAction,
         clientSecret: requiresAction
           ? paymentIntent.client_secret || undefined
@@ -167,21 +187,20 @@ export class PaymentsService {
       };
     } catch (error) {
       this.logger.error(
-        `Error creating trip payment: ${error.message}`,
+        `Error creating Stripe payment intent for payment ${payment._id}: ${error.message}`,
         error.stack,
       );
 
-      await this.paymentRepository.create({
-        customerId,
-        tripId,
-        amount,
-        currency,
-        paymentMethodId,
-        stripePaymentIntentId: paymentIntent?.id || null, // PaymentIntent ID'yi kaydet (varsa)
-        status: PaymentStatus.FAILED,
-        errorMessage: error.message,
-        metadata,
-      });
+      // Update the existing payment record with error status
+      await this.paymentRepository.updateStatus(
+        payment._id.toString(),
+        PaymentStatus.FAILED,
+        error.message,
+      );
+
+      this.logger.info(
+        `Updated payment ${payment._id} status to FAILED due to Stripe error`,
+      );
 
       throw error;
     }

@@ -326,7 +326,6 @@ export class TripPaymentService {
       return;
     }
 
-    // Update trip status to PAYMENT_RETRY and payment status to failed
     await this.tripService.updateTripWithData(trip._id.toString(), {
       status: TripStatus.PAYMENT_RETRY,
       paymentStatus: PaymentStatus.FAILED,
@@ -334,10 +333,7 @@ export class TripPaymentService {
 
     // Remove driver's active trip
     if (trip.driver && trip.driver.id) {
-      await this.tripService.cleanupCompletedTrip(
-        trip.driver.id,
-        trip.customer.id,
-      );
+      await this.tripService.cleanupDriverTrip(trip.driver.id);
       this.logger.info(
         `Removed driver ${trip.driver.id} active trip due to payment failure`,
       );

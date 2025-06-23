@@ -279,14 +279,12 @@ export class PaymentMethodService {
     return paymentMethod;
   }
 
-   async saveFakePaymentMethodFromSetupIntent(
+  async saveFakePaymentMethodFromSetupIntent(
     customerId: string,
     paymentMethodId: string,
     name?: string,
   ): Promise<PaymentMethod> {
-    this.logger.info(
-      `Saving payment method from  for customer ${customerId}`,
-    );
+    this.logger.info(`Saving payment method from  for customer ${customerId}`);
 
     // Get customer's Stripe customer ID
     const customer = await this.customersService.findOne(customerId, [

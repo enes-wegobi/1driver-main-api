@@ -274,8 +274,7 @@ export class StripeService {
     this.logger.info(
       `Creating off-session payment intent for customer ${customerId} with amount ${amount} ${currency}`,
     );
-
-    return this.stripe.paymentIntents.create({
+    const paymentIntent = await this.stripe.paymentIntents.create({
       amount,
       currency,
       customer: customerId,
@@ -285,6 +284,8 @@ export class StripeService {
       off_session: true, // This enables saved card payments
       metadata,
     });
+
+    return paymentIntent;
   }
 
   /**

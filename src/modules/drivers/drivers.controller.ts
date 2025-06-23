@@ -123,7 +123,6 @@ export class DriversController {
         if (existingFileKey) {
           await this.s3Service.deleteFile(existingFileKey);
         }
-
       }
 
       const fileKey = `${user.userId}/${fileType}/${uuidv4()}-${file.originalname}`;

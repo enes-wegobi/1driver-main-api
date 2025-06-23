@@ -10,7 +10,8 @@ export class HealthController {
   @Get()
   @ApiOperation({
     summary: 'Health check endpoint',
-    description: 'Returns the health status of the application and its dependencies',
+    description:
+      'Returns the health status of the application and its dependencies',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -74,7 +75,8 @@ export class HealthController {
   @Get('websocket')
   @ApiOperation({
     summary: 'WebSocket health check endpoint',
-    description: 'Returns the health status of WebSocket connections and server',
+    description:
+      'Returns the health status of WebSocket connections and server',
   })
   @ApiResponse({
     status: HttpStatus.OK,
@@ -108,7 +110,11 @@ export class HealthController {
               properties: {
                 averagePingTime: { type: 'number', example: 25 },
                 connectionErrors: { type: 'number', example: 0 },
-                lastErrorTime: { type: 'string', nullable: true, example: null },
+                lastErrorTime: {
+                  type: 'string',
+                  nullable: true,
+                  example: null,
+                },
               },
             },
             redis: {
@@ -135,7 +141,8 @@ export class HealthController {
   @Get('websocket/connections')
   @ApiOperation({
     summary: 'WebSocket connections endpoint',
-    description: 'Returns detailed information about active WebSocket connections',
+    description:
+      'Returns detailed information about active WebSocket connections',
   })
   @ApiResponse({
     status: HttpStatus.OK,

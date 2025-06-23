@@ -77,7 +77,6 @@ export class PaymentMethodController {
     }
   }
 
-
   @Post('fake')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({

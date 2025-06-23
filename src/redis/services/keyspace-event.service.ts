@@ -262,7 +262,7 @@ export class KeyspaceEventService
 
         // Use the existing mapping function to check if event is still relevant
         const isRelevant = isEventStillRelevant(currentTripStatus, eventType);
-/*
+        /*
         // TRIP_REQUESTED için ek detaylı kontroller
         if (eventType === EventType.TRIP_REQUESTED && ackData) {
           const enhancedRelevance = await this.checkTripRequestRelevance(
@@ -439,9 +439,11 @@ export class KeyspaceEventService
     try {
       // Use callback pattern to avoid circular dependency
       if (this.driverProcessingCallback) {
-        const isProcessing = await this.driverProcessingCallback.isDriverProcessingTrip(driverId);
-        const processingTrip = await this.driverProcessingCallback.getDriverProcessingTrip(driverId);
-        
+        const isProcessing =
+          await this.driverProcessingCallback.isDriverProcessingTrip(driverId);
+        const processingTrip =
+          await this.driverProcessingCallback.getDriverProcessingTrip(driverId);
+
         // Eğer driver başka bir trip işliyorsa retry yapma
         if (isProcessing && processingTrip !== ackData?.tripId) {
           this.logger.debug(
@@ -449,7 +451,7 @@ export class KeyspaceEventService
           );
           return false;
         }
-        
+
         // Eğer driver hiçbir trip işlemiyorsa da retry yapma (timeout olmuş olabilir)
         if (!isProcessing) {
           this.logger.debug(
@@ -457,7 +459,7 @@ export class KeyspaceEventService
           );
           return false;
         }
-        
+
         return true;
       } else {
         this.logger.warn(
@@ -494,7 +496,7 @@ export class KeyspaceEventService
       // 2. Trip details callback kullanarak detaylı kontrol
       if (this.getTripDetailsCallback) {
         const tripDetails = await this.getTripDetailsCallback(tripId);
-        
+
         if (!tripDetails) {
           this.logger.debug(`Trip ${tripId} details not found`);
           return false;
@@ -586,11 +588,13 @@ export class KeyspaceEventService
   /**
    * Set the trip details callback
    */
-  setTripDetailsCallback(callback: (tripId: string) => Promise<{
-    calledDriverIds?: string[];
-    rejectedDriverIds?: string[];
-    driver?: { id: string };
-  } | null>): void {
+  setTripDetailsCallback(
+    callback: (tripId: string) => Promise<{
+      calledDriverIds?: string[];
+      rejectedDriverIds?: string[];
+      driver?: { id: string };
+    } | null>,
+  ): void {
     this.getTripDetailsCallback = callback;
   }
 
