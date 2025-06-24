@@ -842,7 +842,10 @@ export class TripService {
     // Dakika başı 1 dirham hesaplama
     const durationInMinutes = Math.ceil(actualDuration / 60); // Yukarı yuvarlama
     const costPerMinute = this.configService.tripCostPerMinute; // 1 dirham
-    const finalCost = durationInMinutes * costPerMinute;
+    let finalCost = durationInMinutes * costPerMinute;
+    if (finalCost < 5) {
+      finalCost = 5;
+    }
 
     return {
       actualDuration,
