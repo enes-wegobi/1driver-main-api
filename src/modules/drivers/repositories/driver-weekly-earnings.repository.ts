@@ -32,7 +32,7 @@ export class DriverWeeklyEarningsRepository {
     return this.model.findOne({ driverId, status: 'ACTIVE' }).exec();
   }
 
-  async findCompletedByDriverId(
+  async findAllByDriverId(
     driverId: string,
     page: number = 1,
     limit: number = 10,
@@ -44,15 +44,20 @@ export class DriverWeeklyEarningsRepository {
     sortObj[sortBy] = sortOrder === 'asc' ? 1 : -1;
 
     return this.model
-      .find({ driverId, status: 'COMPLETED' })
+      .find({ driverId })
+      .select('-trips') // Exclude trips field for listing
       .sort(sortObj)
       .skip(skip)
       .limit(limit)
       .exec();
   }
 
-  async countCompletedByDriverId(driverId: string): Promise<number> {
-    return this.model.countDocuments({ driverId, status: 'COMPLETED' }).exec();
+  async countAllByDriverId(driverId: string): Promise<number> {
+    return this.model.countDocuments({ driverId }).exec();
+  }
+
+  async findById(id: string): Promise<DriverWeeklyEarningsDocument | null> {
+    return this.model.findById(id).lean().exec();
   }
 
   async addTripToWeeklyRecord(

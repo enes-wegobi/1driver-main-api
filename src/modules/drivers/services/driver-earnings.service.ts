@@ -70,9 +70,9 @@ export class DriverEarningsService {
   }
 
   /**
-   * Get earnings history for driver with pagination and sorting
+   * Get all earnings for driver with pagination and sorting
    */
-  async getEarningsHistory(
+  async getAllEarnings(
     driverId: string,
     page: number = 1,
     limit: number = 10,
@@ -90,14 +90,14 @@ export class DriverEarningsService {
     };
   }> {
     const [data, total] = await Promise.all([
-      this.driverWeeklyEarningsRepository.findCompletedByDriverId(
+      this.driverWeeklyEarningsRepository.findAllByDriverId(
         driverId,
         page,
         limit,
         sortBy,
         sortOrder,
       ),
-      this.driverWeeklyEarningsRepository.countCompletedByDriverId(driverId),
+      this.driverWeeklyEarningsRepository.countAllByDriverId(driverId),
     ]);
 
     const totalPages = Math.ceil(total / limit);
@@ -113,6 +113,13 @@ export class DriverEarningsService {
         hasPrev: page > 1,
       },
     };
+  }
+
+  /**
+   * Get earnings by ID
+   */
+  async getEarningsById(id: string): Promise<DriverWeeklyEarningsDocument | null> {
+    return this.driverWeeklyEarningsRepository.findById(id);
   }
 
   /**
