@@ -22,8 +22,8 @@ import { LoggerService } from 'src/logger/logger.service';
 import { EventAckPayload } from 'src/modules/event/interfaces/reliable-event.interface';
 import { KeyspaceEventService } from 'src/redis/services/keyspace-event.service';
 
-const PING_INTERVAL = 15000;
-const PING_TIMEOUT = 5000;
+const PING_INTERVAL = 5000;
+const PING_TIMEOUT = 2000;
 
 @NestWebSocketGateway({
   cors: {
@@ -100,6 +100,8 @@ export class WebSocketGateway
       // Join rooms based on user type and ID for easier targeting
       client.join(`user:${payload.userId}`);
       client.join(`type:${userType}`);
+      
+      this.logger.debug(`[ROOM_JOIN] Client ${clientId} joined rooms: user:${payload.userId}, type:${userType}`);
 
       if (userType === UserType.DRIVER) {
         await this.driverStatusService.markDriverAsConnected(payload.userId);
@@ -140,6 +142,15 @@ export class WebSocketGateway
       this.logger.debug(
         `Client ${clientId} authenticated as ${userType} with userId: ${payload.userId}`,
       );
+
+      // Listen to built-in ping/pong events for logging
+      client.on('ping', () => {
+        this.logger.debug(`[PING] Received from ${userType}:${payload.userId} (${clientId})`);
+      });
+
+      client.on('pong', (latency) => {
+        this.logger.debug(`[PONG] Received from ${userType}:${payload.userId} (${clientId}), latency: ${latency}ms`);
+      });
     } catch (error) {
       this.logger.error(`Authentication error: ${error.message}`);
       client.emit('error', {
@@ -296,7 +307,7 @@ export class WebSocketGateway
       };
     }
   }
-
+/*
   @SubscribeMessage('eventAck')
   async handleEventAck(client: Socket, payload: EventAckPayload) {
     const userId = client.data.userId;
@@ -332,7 +343,7 @@ export class WebSocketGateway
       };
     }
   }
-
+*/
   private async storeUserLocation(
     userId: string,
     userType: string,

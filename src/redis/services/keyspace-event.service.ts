@@ -27,7 +27,6 @@ export interface ExpiredAckData {
 @Injectable()
 export class KeyspaceEventService
   extends BaseRedisService
-  implements OnModuleInit, OnModuleDestroy
 {
   private subscriber: Redis;
 
@@ -39,7 +38,7 @@ export class KeyspaceEventService
   ) {
     super(configService, logger);
   }
-
+/*
   async onModuleInit(): Promise<void> {
     await this.initializeKeyspaceListener();
   }
@@ -71,7 +70,7 @@ export class KeyspaceEventService
       // Don't throw error, let the application continue with fallback mechanisms
     }
   }
-
+*/
   private async handleExpiredKey(expiredKey: string): Promise<void> {
     // Only handle event TTL keys
     if (!expiredKey.startsWith('event_ttl:')) {

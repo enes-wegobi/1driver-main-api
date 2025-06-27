@@ -17,7 +17,7 @@ import { LoggerService } from 'src/logger/logger.service';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
-export class Event2Service implements OnModuleInit {
+export class Event2Service{
   constructor(
     private readonly webSocketService: WebSocketService,
     private readonly driverStatusService: DriverStatusService,
@@ -26,14 +26,7 @@ export class Event2Service implements OnModuleInit {
     private readonly customersService: CustomersService,
     private readonly expoNotificationsService: ExpoNotificationsService,
     private readonly logger: LoggerService,
-    private readonly keyspaceEventService: KeyspaceEventService,
   ) {}
-
-  async onModuleInit(): Promise<void> {
-    // Set up retry callback to avoid circular dependency
-    this.keyspaceEventService.setRetryCallback(this.retryEvent.bind(this));
-    this.logger.info('Event2Service initialized with retry callback');
-  }
 
   generateEventId(): string {
     return `evt_${uuidv4().replace(/-/g, '')}`;
@@ -63,7 +56,7 @@ export class Event2Service implements OnModuleInit {
           timestamp: new Date(),
           data,
         };
-        await this.keyspaceEventService.createTTLKey(eventData);
+        //await this.keyspaceEventService.createTTLKey(eventData);
 
         const eventDataWithId = {
           eventId: eventData.eventId,
@@ -129,7 +122,7 @@ export class Event2Service implements OnModuleInit {
         timestamp: new Date(),
       };
 
-      await this.keyspaceEventService.createTTLKey(retryEventData);
+     // await this.keyspaceEventService.createTTLKey(retryEventData);
 
       // Event'i tekrar gönder
       const eventDataWithId = {
@@ -180,7 +173,7 @@ export class Event2Service implements OnModuleInit {
           timestamp: new Date(),
           data,
         };
-        await this.keyspaceEventService.createTTLKey(eventData);
+        //await this.keyspaceEventService.createTTLKey(eventData);
 
         // Add eventId to the data at the same level as eventType
         const eventDataWithId = {
