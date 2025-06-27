@@ -705,7 +705,7 @@ export class TripQueueService implements OnModuleInit, OnModuleDestroy {
     return {
       driverResponseTimeout: this.configService.get(
         'tripDriverResponseTimeout',
-        10,
+        20,
       ),
       maxRetries: this.configService.get('queueMaxRetries', 3),
       backoffDelay: this.configService.get('queueBackoffDelay', 2000),

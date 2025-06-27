@@ -133,8 +133,8 @@ export default () => ({
     perMinuteRate: parseFloat(process.env.DRIVER_EARNINGS_PER_MINUTE || '0.5'),
   },
   tripDriverResponseTimeout: parseInt(
-    process.env.TRIP_DRIVER_RESPONSE_TIMEOUT || '10',
-    10,
+    process.env.TRIP_DRIVER_RESPONSE_TIMEOUT || '20',
+    20,
   ), // 10 seconds
   tripTimeoutCheckInterval: parseInt(
     process.env.TRIP_TIMEOUT_CHECK_INTERVAL || '30',
