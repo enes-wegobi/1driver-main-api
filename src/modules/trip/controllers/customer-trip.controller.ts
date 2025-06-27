@@ -7,6 +7,7 @@ import {
   Query,
   Param,
   Patch,
+  Delete,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
@@ -31,6 +32,9 @@ import { TripHistoryResponseDto } from '../dto/trip-history-response.dto';
 import { AddTripCommentDto } from '../dto/add-trip-comment.dto';
 import { UpdateRateDto } from 'src/common/dto/update-rate.dto';
 import { RequestDriverDto } from '../dto/request-driver.dto';
+import { TripStatus } from 'src/common/enums/trip-status.enum';
+import { UserType } from 'src/common/user-type.enum';
+import { ActiveTripService } from 'src/redis/services/active-trip.service';
 
 @ApiTags('customer-trips')
 @Controller('customer-trips')
@@ -38,6 +42,7 @@ export class CustomersTripsController {
   constructor(
     private readonly tripService: TripService,
     private readonly tripPaymentService: TripPaymentService,
+    private readonly activeTripService: ActiveTripService,
   ) {}
 
   @Get('active')
@@ -269,6 +274,49 @@ export class CustomersTripsController {
       user.userId,
       addCommentDto.comment,
     );
+  }
+
+  @Delete('active')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Delete active trip if driver not found',
+    description:
+      'Delete the customer\'s active trip if it has DRIVER_NOT_FOUND status. This will remove the trip from active state and move it to draft status.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Active trip deleted successfully',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'No active trip found or trip cannot be deleted (wrong status)',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'No active trip found for customer',
+  })
+  async deleteActiveTrip(@GetUser() user: IJwtPayload) {
+    const activeTrip = await this.tripService.getCustomerActiveTrip(user.userId);
+    
+    if (!activeTrip.trip) {
+      throw new Error('No active trip found');
+    }
+    
+    if (activeTrip.trip.status !== TripStatus.DRIVER_NOT_FOUND) {
+      throw new Error('Trip can only be deleted when status is DRIVER_NOT_FOUND');
+    }
+    
+    await this.activeTripService.removeUserActiveTrip(
+      user.userId,
+      UserType.CUSTOMER,
+    );
+    await this.tripService.updateTripStatus(activeTrip.trip._id, TripStatus.DRAFT)
+    
+    return {
+      message: 'Active trip deleted successfully',
+      tripId: activeTrip.trip._id,
+    };
   }
 
   @Get(':id')
