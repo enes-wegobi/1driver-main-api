@@ -307,12 +307,12 @@ export class CustomersTripsController {
       throw new Error('Trip can only be deleted when status is DRIVER_NOT_FOUND');
     }
     
+    await this.tripService.updateTripStatus(activeTrip.trip._id, TripStatus.DRAFT)
+
     await this.activeTripService.removeUserActiveTrip(
       user.userId,
       UserType.CUSTOMER,
     );
-    await this.tripService.updateTripStatus(activeTrip.trip._id, TripStatus.DRAFT)
-    
     return {
       message: 'Active trip deleted successfully',
       tripId: activeTrip.trip._id,
