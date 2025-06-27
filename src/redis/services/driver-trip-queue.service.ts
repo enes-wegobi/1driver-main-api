@@ -162,6 +162,9 @@ export class DriverTripQueueService extends BaseRedisService {
     for (const item of allItems) {
       try {
         const queueItem: DriverQueueItem = JSON.parse(item);
+        this.customLogger.debug(
+          `Queue item for driver ${driverId}: ${JSON.stringify(queueItem, null, 2)}`
+        );
         if (queueItem.tripId === tripId) {
           const removed = await this.client.zrem(queueKey, item);
           this.customLogger.debug(
