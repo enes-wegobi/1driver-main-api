@@ -9,6 +9,7 @@ import { EventType } from 'src/modules/event/enum/event-type.enum';
 import { Event2Service } from 'src/modules/event/event_v2.service';
 import { UserType } from 'src/common/user-type.enum';
 import { LoggerService } from 'src/logger/logger.service';
+import { ActiveTripService } from 'src/redis/services/active-trip.service';
 
 @Processor('trip-timeouts')
 @Injectable()
@@ -17,6 +18,7 @@ export class TripTimeoutProcessor extends WorkerHost {
     private readonly tripService: TripService,
     private readonly event2Service: Event2Service,
     private readonly tripQueueService: TripQueueService,
+    private readonly activeTripService: ActiveTripService,
     private readonly logger: LoggerService,
   ) {
     super();
@@ -107,12 +109,10 @@ export class TripTimeoutProcessor extends WorkerHost {
           );
 
           if (this.areAllDriversRejected(updatedTrip)) {
-            /*
-            await this.eventService.notifyCustomerDriverNotFound(
-              updatedTrip,
+            await this.activeTripService.removeUserActiveTrip(
               updatedTrip.customer.id,
+              UserType.CUSTOMER,
             );
-            */
             await this.event2Service.sendToUser(
               updatedTrip.customer.id,
               EventType.TRIP_DRIVER_NOT_FOUND,
