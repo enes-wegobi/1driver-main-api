@@ -99,10 +99,8 @@ export class CustomersTripsController {
     @GetUser() user: IJwtPayload,
   ) {
     return await this.tripService.requestDriver(
-      requestDriverDto.tripId,
-      requestDriverDto.lat,
-      requestDriverDto.lon,
       user.userId,
+      requestDriverDto.tripId,
     );
   }
 

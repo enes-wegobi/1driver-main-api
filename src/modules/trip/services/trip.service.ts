@@ -134,10 +134,8 @@ export class TripService {
   }
 
   async requestDriver(
-    tripId: string,
-    lat: number,
-    lon: number,
     customerId: string,
+    tripId?: string,
   ): Promise<any> {
     return this.lockService.executeWithLock(
       `trip:${tripId}`,
@@ -145,36 +143,48 @@ export class TripService {
         return this.executeWithErrorHandling('requesting driver', async () => {
           //await this.validateCustomerHasPaymentMethod(customerId);
           //await this.validateCustomerHasNoUnpaidPenalties(customerId);
+          let trip; 
+          if(tripId){
+            trip = await this.findAndValidateRequestTrip(
+              customerId,
+              tripId,
+            );
+          }else {
+            const result = await this.getUserActiveTrip(customerId, UserType.CUSTOMER);
+            trip = result.trip;
+            if (trip.status !== TripStatus.DRIVER_NOT_FOUND){
+              throw new BadRequestException('trip not available status');
+            }
 
-          const trip = await this.findAndValidateRequestTrip(
-            tripId,
-            customerId,
-          );
+          }
 
-          const driverIds = await this.searchDriver(lat, lon);
+          const lat = trip.route[0].lat
+          const lon = trip.route[0].lon
+ 
+          const driverIds = await this.searchDriver(trip.route[0].lat, trip.route[0].lon);
 
           const updateData = this.buildDriverRequestUpdateData(
             driverIds,
             trip.callRetryCount,
           );
-          const updatedTrip = await this.updateTripWithData(tripId, updateData);
+          const updatedTrip = await this.updateTripWithData(trip._id, updateData);
 
           await this.activeTripService.setUserActiveTripId(
             customerId,
             UserType.CUSTOMER,
-            tripId,
+            trip._id,
           );
 
           // Use NEW SEQUENTIAL SYSTEM: Add trip to driver queues sequentially
           await this.tripQueueService.addTripRequestSequential(
-            tripId,
+            trip._id,
             driverIds,
             { lat, lon },
             2, // Normal priority
           );
 
           this.logger.info(
-            `Added trip ${tripId} to ${driverIds.length} driver queues sequentially`,
+            `Added trip ${trip._id} to ${driverIds.length} driver queues sequentially`,
           );
 
           return { success: true, trip: updatedTrip };
@@ -916,8 +926,8 @@ export class TripService {
   }
 
   private async findAndValidateRequestTrip(
-    tripId: string,
     customerId: string,
+    tripId: string,
   ): Promise<TripDocument> {
     await this.validateCustomerNoActiveTrip(customerId, tripId);
     const trip = await this.getTrip(tripId);
