@@ -1487,6 +1487,7 @@ export class TripService {
 
   private validateAllowedStatusUpdate(newStatus: TripStatus): void {
     const allowedStatuses = [
+      TripStatus.DRAFT,
       TripStatus.DRIVER_ON_WAY_TO_PICKUP,
       TripStatus.ARRIVED_AT_PICKUP,
       TripStatus.TRIP_IN_PROGRESS,
