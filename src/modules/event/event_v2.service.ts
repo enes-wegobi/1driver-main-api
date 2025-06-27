@@ -5,10 +5,6 @@ import { CustomersService } from 'src/modules/customers/customers.service';
 import { ExpoNotificationsService } from 'src/modules/expo-notifications/expo-notifications.service';
 import { DriverStatusService } from 'src/redis/services/driver-status.service';
 import { CustomerStatusService } from 'src/redis/services/customer-status.service';
-import {
-  ExpiredAckData,
-  KeyspaceEventService,
-} from 'src/redis/services/keyspace-event.service';
 import { EventType } from './enum/event-type.enum';
 import { EventDeliveryMethod } from './constants/trip.constant';
 import { UserType } from 'src/common/user-type.enum';
@@ -46,7 +42,7 @@ export class Event2Service{
       );
 
       if (deliveryMethod === EventDeliveryMethod.WEBSOCKET) {
-        const eventData: ExpiredAckData = {
+        const eventData: any = {
           eventId: this.generateEventId(),
           userId,
           userType,
@@ -103,50 +99,6 @@ export class Event2Service{
     }
   }
 
-  /**
-   * Retry event method for TTL-based retries
-   */
-  async retryEvent(ackData: ExpiredAckData): Promise<void> {
-    try {
-      this.logger.info(`Retrying event ${ackData.eventId}`, {
-        eventId: ackData.eventId,
-        userId: ackData.userId,
-        eventType: ackData.eventType,
-        retryCount: ackData.retryCount,
-      });
-
-      // Yeni TTL key oluştur (retry count ile)
-      const retryEventData: ExpiredAckData = {
-        ...ackData,
-        retryCount: ackData.retryCount,
-        timestamp: new Date(),
-      };
-
-     // await this.keyspaceEventService.createTTLKey(retryEventData);
-
-      // Event'i tekrar gönder
-      const eventDataWithId = {
-        eventId: ackData.eventId,
-        eventType: ackData.eventType,
-        ...(ackData.data || {}),
-      };
-
-      await this.webSocketService.sendToUser(
-        ackData.userId,
-        ackData.eventType,
-        eventDataWithId,
-      );
-
-      this.logger.info(
-        `Event ${ackData.eventId} retried successfully (attempt ${ackData.retryCount})`,
-      );
-    } catch (error: any) {
-      this.logger.error(
-        `Failed to retry event ${ackData.eventId}: ${error.message}`,
-      );
-    }
-  }
-
   async sendToUsers(
     userIds: string[],
     eventType: EventType,
@@ -163,7 +115,7 @@ export class Event2Service{
 
       // For active users (WebSocket), create events with ACK tracking
       const activeUserEventPromises = activeUsers.map(async (userId) => {
-        const eventData: ExpiredAckData = {
+        const eventData: any = {
           eventId: this.generateEventId(),
           userId,
           userType,

@@ -20,7 +20,6 @@ export class TripTimeoutProcessor extends WorkerHost {
     private readonly logger: LoggerService,
   ) {
     super();
-    // WORKER BAŞLANGICI KONTROLÜ
     this.logger.info(
       '🚀 TIMEOUT PROCESSOR INITIALIZED - Worker is ready to process jobs',
     );

@@ -8,7 +8,6 @@ import { NearbySearchService } from './services/nearby-search.service';
 import { ActiveTripService } from './services/active-trip.service';
 import { DriverTripQueueService } from './services/driver-trip-queue.service';
 import { TokenManagerService } from './services/token-manager.service';
-import { KeyspaceEventService } from './services/keyspace-event.service';
 
 @Module({
   imports: [ConfigModule],
@@ -21,7 +20,6 @@ import { KeyspaceEventService } from './services/keyspace-event.service';
     ActiveTripService,
     TokenManagerService,
     DriverTripQueueService,
-    KeyspaceEventService,
   ],
   exports: [
     BaseRedisService,
@@ -32,7 +30,6 @@ import { KeyspaceEventService } from './services/keyspace-event.service';
     ActiveTripService,
     TokenManagerService,
     DriverTripQueueService,
-    KeyspaceEventService,
   ],
 })
 export class RedisModule {}

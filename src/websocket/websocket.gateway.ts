@@ -19,8 +19,6 @@ import { TripService } from 'src/modules/trip/services/trip.service';
 import { EventType } from 'src/modules/event/enum/event-type.enum';
 import { DriverAvailabilityStatus } from 'src/common/enums/driver-availability-status.enum';
 import { LoggerService } from 'src/logger/logger.service';
-import { EventAckPayload } from 'src/modules/event/interfaces/reliable-event.interface';
-import { KeyspaceEventService } from 'src/redis/services/keyspace-event.service';
 
 const PING_INTERVAL = 5000;
 const PING_TIMEOUT = 2000;
@@ -50,7 +48,6 @@ export class WebSocketGateway
     private readonly activeTripService: ActiveTripService,
     private readonly tripService: TripService,
     private readonly logger: LoggerService,
-    private readonly keyspaceEventService: KeyspaceEventService,
   ) {}
 
   @WebSocketServer()
