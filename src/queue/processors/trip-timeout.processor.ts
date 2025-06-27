@@ -10,6 +10,7 @@ import { Event2Service } from 'src/modules/event/event_v2.service';
 import { UserType } from 'src/common/user-type.enum';
 import { LoggerService } from 'src/logger/logger.service';
 import { ActiveTripService } from 'src/redis/services/active-trip.service';
+import { DriverTripQueueService } from 'src/redis/services/driver-trip-queue.service';
 
 @Processor('trip-timeouts')
 @Injectable()
@@ -19,6 +20,7 @@ export class TripTimeoutProcessor extends WorkerHost {
     private readonly event2Service: Event2Service,
     private readonly tripQueueService: TripQueueService,
     private readonly activeTripService: ActiveTripService,
+    private readonly driverTripQueueService: DriverTripQueueService,
     private readonly logger: LoggerService,
   ) {
     super();
@@ -84,6 +86,7 @@ export class TripTimeoutProcessor extends WorkerHost {
 
         // Use NEW SEQUENTIAL SYSTEM: Handle driver timeout
         await this.tripQueueService.handleDriverTimeout(driverId, tripId);
+        await this.driverTripQueueService.clearDriverLastRequest(driverId);
 
         // Add driver to rejected list (treat timeout as rejection)
         const rejectedDriverIds = [...(trip.rejectedDriverIds || [])];
@@ -93,6 +96,7 @@ export class TripTimeoutProcessor extends WorkerHost {
 
         const result = await this.tripService.updateTrip(tripId, {
           rejectedDriverIds,
+          status: this.areAllDriversRejected(rejectedDriverIds, trip.calledDriverIds) ? TripStatus.DRIVER_NOT_FOUND : trip.status
         });
         if (result.success && result.trip) {
           const updatedTrip = result.trip;
@@ -108,7 +112,7 @@ export class TripTimeoutProcessor extends WorkerHost {
             `Sent TRIP_ALREADY_TAKEN event to timed-out driver ${driverId} for trip ${tripId}`,
           );
 
-          if (this.areAllDriversRejected(updatedTrip)) {
+          if (this.areAllDriversRejected(rejectedDriverIds, trip.calledDriverIds)) {
             await this.activeTripService.removeUserActiveTrip(
               updatedTrip.customer.id,
               UserType.CUSTOMER,
@@ -183,13 +187,12 @@ export class TripTimeoutProcessor extends WorkerHost {
     );
   }
 
-  private areAllDriversRejected(trip: any): boolean {
+  private areAllDriversRejected(calledDriverIds: any, rejectedDriverIds: any): boolean {
     return (
-      trip &&
-      trip.calledDriverIds &&
-      trip.rejectedDriverIds &&
-      trip.calledDriverIds.length === trip.rejectedDriverIds.length &&
-      trip.calledDriverIds.length > 0
+      calledDriverIds &&
+      rejectedDriverIds &&
+      calledDriverIds.length === rejectedDriverIds.length &&
+      calledDriverIds.length > 0
     );
   }
 }
