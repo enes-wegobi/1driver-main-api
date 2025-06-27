@@ -988,10 +988,6 @@ export class TripService {
     });
 
     if (this.areAllDriversRejected(updatedTrip)) {
-      await this.activeTripService.removeUserActiveTrip(
-        updatedTrip.customer.id,
-        UserType.CUSTOMER,
-      );
       /*
       await this.eventService.notifyCustomerDriverNotFound(
         updatedTrip,

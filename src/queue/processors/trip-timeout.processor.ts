@@ -113,10 +113,6 @@ export class TripTimeoutProcessor extends WorkerHost {
           );
 
           if (this.areAllDriversRejected(rejectedDriverIds, trip.calledDriverIds)) {
-            await this.activeTripService.removeUserActiveTrip(
-              updatedTrip.customer.id,
-              UserType.CUSTOMER,
-            );
             await this.event2Service.sendToUser(
               updatedTrip.customer.id,
               EventType.TRIP_DRIVER_NOT_FOUND,
