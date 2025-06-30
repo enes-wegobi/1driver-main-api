@@ -554,8 +554,14 @@ export class TripQueueService implements OnModuleInit, OnModuleDestroy {
           await this.driverTripQueueService.removeTripFromAllDriverQueues(
             tripId,
           );
-        for (const driverId of driverIds) {
-          await this.processNextDriverRequest(driverId);
+        for (const otherDriverId of driverIds) {
+          if(otherDriverId != driverId){
+            this.logger.info(
+              `Driver ${otherDriverId} processing next trip`,
+             );
+            await this.driverTripQueueService.clearDriverProcessingTrip(otherDriverId);
+            await this.processNextDriverRequest(otherDriverId);
+          }
         }
       } else {
         // Driver declined - remove only this trip and process next
