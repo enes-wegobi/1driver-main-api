@@ -333,22 +333,25 @@ export class DriverTripQueueService extends BaseRedisService {
    * Remove a specific trip from all driver queues
    */
   @WithErrorHandling(0)
-  async removeTripFromAllDriverQueues(tripId: string): Promise<number> {
+  async removeTripFromAllDriverQueues(tripId: string): Promise<string[]> {
     const driversWithTrip = await this.getDriversWithTripInQueue(tripId);
     let totalRemoved = 0;
+    let driverIds: string[] = [];
 
     for (const driverId of driversWithTrip) {
       const removed = await this.removeSpecificTripFromDriver(driverId, tripId);
       if (removed) {
         totalRemoved++;
+        driverIds.push()
       }
+
     }
 
     this.customLogger.debug(
       `Removed trip ${tripId} from ${totalRemoved} driver queues`,
     );
 
-    return totalRemoved;
+    return driverIds;
   }
 
   /**

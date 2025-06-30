@@ -550,13 +550,13 @@ export class TripQueueService implements OnModuleInit, OnModuleDestroy {
         );
 
         // Remove this trip from all other driver queues
-        const totalRemoved =
+        const driverIds =
           await this.driverTripQueueService.removeTripFromAllDriverQueues(
             tripId,
           );
-        this.logger.info(
-          `Removed trip ${tripId} from ${totalRemoved} other driver queues`,
-        );
+        for (const driverId of driverIds) {
+          await this.processNextDriverRequest(driverId);
+        }
       } else {
         // Driver declined - remove only this trip and process next
         await this.driverTripQueueService.removeSpecificTripFromDriver(
