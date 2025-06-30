@@ -895,7 +895,7 @@ export class TripService {
   }
 
   private async searchDriver(lat: number, lon: number): Promise<string[]> {
-    const searchRadii = [5, 7, 10];
+    const searchRadii = [20, 25, 50];
     let drivers: FindNearbyUsersResult = [];
 
     for (const radius of searchRadii) {
