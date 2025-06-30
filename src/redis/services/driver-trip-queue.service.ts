@@ -333,25 +333,52 @@ export class DriverTripQueueService extends BaseRedisService {
    * Remove a specific trip from all driver queues
    */
   @WithErrorHandling(0)
-  async removeTripFromAllDriverQueues(tripId: string): Promise<string[]> {
+  async removeTripFromAllDriverQueues(tripId: string): Promise<number> {
     const driversWithTrip = await this.getDriversWithTripInQueue(tripId);
     let totalRemoved = 0;
-    let driverIds: string[] = [];
 
     for (const driverId of driversWithTrip) {
       const removed = await this.removeSpecificTripFromDriver(driverId, tripId);
       if (removed) {
         totalRemoved++;
-        driverIds.push()
       }
-
     }
 
     this.customLogger.debug(
       `Removed trip ${tripId} from ${totalRemoved} driver queues`,
     );
 
-    return driverIds;
+    return totalRemoved;
+  }
+
+  /**
+   * Remove a specific trip from all driver queues and return affected drivers
+   */
+  @WithErrorHandling({ removedCount: 0, affectedDrivers: [] })
+  async removeTripFromAllDriverQueuesWithAffectedDrivers(tripId: string): Promise<{
+    removedCount: number;
+    affectedDrivers: string[];
+  }> {
+    const driversWithTrip = await this.getDriversWithTripInQueue(tripId);
+    let totalRemoved = 0;
+    const affectedDrivers: string[] = [];
+
+    for (const driverId of driversWithTrip) {
+      const removed = await this.removeSpecificTripFromDriver(driverId, tripId);
+      if (removed) {
+        totalRemoved++;
+        affectedDrivers.push(driverId);
+      }
+    }
+
+    this.customLogger.debug(
+      `Removed trip ${tripId} from ${totalRemoved} driver queues, affected drivers: ${affectedDrivers.join(', ')}`,
+    );
+
+    return {
+      removedCount: totalRemoved,
+      affectedDrivers,
+    };
   }
 
   /**

@@ -549,18 +549,29 @@ export class TripQueueService implements OnModuleInit, OnModuleDestroy {
           `Driver ${driverId} accepted trip ${tripId}, removed ${removedCount} pending trips`,
         );
 
-        // Remove this trip from all other driver queues
-        const driverIds =
-          await this.driverTripQueueService.removeTripFromAllDriverQueues(
+        // Remove this trip from all other driver queues and get affected drivers
+        const { removedCount: totalRemovedFromOthers, affectedDrivers } =
+          await this.driverTripQueueService.removeTripFromAllDriverQueuesWithAffectedDrivers(
             tripId,
           );
-        for (const otherDriverId of driverIds) {
-          if(otherDriverId != driverId){
-            this.logger.info(
-              `Driver ${otherDriverId} processing next trip`,
-             );
-            await this.driverTripQueueService.clearDriverProcessingTrip(otherDriverId);
-            await this.processNextDriverRequest(otherDriverId);
+
+        this.logger.info(
+          `Trip ${tripId} removed from ${totalRemovedFromOthers} other driver queues, affected drivers: ${affectedDrivers.join(', ')}`,
+        );
+
+        // OPTIMIZATION: Immediately process next trip for affected drivers
+        for (const affectedDriverId of affectedDrivers) {
+          if (affectedDriverId !== driverId) {
+            try {
+              await this.processNextDriverRequest(affectedDriverId);
+              this.logger.debug(
+                `Started processing next trip for affected driver ${affectedDriverId}`,
+              );
+            } catch (error) {
+              this.logger.error(
+                `Failed to process next trip for affected driver ${affectedDriverId}: ${error.message}`,
+              );
+            }
           }
         }
       } else {

@@ -1111,12 +1111,6 @@ export class TripService {
     );
 
     if (remainingDriverIds.length > 0) {
-      /*
-      await this.eventService.notifyTripAlreadyTaken(
-        updatedTrip,
-        remainingDriverIds,
-      );
-      */
       await this.event2Service.sendToUsers(
         remainingDriverIds,
         EventType.TRIP_ALREADY_TAKEN,
