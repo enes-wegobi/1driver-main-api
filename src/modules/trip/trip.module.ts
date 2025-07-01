@@ -22,6 +22,7 @@ import { PaymentsModule } from '../payments/payments.module';
 import { QueueModule } from '../../queue/queue.module';
 import { DriversModule } from '../drivers/drivers.module';
 import { LockModule } from 'src/lock/lock.module';
+import { TripEventsService } from '../../events/trip-events.service';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { LockModule } from 'src/lock/lock.module';
     DriverPenaltyService,
     TripStatusService,
     TripPaymentService,
+    TripEventsService,
   ],
   controllers: [
     DriversTripsController,

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ConfigModule } from './config/config.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { JwtModule } from './jwt/jwt.module';
@@ -21,10 +22,17 @@ import { LoggerModule } from './logger/logger.module';
 import { RequestIdInterceptor } from './logger/request-id.interceptor';
 import { HealthModule } from './modules/health/health.module';
 import { QueueManagementController } from './modules/admin/queue-management.controller';
+import { TripEventsService } from './events/trip-events.service';
+import { TripApprovalHandler } from './events/handlers/trip-approval.handler';
 
 @Module({
   imports: [
     ScheduleModule.forRoot(),
+    EventEmitterModule.forRoot({
+      wildcard: true,
+      delimiter: '.',
+      maxListeners: 20,
+    }),
     ConfigModule,
     LoggerModule,
     JwtModule,
@@ -49,6 +57,8 @@ import { QueueManagementController } from './modules/admin/queue-management.cont
       provide: APP_INTERCEPTOR,
       useClass: RequestIdInterceptor,
     },
+    TripEventsService,
+    TripApprovalHandler,
   ],
   controllers: [ QueueManagementController ]
 })

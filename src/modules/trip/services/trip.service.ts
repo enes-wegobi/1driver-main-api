@@ -41,6 +41,7 @@ import { Event2Service } from 'src/modules/event/event_v2.service';
 import { EstimateTripDto } from '../dto/estimate-trip.dto';
 import { LockService } from 'src/lock/lock.service';
 import { LoggerService } from 'src/logger/logger.service';
+import { TripEventsService } from 'src/events/trip-events.service';
 
 export interface TripOperationResult {
   success: boolean;
@@ -89,6 +90,7 @@ export class TripService {
     private readonly driverTripQueueService: DriverTripQueueService,
     private readonly event2Service: Event2Service,
     private readonly logger: LoggerService,
+    private readonly tripEventsService: TripEventsService,
   ) {}
 
   // ================================
@@ -1047,79 +1049,71 @@ export class TripService {
     updatedTrip: TripDocument,
     driverId: string,
   ): Promise<void> {
-    await this.activeTripService.setUserActiveTripId(
-      driverId,
-      UserType.DRIVER,
-      updatedTrip._id,
-    );
-    await this.activeTripService.refreshUserActiveTripExpiry(
-      updatedTrip.customer.id,
-      UserType.CUSTOMER,
-    );
-
-    await this.driverStatusService.updateDriverAvailability(
-      driverId,
-      DriverAvailabilityStatus.ON_TRIP,
-    );
-
-    // Use NEW SEQUENTIAL SYSTEM: Handle driver accept
+    // 1. Immediate operations only
+    await this.setupDriverForTrip(driverId, updatedTrip);
+    await this.sendImmediateNotifications(updatedTrip, driverId);
+    
+    // 2. Handle queue response
     await this.tripQueueService.handleDriverResponse(
       driverId,
       updatedTrip._id,
       true,
     );
 
-    // Process remaining drivers from calledDriverIds (as backup)
-    if (updatedTrip.calledDriverIds && updatedTrip.calledDriverIds.length > 1) {
-      const remainingDrivers = updatedTrip.calledDriverIds.filter(id => id !== driverId);
-      
-      this.logger.info(
-        `Processing next trips for remaining drivers: ${remainingDrivers.join(', ')}`
-      );
+    // 3. Emit event for background processing - No await!
+    this.tripEventsService.emit('trip.approved', {
+      tripId: updatedTrip._id,
+      acceptingDriverId: driverId,
+      calledDriverIds: updatedTrip.calledDriverIds || [],
+      customerId: updatedTrip.customer.id,
+      timestamp: new Date(),
+    });
 
-      for (const remainingDriverId of remainingDrivers) {
-        try {
-          await this.driverTripQueueService.clearDriverProcessingTrip(remainingDriverId);
-
-          await this.tripQueueService.processNextDriverRequest(remainingDriverId);
-          this.logger.debug(
-            `Started processing next trip for driver ${remainingDriverId} after trip approval`
-          );
-        } catch (error) {
-          this.logger.error(
-            `Failed to process next trip for driver ${remainingDriverId}: ${error.message}`
-          );
-        }
-      }
-    }
-
-    // Also remove from old Bull Queue system for compatibility
-    await this.tripQueueService.removeJobsByTripId(updatedTrip._id);
-
-    // Add accepting driver to other trips' rejected lists
-    await this.addDriverToOtherTripsRejectedList(driverId, updatedTrip._id);
-
-    /*
-    await this.eventService.notifyCustomer(
-      updatedTrip,
-      updatedTrip.customer.id,
-      EventType.TRIP_DRIVER_ASSIGNED,
-    );
-    */
-    await this.event2Service.sendToUser(
-      updatedTrip.customer.id,
-      EventType.TRIP_DRIVER_ASSIGNED,
-      updatedTrip,
-      UserType.CUSTOMER,
-    );
-    await this.sendDriverLocationToCustomer(
-      updatedTrip.customer.id,
-      driverId,
-      updatedTrip._id,
-    );
-    this.notifyRemainingDrivers(updatedTrip, driverId);
-
+    this.logger.info(`Trip ${updatedTrip._id} approved by driver ${driverId}, background processing started`);
   }
+
+  private async setupDriverForTrip(
+    driverId: string,
+    trip: TripDocument,
+  ): Promise<void> {
+    await Promise.all([
+      this.activeTripService.setUserActiveTripId(
+        driverId,
+        UserType.DRIVER,
+        trip._id,
+      ),
+      this.activeTripService.refreshUserActiveTripExpiry(
+        trip.customer.id,
+        UserType.CUSTOMER,
+      ),
+      this.driverStatusService.updateDriverAvailability(
+        driverId,
+        DriverAvailabilityStatus.ON_TRIP,
+      ),
+    ]);
+  }
+
+  private async sendImmediateNotifications(
+    trip: TripDocument,
+    driverId: string,
+  ): Promise<void> {
+    await Promise.all([
+      this.event2Service.sendToUser(
+        trip.customer.id,
+        EventType.TRIP_DRIVER_ASSIGNED,
+        trip,
+        UserType.CUSTOMER,
+      ),
+      this.sendDriverLocationToCustomer(
+        trip.customer.id,
+        driverId,
+        trip._id,
+      ),
+    ]);
+    
+    this.notifyRemainingDrivers(trip, driverId);
+  }
+
 
   async notifyRemainingDrivers(
     updatedTrip: TripDocument,
@@ -1140,46 +1134,6 @@ export class TripService {
     }
   }
 
-  private async addDriverToOtherTripsRejectedList(
-    acceptingDriverId: string,
-    acceptedTripId: string,
-  ): Promise<void> {
-    try {
-      const allDriversWithTrips = await this.driverTripQueueService.getAllDriversWithAnyTrips();
-      
-      for (const driverId of allDriversWithTrips) {
-        if (driverId === acceptingDriverId) continue;
-        
-        const driverQueueStatus = await this.driverTripQueueService.getDriverQueueStatus(driverId);
-        
-        for (const queueItem of driverQueueStatus.nextTrips) {
-          if (queueItem.tripId === acceptedTripId) continue;
-          
-          try {
-            const trip = await this.getTrip(queueItem.tripId);
-            const rejectedDriverIds = [...(trip.rejectedDriverIds || [])];
-            
-            if (!rejectedDriverIds.includes(acceptingDriverId)) {
-              rejectedDriverIds.push(acceptingDriverId);
-              await this.updateTripWithData(queueItem.tripId, { rejectedDriverIds });
-              
-              this.logger.debug(
-                `Added driver ${acceptingDriverId} to rejectedDriverIds of trip ${queueItem.tripId}`,
-              );
-            }
-          } catch (error) {
-            this.logger.error(
-              `Error updating rejectedDriverIds for trip ${queueItem.tripId}: ${error.message}`,
-            );
-          }
-        }
-      }
-    } catch (error) {
-      this.logger.error(
-        `Error adding driver ${acceptingDriverId} to other trips' rejected lists: ${error.message}`,
-      );
-    }
-  }
 
   private async sendDriverLocationToCustomer(
     customerId: string,

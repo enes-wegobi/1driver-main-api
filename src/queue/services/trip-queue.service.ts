@@ -219,6 +219,29 @@ export class TripQueueService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
+   * Remove only trip request jobs, keeping timeout jobs active for non-accepting drivers
+   */
+  async removeTripRequestJobsOnly(tripId: string): Promise<number> {
+    try {
+      this.logger.debug(`Removing only trip request jobs for trip ${tripId}`);
+
+      const tripRequestJobsRemoved = await this.removeJobsByPattern(
+        this.tripRequestQueue, 
+        `trip-${tripId}-`
+      );
+
+      this.logger.debug(
+        `Removed ${tripRequestJobsRemoved} trip request jobs for trip ${tripId}, keeping timeout jobs active`,
+      );
+
+      return tripRequestJobsRemoved;
+    } catch (error) {
+      this.logger.error(`Failed to remove trip request jobs for trip ${tripId}`, error);
+      throw error;
+    }
+  }
+
+  /**
    * Remove jobs for a specific driver and trip using job data filtering
    */
   async removeJobsByDriverAndTrip(
@@ -528,33 +551,44 @@ export class TripQueueService implements OnModuleInit, OnModuleDestroy {
         this.logger.info(
           `Driver ${driverId} accepted trip ${tripId}, removed ${removedCount} pending trips`,
         );
-/**
-        // Remove this trip from all other driver queues and get affected drivers
-        const { removedCount: totalRemovedFromOthers, affectedDrivers } =
-          await this.driverTripQueueService.removeTripFromAllDriverQueuesWithAffectedDrivers(
-            tripId,
-          );
 
-        this.logger.info(
-          `Trip ${tripId} removed from ${totalRemovedFromOthers} other driver queues, affected drivers: ${affectedDrivers.join(', ')}`,
-        );
+        // Background processing to avoid blocking the main response
+        setImmediate(async () => {
+          try {
+            // Remove this trip from all other driver queues and get affected drivers
+            const { removedCount: totalRemovedFromOthers, affectedDrivers } =
+              await this.driverTripQueueService.removeTripFromAllDriverQueuesWithAffectedDrivers(
+                tripId,
+              );
 
-        // OPTIMIZATION: Immediately process next trip for affected drivers
-        for (const affectedDriverId of affectedDrivers) {
-          if (affectedDriverId !== driverId) {
-            try {
-              await this.processNextDriverRequest(affectedDriverId);
-              this.logger.debug(
-                `Started processing next trip for affected driver ${affectedDriverId}`,
-              );
-            } catch (error) {
-              this.logger.error(
-                `Failed to process next trip for affected driver ${affectedDriverId}: ${error.message}`,
-              );
+            this.logger.info(
+              `Trip ${tripId} removed from ${totalRemovedFromOthers} other driver queues, affected drivers: ${affectedDrivers.join(', ')}`,
+            );
+
+            // OPTIMIZATION: Process next trip for affected drivers (non-blocking)
+            for (const affectedDriverId of affectedDrivers) {
+              if (affectedDriverId !== driverId) {
+                // Each driver gets its own non-blocking process
+                setImmediate(async () => {
+                  try {
+                    await this.processNextDriverRequest(affectedDriverId);
+                    this.logger.debug(
+                      `Started processing next trip for affected driver ${affectedDriverId}`,
+                    );
+                  } catch (error) {
+                    this.logger.error(
+                      `Failed to process next trip for affected driver ${affectedDriverId}: ${error.message}`,
+                    );
+                  }
+                });
+              }
             }
+          } catch (error) {
+            this.logger.error(
+              `Background processing failed for accepted trip ${tripId}: ${error.message}`,
+            );
           }
-        }
-           */
+        });
       } else {
         // Driver declined - remove only this trip and process next
         await this.driverTripQueueService.removeSpecificTripFromDriver(
