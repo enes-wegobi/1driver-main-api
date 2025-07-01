@@ -162,7 +162,9 @@ export class TripService {
           const lon = trip.route[0].lon
  
           const driverIds = await this.searchDriver(trip.route[0].lat, trip.route[0].lon);
-
+          this.logger.info(
+            `Found ${driverIds.length} drivers`,
+          );
           const updateData = this.buildDriverRequestUpdateData(
             driverIds,
             trip.callRetryCount,
@@ -175,18 +177,12 @@ export class TripService {
             trip._id,
           );
 
-          // Use NEW SEQUENTIAL SYSTEM: Add trip to driver queues sequentially
-          await this.tripQueueService.addTripRequestSequential(
+          this.tripQueueService.addTripRequestSequential(
             trip._id,
             driverIds,
             { lat, lon },
-            2, // Normal priority
+            2,
           );
-
-          this.logger.info(
-            `Added trip ${trip._id} to ${driverIds.length} driver queues sequentially`,
-          );
-
           return { success: true, trip: updatedTrip };
         });
       },
@@ -899,7 +895,6 @@ export class TripService {
     let drivers: FindNearbyUsersResult = [];
 
     for (const radius of searchRadii) {
-      this.logger.debug(`Searching for drivers within ${radius}km radius`);
       drivers = await this.nearbySearchService.findNearbyAvailableDrivers(
         lat,
         lon,
@@ -907,9 +902,6 @@ export class TripService {
       );
 
       if (drivers.length > 0) {
-        this.logger.debug(
-          `Found ${drivers.length} drivers within ${radius}km radius`,
-        );
         break;
       }
     }

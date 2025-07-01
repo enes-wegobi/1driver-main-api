@@ -64,9 +64,6 @@ export class ActiveTripService extends BaseRedisService {
     const exists = await this.client.exists(key);
 
     if (exists === 1) {
-      this.customLogger.debug(
-        `Refreshing TTL for active trip of ${userType} ${userId}`,
-      );
       await this.client.expire(key, this.ACTIVE_TRIP_EXPIRY);
       return true;
     }

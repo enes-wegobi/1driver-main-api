@@ -54,15 +54,14 @@ export class TripQueueService implements OnModuleInit, OnModuleDestroy {
     await this.initializeQueues();
     this.startPeriodicCleanup();
 
-    // HEALTH CHECK EKLE
+    /**
     setTimeout(async () => {
       await this.checkTimeoutQueueHealth();
-    }, 5000); // 5 saniye sonra kontrol et
-
-    // Periyodik health check
+    }, 5000);
     setInterval(async () => {
       await this.checkTimeoutQueueHealth();
-    }, 60000); // Her dakika kontrol et
+    }, 60000); 
+     */
   }
 
   async onModuleDestroy(): Promise<void> {
@@ -151,26 +150,17 @@ export class TripQueueService implements OnModuleInit, OnModuleDestroy {
         removeOnFail: options?.removeOnFail ?? 50,
       };
 
-      this.logger.info(
-        `⏰ CREATING TIMEOUT JOB: tripId=${jobData.tripId}, driverId=${jobData.driverId}, type=${jobData.timeoutType}, delay=${delay}ms, scheduledAt=${jobData.scheduledAt.toISOString()}`,
-      );
-
       const timeoutJob = await this.tripTimeoutQueue.add(
         'timeout-trip-request',
         jobData,
         jobOptions,
       );
 
-      this.logger.info(
-        `✅ TIMEOUT JOB CREATED: jobId=${timeoutJob.id}, tripId=${jobData.tripId}, driverId=${jobData.driverId}`,
-      );
-
-      // JOB DURUMUNU HEMEN KONTROL ET
       setTimeout(async () => {
         try {
           const job = await this.tripTimeoutQueue.getJob(timeoutJob.id!);
           if (job) {
-            this.logger.info(
+            this.logger.debug(
               `🔍 JOB STATUS CHECK: jobId=${job.id}, state=${await job.getState()}, delay=${job.opts.delay}`,
             );
           } else {
@@ -436,10 +426,11 @@ export class TripQueueService implements OnModuleInit, OnModuleDestroy {
     priority: number = 2,
   ): Promise<void> {
     try {
+       /**
       this.logger.debug(
         `Adding trip ${tripId} to ${driverIds.length} driver queues sequentially`,
       );
-
+      */
       // Add trip to each driver's queue
       for (const driverId of driverIds) {
         await this.driverTripQueueService.addTripToDriverQueue(
@@ -452,12 +443,14 @@ export class TripQueueService implements OnModuleInit, OnModuleDestroy {
 
       // Start processing for drivers who are not currently processing anything
       for (const driverId of driverIds) {
-        await this.processNextDriverRequest(driverId);
+        // Small delay to ensure each driver gets processed independently
+        setTimeout(() => this.processNextDriverRequest(driverId), 100);
       }
-
+      /**
       this.logger.info(
         `Successfully added trip ${tripId} to ${driverIds.length} driver queues`,
       );
+       */
     } catch (error) {
       this.logger.error(
         `Failed to add trip ${tripId} to driver queues sequentially`,
@@ -476,7 +469,7 @@ export class TripQueueService implements OnModuleInit, OnModuleDestroy {
       const isProcessing =
         await this.driverTripQueueService.isDriverProcessingTrip(driverId);
       if (isProcessing) {
-        this.logger.debug(
+        this.logger.info(
           `Driver ${driverId} is already processing a trip, skipping`,
         );
         return;
@@ -490,7 +483,6 @@ export class TripQueueService implements OnModuleInit, OnModuleDestroy {
         return;
       }
 
-      // Mark driver as processing this trip
       await this.driverTripQueueService.setDriverProcessingTrip(
         driverId,
         nextTrip.tripId,
@@ -516,9 +508,12 @@ export class TripQueueService implements OnModuleInit, OnModuleDestroy {
         removeOnFail: 10,
       });
 
+
+      /**
       this.logger.debug(
         `Started processing trip ${nextTrip.tripId} for driver ${driverId}`,
       );
+       */
     } catch (error) {
       this.logger.error(
         `Failed to process next request for driver ${driverId}`,
@@ -661,10 +656,11 @@ export class TripQueueService implements OnModuleInit, OnModuleDestroy {
           const scheduledTime = new Date(job.timestamp + delay);
           const now = new Date();
           const remainingMs = scheduledTime.getTime() - now.getTime();
-
+          /**
           this.logger.info(
             `  - Job ${job.id}: scheduled for ${scheduledTime.toISOString()}, remaining: ${remainingMs}ms, data: ${JSON.stringify(job.data)}`,
           );
+           */
         }
       }
 
@@ -786,12 +782,13 @@ export class TripQueueService implements OnModuleInit, OnModuleDestroy {
   }
 
   private generateJobId(...parts: string[]): string {
-    return `${parts.join('-')}-${Date.now()}`;
+    return `${parts.join('-')}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   }
 
   private async scheduleTimeoutJob(
     jobData: CreateTripRequestJobDto,
   ): Promise<void> {
+    this.logger.info(`Time Oıut job created for driver id: ${jobData.driverId}`);
     await this.addTimeoutJob({
       tripId: jobData.tripId,
       driverId: jobData.driverId,

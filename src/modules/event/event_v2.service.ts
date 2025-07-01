@@ -67,7 +67,7 @@ export class Event2Service{
         );
 
         this.logger.info(
-          `Sent ${eventType} to user ${userId} via WebSocket with ACK tracking`,
+          `WebSocket Event Sent ${eventType} to user ${userId}`,
           {
             eventId: eventData.eventId,
             tripId,
@@ -84,7 +84,7 @@ export class Event2Service{
         }
 
         this.logger.info(
-          `Sent ${eventType} to user ${userId} via Push Notification (no ACK)`,
+          `Push Notification Event Sent ${eventType} to user ${userId}`,
           {
             tripId,
             eventType,

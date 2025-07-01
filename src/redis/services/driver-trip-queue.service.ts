@@ -54,10 +54,11 @@ export class DriverTripQueueService extends BaseRedisService {
 
     // Set expiry for queue (24 hours)
     await this.client.expire(queueKey, 24 * 60 * 60);
-
-    this.customLogger.debug(
+    
+    this.customLogger.info(
       `Added trip ${tripId} to driver ${driverId} queue with priority ${priority}`,
     );
+     
   }
 
   /**

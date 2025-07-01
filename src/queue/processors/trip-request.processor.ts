@@ -44,8 +44,8 @@ export class TripRequestProcessor extends WorkerHost {
   ): Promise<JobResult> {
     const { tripId, driverId, customerLocation, tripData } = job.data;
 
-    this.logger.debug(
-      `Processing trip request: tripId=${tripId}, driverId=${driverId}, attempt=${job.attemptsMade + 1}/${job.opts.attempts}`,
+    this.logger.info(
+      `Trip Request Processor --- Processing trip request: tripId=${tripId}, driverId=${driverId}, attempt=${job.attemptsMade + 1}/${job.opts.attempts}`,
     );
 
     try {
@@ -128,7 +128,7 @@ export class TripRequestProcessor extends WorkerHost {
       );
 
       this.logger.info(
-        `Successfully sent trip request ${tripId} to driver ${driverId}`,
+        `Trip Request Processor --- Successfully sent trip request ${tripId} to driver ${driverId}`,
       );
 
       return {

@@ -84,9 +84,7 @@ export class TripTimeoutProcessor extends WorkerHost {
           };
         }
 
-        // Use NEW SEQUENTIAL SYSTEM: Handle driver timeout
-        await this.tripQueueService.handleDriverTimeout(driverId, tripId);
-        await this.driverTripQueueService.clearDriverLastRequest(driverId);
+
 
         // Add driver to rejected list (treat timeout as rejection)
         const rejectedDriverIds = [...(trip.rejectedDriverIds || [])];
@@ -111,6 +109,10 @@ export class TripTimeoutProcessor extends WorkerHost {
           this.logger.info(
             `Sent TRIP_ALREADY_TAKEN event to timed-out driver ${driverId} for trip ${tripId}`,
           );
+          // Use NEW SEQUENTIAL SYSTEM: Handle driver timeout
+          await this.tripQueueService.handleDriverTimeout(driverId, tripId);
+          this.driverTripQueueService.clearDriverLastRequest(driverId);
+
 
           if (this.areAllDriversRejected(rejectedDriverIds, trip.calledDriverIds)) {
             await this.event2Service.sendToUser(
