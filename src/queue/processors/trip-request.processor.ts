@@ -42,14 +42,13 @@ export class TripRequestProcessor extends WorkerHost {
   private async handleTripRequest(
     job: Job<TripRequestJob>,
   ): Promise<JobResult> {
-    const { tripId, driverId, customerLocation, tripData } = job.data;
+    const { tripId, driverId } = job.data;
 
     this.logger.info(
-      `Trip Request Processor --- Processing trip request: tripId=${tripId}, driverId=${driverId}, attempt=${job.attemptsMade + 1}/${job.opts.attempts}`,
+      `TRIP-REQUEST-PROCESSOR: Processing trip request: tripId=${tripId}, driverId=${driverId}, attempt=${job.attemptsMade + 1}/${job.opts.attempts}`,
     );
 
     try {
-      // 1. Validate trip still exists and is in correct status
       const trip = await this.tripService.findById(tripId);
       if (!trip) {
         this.logger.warn(
@@ -75,7 +74,6 @@ export class TripRequestProcessor extends WorkerHost {
         };
       }
 
-      // 2. Check if driver is still available
       const driverStatus =
         await this.driverStatusService.getDriverAvailability(driverId);
       if (
@@ -128,7 +126,7 @@ export class TripRequestProcessor extends WorkerHost {
       );
 
       this.logger.info(
-        `Trip Request Processor --- Successfully sent trip request ${tripId} to driver ${driverId}`,
+        `TRIP-REQUEST-PROCESSOR: Successfully sent trip request ${tripId} to driver ${driverId}`,
       );
 
       return {

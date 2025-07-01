@@ -19,28 +19,17 @@ export class TripTimeoutProcessor extends WorkerHost {
     private readonly tripService: TripService,
     private readonly event2Service: Event2Service,
     private readonly tripQueueService: TripQueueService,
-    private readonly activeTripService: ActiveTripService,
     private readonly driverTripQueueService: DriverTripQueueService,
     private readonly logger: LoggerService,
   ) {
     super();
-    this.logger.info(
-      '🚀 TIMEOUT PROCESSOR INITIALIZED - Worker is ready to process jobs',
-    );
   }
 
   async process(job: Job<TripTimeoutJob, any, string>): Promise<JobResult> {
-    this.logger.info(
-      `🔥 TIMEOUT PROCESSOR STARTED: jobId=${job.id}, jobName=${job.name}, data=${JSON.stringify(job.data)}`,
-    );
-
     switch (job.name) {
       case 'timeout-trip-request':
         return this.handleTripTimeout(job);
       default:
-        this.logger.error(
-          `❌ UNKNOWN JOB TYPE: ${job.name} - Available types: timeout-trip-request`,
-        );
         throw new Error(`Unknown job type: ${job.name}`);
     }
   }
@@ -51,7 +40,7 @@ export class TripTimeoutProcessor extends WorkerHost {
     const { tripId, driverId, timeoutType } = job.data;
 
     this.logger.info(
-      `⏰ TIMEOUT PROCESSOR: Processing trip timeout: tripId=${tripId}, driverId=${driverId}, type=${timeoutType}`,
+      `TRIP-REQUEST-PROCESSOR: Processing trip timeout: tripId=${tripId}, driverId=${driverId}, type=${timeoutType}`,
     );
 
     try {
@@ -86,7 +75,7 @@ export class TripTimeoutProcessor extends WorkerHost {
 
 
 
-        // Add driver to rejected list (treat timeout as rejection)
+        // Add driver to rejected list
         const rejectedDriverIds = [...(trip.rejectedDriverIds || [])];
         if (!rejectedDriverIds.includes(driverId)) {
           rejectedDriverIds.push(driverId);
@@ -96,23 +85,30 @@ export class TripTimeoutProcessor extends WorkerHost {
           rejectedDriverIds,
           status: this.areAllDriversRejected(rejectedDriverIds, trip.calledDriverIds) ? TripStatus.DRIVER_NOT_FOUND : trip.status
         });
+
         if (result.success && result.trip) {
           const updatedTrip = result.trip;
 
-          // Send TRIP_ALREADY_TAKEN event to the timed-out driver
           await this.event2Service.sendToUser(
             driverId,
             EventType.TRIP_ALREADY_TAKEN,
             updatedTrip,
             UserType.DRIVER,
           );
+
+          await this.tripQueueService.handleDriverTimeout(driverId, tripId);
+          await this.driverTripQueueService.clearDriverLastRequest(driverId);
+
+          await this.event2Service.sendToUser(
+            driverId,
+            EventType.TRIP_ALREADY_TAKEN,
+            updatedTrip,
+            UserType.DRIVER,
+          );
+
           this.logger.info(
             `Sent TRIP_ALREADY_TAKEN event to timed-out driver ${driverId} for trip ${tripId}`,
           );
-          // Use NEW SEQUENTIAL SYSTEM: Handle driver timeout
-          await this.tripQueueService.handleDriverTimeout(driverId, tripId);
-          this.driverTripQueueService.clearDriverLastRequest(driverId);
-
 
           if (this.areAllDriversRejected(rejectedDriverIds, trip.calledDriverIds)) {
             await this.event2Service.sendToUser(

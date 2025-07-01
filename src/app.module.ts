@@ -20,6 +20,7 @@ import { HeartbeatModule } from './modules/common/heartbeat.module';
 import { LoggerModule } from './logger/logger.module';
 import { RequestIdInterceptor } from './logger/request-id.interceptor';
 import { HealthModule } from './modules/health/health.module';
+import { QueueManagementController } from './modules/admin/queue-management.controller';
 
 @Module({
   imports: [
@@ -49,5 +50,6 @@ import { HealthModule } from './modules/health/health.module';
       useClass: RequestIdInterceptor,
     },
   ],
+  controllers: [ QueueManagementController ]
 })
 export class AppModule {}

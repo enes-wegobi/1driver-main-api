@@ -68,19 +68,6 @@ export class RedisKeyGenerator {
     return `auth:user:active_token:${userType}:${userId}`;
   }
 
-  // Driver request queue keys
-  static driverCurrentRequest(driverId: string): string {
-    return `driver:current_request:${driverId}`;
-  }
-
-  static driverRequestQueue(driverId: string): string {
-    return `driver:request_queue:${driverId}`;
-  }
-
-  static tripQueuedDrivers(tripId: string): string {
-    return `trip:queued_drivers:${tripId}`;
-  }
-
   // Driver trip queue keys (new sequential system)
   static driverTripQueue(driverId: string): string {
     return `driver:${driverId}:trip-queue`;
@@ -94,11 +81,4 @@ export class RedisKeyGenerator {
     return `driver:${driverId}:last-request`;
   }
 
-  static eventTtl(userId: string, eventId: string): string {
-    return `event_ttl:${userId}:${eventId}`;
-  }
-
-  static eventBackup(userId: string, eventId: string): string {
-    return `event_backup:${userId}:${eventId}`;
-  }
 }
