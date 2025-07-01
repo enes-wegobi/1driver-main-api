@@ -307,17 +307,32 @@ export class DriverTripQueueService extends BaseRedisService {
     const pattern = RedisKeyGenerator.driverTripQueue('*');
     const keys = await this.client.keys(pattern);
 
+    this.customLogger.info(
+      `Debug: Looking for trip ${tripId}, found ${keys.length} driver keys: ${keys.join(', ')}`
+    );
+
     const driversWithTrip: string[] = [];
 
     for (const key of keys) {
       const items = await this.client.zrange(key, 0, -1);
+      
+      this.customLogger.info(
+        `Debug: Checking key ${key}, found ${items.length} items: ${JSON.stringify(items)}`
+      );
 
       for (const item of items) {
         try {
           const queueItem: DriverQueueItem = JSON.parse(item);
+          this.customLogger.info(
+            `Debug: Queue item - tripId: ${queueItem.tripId}, looking for: ${tripId}`
+          );
           if (queueItem.tripId === tripId) {
             // Extract driver ID from key: driver:{driverId}:trip-queue
-            const driverId = key.split(':')[1];
+            const keyParts = key.split(':');
+            const driverId = keyParts[1];
+            this.customLogger.info(
+              `Debug: Found matching trip! Key: ${key}, driverId: ${driverId}`
+            );
             driversWithTrip.push(driverId);
             break;
           }
@@ -361,14 +376,34 @@ export class DriverTripQueueService extends BaseRedisService {
     affectedDrivers: string[];
   }> {
     const driversWithTrip = await this.getDriversWithTripInQueue(tripId);
+    this.customLogger.info(
+      `*********buna baakkkkk trip ${tripId}, driversWithTrip drivers: ${driversWithTrip.join(', ')}`,
+    );
     let totalRemoved = 0;
     const affectedDrivers: string[] = [];
 
+    // First, remove exact trip matches
     for (const driverId of driversWithTrip) {
       const removed = await this.removeSpecificTripFromDriver(driverId, tripId);
       if (removed) {
         totalRemoved++;
         affectedDrivers.push(driverId);
+      }
+    }
+
+    // If no exact matches found, clean up any remaining trips in all driver queues
+    // This handles the case where drivers have different trip IDs but should be processed
+    if (driversWithTrip.length === 0) {
+      this.customLogger.info(
+        `Trip ${tripId} not found in any queue, checking all drivers for cleanup`,
+      );
+      
+      const allDriversWithTrips = await this.getAllDriversWithAnyTrips();
+      for (const driverId of allDriversWithTrips) {
+        // Add them as affected so they get their next trip processed
+        if (!affectedDrivers.includes(driverId)) {
+          affectedDrivers.push(driverId);
+        }
       }
     }
 
@@ -380,6 +415,28 @@ export class DriverTripQueueService extends BaseRedisService {
       removedCount: totalRemoved,
       affectedDrivers,
     };
+  }
+
+  /**
+   * Get all drivers that have any trips in their queues
+   */
+  @WithErrorHandling([])
+  async getAllDriversWithAnyTrips(): Promise<string[]> {
+    const pattern = RedisKeyGenerator.driverTripQueue('*');
+    const keys = await this.client.keys(pattern);
+    
+    const driversWithTrips: string[] = [];
+    
+    for (const key of keys) {
+      const queueLength = await this.client.zcard(key);
+      if (queueLength > 0) {
+        const keyParts = key.split(':');
+        const driverId = keyParts[1];
+        driversWithTrips.push(driverId);
+      }
+    }
+    
+    return driversWithTrips;
   }
 
   /**

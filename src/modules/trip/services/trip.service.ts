@@ -1069,10 +1069,36 @@ export class TripService {
       true,
     );
 
+    // Process remaining drivers from calledDriverIds (as backup)
+    if (updatedTrip.calledDriverIds && updatedTrip.calledDriverIds.length > 1) {
+      const remainingDrivers = updatedTrip.calledDriverIds.filter(id => id !== driverId);
+      
+      this.logger.info(
+        `Processing next trips for remaining drivers: ${remainingDrivers.join(', ')}`
+      );
+
+      for (const remainingDriverId of remainingDrivers) {
+        try {
+          await this.driverTripQueueService.clearDriverProcessingTrip(remainingDriverId);
+
+          await this.tripQueueService.processNextDriverRequest(remainingDriverId);
+          this.logger.debug(
+            `Started processing next trip for driver ${remainingDriverId} after trip approval`
+          );
+        } catch (error) {
+          this.logger.error(
+            `Failed to process next trip for driver ${remainingDriverId}: ${error.message}`
+          );
+        }
+      }
+    }
+
     // Also remove from old Bull Queue system for compatibility
     await this.tripQueueService.removeJobsByTripId(updatedTrip._id);
 
-    await this.notifyRemainingDrivers(updatedTrip, driverId);
+    // Add accepting driver to other trips' rejected lists
+    await this.addDriverToOtherTripsRejectedList(driverId, updatedTrip._id);
+
     /*
     await this.eventService.notifyCustomer(
       updatedTrip,
@@ -1091,6 +1117,8 @@ export class TripService {
       driverId,
       updatedTrip._id,
     );
+    this.notifyRemainingDrivers(updatedTrip, driverId);
+
   }
 
   async notifyRemainingDrivers(
@@ -1108,6 +1136,47 @@ export class TripService {
         EventType.TRIP_ALREADY_TAKEN,
         updatedTrip,
         UserType.DRIVER,
+      );
+    }
+  }
+
+  private async addDriverToOtherTripsRejectedList(
+    acceptingDriverId: string,
+    acceptedTripId: string,
+  ): Promise<void> {
+    try {
+      const allDriversWithTrips = await this.driverTripQueueService.getAllDriversWithAnyTrips();
+      
+      for (const driverId of allDriversWithTrips) {
+        if (driverId === acceptingDriverId) continue;
+        
+        const driverQueueStatus = await this.driverTripQueueService.getDriverQueueStatus(driverId);
+        
+        for (const queueItem of driverQueueStatus.nextTrips) {
+          if (queueItem.tripId === acceptedTripId) continue;
+          
+          try {
+            const trip = await this.getTrip(queueItem.tripId);
+            const rejectedDriverIds = [...(trip.rejectedDriverIds || [])];
+            
+            if (!rejectedDriverIds.includes(acceptingDriverId)) {
+              rejectedDriverIds.push(acceptingDriverId);
+              await this.updateTripWithData(queueItem.tripId, { rejectedDriverIds });
+              
+              this.logger.debug(
+                `Added driver ${acceptingDriverId} to rejectedDriverIds of trip ${queueItem.tripId}`,
+              );
+            }
+          } catch (error) {
+            this.logger.error(
+              `Error updating rejectedDriverIds for trip ${queueItem.tripId}: ${error.message}`,
+            );
+          }
+        }
+      }
+    } catch (error) {
+      this.logger.error(
+        `Error adding driver ${acceptingDriverId} to other trips' rejected lists: ${error.message}`,
       );
     }
   }

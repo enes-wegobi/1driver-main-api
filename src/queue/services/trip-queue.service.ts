@@ -543,7 +543,7 @@ export class TripQueueService implements OnModuleInit, OnModuleDestroy {
         this.logger.info(
           `Driver ${driverId} accepted trip ${tripId}, removed ${removedCount} pending trips`,
         );
-
+/**
         // Remove this trip from all other driver queues and get affected drivers
         const { removedCount: totalRemovedFromOthers, affectedDrivers } =
           await this.driverTripQueueService.removeTripFromAllDriverQueuesWithAffectedDrivers(
@@ -569,6 +569,7 @@ export class TripQueueService implements OnModuleInit, OnModuleDestroy {
             }
           }
         }
+           */
       } else {
         // Driver declined - remove only this trip and process next
         await this.driverTripQueueService.removeSpecificTripFromDriver(
