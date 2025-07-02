@@ -26,11 +26,12 @@ export class TripApprovalHandler implements OnModuleInit {
     try {
       this.logger.info(`Background processing trip approval: ${tripId} by driver ${acceptingDriverId}`);
       
-      // 1. Cleanup queues
-      const affectedDrivers = await this.cleanupTripFromQueues(tripId, acceptingDriverId);
-      
-      // 2. Update rejected lists for other trips
+      // 1. Update rejected lists BEFORE cleanup (while queue still has trips)
       await this.updateOtherTripsRejectedLists(acceptingDriverId, tripId);
+      
+      await this.driverTripQueueService.removeAllTripsForDriver(acceptingDriverId);
+      // 2. Cleanup queues AFTER rejected lists are updated
+      const affectedDrivers = await this.cleanupTripFromQueues(tripId, acceptingDriverId);
       
       // 3. Process next trips for affected drivers
       await this.processNextTripsForDrivers(affectedDrivers, acceptingDriverId);
@@ -76,32 +77,17 @@ export class TripApprovalHandler implements OnModuleInit {
     acceptedTripId: string
   ): Promise<void> {
     try {
-      // Get trips currently in driver queues (excluding the accepted trip)
-      const driversWithTrips = await this.driverTripQueueService.getAllDriversWithAnyTrips();
+      // Get trips from accepting driver's own queue before cleanup
+      const queueStatus = await this.driverTripQueueService.getDriverQueueStatus(acceptingDriverId);
       
-      if (driversWithTrips.length === 0) {
-        return;
-      }
-
-      // Limit to first 5 drivers for performance
-      const limitedDrivers = driversWithTrips.slice(0, 5);
-      
-      for (const driverId of limitedDrivers) {
-        if (driverId === acceptingDriverId) continue;
-        
-        try {
-          const queueStatus = await this.driverTripQueueService.getDriverQueueStatus(driverId);
-          
-          // Process only first 2 trips in each driver's queue
-          for (const queueItem of queueStatus.nextTrips.slice(0, 2)) {
-            if (queueItem.tripId !== acceptedTripId) {
-              await this.addDriverToTripRejectedList(acceptingDriverId, queueItem.tripId);
-            }
-          }
-        } catch (error) {
-          this.logger.warn(`Failed to process driver ${driverId} queue: ${error.message}`);
+      // Process all trips in accepting driver's queue (excluding the accepted one)
+      for (const queueItem of queueStatus.nextTrips) {
+        if (queueItem.tripId !== acceptedTripId) {
+          await this.addDriverToTripRejectedList(acceptingDriverId, queueItem.tripId);
         }
       }
+
+      this.logger.info(`Added driver ${acceptingDriverId} to rejected lists of ${queueStatus.nextTrips.length - 1} trips from their own queue`);
       
     } catch (error) {
       this.logger.error(`Failed to update rejected lists: ${error.message}`);

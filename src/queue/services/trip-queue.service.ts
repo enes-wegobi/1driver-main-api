@@ -545,50 +545,9 @@ export class TripQueueService implements OnModuleInit, OnModuleDestroy {
       await this.driverTripQueueService.clearDriverProcessingTrip(driverId);
 
       if (accepted) {
-        // Driver accepted - remove all trips from their queue
-        const removedCount =
-          await this.driverTripQueueService.removeAllTripsForDriver(driverId);
-        this.logger.info(
-          `Driver ${driverId} accepted trip ${tripId}, removed ${removedCount} pending trips`,
-        );
-
-        // Background processing to avoid blocking the main response
-        setImmediate(async () => {
-          try {
-            // Remove this trip from all other driver queues and get affected drivers
-            const { removedCount: totalRemovedFromOthers, affectedDrivers } =
-              await this.driverTripQueueService.removeTripFromAllDriverQueuesWithAffectedDrivers(
-                tripId,
-              );
-
-            this.logger.info(
-              `Trip ${tripId} removed from ${totalRemovedFromOthers} other driver queues, affected drivers: ${affectedDrivers.join(', ')}`,
-            );
-
-            // OPTIMIZATION: Process next trip for affected drivers (non-blocking)
-            for (const affectedDriverId of affectedDrivers) {
-              if (affectedDriverId !== driverId) {
-                // Each driver gets its own non-blocking process
-                setImmediate(async () => {
-                  try {
-                    await this.processNextDriverRequest(affectedDriverId);
-                    this.logger.debug(
-                      `Started processing next trip for affected driver ${affectedDriverId}`,
-                    );
-                  } catch (error) {
-                    this.logger.error(
-                      `Failed to process next trip for affected driver ${affectedDriverId}: ${error.message}`,
-                    );
-                  }
-                });
-              }
-            }
-          } catch (error) {
-            this.logger.error(
-              `Background processing failed for accepted trip ${tripId}: ${error.message}`,
-            );
-          }
-        });
+        this.logger.info(`Driver ${driverId} accepted trip ${tripId}, background processing handled by TripService`);
+        // Note: trip.approved event is emitted by TripService.handleTripApproval()
+        // No additional processing needed here - TripApprovalHandler will handle cleanup
       } else {
         // Driver declined - remove only this trip and process next
         await this.driverTripQueueService.removeSpecificTripFromDriver(
