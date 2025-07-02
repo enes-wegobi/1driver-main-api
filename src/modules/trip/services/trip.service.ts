@@ -473,7 +473,6 @@ export class TripService {
                   trip.tripStartTime,
                 );
             }
-
             if (
               trip.driver &&
               this.driverPenaltyService.shouldApplyPenalty(
@@ -598,7 +597,7 @@ export class TripService {
       2,
     );
   }
-
+//TODO
   async cancelTripRequest(customerId: string): Promise<TripOperationResult> {
     return this.lockService.executeWithLock(
       `customer:${customerId}:cancel-request`,
@@ -614,6 +613,7 @@ export class TripService {
 
             this.validateTripRequestCancellableStatus(trip.status);
 
+            //calledDriverIds - rejectedDriverIDs
             const driversToNotify = trip.calledDriverIds || [];
 
             await this.cleanupTripFromQueues(tripId, driversToNotify);
@@ -1415,7 +1415,7 @@ export class TripService {
       );
     }
   }
-
+  //TODO this method is clear trip request from all the queue and last request
   private async cleanupTripFromQueues(
     tripId: string,
     driverIds: string[],

@@ -532,9 +532,6 @@ export class TripQueueService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  /**
-   * Handle driver response (accept/decline) for sequential system
-   */
   async handleDriverResponse(
     driverId: string,
     tripId: string,
@@ -546,8 +543,6 @@ export class TripQueueService implements OnModuleInit, OnModuleDestroy {
 
       if (accepted) {
         this.logger.info(`Driver ${driverId} accepted trip ${tripId}, background processing handled by TripService`);
-        // Note: trip.approved event is emitted by TripService.handleTripApproval()
-        // No additional processing needed here - TripApprovalHandler will handle cleanup
       } else {
         // Driver declined - remove only this trip and process next
         await this.driverTripQueueService.removeSpecificTripFromDriver(
