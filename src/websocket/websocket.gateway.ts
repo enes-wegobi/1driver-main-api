@@ -97,8 +97,10 @@ export class WebSocketGateway
       // Join rooms based on user type and ID for easier targeting
       client.join(`user:${payload.userId}`);
       client.join(`type:${userType}`);
-      
-      this.logger.debug(`[ROOM_JOIN] Client ${clientId} joined rooms: user:${payload.userId}, type:${userType}`);
+
+      this.logger.debug(
+        `[ROOM_JOIN] Client ${clientId} joined rooms: user:${payload.userId}, type:${userType}`,
+      );
 
       if (userType === UserType.DRIVER) {
         await this.driverStatusService.markDriverAsConnected(payload.userId);
@@ -142,11 +144,15 @@ export class WebSocketGateway
 
       // Listen to built-in ping/pong events for logging
       client.on('ping', () => {
-        this.logger.debug(`[PING] Received from ${userType}:${payload.userId} (${clientId})`);
+        this.logger.debug(
+          `[PING] Received from ${userType}:${payload.userId} (${clientId})`,
+        );
       });
 
       client.on('pong', (latency) => {
-        this.logger.debug(`[PONG] Received from ${userType}:${payload.userId} (${clientId}), latency: ${latency}ms`);
+        this.logger.debug(
+          `[PONG] Received from ${userType}:${payload.userId} (${clientId}), latency: ${latency}ms`,
+        );
       });
     } catch (error) {
       this.logger.error(`Authentication error: ${error.message}`);
@@ -304,7 +310,7 @@ export class WebSocketGateway
       };
     }
   }
-/*
+  /*
   @SubscribeMessage('eventAck')
   async handleEventAck(client: Socket, payload: EventAckPayload) {
     const userId = client.data.userId;

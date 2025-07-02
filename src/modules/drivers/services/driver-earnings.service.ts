@@ -118,7 +118,9 @@ export class DriverEarningsService {
   /**
    * Get earnings by ID
    */
-  async getEarningsById(id: string): Promise<DriverWeeklyEarningsDocument | null> {
+  async getEarningsById(
+    id: string,
+  ): Promise<DriverWeeklyEarningsDocument | null> {
     return this.driverWeeklyEarningsRepository.findById(id);
   }
 

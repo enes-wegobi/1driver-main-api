@@ -282,7 +282,7 @@ export class CustomersTripsController {
   @ApiOperation({
     summary: 'Delete active trip if driver not found',
     description:
-      'Delete the customer\'s active trip if it has DRIVER_NOT_FOUND status. This will remove the trip from active state and move it to draft status.',
+      "Delete the customer's active trip if it has DRIVER_NOT_FOUND status. This will remove the trip from active state and move it to draft status.",
   })
   @ApiResponse({
     status: 200,
@@ -290,24 +290,32 @@ export class CustomersTripsController {
   })
   @ApiResponse({
     status: 400,
-    description: 'No active trip found or trip cannot be deleted (wrong status)',
+    description:
+      'No active trip found or trip cannot be deleted (wrong status)',
   })
   @ApiResponse({
     status: 404,
     description: 'No active trip found for customer',
   })
   async deleteActiveTrip(@GetUser() user: IJwtPayload) {
-    const activeTrip = await this.tripService.getCustomerActiveTrip(user.userId);
-    
+    const activeTrip = await this.tripService.getCustomerActiveTrip(
+      user.userId,
+    );
+
     if (!activeTrip.trip) {
       throw new Error('No active trip found');
     }
-    
+
     if (activeTrip.trip.status !== TripStatus.DRIVER_NOT_FOUND) {
-      throw new Error('Trip can only be deleted when status is DRIVER_NOT_FOUND');
+      throw new Error(
+        'Trip can only be deleted when status is DRIVER_NOT_FOUND',
+      );
     }
-    
-    await this.tripService.updateTripStatus(activeTrip.trip._id, TripStatus.DRAFT)
+
+    await this.tripService.updateTripStatus(
+      activeTrip.trip._id,
+      TripStatus.DRAFT,
+    );
 
     await this.activeTripService.removeUserActiveTrip(
       user.userId,

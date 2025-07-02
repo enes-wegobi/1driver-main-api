@@ -226,8 +226,8 @@ export class TripQueueService implements OnModuleInit, OnModuleDestroy {
       this.logger.debug(`Removing only trip request jobs for trip ${tripId}`);
 
       const tripRequestJobsRemoved = await this.removeJobsByPattern(
-        this.tripRequestQueue, 
-        `trip-${tripId}-`
+        this.tripRequestQueue,
+        `trip-${tripId}-`,
       );
 
       this.logger.debug(
@@ -236,7 +236,10 @@ export class TripQueueService implements OnModuleInit, OnModuleDestroy {
 
       return tripRequestJobsRemoved;
     } catch (error) {
-      this.logger.error(`Failed to remove trip request jobs for trip ${tripId}`, error);
+      this.logger.error(
+        `Failed to remove trip request jobs for trip ${tripId}`,
+        error,
+      );
       throw error;
     }
   }
@@ -496,7 +499,9 @@ export class TripQueueService implements OnModuleInit, OnModuleDestroy {
         return;
       }
 
-      this.logger.info(`QUEUE: Driver ${driverId} next trip: ${nextTrip.tripId}`);
+      this.logger.info(
+        `QUEUE: Driver ${driverId} next trip: ${nextTrip.tripId}`,
+      );
 
       await this.driverTripQueueService.setDriverProcessingTrip(
         driverId,
@@ -542,7 +547,9 @@ export class TripQueueService implements OnModuleInit, OnModuleDestroy {
       await this.driverTripQueueService.clearDriverProcessingTrip(driverId);
 
       if (accepted) {
-        this.logger.info(`Driver ${driverId} accepted trip ${tripId}, background processing handled by TripService`);
+        this.logger.info(
+          `Driver ${driverId} accepted trip ${tripId}, background processing handled by TripService`,
+        );
       } else {
         // Driver declined - remove only this trip and process next
         await this.driverTripQueueService.removeSpecificTripFromDriver(
@@ -762,7 +769,9 @@ export class TripQueueService implements OnModuleInit, OnModuleDestroy {
   private async scheduleTimeoutJob(
     jobData: CreateTripRequestJobDto,
   ): Promise<void> {
-    this.logger.info(`QUEUE:Time Oıut job created for trip id: ${jobData.tripId}, driver id: ${jobData.driverId}`);
+    this.logger.info(
+      `QUEUE:Time Oıut job created for trip id: ${jobData.tripId}, driver id: ${jobData.driverId}`,
+    );
     await this.addTimeoutJob({
       tripId: jobData.tripId,
       driverId: jobData.driverId,

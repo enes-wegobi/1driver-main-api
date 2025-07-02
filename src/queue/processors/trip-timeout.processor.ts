@@ -73,8 +73,6 @@ export class TripTimeoutProcessor extends WorkerHost {
           };
         }
 
-
-
         // Add driver to rejected list
         const rejectedDriverIds = [...(trip.rejectedDriverIds || [])];
         if (!rejectedDriverIds.includes(driverId)) {
@@ -83,7 +81,12 @@ export class TripTimeoutProcessor extends WorkerHost {
 
         const result = await this.tripService.updateTrip(tripId, {
           rejectedDriverIds,
-          status: this.areAllDriversRejected(rejectedDriverIds, trip.calledDriverIds) ? TripStatus.DRIVER_NOT_FOUND : trip.status
+          status: this.areAllDriversRejected(
+            rejectedDriverIds,
+            trip.calledDriverIds,
+          )
+            ? TripStatus.DRIVER_NOT_FOUND
+            : trip.status,
         });
 
         if (result.success && result.trip) {
@@ -110,7 +113,9 @@ export class TripTimeoutProcessor extends WorkerHost {
             `Sent TRIP_ALREADY_TAKEN event to timed-out driver ${driverId} for trip ${tripId}`,
           );
 
-          if (this.areAllDriversRejected(rejectedDriverIds, trip.calledDriverIds)) {
+          if (
+            this.areAllDriversRejected(rejectedDriverIds, trip.calledDriverIds)
+          ) {
             await this.event2Service.sendToUser(
               updatedTrip.customer.id,
               EventType.TRIP_DRIVER_NOT_FOUND,
@@ -181,7 +186,10 @@ export class TripTimeoutProcessor extends WorkerHost {
     );
   }
 
-  private areAllDriversRejected(calledDriverIds: any, rejectedDriverIds: any): boolean {
+  private areAllDriversRejected(
+    calledDriverIds: any,
+    rejectedDriverIds: any,
+  ): boolean {
     return (
       calledDriverIds &&
       rejectedDriverIds &&

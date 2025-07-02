@@ -13,7 +13,7 @@ import { LoggerService } from 'src/logger/logger.service';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
-export class Event2Service{
+export class Event2Service {
   constructor(
     private readonly webSocketService: WebSocketService,
     private readonly driverStatusService: DriverStatusService,

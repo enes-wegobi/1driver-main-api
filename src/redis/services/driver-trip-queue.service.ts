@@ -50,11 +50,10 @@ export class DriverTripQueueService extends BaseRedisService {
     };
     await this.client.zadd(queueKey, priority, JSON.stringify(queueItem));
     await this.client.expire(queueKey, 24 * 60 * 60);
-    
+
     this.customLogger.info(
       `QUEUE:Added trip ${tripId} to driver ${driverId} queue with priority ${priority}`,
     );
-     
   }
 
   /**
@@ -156,7 +155,7 @@ export class DriverTripQueueService extends BaseRedisService {
       try {
         const queueItem: DriverQueueItem = JSON.parse(item);
         this.customLogger.info(
-          `QUEUE: Queue item for driver ${driverId}: ${JSON.stringify(queueItem, null, 2)}`
+          `QUEUE: Queue item for driver ${driverId}: ${JSON.stringify(queueItem, null, 2)}`,
         );
         if (queueItem.tripId === tripId) {
           const removed = await this.client.zrem(queueKey, item);
@@ -300,30 +299,30 @@ export class DriverTripQueueService extends BaseRedisService {
     const keys = await this.client.keys(pattern);
 
     this.customLogger.info(
-      `Debug: Looking for trip ${tripId}, found ${keys.length} driver keys: ${keys.join(', ')}`
+      `Debug: Looking for trip ${tripId}, found ${keys.length} driver keys: ${keys.join(', ')}`,
     );
 
     const driversWithTrip: string[] = [];
 
     for (const key of keys) {
       const items = await this.client.zrange(key, 0, -1);
-      
+
       this.customLogger.info(
-        `Debug: Checking key ${key}, found ${items.length} items: ${JSON.stringify(items)}`
+        `Debug: Checking key ${key}, found ${items.length} items: ${JSON.stringify(items)}`,
       );
 
       for (const item of items) {
         try {
           const queueItem: DriverQueueItem = JSON.parse(item);
           this.customLogger.info(
-            `Debug: Queue item - tripId: ${queueItem.tripId}, looking for: ${tripId}`
+            `Debug: Queue item - tripId: ${queueItem.tripId}, looking for: ${tripId}`,
           );
           if (queueItem.tripId === tripId) {
             // Extract driver ID from key: driver:{driverId}:trip-queue
             const keyParts = key.split(':');
             const driverId = keyParts[1];
             this.customLogger.info(
-              `Debug: Found matching trip! Key: ${key}, driverId: ${driverId}`
+              `Debug: Found matching trip! Key: ${key}, driverId: ${driverId}`,
             );
             driversWithTrip.push(driverId);
             break;
@@ -363,7 +362,9 @@ export class DriverTripQueueService extends BaseRedisService {
    * Remove a specific trip from all driver queues and return affected drivers
    */
   @WithErrorHandling({ removedCount: 0, affectedDrivers: [] })
-  async removeTripFromAllDriverQueuesWithAffectedDrivers(tripId: string): Promise<{
+  async removeTripFromAllDriverQueuesWithAffectedDrivers(
+    tripId: string,
+  ): Promise<{
     removedCount: number;
     affectedDrivers: string[];
   }> {
@@ -389,7 +390,7 @@ export class DriverTripQueueService extends BaseRedisService {
       this.customLogger.info(
         `Trip ${tripId} not found in any queue, checking all drivers for cleanup`,
       );
-      
+
       const allDriversWithTrips = await this.getAllDriversWithAnyTrips();
       for (const driverId of allDriversWithTrips) {
         // Add them as affected so they get their next trip processed
@@ -416,9 +417,9 @@ export class DriverTripQueueService extends BaseRedisService {
   async getAllDriversWithAnyTrips(): Promise<string[]> {
     const pattern = RedisKeyGenerator.driverTripQueue('*');
     const keys = await this.client.keys(pattern);
-    
+
     const driversWithTrips: string[] = [];
-    
+
     for (const key of keys) {
       const queueLength = await this.client.zcard(key);
       if (queueLength > 0) {
@@ -427,7 +428,7 @@ export class DriverTripQueueService extends BaseRedisService {
         driversWithTrips.push(driverId);
       }
     }
-    
+
     return driversWithTrips;
   }
 
@@ -528,14 +529,14 @@ export class DriverTripQueueService extends BaseRedisService {
 
     const [queueKeys, processingKeys, lastRequestKeys] = await Promise.all([
       this.client.keys(queuePattern),
-      this.client.keys(processingPattern), 
-      this.client.keys(lastRequestPattern)
+      this.client.keys(processingPattern),
+      this.client.keys(lastRequestPattern),
     ]);
 
     const driverIds = new Set<string>();
 
     // Extract driver IDs from all patterns
-    [...queueKeys, ...processingKeys, ...lastRequestKeys].forEach(key => {
+    [...queueKeys, ...processingKeys, ...lastRequestKeys].forEach((key) => {
       const keyParts = key.split(':');
       if (keyParts.length >= 2) {
         driverIds.add(keyParts[1]);
@@ -549,14 +550,16 @@ export class DriverTripQueueService extends BaseRedisService {
    * Get all queue items for all drivers
    */
   @WithErrorHandling([])
-  async getAllQueueItems(): Promise<{
-    driverId: string;
-    queueItems: DriverQueueItem[];
-    currentProcessing: string | null;
-    processingStartedAt: number | null;
-  }[]> {
+  async getAllQueueItems(): Promise<
+    {
+      driverId: string;
+      queueItems: DriverQueueItem[];
+      currentProcessing: string | null;
+      processingStartedAt: number | null;
+    }[]
+  > {
     const driverIds = await this.getAllDriversWithQueueData();
-    
+
     const allQueues: {
       driverId: string;
       queueItems: DriverQueueItem[];
@@ -566,7 +569,7 @@ export class DriverTripQueueService extends BaseRedisService {
 
     for (const driverId of driverIds) {
       const queueStatus = await this.getDriverQueueStatus(driverId);
-      
+
       allQueues.push({
         driverId,
         queueItems: queueStatus.nextTrips,

@@ -135,43 +135,43 @@ export class TripService {
     return { success: true, trip };
   }
 
-  async requestDriver(
-    customerId: string,
-    tripId?: string,
-  ): Promise<any> {
+  async requestDriver(customerId: string, tripId?: string): Promise<any> {
     return this.lockService.executeWithLock(
       `trip:${tripId}`,
       async () => {
         return this.executeWithErrorHandling('requesting driver', async () => {
           //await this.validateCustomerHasPaymentMethod(customerId);
           //await this.validateCustomerHasNoUnpaidPenalties(customerId);
-          let trip; 
-          if(tripId){
-            trip = await this.findAndValidateRequestTrip(
+          let trip;
+          if (tripId) {
+            trip = await this.findAndValidateRequestTrip(customerId, tripId);
+          } else {
+            const result = await this.getUserActiveTrip(
               customerId,
-              tripId,
+              UserType.CUSTOMER,
             );
-          }else {
-            const result = await this.getUserActiveTrip(customerId, UserType.CUSTOMER);
             trip = result.trip;
-            if (trip.status !== TripStatus.DRIVER_NOT_FOUND){
+            if (trip.status !== TripStatus.DRIVER_NOT_FOUND) {
               throw new BadRequestException('trip not available status');
             }
-
           }
 
-          const lat = trip.route[0].lat
-          const lon = trip.route[0].lon
- 
-          const driverIds = await this.searchDriver(trip.route[0].lat, trip.route[0].lon);
-          this.logger.info(
-            `Found ${driverIds.length} drivers`,
+          const lat = trip.route[0].lat;
+          const lon = trip.route[0].lon;
+
+          const driverIds = await this.searchDriver(
+            trip.route[0].lat,
+            trip.route[0].lon,
           );
+          this.logger.info(`Found ${driverIds.length} drivers`);
           const updateData = this.buildDriverRequestUpdateData(
             driverIds,
             trip.callRetryCount,
           );
-          const updatedTrip = await this.updateTripWithData(trip._id, updateData);
+          const updatedTrip = await this.updateTripWithData(
+            trip._id,
+            updateData,
+          );
 
           await this.activeTripService.setUserActiveTripId(
             customerId,
@@ -597,7 +597,7 @@ export class TripService {
       2,
     );
   }
-//TODO
+  //TODO
   async cancelTripRequest(customerId: string): Promise<TripOperationResult> {
     return this.lockService.executeWithLock(
       `customer:${customerId}:cancel-request`,
@@ -1052,7 +1052,7 @@ export class TripService {
     // 1. Immediate operations only
     await this.setupDriverForTrip(driverId, updatedTrip);
     await this.sendImmediateNotifications(updatedTrip, driverId);
-    
+
     // 2. Handle queue response
     await this.tripQueueService.handleDriverResponse(
       driverId,
@@ -1069,7 +1069,9 @@ export class TripService {
       timestamp: new Date(),
     });
 
-    this.logger.info(`Trip ${updatedTrip._id} approved by driver ${driverId}, background processing started`);
+    this.logger.info(
+      `Trip ${updatedTrip._id} approved by driver ${driverId}, background processing started`,
+    );
   }
 
   private async setupDriverForTrip(
@@ -1104,16 +1106,11 @@ export class TripService {
         trip,
         UserType.CUSTOMER,
       ),
-      this.sendDriverLocationToCustomer(
-        trip.customer.id,
-        driverId,
-        trip._id,
-      ),
+      this.sendDriverLocationToCustomer(trip.customer.id, driverId, trip._id),
     ]);
-    
+
     this.notifyRemainingDrivers(trip, driverId);
   }
-
 
   async notifyRemainingDrivers(
     updatedTrip: TripDocument,
@@ -1133,7 +1130,6 @@ export class TripService {
       );
     }
   }
-
 
   private async sendDriverLocationToCustomer(
     customerId: string,

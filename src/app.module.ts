@@ -60,6 +60,6 @@ import { TripApprovalHandler } from './events/handlers/trip-approval.handler';
     TripEventsService,
     TripApprovalHandler,
   ],
-  controllers: [ QueueManagementController ]
+  controllers: [QueueManagementController],
 })
 export class AppModule {}

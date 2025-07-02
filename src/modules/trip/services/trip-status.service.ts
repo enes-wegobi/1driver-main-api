@@ -24,7 +24,11 @@ export class TripStatusService {
       ],
     },
     [TripStatus.DRIVER_NOT_FOUND]: {
-      to: [TripStatus.WAITING_FOR_DRIVER, TripStatus.CANCELLED, TripStatus.DRAFT],
+      to: [
+        TripStatus.WAITING_FOR_DRIVER,
+        TripStatus.CANCELLED,
+        TripStatus.DRAFT,
+      ],
     },
     [TripStatus.APPROVED]: {
       to: [TripStatus.DRIVER_ON_WAY_TO_PICKUP, TripStatus.CANCELLED],

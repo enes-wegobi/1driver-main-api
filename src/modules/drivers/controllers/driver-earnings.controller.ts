@@ -183,13 +183,14 @@ export class DriverEarningsController {
       paidAt: earnings.paidAt,
       weekStartDate: earnings.weekStartDate,
       weekEndDate: earnings.weekEndDate,
-      trips: earnings.trips?.map((trip) => ({
-        tripId: trip.tripId.toString(),
-        tripDate: trip.tripDate,
-        duration: trip.duration,
-        multiplier: trip.multiplier,
-        earnings: trip.earnings,
-      })) || [],
+      trips:
+        earnings.trips?.map((trip) => ({
+          tripId: trip.tripId.toString(),
+          tripDate: trip.tripDate,
+          duration: trip.duration,
+          multiplier: trip.multiplier,
+          earnings: trip.earnings,
+        })) || [],
     };
   }
 }

@@ -80,5 +80,4 @@ export class RedisKeyGenerator {
   static driverLastRequest(driverId: string): string {
     return `driver:${driverId}:last-request`;
   }
-
 }
