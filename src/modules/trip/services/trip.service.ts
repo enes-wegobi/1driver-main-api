@@ -378,7 +378,7 @@ export class TripService {
             this.validateCancellableStatus(trip.status);
 
             // Calculate time difference since trip acceptance
-            const timeDifferenceMinutes =
+            const timeDifferenceSeconds =
               this.driverPenaltyService.calculateTimeDifference(
                 trip.tripStartTime,
               );
@@ -386,17 +386,17 @@ export class TripService {
             // Apply penalty if more than 5 minutes
             if (
               this.driverPenaltyService.shouldApplyPenalty(
-                timeDifferenceMinutes,
+                timeDifferenceSeconds,
               )
             ) {
               await this.driverPenaltyService.createPenalty(
                 driverId,
                 UserType.DRIVER,
                 trip,
-                timeDifferenceMinutes,
+                timeDifferenceSeconds,
               );
               this.logger.info(
-                `Penalty applied to driver ${driverId} for late cancellation: ${timeDifferenceMinutes} minutes`,
+                `Penalty applied to driver ${driverId} for late cancellation: ${Math.floor(timeDifferenceSeconds / 60)} minutes`,
               );
             }
 
@@ -466,18 +466,17 @@ export class TripService {
               { trip: trip, cancelledBy: 'customer' },
               UserType.DRIVER,
             );
-            let timeDifferenceMinutes = 0;
+            let timeDifferenceSeconds = 0;
             if (trip.tripStartTime) {
-              timeDifferenceMinutes =
+              timeDifferenceSeconds =
                 this.driverPenaltyService.calculateTimeDifference(
                   trip.tripStartTime,
                 );
             }
-            if (
-              trip.driver &&
+            const asd = trip.driver &&
               this.driverPenaltyService.shouldApplyPenalty(
-                timeDifferenceMinutes,
-              )
+                timeDifferenceSeconds)
+            if (asd
             ) {
               try {
                 await this.updateTripWithData(tripId, {
@@ -1444,6 +1443,28 @@ export class TripService {
       this.logger.debug(
         `Cleaned up trip ${tripId} from ${totalRemovedFromDriverQueues} driver queues`,
       );
+
+      // Process next trips for affected drivers
+      let processedDriverCount = 0;
+      for (const driverId of driverIds) {
+        try {
+          await this.tripQueueService.processNextDriverRequest(driverId);
+          processedDriverCount++;
+          this.logger.debug(
+            `Triggered next trip processing for driver ${driverId} after trip ${tripId} cleanup`,
+          );
+        } catch (error) {
+          this.logger.error(
+            `Failed to process next trip for driver ${driverId} after cleanup: ${error.message}`,
+          );
+        }
+      }
+
+      if (processedDriverCount > 0) {
+        this.logger.info(
+          `Initiated next trip processing for ${processedDriverCount} drivers after trip ${tripId} cleanup`,
+        );
+      }
     } catch (error) {
       this.logger.error(
         `Error cleaning up trip ${tripId} from queues: ${error.message}`,

@@ -20,7 +20,7 @@ export class DriverPenaltyService {
     userId: string,
     userType: UserType,
     trip: TripDocument,
-    timeDifferenceMinutes: number,
+    timeDifferenceSeconds: number,
   ): Promise<UserPenaltyDocument> {
     const penaltyType =
       userType === UserType.DRIVER
@@ -29,7 +29,7 @@ export class DriverPenaltyService {
 
     const penaltyAmount = this.calculatePenaltyAmount(
       userType,
-      timeDifferenceMinutes,
+      timeDifferenceSeconds,
     );
 
     const status =
@@ -46,12 +46,12 @@ export class DriverPenaltyService {
       penaltyAmount,
       actionAt: new Date(),
       referenceTime: trip.tripStartTime,
-      timeDifferenceMinutes,
+      timeDifferenceSeconds,
       status,
     };
 
     this.logger.info(
-      `Creating penalty for ${userType.toLowerCase()} ${userId}: ${penaltyAmount} AED for ${timeDifferenceMinutes} minutes late cancellation`,
+      `Creating penalty for ${userType.toLowerCase()} ${userId}: ${penaltyAmount} AED for ${Math.floor(timeDifferenceSeconds / 60)} minutes late cancellation`,
     );
 
     return this.driverPenaltyRepository.create(penaltyData);
@@ -121,16 +121,16 @@ export class DriverPenaltyService {
   calculateTimeDifference(tripStartTime: Date): number {
     const now = new Date();
     const diffMs = now.getTime() - tripStartTime.getTime();
-    return Math.floor(diffMs / (1000 * 60)); // Convert to minutes
+    return Math.floor(diffMs / 1000); // Convert to seconds
   }
 
-  shouldApplyPenalty(timeDifferenceMinutes: number): boolean {
-    return timeDifferenceMinutes > 5;
+  shouldApplyPenalty(timeDifferenceSeconds: number): boolean {
+    return timeDifferenceSeconds > 300; // 5 minutes in seconds
   }
 
   private calculatePenaltyAmount(
     userType: UserType,
-    timeDifferenceMinutes: number,
+    timeDifferenceSeconds: number,
   ): number {
     if (userType === UserType.DRIVER) {
       // Driver cancellations have no penalty amount
