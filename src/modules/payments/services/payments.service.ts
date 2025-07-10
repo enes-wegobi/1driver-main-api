@@ -103,7 +103,7 @@ export class PaymentsService {
   async createTripPayment(
     customerId: string,
     amount: number,
-    currency: string = 'try',
+    currency: string = 'aed',
     stripePaymentMethodId: string,
     paymentMethodId: string,
     tripId: string,

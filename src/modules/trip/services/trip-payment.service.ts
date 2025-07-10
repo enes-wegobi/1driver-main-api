@@ -41,9 +41,6 @@ export class TripPaymentService {
     private readonly logger: LoggerService,
   ) {}
 
-  /**
-   * Process payment for customer's active trip
-   */
   async processTripPayment(
     customerId: string,
     paymentMethodId: string,
@@ -73,9 +70,6 @@ export class TripPaymentService {
     );
   }
 
-  /**
-   * Execute the actual payment process
-   */
   private async executePaymentProcess(
     customerId: string,
     paymentMethodId: string,
@@ -94,7 +88,7 @@ export class TripPaymentService {
       const paymentResult = await this.paymentsService.createTripPayment(
         customerId,
         trip.finalCost,
-        'eur',
+        'aed',
         stripePaymaymentMethodId,
         paymentMethodId,
         trip._id.toString(),
@@ -105,13 +99,10 @@ export class TripPaymentService {
         },
       );
 
-      // Update trip payment status to processing
       await this.updateTripPaymentStatus(trip._id, PaymentStatus.PROCESSING);
 
-      // Send events to both customer and driver
       await this.notifyPaymentStarted(trip, paymentResult.payment, isRetry);
 
-      // Get updated trip
       const updatedTrip = await this.tripService.findById(trip._id);
 
       return {
@@ -131,9 +122,6 @@ export class TripPaymentService {
     }
   }
 
-  /**
-   * Validate trip is in correct status for payment
-   */
   private validateTripForPayment(trip: TripDocument): void {
     if (trip.status !== TripStatus.PAYMENT) {
       throw new BadRequestException(
@@ -150,9 +138,6 @@ export class TripPaymentService {
     }
   }
 
-  /**
-   * Validate payment method belongs to customer and return Stripe payment method ID
-   */
   private async validatePaymentMethod(
     customerId: string,
     paymentMethodId: string,
@@ -172,9 +157,6 @@ export class TripPaymentService {
     return paymentMethod.stripePaymentMethodId;
   }
 
-  /**
-   * Update trip payment status
-   */
   private async updateTripPaymentStatus(
     tripId: string,
     paymentStatus: PaymentStatus,
@@ -182,9 +164,6 @@ export class TripPaymentService {
     await this.tripService.updateTrip(tripId, { paymentStatus });
   }
 
-  /**
-   * Notify both customer and driver about payment started
-   */
   private async notifyPaymentStarted(
     trip: TripDocument,
     payment: Payment,
@@ -214,8 +193,6 @@ export class TripPaymentService {
       eventData,
       UserType.DRIVER,
     );
-    //await this.eventService.sendToUser(trip.customer.id, eventType, eventData);
-    //await this.eventService.sendToUser(trip.driver.id, eventType, eventData);
   }
 
   async handlePaymentSuccess(payment: Payment): Promise<void> {
@@ -231,13 +208,11 @@ export class TripPaymentService {
       return;
     }
 
-    // Calculate driver earnings
     if (trip.driver?.id && trip.actualDuration) {
       try {
         const earningsCalculation =
           this.driverEarningsService.calculateTripEarnings(trip.actualDuration);
 
-        // Add to driver's weekly earnings
         await this.driverEarningsService.addTripToWeeklyEarnings(
           trip.driver.id,
           {
@@ -274,7 +249,6 @@ export class TripPaymentService {
       trip.customer.id,
     );
 
-    // Get updated trip
     if (!updatedTrip) {
       this.logger.warn(`Updated trip not found for payment ${payment._id}`);
       return;
@@ -299,18 +273,6 @@ export class TripPaymentService {
       eventData,
       UserType.DRIVER,
     );
-    /*
-    await this.eventService.sendToUser(
-      trip.customer.id,
-      EventType.TRIP_PAYMENT_SUCCESS,
-      eventData,
-    );
-    await this.eventService.sendToUser(
-      trip.driver.id,
-      EventType.TRIP_PAYMENT_SUCCESS,
-      eventData,
-    );
-    */
   }
 
   async handlePaymentFailure(payment: Payment): Promise<void> {
@@ -331,7 +293,6 @@ export class TripPaymentService {
       paymentStatus: PaymentStatus.FAILED,
     });
 
-    // Remove driver's active trip
     if (trip.driver && trip.driver.id) {
       await this.tripService.cleanupDriverTrip(trip.driver.id);
       this.logger.info(
@@ -339,14 +300,12 @@ export class TripPaymentService {
       );
     }
 
-    // Get updated trip
     const updatedTrip = await this.tripService.findById(trip._id);
     if (!updatedTrip) {
       this.logger.warn(`Updated trip not found for payment ${payment._id}`);
       return;
     }
 
-    // Notify customer about payment failure
     const eventData = {
       eventType: EventType.TRIP_PAYMENT_FAILED,
       tripId: trip._id,
@@ -367,17 +326,5 @@ export class TripPaymentService {
       eventData,
       UserType.DRIVER,
     );
-    /*
-    await this.eventService.sendToUser(
-      trip.customer.id,
-      EventType.TRIP_PAYMENT_FAILED,
-      eventData,
-    );
-    await this.eventService.sendToUser(
-      trip.driver.id,
-      EventType.TRIP_PAYMENT_FAILED,
-      eventData,
-    );
-    */
   }
 }

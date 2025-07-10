@@ -132,9 +132,9 @@ export class DriverEarningsService {
     multiplier: number;
   } {
     const multiplier =
-      this.configService.get<number>('driverEarnings.perMinuteRate') || 0.5; // Default fallback
+      this.configService.get<number>('driverEarnings.perMinuteRate') || 0.5; 
     const durationMinutes = durationSeconds / 60;
-    const earnings = Math.round(durationMinutes * multiplier * 100) / 100; // Round to 2 decimal places
+    const earnings = Math.round(durationMinutes * multiplier * 100) / 100;
 
     return {
       earnings,

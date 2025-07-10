@@ -140,7 +140,7 @@ export class TripService {
       `trip:${tripId}`,
       async () => {
         return this.executeWithErrorHandling('requesting driver', async () => {
-          //await this.validateCustomerHasPaymentMethod(customerId);
+          await this.validateCustomerHasPaymentMethod(customerId);
           //await this.validateCustomerHasNoUnpaidPenalties(customerId);
           let trip;
           if (tripId) {
@@ -343,13 +343,6 @@ export class TripService {
 
         const updatedTrip = await this.updateTripWithData(tripId, updateData);
 
-        /*
-        await this.eventService.notifyCustomer(
-          updatedTrip,
-          updatedTrip.customer.id,
-          EventType.TRIP_PAYMENT_REQUIRED,
-        );
-        */
         await this.event2Service.sendToUser(
           updatedTrip.customer.id,
           EventType.TRIP_PAYMENT_REQUIRED,
@@ -841,12 +834,10 @@ export class TripService {
     const tripStartTime = tripDetails.tripStartTime;
     const tripEndTime = new Date();
 
-    // Gerçek süreyi hesapla (saniye cinsinden)
     const actualDuration = Math.floor(
       (tripEndTime.getTime() - tripStartTime.getTime()) / 1000,
     );
 
-    // Dakika başı 1 dirham hesaplama
     const durationInMinutes = Math.ceil(actualDuration / 60);
     const costPerMinute = this.configService.tripCostPerMinute;
     let finalCost = durationInMinutes * costPerMinute;
