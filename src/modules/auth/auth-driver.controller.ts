@@ -22,7 +22,8 @@ import { TokenManagerService } from '../../redis/services/token-manager.service'
 import { UserType } from '../../common/user-type.enum';
 import { ConfigService } from '@nestjs/config';
 import { LogoutGuard } from '../../jwt/logout.guard';
-import { JwtService } from '../../jwt/jwt.service';
+import { ForceLogoutService } from './force-logout.service';
+import { SessionMetadataService } from '../../redis/services/session-metadata.service';
 
 @ApiTags('auth-driver')
 @Controller('auth/driver')
@@ -34,9 +35,10 @@ export class AuthDriverController {
     private readonly authService: AuthService,
     private readonly tokenManagerService: TokenManagerService,
     private readonly configService: ConfigService,
-    private readonly jwtService: JwtService,
+    private readonly forceLogoutService: ForceLogoutService,
+    private readonly sessionMetadata: SessionMetadataService,
   ) {
-    this.jwtExpiresIn = this.configService.get<number>('jwt.expiresIn', 86400); // Default: 24 hours
+    this.jwtExpiresIn = this.configService.get<number>('jwt.expiresIn', 2592000); // Default: 30 days
   }
 
   @Post('initiate-signup')
@@ -68,20 +70,63 @@ export class AuthDriverController {
   async completeSignup(
     @Body() validateOtpDto: ValidateOtpDto,
     @Headers('device-id') deviceId: string,
+    @Headers('user-agent') userAgent: string,
+    @Headers('x-forwarded-for') forwardedFor: string,
+    @Headers('x-real-ip') realIp: string,
   ) {
     try {
       const result =
         await this.authService.completeDriverSignup(validateOtpDto);
 
-      // If successful, store the token
       if (result && result.token && result.driver) {
-        await this.tokenManagerService.storeActiveToken(
+        const ipAddress = forwardedFor || realIp || 'unknown';
+        const finalDeviceId = deviceId || 'unknown-device';
+
+        // Check for existing session and handle force logout if needed
+        const existingSession = await this.tokenManagerService.storeActiveToken(
           result.driver.id,
           UserType.DRIVER,
           result.token,
-          deviceId || 'unknown-device',
+          finalDeviceId,
           this.jwtExpiresIn,
+          {
+            ipAddress,
+            userAgent,
+          },
         );
+
+        // If there was an existing session, execute force logout
+        if (existingSession && existingSession.deviceId !== finalDeviceId) {
+          await this.forceLogoutService.executeForceLogout(
+            result.driver.id,
+            UserType.DRIVER,
+            existingSession.deviceId,
+            finalDeviceId,
+            'new_device_signup',
+            {
+              ipAddress,
+              userAgent,
+              oldSessionInfo: existingSession,
+            },
+          );
+        }
+
+        // Track device login activity
+        await this.sessionMetadata.trackDeviceLogin(
+          result.driver.id,
+          UserType.DRIVER,
+          finalDeviceId,
+          ipAddress,
+          userAgent,
+          !existingSession,
+        );
+
+        this.logger.log('Driver signup completed successfully', {
+          driverId: result.driver.id,
+          deviceId: finalDeviceId,
+          ipAddress,
+          hadExistingSession: !!existingSession,
+        });
       }
 
       return result;
@@ -121,24 +166,78 @@ export class AuthDriverController {
   async completeSignin(
     @Body() validateOtpDto: ValidateOtpDto,
     @Headers('device-id') deviceId: string,
+    @Headers('user-agent') userAgent: string,
+    @Headers('x-forwarded-for') forwardedFor: string,
+    @Headers('x-real-ip') realIp: string,
   ) {
     try {
       const result =
         await this.authService.completeDriverSignin(validateOtpDto);
 
-      // If successful, invalidate any existing token and store the new one
       if (result && result.token && result.driver) {
-        await this.tokenManagerService.invalidateActiveToken(
-          result.driver._id,
+        const ipAddress = forwardedFor || realIp || 'unknown';
+        const finalDeviceId = deviceId || 'unknown-device';
+        const userId = result.driver._id;
+
+        // Get existing session before storing new one
+        const existingSession = await this.tokenManagerService.getActiveToken(
+          userId,
           UserType.DRIVER,
         );
+
+        // Store new active session with metadata
         await this.tokenManagerService.storeActiveToken(
-          result.driver._id,
+          userId,
           UserType.DRIVER,
           result.token,
-          deviceId || 'unknown-device',
+          finalDeviceId,
           this.jwtExpiresIn,
+          {
+            ipAddress,
+            userAgent,
+          },
         );
+
+        // If there was an existing session on a different device, execute force logout
+        if (existingSession && existingSession.deviceId !== finalDeviceId) {
+          await this.forceLogoutService.executeForceLogout(
+            userId,
+            UserType.DRIVER,
+            existingSession.deviceId,
+            finalDeviceId,
+            'new_device_signin',
+            {
+              ipAddress,
+              userAgent,
+              oldSessionInfo: existingSession,
+            },
+          );
+
+          this.logger.warn('Force logout executed for driver signin', {
+            driverId: userId,
+            oldDeviceId: existingSession.deviceId,
+            newDeviceId: finalDeviceId,
+            ipAddress,
+          });
+        }
+
+        // Track device login activity
+        await this.sessionMetadata.trackDeviceLogin(
+          userId,
+          UserType.DRIVER,
+          finalDeviceId,
+          ipAddress,
+          userAgent,
+          !existingSession || existingSession.deviceId !== finalDeviceId,
+        );
+
+        this.logger.log('Driver signin completed successfully', {
+          driverId: userId,
+          deviceId: finalDeviceId,
+          ipAddress,
+          hadExistingSession: !!existingSession,
+          deviceSwitched: existingSession?.deviceId !== finalDeviceId,
+        });
 
         return { token: result.token };
       }

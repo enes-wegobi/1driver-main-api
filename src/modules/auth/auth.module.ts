@@ -8,18 +8,21 @@ import { ConfigModule } from '../../config/config.module';
 import { JwtModule } from '../../jwt/jwt.module';
 import { PaymentsModule } from '../payments/payments.module';
 import { DriversModule } from '../drivers/drivers.module';
+import { ForceLogoutService } from './force-logout.service';
+import { ExpoNotificationsModule } from '../expo-notifications/expo-notifications.module';
 
 @Module({
   imports: [
     ClientsModule,
     RedisModule,
     ConfigModule,
-    JwtModule,
+    forwardRef(() => JwtModule),
+    ExpoNotificationsModule,
     forwardRef(() => PaymentsModule),
     forwardRef(() => DriversModule),
   ],
   controllers: [AuthCustomerController, AuthDriverController],
-  providers: [AuthService],
-  exports: [AuthService],
+  providers: [AuthService, ForceLogoutService],
+  exports: [AuthService, ForceLogoutService],
 })
 export class AuthModule {}

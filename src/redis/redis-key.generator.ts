@@ -68,6 +68,10 @@ export class RedisKeyGenerator {
     return `auth:user:active_token:${userType}:${userId}`;
   }
 
+  static sessionActivity(userId: string, userType: UserType): string {
+    return `auth:user:session_activity:${userType}:${userId}`;
+  }
+
   // Driver trip queue keys (new sequential system)
   static driverTripQueue(driverId: string): string {
     return `driver:${driverId}:trip-queue`;

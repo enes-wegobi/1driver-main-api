@@ -24,6 +24,8 @@ import { HealthModule } from './modules/health/health.module';
 import { QueueManagementController } from './modules/admin/queue-management.controller';
 import { TripEventsService } from './events/trip-events.service';
 import { TripApprovalHandler } from './events/handlers/trip-approval.handler';
+import { AuthEventsService } from './events/auth-events.service';
+import { AuthEventsHandler } from './events/handlers/auth-events.handler';
 
 @Module({
   imports: [
@@ -59,6 +61,8 @@ import { TripApprovalHandler } from './events/handlers/trip-approval.handler';
     },
     TripEventsService,
     TripApprovalHandler,
+    AuthEventsService,
+    AuthEventsHandler,
   ],
   controllers: [QueueManagementController],
 })

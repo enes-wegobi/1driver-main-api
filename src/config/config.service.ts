@@ -22,7 +22,7 @@ export class ConfigService {
   }
 
   get jwtExpiresIn(): number {
-    return this.configService.get<number>('jwt.expiresIn', 36000);
+    return this.configService.get<number>('jwt.expiresIn', 2592000);
   }
 
   get driverLocationExpiry(): number {

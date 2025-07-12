@@ -22,6 +22,8 @@ import { UserType } from '../../common/user-type.enum';
 import { ConfigService } from '@nestjs/config';
 import { LogoutGuard } from '../../jwt/logout.guard';
 import { LoggerService } from 'src/logger/logger.service';
+import { ForceLogoutService } from './force-logout.service';
+import { SessionMetadataService } from '../../redis/services/session-metadata.service';
 
 @ApiTags('auth-customer')
 @Controller('auth/customer')
@@ -33,8 +35,10 @@ export class AuthCustomerController {
     private readonly tokenManagerService: TokenManagerService,
     private readonly configService: ConfigService,
     private readonly logger: LoggerService,
+    private readonly forceLogoutService: ForceLogoutService,
+    private readonly sessionMetadata: SessionMetadataService,
   ) {
-    this.jwtExpiresIn = this.configService.get<number>('jwt.expiresIn', 86400); // Default: 24 hours
+    this.jwtExpiresIn = this.configService.get<number>('jwt.expiresIn', 2592000); // Default: 30 days
   }
 
   @Post('initiate-signup')
@@ -66,19 +70,63 @@ export class AuthCustomerController {
   async completeSignup(
     @Body() validateOtpDto: ValidateOtpDto,
     @Headers('device-id') deviceId: string,
+    @Headers('user-agent') userAgent: string,
+    @Headers('x-forwarded-for') forwardedFor: string,
+    @Headers('x-real-ip') realIp: string,
   ) {
     try {
       const result =
         await this.authService.completeCustomerSignup(validateOtpDto);
 
       if (result && result.token && result.customer) {
-        await this.tokenManagerService.storeActiveToken(
+        const ipAddress = forwardedFor || realIp || 'unknown';
+        const finalDeviceId = deviceId || 'unknown-device';
+
+        // Check for existing session and handle force logout if needed
+        const existingSession = await this.tokenManagerService.storeActiveToken(
           result.customer.id,
           UserType.CUSTOMER,
           result.token,
-          deviceId || 'unknown-device',
+          finalDeviceId,
           this.jwtExpiresIn,
+          {
+            ipAddress,
+            userAgent,
+          },
         );
+
+        // If there was an existing session, execute force logout
+        if (existingSession && existingSession.deviceId !== finalDeviceId) {
+          await this.forceLogoutService.executeForceLogout(
+            result.customer.id,
+            UserType.CUSTOMER,
+            existingSession.deviceId,
+            finalDeviceId,
+            'new_device_signup',
+            {
+              ipAddress,
+              userAgent,
+              oldSessionInfo: existingSession,
+            },
+          );
+        }
+
+        // Track device login activity
+        await this.sessionMetadata.trackDeviceLogin(
+          result.customer.id,
+          UserType.CUSTOMER,
+          finalDeviceId,
+          ipAddress,
+          userAgent,
+          !existingSession,
+        );
+
+        this.logger.info('Customer signup completed successfully', {
+          customerId: result.customer.id,
+          deviceId: finalDeviceId,
+          ipAddress,
+          hadExistingSession: !!existingSession,
+        });
       }
 
       return result;
@@ -118,23 +166,78 @@ export class AuthCustomerController {
   async completeSignin(
     @Body() validateOtpDto: ValidateOtpDto,
     @Headers('device-id') deviceId: string,
+    @Headers('user-agent') userAgent: string,
+    @Headers('x-forwarded-for') forwardedFor: string,
+    @Headers('x-real-ip') realIp: string,
   ) {
     try {
       const result =
         await this.authService.completeCustomerSignin(validateOtpDto);
 
       if (result && result.token && result.customer) {
-        await this.tokenManagerService.invalidateActiveToken(
-          result.customer._id,
+        const ipAddress = forwardedFor || realIp || 'unknown';
+        const finalDeviceId = deviceId || 'unknown-device';
+        const userId = result.customer._id;
+
+        // Get existing session before storing new one
+        const existingSession = await this.tokenManagerService.getActiveToken(
+          userId,
           UserType.CUSTOMER,
         );
+
+        // Store new active session with metadata
         await this.tokenManagerService.storeActiveToken(
-          result.customer._id,
+          userId,
           UserType.CUSTOMER,
           result.token,
-          deviceId || 'unknown-device',
+          finalDeviceId,
           this.jwtExpiresIn,
+          {
+            ipAddress,
+            userAgent,
+          },
         );
+
+        // If there was an existing session on a different device, execute force logout
+        if (existingSession && existingSession.deviceId !== finalDeviceId) {
+          await this.forceLogoutService.executeForceLogout(
+            userId,
+            UserType.CUSTOMER,
+            existingSession.deviceId,
+            finalDeviceId,
+            'new_device_signin',
+            {
+              ipAddress,
+              userAgent,
+              oldSessionInfo: existingSession,
+            },
+          );
+
+          this.logger.warn('Force logout executed for customer signin', {
+            customerId: userId,
+            oldDeviceId: existingSession.deviceId,
+            newDeviceId: finalDeviceId,
+            ipAddress,
+          });
+        }
+
+        // Track device login activity
+        await this.sessionMetadata.trackDeviceLogin(
+          userId,
+          UserType.CUSTOMER,
+          finalDeviceId,
+          ipAddress,
+          userAgent,
+          !existingSession || existingSession.deviceId !== finalDeviceId,
+        );
+
+        this.logger.info('Customer signin completed successfully', {
+          customerId: userId,
+          deviceId: finalDeviceId,
+          ipAddress,
+          hadExistingSession: !!existingSession,
+          deviceSwitched: existingSession?.deviceId !== finalDeviceId,
+        });
 
         return { token: result.token };
       }

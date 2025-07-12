@@ -6,6 +6,7 @@ import {
   WebSocketServer,
   SubscribeMessage,
 } from '@nestjs/websockets';
+import { UseGuards } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import { WebSocketService } from './websocket.service';
 import { JwtService } from 'src/jwt/jwt.service';
@@ -19,6 +20,7 @@ import { TripService } from 'src/modules/trip/services/trip.service';
 import { EventType } from 'src/modules/event/enum/event-type.enum';
 import { DriverAvailabilityStatus } from 'src/common/enums/driver-availability-status.enum';
 import { LoggerService } from 'src/logger/logger.service';
+import { WsJwtGuard } from '../jwt/ws-jwt.guard';
 
 const PING_INTERVAL = 5000;
 const PING_TIMEOUT = 2000;
@@ -59,105 +61,101 @@ export class WebSocketGateway
   }
 
   async handleConnection(client: Socket, ...args: any[]) {
-    const clientId = client.id;
+    // Initial connection - authentication will be handled by guards on message events
+    this.logger.debug(`Client connected: ${client.id}`);
+    
+    // Emit a connection event that requires authentication
+    client.emit('connection_pending', {
+      message: 'Please authenticate to continue',
+      timestamp: new Date().toISOString(),
+    });
+  }
 
-    const token =
-      client.handshake.auth.token ||
-      client.handshake.query.token ||
-      client.handshake.headers.authorization?.replace('Bearer ', '');
-
-    if (!token) {
-      client.emit('error', {
-        message: 'Authentication required',
-      });
-      client.disconnect(true);
-      return;
-    }
-
+  @SubscribeMessage('authenticate')
+  @UseGuards(WsJwtGuard)
+  async handleAuthenticate(client: Socket): Promise<void> {
     try {
-      const payload = await this.jwtService.validateToken(token);
+      // Authentication was successful (handled by WsJwtGuard)
+      const userId = client.data.userId;
+      const userType = client.data.userType;
+      const deviceId = client.data.deviceId;
+      const clientId = client.id;
 
-      if (!payload || !payload.userId) {
-        client.emit('error', { message: 'Invalid token' });
-        client.disconnect(true);
-        return;
-      }
-
-      const userType = payload.userType;
-      if (userType !== UserType.DRIVER && userType !== UserType.CUSTOMER) {
-        client.emit('error', { message: 'Invalid user type' });
-        client.disconnect(true);
-        return;
-      }
-
-      // Store user data in the socket
-      client.data.userId = payload.userId;
-      client.data.userType = userType;
+      // Register device connection for tracking
+      await this.webSocketService.registerDeviceConnection(
+        deviceId,
+        client,
+        userId,
+        userType,
+      );
 
       // Join rooms based on user type and ID for easier targeting
-      client.join(`user:${payload.userId}`);
+      client.join(`user:${userId}`);
       client.join(`type:${userType}`);
+      client.join(`device:${deviceId}`);
 
       this.logger.debug(
-        `[ROOM_JOIN] Client ${clientId} joined rooms: user:${payload.userId}, type:${userType}`,
+        `[ROOM_JOIN] Client ${clientId} joined rooms: user:${userId}, type:${userType}, device:${deviceId}`,
       );
 
       if (userType === UserType.DRIVER) {
-        await this.driverStatusService.markDriverAsConnected(payload.userId);
-        await this.driverStatusService.setDriverAppStateOnConnect(
-          payload.userId,
-        );
+        await this.driverStatusService.markDriverAsConnected(userId);
+        await this.driverStatusService.setDriverAppStateOnConnect(userId);
 
         await this.driverStatusService.updateDriverAvailability(
-          payload.userId,
+          userId,
           DriverAvailabilityStatus.BUSY,
         );
 
-        const status = await this.driverStatusService.getDriverAvailability(
-          payload.userId,
-        );
+        const status = await this.driverStatusService.getDriverAvailability(userId);
 
-        client.emit('connection', {
+        client.emit('authenticated', {
           status: 'connected',
           clientId: clientId,
           userType: userType,
+          deviceId: deviceId,
           availabilityStatus: status,
-          message: 'Connection successful',
+          message: 'Authentication successful',
+          timestamp: new Date().toISOString(),
         });
       } else if (userType === UserType.CUSTOMER) {
-        await this.customerStatusService.markCustomerAsActive(payload.userId);
-        await this.customerStatusService.setCustomerAppStateOnConnect(
-          payload.userId,
-        );
+        await this.customerStatusService.markCustomerAsActive(userId);
+        await this.customerStatusService.setCustomerAppStateOnConnect(userId);
 
-        client.emit('connection', {
+        client.emit('authenticated', {
           status: 'connected',
           clientId: clientId,
           userType: userType,
-          message: 'Connection successful',
+          deviceId: deviceId,
+          message: 'Authentication successful',
+          timestamp: new Date().toISOString(),
         });
       }
 
-      this.logger.debug(
-        `Client ${clientId} authenticated as ${userType} with userId: ${payload.userId}`,
+      this.logger.info(
+        `Client ${clientId} authenticated as ${userType} with userId: ${userId}, deviceId: ${deviceId}`,
       );
 
       // Listen to built-in ping/pong events for logging
       client.on('ping', () => {
+        this.webSocketService.updateDeviceActivity(deviceId, clientId);
         this.logger.debug(
-          `[PING] Received from ${userType}:${payload.userId} (${clientId})`,
+          `[PING] Received from ${userType}:${userId} (${clientId})`,
         );
       });
 
       client.on('pong', (latency) => {
+        this.webSocketService.updateDeviceActivity(deviceId, clientId);
         this.logger.debug(
-          `[PONG] Received from ${userType}:${payload.userId} (${clientId}), latency: ${latency}ms`,
+          `[PONG] Received from ${userType}:${userId} (${clientId}), latency: ${latency}ms`,
         );
       });
     } catch (error) {
-      this.logger.error(`Authentication error: ${error.message}`);
-      client.emit('error', {
-        message: 'Authentication failed',
+      this.logger.error(`Authentication setup error: ${error.message}`);
+      client.emit('auth_failed', {
+        reason: 'setup_error',
+        message: 'Authentication setup failed',
+        timestamp: new Date().toISOString(),
       });
       client.disconnect(true);
     }
@@ -166,6 +164,10 @@ export class WebSocketGateway
   async handleDisconnect(client: Socket) {
     const userId = client.data.userId;
     const userType = client.data.userType;
+    const deviceId = client.data.deviceId;
+
+    // Clean up WebSocket service tracking
+    await this.webSocketService.handleSocketDisconnect(client);
 
     if (userId) {
       if (userType === UserType.DRIVER) {
@@ -176,13 +178,13 @@ export class WebSocketGateway
         if (status !== DriverAvailabilityStatus.ON_TRIP) {
           await this.driverStatusService.deleteDriverAvailability(userId);
         }
-        this.logger.debug(`Driver ${userId} marked as disconnected`);
+        this.logger.debug(`Driver ${userId} (device: ${deviceId}) marked as disconnected`);
       } else if (userType === UserType.CUSTOMER) {
         await this.customerStatusService.markCustomerAsInactive(userId);
         await this.customerStatusService.setCustomerAppStateOnDisconnect(
           userId,
         );
-        this.logger.debug(`Customer ${userId} marked as disconnected`);
+        this.logger.debug(`Customer ${userId} (device: ${deviceId}) marked as disconnected`);
       }
     }
 
@@ -190,9 +192,14 @@ export class WebSocketGateway
   }
 
   @SubscribeMessage('updateLocation')
+  @UseGuards(WsJwtGuard)
   async handleDriverLocationUpdate(client: Socket, payload: LocationDto) {
     const userId = client.data.userId;
     const userType = client.data.userType;
+    const deviceId = client.data.deviceId;
+
+    // Update device activity
+    await this.webSocketService.updateDeviceActivity(deviceId, client.id);
 
     if (!userId) {
       client.emit('error', { message: 'User not authenticated' });
@@ -239,12 +246,17 @@ export class WebSocketGateway
   }
 
   @SubscribeMessage('updateDriverAvailability')
+  @UseGuards(WsJwtGuard)
   async handleDriverAvailabilityUpdate(
     client: Socket,
     payload: { status: DriverAvailabilityStatus },
   ) {
     const userId = client.data.userId;
     const userType = client.data.userType;
+    const deviceId = client.data.deviceId;
+
+    // Update device activity
+    await this.webSocketService.updateDeviceActivity(deviceId, client.id);
 
     if (!userId) {
       client.emit('error', { message: 'User not authenticated' });
