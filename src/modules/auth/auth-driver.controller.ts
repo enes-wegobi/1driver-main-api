@@ -181,7 +181,7 @@ export class AuthDriverController {
         );
 
         // If there was an existing session on a different device, execute force logout
-        if (existingSession && existingSession.deviceId !== finalDeviceId) {
+        if (existingSession) {
           await this.forceLogoutService.executeForceLogout(
             userId,
             UserType.DRIVER,

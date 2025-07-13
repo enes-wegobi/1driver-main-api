@@ -31,18 +31,6 @@ export interface ForceLogoutCompletedEvent {
   timestamp: Date;
 }
 
-export interface SuspiciousActivityDetectedEvent {
-  userId: string;
-  userType: UserType;
-  attempts: {
-    deviceId: string;
-    ipAddress?: string;
-    timestamp: string;
-    userAgent?: string;
-  }[];
-  timestamp: Date;
-}
-
 export interface WebSocketLogoutEvent {
   userId: string;
   userType: UserType;
@@ -52,16 +40,3 @@ export interface WebSocketLogoutEvent {
   timestamp: Date;
 }
 
-export interface PushNotificationLogoutEvent {
-  userId: string;
-  userType: UserType;
-  deviceId: string;
-  reason: string;
-  metadata?: {
-    ipAddress?: string;
-    userAgent?: string;
-    oldSessionInfo?: any;
-    expoToken?: string;
-  };
-  timestamp: Date;
-}

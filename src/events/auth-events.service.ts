@@ -4,14 +4,12 @@ import {
   ForceLogoutRequestedEvent,
   ForceLogoutCompletedEvent,
   WebSocketLogoutEvent,
-  PushNotificationLogoutEvent,
 } from './types/auth-events.types';
 
 export const AUTH_EVENTS = {
   FORCE_LOGOUT_REQUESTED: 'auth.forceLogout.requested',
   FORCE_LOGOUT_COMPLETED: 'auth.forceLogout.completed',
   WEBSOCKET_LOGOUT: 'auth.websocket.logout',
-  PUSH_NOTIFICATION_LOGOUT: 'auth.push.logout',
 } as const;
 
 @Injectable()
@@ -28,10 +26,6 @@ export class AuthEventsService {
 
   emitWebSocketLogout(event: WebSocketLogoutEvent): void {
     this.eventEmitter.emit(AUTH_EVENTS.WEBSOCKET_LOGOUT, event);
-  }
-
-  emitPushNotificationLogout(event: PushNotificationLogoutEvent): void {
-    this.eventEmitter.emit(AUTH_EVENTS.PUSH_NOTIFICATION_LOGOUT, event);
   }
 
 }

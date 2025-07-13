@@ -7,7 +7,6 @@ import { AUTH_EVENTS } from '../auth-events.service';
 import {
   ForceLogoutRequestedEvent,
   WebSocketLogoutEvent,
-  PushNotificationLogoutEvent,
 } from '../types/auth-events.types';
 
 @Injectable()
@@ -35,7 +34,6 @@ export class AuthEventsHandler {
 
     // Emit individual events for each action
     this.emitWebSocketLogout(event);
-    this.emitPushNotificationLogout(event);
   }
 
   @OnEvent(AUTH_EVENTS.WEBSOCKET_LOGOUT)
@@ -74,56 +72,6 @@ export class AuthEventsHandler {
     }
   }
 
-  @OnEvent(AUTH_EVENTS.PUSH_NOTIFICATION_LOGOUT)
-  async handlePushNotificationLogout(event: PushNotificationLogoutEvent): Promise<void> {
-    try {
-      const expoToken = event.metadata?.expoToken || event.metadata?.oldSessionInfo?.expoToken;
-      
-      if (!expoToken) {
-        this.logger.warn('No Expo token available for force logout notification', {
-          userId: event.userId,
-          userType: event.userType,
-          deviceId: event.deviceId,
-        });
-        return;
-      }
-
-      const success = await this.expoNotifications.sendForceLogoutNotification(
-        expoToken,
-        event.userType,
-        {
-          reason: event.reason,
-          newDeviceId: event.deviceId,
-          ipAddress: event.metadata?.ipAddress,
-        },
-      );
-
-      if (success) {
-        this.logger.info('Force logout push notification sent successfully', {
-          userId: event.userId,
-          userType: event.userType,
-          deviceId: event.deviceId,
-          reason: event.reason,
-        });
-      } else {
-        this.logger.warn('Failed to send force logout push notification', {
-          userId: event.userId,
-          userType: event.userType,
-          deviceId: event.deviceId,
-          reason: event.reason,
-        });
-      }
-    } catch (error) {
-      this.logger.error('Error sending force logout push notification', {
-        userId: event.userId,
-        userType: event.userType,
-        deviceId: event.deviceId,
-        error: error.message,
-      });
-    }
-  }
-
-
   private emitWebSocketLogout(event: ForceLogoutRequestedEvent): void {
     const webSocketEvent: WebSocketLogoutEvent = {
       userId: event.userId,
@@ -137,16 +85,4 @@ export class AuthEventsHandler {
     this.eventEmitter.emit(AUTH_EVENTS.WEBSOCKET_LOGOUT, webSocketEvent);
   }
 
-  private emitPushNotificationLogout(event: ForceLogoutRequestedEvent): void {
-    const pushNotificationEvent: PushNotificationLogoutEvent = {
-      userId: event.userId,
-      userType: event.userType,
-      deviceId: event.oldDeviceId,
-      reason: event.reason,
-      metadata: event.metadata,
-      timestamp: event.timestamp,
-    };
-    
-    this.eventEmitter.emit(AUTH_EVENTS.PUSH_NOTIFICATION_LOGOUT, pushNotificationEvent);
-  }
 }

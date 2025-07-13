@@ -360,6 +360,11 @@
                         <input type="text" id="driverPhone" placeholder="+905551234567">
                     </div>
 
+                    <div class="form-group">
+                        <label>Device ID:</label>
+                        <input type="text" id="driverDeviceId" value="websocket-test-dashboard" placeholder="Device ID">
+                    </div>
+
                     <div class="form-group" id="driverOtpGroup" style="display: none;">
                         <label>OTP Code:</label>
                         <input type="text" id="driverOtp" placeholder="123456" maxlength="6">
@@ -391,6 +396,11 @@
                     <div class="form-group">
                         <label>Manual Token:</label>
                         <input type="text" id="driverToken" placeholder="JWT Token">
+                    </div>
+
+                    <div class="form-group">
+                        <label>WebSocket Device ID:</label>
+                        <input type="text" id="driverWsDeviceId" value="websocket-test-dashboard" placeholder="WebSocket Device ID">
                     </div>
 
                     <div style="margin-bottom: 15px;">
@@ -452,6 +462,11 @@
                         <input type="text" id="customerPhone" placeholder="+905551234567">
                     </div>
 
+                    <div class="form-group">
+                        <label>Device ID:</label>
+                        <input type="text" id="customerDeviceId" value="websocket-test-dashboard" placeholder="Device ID">
+                    </div>
+
                     <div class="form-group" id="customerOtpGroup" style="display: none;">
                         <label>OTP Code:</label>
                         <input type="text" id="customerOtp" placeholder="123456" maxlength="6">
@@ -483,6 +498,11 @@
                     <div class="form-group">
                         <label>Manual Token:</label>
                         <input type="text" id="customerToken" placeholder="JWT Token">
+                    </div>
+
+                    <div class="form-group">
+                        <label>WebSocket Device ID:</label>
+                        <input type="text" id="customerWsDeviceId" value="websocket-test-dashboard" placeholder="WebSocket Device ID">
                     </div>
 
                     <div style="margin-bottom: 15px;">
@@ -914,6 +934,7 @@
             const apiUrl = document.getElementById('driverApiUrl').value;
             const phone = document.getElementById('driverPhone').value;
             const otp = document.getElementById('driverOtp').value;
+            const deviceId = document.getElementById('driverDeviceId').value;
 
             if (!otp) {
                 addLog('driver', 'error', 'OTP code required!');
@@ -928,7 +949,7 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'device-id': 'websocket-test-dashboard'
+                        'x-device-id': deviceId
                     },
                     body: JSON.stringify({ phone: phone, otp: otp })
                 });
@@ -1059,6 +1080,7 @@
             const apiUrl = document.getElementById('customerApiUrl').value;
             const phone = document.getElementById('customerPhone').value;
             const otp = document.getElementById('customerOtp').value;
+            const deviceId = document.getElementById('customerDeviceId').value;
 
             if (!otp) {
                 addLog('customer', 'error', 'OTP code required!');
@@ -1073,7 +1095,7 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'device-id': 'websocket-test-dashboard'
+                        'x-device-id': deviceId
                     },
                     body: JSON.stringify({ phone: phone, otp: otp })
                 });
@@ -1153,6 +1175,7 @@
         function connectDriver() {
             const url = document.getElementById('driverWsUrl').value;
             const token = document.getElementById('driverToken').value;
+            const deviceId = document.getElementById('driverWsDeviceId').value;
 
             if (!token) {
                 addLog('driver', 'error', 'Token required for WebSocket connection!');
@@ -1165,10 +1188,14 @@
             driverSocket = io(url, {
                 auth: { 
                     token: token,
-                    deviceId: 'websocket-test-dashboard'
+                    deviceId: deviceId
+                },
+                extraHeaders: {
+                    'x-device-id': deviceId
                 },
                 query: {
-                    'device-id': 'websocket-test-dashboard'
+                    token: token,
+                    'x-device-id': deviceId
                 },
                 transports: ['websocket']
             });
@@ -1178,12 +1205,9 @@
 
         function setupDriverSocketEvents() {
             driverSocket.on('connect', () => {
-                updateConnectionStatus('driver', 'connected');
+                updateConnectionStatus('driver', 'connecting');
                 addLog('driver', 'success', `WebSocket connected! Socket ID: ${driverSocket.id}`);
-                
-                // Send authentication event as required by the current project
-                addLog('driver', 'info', 'Sending authentication event...');
-                driverSocket.emit('authenticate');
+                addLog('driver', 'info', 'Waiting for authentication...');
             });
 
             driverSocket.on('connection_pending', (data) => {
@@ -1195,13 +1219,17 @@
                 updateConnectionStatus('driver', 'disconnected');
             });
 
-            driverSocket.on('connection', (data) => {
+            driverSocket.on('authenticated', (data) => {
+                updateConnectionStatus('driver', 'connected');
                 addLog('driver', 'success', `Authentication successful: ${JSON.stringify(data)}`);
                 if (data.availabilityStatus) {
                     addLog('driver', 'info', `Driver availability: ${data.availabilityStatus}`);
                 }
-                if (data.heartbeatInterval) {
-                    addLog('driver', 'info', `Heartbeat interval: ${data.heartbeatInterval}ms`);
+                if (data.clientId) {
+                    addLog('driver', 'info', `Client ID: ${data.clientId}`);
+                }
+                if (data.deviceId) {
+                    addLog('driver', 'info', `Device ID: ${data.deviceId}`);
                 }
             });
 
@@ -1253,7 +1281,7 @@
 
             // Generic event listener for all other events
             driverSocket.onAny((eventName, data) => {
-                if (!['connect', 'disconnect', 'connection', 'heartbeat-ack', 'driver:location_updated', 'driver:status_changed', 'trip:requested', 'trip:driver_assigned', 'trip:cancelled', 'trip:completed', 'force_logout'].includes(eventName)) {
+                if (!['connect', 'disconnect', 'authenticated', 'error', 'heartbeat-ack', 'driver:location_updated', 'driver:status_changed', 'trip:requested', 'trip:driver_assigned', 'trip:cancelled', 'trip:completed', 'force_logout'].includes(eventName)) {
                     addLog('driver', 'info', `📡 Event: ${eventName} - ${JSON.stringify(data)}`);
                 }
             });
@@ -1271,6 +1299,7 @@
         function connectCustomer() {
             const url = document.getElementById('customerWsUrl').value;
             const token = document.getElementById('customerToken').value;
+            const deviceId = document.getElementById('customerWsDeviceId').value;
 
             if (!token) {
                 addLog('customer', 'error', 'Token required for WebSocket connection!');
@@ -1283,10 +1312,14 @@
             customerSocket = io(url, {
                 auth: { 
                     token: token,
-                    deviceId: 'websocket-test-dashboard'
+                    deviceId: deviceId
+                },
+                extraHeaders: {
+                    'x-device-id': deviceId
                 },
                 query: {
-                    'device-id': 'websocket-test-dashboard'
+                    token: token,
+                    'x-device-id': deviceId
                 },
                 transports: ['websocket']
             });
@@ -1296,12 +1329,9 @@
 
         function setupCustomerSocketEvents() {
             customerSocket.on('connect', () => {
-                updateConnectionStatus('customer', 'connected');
+                updateConnectionStatus('customer', 'connecting');
                 addLog('customer', 'success', `WebSocket connected! Socket ID: ${customerSocket.id}`);
-                
-                // Send authentication event as required by the current project
-                addLog('customer', 'info', 'Sending authentication event...');
-                customerSocket.emit('authenticate');
+                addLog('customer', 'info', 'Waiting for authentication...');
             });
 
             customerSocket.on('connection_pending', (data) => {
@@ -1313,10 +1343,14 @@
                 updateConnectionStatus('customer', 'disconnected');
             });
 
-            customerSocket.on('connection', (data) => {
+            customerSocket.on('authenticated', (data) => {
+                updateConnectionStatus('customer', 'connected');
                 addLog('customer', 'success', `Authentication successful: ${JSON.stringify(data)}`);
-                if (data.heartbeatInterval) {
-                    addLog('customer', 'info', `Heartbeat interval: ${data.heartbeatInterval}ms`);
+                if (data.clientId) {
+                    addLog('customer', 'info', `Client ID: ${data.clientId}`);
+                }
+                if (data.deviceId) {
+                    addLog('customer', 'info', `Device ID: ${data.deviceId}`);
                 }
             });
 
@@ -1394,7 +1428,7 @@
 
             // Generic event listener for all other events
             customerSocket.onAny((eventName, data) => {
-                if (!['connect', 'disconnect', 'connection', 'heartbeat-ack', 'customer:location_updated', 'driver:location_updated', 'trip:driver_assigned', 'trip:driver_en_route', 'trip:driver_arrived', 'trip:started', 'trip:cancelled', 'trip:completed', 'trip:payment_required', 'trip:payment_success', 'trip:payment_failed', 'notification', 'force_logout'].includes(eventName)) {
+                if (!['connect', 'disconnect', 'authenticated', 'error', 'heartbeat-ack', 'customer:location_updated', 'driver:location_updated', 'trip:driver_assigned', 'trip:driver_en_route', 'trip:driver_arrived', 'trip:started', 'trip:cancelled', 'trip:completed', 'trip:payment_required', 'trip:payment_success', 'trip:payment_failed', 'notification', 'force_logout'].includes(eventName)) {
                     addLog('customer', 'info', `📡 Event: ${eventName} - ${JSON.stringify(data)}`);
                 }
             });

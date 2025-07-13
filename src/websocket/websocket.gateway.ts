@@ -20,6 +20,8 @@ import { EventType } from 'src/modules/event/enum/event-type.enum';
 import { DriverAvailabilityStatus } from 'src/common/enums/driver-availability-status.enum';
 import { LoggerService } from 'src/logger/logger.service';
 import { WsJwtGuard } from '../jwt/ws-jwt.guard';
+import { JwtService } from 'src/jwt/jwt.service';
+import { TokenManagerService } from 'src/redis/services/token-manager.service';
 
 const PING_INTERVAL = 5000;
 const PING_TIMEOUT = 2000;
@@ -48,6 +50,8 @@ export class WebSocketGateway
     private readonly activeTripService: ActiveTripService,
     private readonly tripService: TripService,
     private readonly logger: LoggerService,
+    private readonly jwtService: JwtService,
+    private readonly tokenManager: TokenManagerService,
   ) {}
 
   @WebSocketServer()
@@ -58,30 +62,118 @@ export class WebSocketGateway
     this.webSocketService.setServer(server);
   }
 
+
+    private extractToken(client: Socket): string | null {
+      // Try multiple sources for the token
+      return (
+        client.handshake.auth?.token ||
+        client.handshake.query?.token ||
+        client.handshake.headers.authorization?.replace('Bearer ', '') ||
+        null
+      );
+    }
+  
+    private extractDeviceId(client: Socket): string | null {
+      const headerDeviceId = client.handshake.headers['x-device-id'];
+      const headerDeviceIdLower = client.handshake.headers['x-device-id'.toLowerCase()];
+      const queryDeviceId = client.handshake.query['x-device-id'];
+      const authDeviceId = client.handshake.auth?.deviceId;
+      
+      return (
+        (typeof headerDeviceId === 'string' ? headerDeviceId : null) ||
+        (typeof headerDeviceIdLower === 'string' ? headerDeviceIdLower : null) ||
+        (typeof queryDeviceId === 'string' ? queryDeviceId : null) ||
+        (typeof authDeviceId === 'string' ? authDeviceId : null) ||
+        null
+      );
+    }
+  
+
   async handleConnection(client: Socket, ...args: any[]) {
-    // Initial connection - authentication will be handled by guards on message events
     this.logger.debug(`Client connected: ${client.id}`);
     
-    // Emit a connection event that requires authentication
-    client.emit('connection_pending', {
-      message: 'Please authenticate to continue',
-      timestamp: new Date().toISOString(),
-    });
-  }
+    const clientId = client.id;
+    const token = this.extractToken(client);
+    const deviceId = this.extractDeviceId(client);
+    const userId = client.data.userId;
+    const userType = client.data.userType;
 
-  @SubscribeMessage('authenticate')
-  @UseGuards(WsJwtGuard)
-  async handleAuthenticate(client: Socket): Promise<void> {
+    if (!token) {
+      client.emit('error', {
+        message: 'Authentication required',
+      });
+      client.disconnect(true);
+      return;
+    }
+
+    if (!deviceId) {
+      client.emit('error', {
+        message: 'Device ID required',
+      });
+      client.disconnect(true);
+      return;
+    }
+
     try {
-      // Authentication was successful (handled by WsJwtGuard)
-      const userId = client.data.userId;
-      const userType = client.data.userType;
-      const deviceId = client.data.deviceId;
-      const clientId = client.id;
+      const payload = await this.jwtService.validateToken(token);
 
+      if (!payload || !payload.userId) {
+        client.emit('error', { message: 'Invalid token' });
+        client.disconnect(true);
+        return;
+      }
+
+      const userType = payload.userType;
+      if (userType !== UserType.DRIVER && userType !== UserType.CUSTOMER) {
+        client.emit('error', { message: 'Invalid user type' });
+        client.disconnect(true);
+        return;
+      }
+
+      // Check active session
+      const activeSession = await this.tokenManager.getActiveToken(payload.userId, userType);
+      if (!activeSession) {
+        client.emit('error', { message: 'No active session found - please login again' });
+        client.disconnect(true);
+        return;
+      }
+
+      // Verify token matches the active session
+      if (activeSession.token !== token) {
+        client.emit('error', { 
+          message: 'Token mismatch - session expired or invalid',
+          reason: 'token_mismatch' 
+        });
+        client.disconnect(true);
+        return;
+      }
+
+      // Verify device ID matches the active session
+      if (activeSession.deviceId !== deviceId) {
+        this.logger.warn(
+          `Device ID mismatch for user ${payload.userId}: session device ${activeSession.deviceId} vs connection device ${deviceId}`,
+        );
+        client.emit('error', { 
+          message: 'Device ID mismatch - please login with this device',
+          reason: 'device_mismatch',
+          sessionDeviceId: activeSession.deviceId,
+          requestedDeviceId: deviceId
+        });
+        client.disconnect(true);
+        return;
+      }
+
+      // Store user data in the socket
+      client.data.userId = payload.userId;
+      client.data.userType = userType;
+      client.data.deviceId = deviceId;
+      
+      this.logger.info(`WebSocket connection set for user ${payload.userId} (${userType}), socket: ${client.id}, device: ${deviceId}`);
+      
       // Register user connection for tracking (single connection per user)
+      // This will automatically disconnect any existing connection for this user
       await this.webSocketService.registerUserConnection(
-        userId,
+        payload.userId,
         userType,
         client,
         deviceId,
@@ -92,7 +184,7 @@ export class WebSocketGateway
       client.join(`type:${userType}`);
       client.join(`device:${deviceId}`);
 
-      this.logger.debug(
+       this.logger.debug(
         `[ROOM_JOIN] Client ${clientId} joined rooms: user:${userId}, type:${userType}, device:${deviceId}`,
       );
 
@@ -136,24 +228,36 @@ export class WebSocketGateway
 
       // Listen to built-in ping/pong events for logging
       client.on('ping', () => {
-        this.webSocketService.updateUserActivity(userId, userType);
         this.logger.debug(
           `[PING] Received from ${userType}:${userId} (${clientId})`,
         );
       });
 
       client.on('pong', (latency) => {
-        this.webSocketService.updateUserActivity(userId, userType);
         this.logger.debug(
           `[PONG] Received from ${userType}:${userId} (${clientId}), latency: ${latency}ms`,
         );
       });
+      this.logger.info(`WebSocket client authenticated successfully`, {
+        clientId,
+        userId: payload.userId,
+        userType,
+        deviceId,
+        connectionTime: new Date().toISOString(),
+        hasExistingConnection: false, // This will be enhanced in registerUserConnection
+      });
     } catch (error) {
-      this.logger.error(`Authentication setup error: ${error.message}`);
-      client.emit('auth_failed', {
-        reason: 'setup_error',
-        message: 'Authentication setup failed',
-        timestamp: new Date().toISOString(),
+      this.logger.error('WebSocket authentication error', {
+        clientId: client.id,
+        error: error.message,
+        stack: error.stack,
+        token: token ? 'provided' : 'missing',
+        deviceId: deviceId || 'missing',
+      });
+      client.emit('error', { 
+        message: 'Authentication failed', 
+        reason: 'server_error',
+        timestamp: new Date().toISOString() 
       });
       client.disconnect(true);
     }
@@ -176,13 +280,23 @@ export class WebSocketGateway
         if (status !== DriverAvailabilityStatus.ON_TRIP) {
           await this.driverStatusService.deleteDriverAvailability(userId);
         }
-        this.logger.debug(`Driver ${userId} (device: ${deviceId}) marked as disconnected`);
+        this.logger.info(`Driver disconnected and marked as inactive`, {
+          userId,
+          deviceId,
+          clientId: client.id,
+          disconnectionTime: new Date().toISOString(),
+        });
       } else if (userType === UserType.CUSTOMER) {
         await this.customerStatusService.markCustomerAsInactive(userId);
         await this.customerStatusService.setCustomerAppStateOnDisconnect(
           userId,
         );
-        this.logger.debug(`Customer ${userId} (device: ${deviceId}) marked as disconnected`);
+        this.logger.info(`Customer disconnected and marked as inactive`, {
+          userId,
+          deviceId,
+          clientId: client.id,
+          disconnectionTime: new Date().toISOString(),
+        });
       }
     }
 
