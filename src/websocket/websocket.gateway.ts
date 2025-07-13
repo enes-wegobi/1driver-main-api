@@ -9,7 +9,6 @@ import {
 import { UseGuards } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import { WebSocketService } from './websocket.service';
-import { JwtService } from 'src/jwt/jwt.service';
 import { LocationDto } from './dto/location.dto';
 import { DriverStatusService } from 'src/redis/services/driver-status.service';
 import { CustomerStatusService } from 'src/redis/services/customer-status.service';
@@ -46,7 +45,6 @@ export class WebSocketGateway
     private readonly driverStatusService: DriverStatusService,
     private readonly customerStatusService: CustomerStatusService,
     private readonly locationService: LocationService,
-    private readonly jwtService: JwtService,
     private readonly activeTripService: ActiveTripService,
     private readonly tripService: TripService,
     private readonly logger: LoggerService,

@@ -21,7 +21,6 @@ export class WsJwtGuard implements CanActivate {
       const token = this.extractToken(client);
       const deviceId = this.extractDeviceId(client);
       const ipAddress = this.extractIpAddress(client);
-      const userAgent = client.handshake.headers['user-agent'];
 
       if (!token) {
         this.logger.warn('WebSocket authentication failed: No token provided', {
@@ -70,24 +69,6 @@ export class WsJwtGuard implements CanActivate {
 
       const userType = payload.userType as UserType;
       const userId = payload.userId;
-
-      // Check if token is blacklisted
-      const isBlacklisted = await this.tokenManager.isTokenBlacklisted(token);
-      if (isBlacklisted) {
-        this.logger.warn('WebSocket authentication failed: Token blacklisted', {
-          userId,
-          userType,
-          deviceId,
-          socketId: client.id,
-        });
-        client.emit('auth_failed', { 
-          reason: 'token_blacklisted',
-          message: 'Authentication token has been revoked',
-          timestamp: new Date().toISOString(),
-        });
-        client.disconnect(true);
-        return false;
-      }
 
       // Check active session and verify all details
       const activeSession = await this.tokenManager.getActiveToken(userId, userType);

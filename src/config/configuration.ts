@@ -57,7 +57,7 @@ export default () => ({
       'supersecret',
       'JWT_SECRET',
     ),
-    expiresIn: parseInt(process.env.JWT_EXPIRES_IN || '36000', 10),
+    expiresIn: parseInt(process.env.JWT_EXPIRES_IN || '2592000', 10),
   },
   redis: {
     driverLocationExpiry: parseInt(

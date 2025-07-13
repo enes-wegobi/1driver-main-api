@@ -65,12 +65,3 @@ export interface PushNotificationLogoutEvent {
   };
   timestamp: Date;
 }
-
-export interface SessionLogEvent {
-  userId: string;
-  userType: UserType;
-  oldDeviceId: string;
-  newDeviceId: string;
-  ipAddress?: string;
-  timestamp: Date;
-}

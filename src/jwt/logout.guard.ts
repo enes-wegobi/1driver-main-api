@@ -21,7 +21,7 @@ export class LogoutGuard implements CanActivate {
     if (!token) {
       throw new UnauthorizedException('No token provided');
     }
-
+    /*
     // Check if token is already blacklisted
     const isBlacklisted =
       await this.tokenManagerService.isTokenBlacklisted(token);
@@ -52,6 +52,7 @@ export class LogoutGuard implements CanActivate {
       payload.userId,
       payload.userType,
     );
+    */
 
     return true;
   }

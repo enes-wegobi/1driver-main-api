@@ -4,11 +4,11 @@ import {
   ExecutionContext,
   UnauthorizedException,
 } from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
 import { JwtService } from './jwt.service';
 import { TokenManagerService } from '../redis/services/token-manager.service';
 import { LoggerService } from '../logger/logger.service';
-import { AUTH_EVENTS } from '../events/auth-events.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { AUTH_EVENTS } from 'src/events/auth-events.service';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -26,14 +26,6 @@ export class JwtAuthGuard implements CanActivate {
     if (!token) {
       throw new UnauthorizedException('No token provided');
     }
-
-    // Check if token is blacklisted
-    const isBlacklisted =
-      await this.tokenManagerService.isTokenBlacklisted(token);
-    if (isBlacklisted) {
-      throw new UnauthorizedException('Token has been revoked');
-    }
-
     const payload = await this.jwtService.validateToken(token);
 
     if (!payload) {
@@ -45,23 +37,30 @@ export class JwtAuthGuard implements CanActivate {
     const currentIpAddress = this.extractIpAddress(request);
 
     try {
-      // Get stored session metadata from token manager
       const sessionMetadata = await this.tokenManagerService.getActiveToken(payload.userId, payload.userType);
 
       if (sessionMetadata) {
-        // Validate device binding
+        if (sessionMetadata.token && sessionMetadata.token !== token) {
+
+          this.eventEmitter.emit(AUTH_EVENTS.FORCE_LOGOUT_REQUESTED, {
+            userId: payload.userId,
+            userType: payload.userType,
+            oldDeviceId: sessionMetadata.deviceId || 'unknown',
+            newDeviceId: currentDeviceInfo.deviceId || 'unknown',
+            reason: 'Token validation failed - token mismatch',
+            metadata: {
+              ipAddress: currentIpAddress,
+              userAgent: currentDeviceInfo.userAgent,
+            },
+            timestamp: new Date(),
+          });
+
+          throw new UnauthorizedException('Token validation failed');
+        }
+
         const isValidDevice = this.validateDeviceBinding(currentDeviceInfo, sessionMetadata);
         
         if (!isValidDevice) {
-          this.loggerService.warn('Device mismatch detected', {
-            userId: payload.userId,
-            userType: payload.userType,
-            currentDevice: currentDeviceInfo,
-            storedDevice: sessionMetadata.deviceInfo,
-            ipAddress: currentIpAddress,
-          });
-
-          // Emit force logout event instead of direct service call
           this.eventEmitter.emit(AUTH_EVENTS.FORCE_LOGOUT_REQUESTED, {
             userId: payload.userId,
             userType: payload.userType,
@@ -81,15 +80,6 @@ export class JwtAuthGuard implements CanActivate {
 
         // Check for significant IP changes (optional security measure)
         if (sessionMetadata.ipAddress && sessionMetadata.ipAddress !== currentIpAddress) {
-          this.loggerService.warn('IP address change detected', {
-            userId: payload.userId,
-            userType: payload.userType,
-            previousIp: sessionMetadata.ipAddress,
-            currentIp: currentIpAddress,
-            deviceInfo: currentDeviceInfo,
-          });
-
-          // Update IP in session metadata but allow access
           await this.tokenManagerService.updateLastSeen(payload.userId, payload.userType, currentIpAddress);
         } else {
           // Regular activity update
@@ -155,26 +145,15 @@ export class JwtAuthGuard implements CanActivate {
 
   private validateDeviceBinding(currentDevice: any, sessionMetadata: any): boolean {
     // Primary validation: Device ID (if available)
-    if (currentDevice.deviceId && sessionMetadata.deviceInfo?.deviceId) {
-      return currentDevice.deviceId === sessionMetadata.deviceInfo.deviceId;
+    if (currentDevice.deviceId && sessionMetadata.deviceId) {
+      return currentDevice.deviceId === sessionMetadata.deviceId;
     }
 
-    // Fallback validation: User Agent and Platform combination
-    const currentFingerprint = this.createDeviceFingerprint(currentDevice);
-    const storedFingerprint = this.createDeviceFingerprint(sessionMetadata.deviceInfo);
+    // Fallback validation: User Agent comparison
+    if (currentDevice.userAgent && sessionMetadata.userAgent) {
+      return currentDevice.userAgent === sessionMetadata.userAgent;
+    }
 
-    return currentFingerprint === storedFingerprint;
-  }
-
-  private createDeviceFingerprint(deviceInfo: any): string {
-    if (!deviceInfo) return 'unknown';
-    
-    const components = [
-      deviceInfo.userAgent || '',
-      deviceInfo.platform || '',
-      deviceInfo.deviceModel || '',
-    ];
-    
-    return components.join('|').toLowerCase();
+    return false;
   }
 }

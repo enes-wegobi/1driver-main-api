@@ -1,9 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { LoggerService } from 'src/logger/logger.service';
 import { UserType } from 'src/common/user-type.enum';
-import { SessionMetadataService } from 'src/redis/services/session-metadata.service';
 import { AuthEventsService } from 'src/events/auth-events.service';
-import { ForceLogoutRequestedEvent, SuspiciousActivityDetectedEvent } from 'src/events/types/auth-events.types';
+import { ForceLogoutRequestedEvent } from 'src/events/types/auth-events.types';
 
 export interface ForceLogoutResult {
   success: boolean;
@@ -17,7 +16,6 @@ export interface ForceLogoutResult {
 export class ForceLogoutService {
   constructor(
     private readonly logger: LoggerService,
-    private readonly sessionMetadata: SessionMetadataService,
     private readonly authEvents: AuthEventsService,
   ) {}
 
@@ -90,77 +88,4 @@ export class ForceLogoutService {
     }
   }
 
-
-  /**
-   * Handle suspicious login attempts
-   * @param userId The user ID
-   * @param userType The user type
-   * @param attempts Array of recent login attempts from different devices/IPs
-   */
-  async handleSuspiciousActivity(
-    userId: string,
-    userType: UserType,
-    attempts: {
-      deviceId: string;
-      ipAddress?: string;
-      timestamp: string;
-      userAgent?: string;
-    }[],
-  ): Promise<void> {
-    const suspiciousActivityEvent: SuspiciousActivityDetectedEvent = {
-      userId,
-      userType,
-      attempts,
-      timestamp: new Date(),
-    };
-
-    this.authEvents.emitSuspiciousActivityDetected(suspiciousActivityEvent);
-
-    this.logger.info('Suspicious activity event emitted', {
-      userId,
-      userType,
-      attemptCount: attempts.length,
-    });
-  }
-
-  /**
-   * Get security summary for a user
-   * @param userId The user ID
-   * @param userType The user type
-   * @returns Security-related session information
-   */
-  async getSecuritySummary(
-    userId: string,
-    userType: UserType,
-  ): Promise<{
-    recentForceLogouts: number;
-    suspiciousActivity: number;
-    totalDevices: number;
-    lastActivity: string;
-  }> {
-    try {
-      const analytics = await this.sessionMetadata.getSessionAnalytics(userId, userType);
-      const suspicious = await this.sessionMetadata.getSuspiciousActivity(userId, userType, 24);
-
-      return {
-        recentForceLogouts: analytics?.securityEvents || 0,
-        suspiciousActivity: suspicious.length,
-        totalDevices: analytics?.activeDevices.length || 0,
-        lastActivity: analytics?.lastActivity || '',
-      };
-    } catch (error) {
-      this.logger.error('Failed to get security summary', {
-        userId,
-        userType,
-        error: error.message,
-      });
-
-      return {
-        recentForceLogouts: 0,
-        suspiciousActivity: 0,
-        totalDevices: 0,
-        lastActivity: '',
-      };
-    }
-  }
 }

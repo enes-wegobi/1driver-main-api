@@ -23,7 +23,6 @@ import { ConfigService } from '@nestjs/config';
 import { LogoutGuard } from '../../jwt/logout.guard';
 import { LoggerService } from 'src/logger/logger.service';
 import { ForceLogoutService } from './force-logout.service';
-import { SessionMetadataService } from '../../redis/services/session-metadata.service';
 
 @ApiTags('auth-customer')
 @Controller('auth/customer')
@@ -36,7 +35,6 @@ export class AuthCustomerController {
     private readonly configService: ConfigService,
     private readonly logger: LoggerService,
     private readonly forceLogoutService: ForceLogoutService,
-    private readonly sessionMetadata: SessionMetadataService,
   ) {
     this.jwtExpiresIn = this.configService.get<number>('jwt.expiresIn', 2592000); // Default: 30 days
   }
@@ -110,23 +108,6 @@ export class AuthCustomerController {
             },
           );
         }
-
-        // Track device login activity
-        await this.sessionMetadata.trackDeviceLogin(
-          result.customer.id,
-          UserType.CUSTOMER,
-          finalDeviceId,
-          ipAddress,
-          userAgent,
-          !existingSession,
-        );
-
-        this.logger.info('Customer signup completed successfully', {
-          customerId: result.customer.id,
-          deviceId: finalDeviceId,
-          ipAddress,
-          hadExistingSession: !!existingSession,
-        });
       }
 
       return result;
@@ -212,33 +193,7 @@ export class AuthCustomerController {
               oldSessionInfo: existingSession,
             },
           );
-
-          this.logger.warn('Force logout executed for customer signin', {
-            customerId: userId,
-            oldDeviceId: existingSession.deviceId,
-            newDeviceId: finalDeviceId,
-            ipAddress,
-          });
         }
-
-        // Track device login activity
-        await this.sessionMetadata.trackDeviceLogin(
-          userId,
-          UserType.CUSTOMER,
-          finalDeviceId,
-          ipAddress,
-          userAgent,
-          !existingSession || existingSession.deviceId !== finalDeviceId,
-        );
-
-        this.logger.info('Customer signin completed successfully', {
-          customerId: userId,
-          deviceId: finalDeviceId,
-          ipAddress,
-          hadExistingSession: !!existingSession,
-          deviceSwitched: existingSession?.deviceId !== finalDeviceId,
-        });
-
         return { token: result.token };
       }
 

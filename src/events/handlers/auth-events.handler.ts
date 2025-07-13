@@ -1,23 +1,19 @@
 import { Injectable } from '@nestjs/common';
 import { OnEvent, EventEmitter2 } from '@nestjs/event-emitter';
 import { LoggerService } from 'src/logger/logger.service';
-import { SessionMetadataService } from 'src/redis/services/session-metadata.service';
 import { ExpoNotificationsService } from 'src/modules/expo-notifications/expo-notifications.service';
 import { WebSocketService } from 'src/websocket/websocket.service';
 import { AUTH_EVENTS } from '../auth-events.service';
 import {
   ForceLogoutRequestedEvent,
-  SuspiciousActivityDetectedEvent,
   WebSocketLogoutEvent,
   PushNotificationLogoutEvent,
-  SessionLogEvent,
 } from '../types/auth-events.types';
 
 @Injectable()
 export class AuthEventsHandler {
   constructor(
     private readonly logger: LoggerService,
-    private readonly sessionMetadata: SessionMetadataService,
     private readonly expoNotifications: ExpoNotificationsService,
     private readonly websocketService: WebSocketService,
     private readonly eventEmitter: EventEmitter2,
@@ -38,32 +34,8 @@ export class AuthEventsHandler {
     );
 
     // Emit individual events for each action
-    this.emitSessionLog(event);
     this.emitWebSocketLogout(event);
     this.emitPushNotificationLogout(event);
-  }
-
-  @OnEvent(AUTH_EVENTS.SESSION_LOG)
-  async handleSessionLog(event: SessionLogEvent): Promise<void> {
-    try {
-      await this.sessionMetadata.trackForceLogout(
-        event.userId,
-        event.userType,
-        event.oldDeviceId,
-        event.newDeviceId,
-        event.ipAddress,
-      );
-      
-      this.logger.debug('Session log recorded successfully', {
-        userId: event.userId,
-        oldDeviceId: event.oldDeviceId,
-      });
-    } catch (error) {
-      this.logger.error('Failed to log force logout activity', {
-        userId: event.userId,
-        error: error.message,
-      });
-    }
   }
 
   @OnEvent(AUTH_EVENTS.WEBSOCKET_LOGOUT)
@@ -155,48 +127,6 @@ export class AuthEventsHandler {
     }
   }
 
-  @OnEvent(AUTH_EVENTS.SUSPICIOUS_ACTIVITY_DETECTED)
-  async handleSuspiciousActivityDetected(event: SuspiciousActivityDetectedEvent): Promise<void> {
-    this.logger.warn('Suspicious activity detected', {
-      userId: event.userId,
-      userType: event.userType,
-      attemptCount: event.attempts.length,
-      attempts: event.attempts,
-    });
-
-    try {
-      await this.sessionMetadata.logSessionActivity(event.userId, event.userType, {
-        timestamp: event.timestamp.toISOString(),
-        action: 'activity',
-        deviceId: 'multiple',
-        details: {
-          type: 'suspicious_activity',
-          attempts: event.attempts.length,
-          devices: event.attempts.map(a => a.deviceId),
-          ipAddresses: event.attempts.map(a => a.ipAddress).filter(Boolean),
-        },
-      });
-    } catch (error) {
-      this.logger.error('Failed to log suspicious activity', {
-        userId: event.userId,
-        userType: event.userType,
-        error: error.message,
-      });
-    }
-  }
-
-  private emitSessionLog(event: ForceLogoutRequestedEvent): void {
-    const sessionLogEvent: SessionLogEvent = {
-      userId: event.userId,
-      userType: event.userType,
-      oldDeviceId: event.oldDeviceId,
-      newDeviceId: event.newDeviceId,
-      ipAddress: event.metadata?.ipAddress,
-      timestamp: event.timestamp,
-    };
-    
-    this.eventEmitter.emit(AUTH_EVENTS.SESSION_LOG, sessionLogEvent);
-  }
 
   private emitWebSocketLogout(event: ForceLogoutRequestedEvent): void {
     const webSocketEvent: WebSocketLogoutEvent = {

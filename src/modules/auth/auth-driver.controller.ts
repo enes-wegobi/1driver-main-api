@@ -23,7 +23,6 @@ import { UserType } from '../../common/user-type.enum';
 import { ConfigService } from '@nestjs/config';
 import { LogoutGuard } from '../../jwt/logout.guard';
 import { ForceLogoutService } from './force-logout.service';
-import { SessionMetadataService } from '../../redis/services/session-metadata.service';
 
 @ApiTags('auth-driver')
 @Controller('auth/driver')
@@ -36,7 +35,6 @@ export class AuthDriverController {
     private readonly tokenManagerService: TokenManagerService,
     private readonly configService: ConfigService,
     private readonly forceLogoutService: ForceLogoutService,
-    private readonly sessionMetadata: SessionMetadataService,
   ) {
     this.jwtExpiresIn = this.configService.get<number>('jwt.expiresIn', 2592000); // Default: 30 days
   }
@@ -110,16 +108,6 @@ export class AuthDriverController {
             },
           );
         }
-
-        // Track device login activity
-        await this.sessionMetadata.trackDeviceLogin(
-          result.driver.id,
-          UserType.DRIVER,
-          finalDeviceId,
-          ipAddress,
-          userAgent,
-          !existingSession,
-        );
 
         this.logger.log('Driver signup completed successfully', {
           driverId: result.driver.id,
@@ -212,33 +200,7 @@ export class AuthDriverController {
               oldSessionInfo: existingSession,
             },
           );
-
-          this.logger.warn('Force logout executed for driver signin', {
-            driverId: userId,
-            oldDeviceId: existingSession.deviceId,
-            newDeviceId: finalDeviceId,
-            ipAddress,
-          });
         }
-
-        // Track device login activity
-        await this.sessionMetadata.trackDeviceLogin(
-          userId,
-          UserType.DRIVER,
-          finalDeviceId,
-          ipAddress,
-          userAgent,
-          !existingSession || existingSession.deviceId !== finalDeviceId,
-        );
-
-        this.logger.log('Driver signin completed successfully', {
-          driverId: userId,
-          deviceId: finalDeviceId,
-          ipAddress,
-          hadExistingSession: !!existingSession,
-          deviceSwitched: existingSession?.deviceId !== finalDeviceId,
-        });
-
         return { token: result.token };
       }
 

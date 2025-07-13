@@ -8,7 +8,6 @@ import { NearbySearchService } from './services/nearby-search.service';
 import { ActiveTripService } from './services/active-trip.service';
 import { DriverTripQueueService } from './services/driver-trip-queue.service';
 import { TokenManagerService } from './services/token-manager.service';
-import { SessionMetadataService } from './services/session-metadata.service';
 
 @Module({
   imports: [ConfigModule],
@@ -20,7 +19,6 @@ import { SessionMetadataService } from './services/session-metadata.service';
     NearbySearchService,
     ActiveTripService,
     TokenManagerService,
-    SessionMetadataService,
     DriverTripQueueService,
   ],
   exports: [
@@ -31,7 +29,6 @@ import { SessionMetadataService } from './services/session-metadata.service';
     NearbySearchService,
     ActiveTripService,
     TokenManagerService,
-    SessionMetadataService,
     DriverTripQueueService,
   ],
 })
