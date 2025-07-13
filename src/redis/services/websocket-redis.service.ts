@@ -67,7 +67,23 @@ export class WebSocketRedisService extends BaseRedisService {
     userType: UserType,
   ): Promise<ActiveWebSocketConnection | null> {
     const key = RedisKeyGenerator.userActiveWebSocket(userId, userType);
+    
+    this.customLogger.debug('Getting active WebSocket connection', {
+      userId,
+      userType,
+      redisKey: key,
+    });
+    
     const data = await this.client.get(key);
+    
+    this.customLogger.debug('Redis get result', {
+      userId,
+      userType,
+      redisKey: key,
+      hasData: !!data,
+      dataLength: data?.length || 0,
+    });
+    
     return data ? JSON.parse(data) : null;
   }
 

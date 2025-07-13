@@ -146,8 +146,8 @@ export class AuthCustomerController {
   @ApiResponse({ status: 404, description: 'User not found' })
   async completeSignin(
     @Body() validateOtpDto: ValidateOtpDto,
-    @Headers('device-id') deviceId: string,
-    @Headers('user-agent') userAgent: string,
+    @Headers('x-device-id') deviceId: string,
+    @Headers('x-user-agent') userAgent: string,
     @Headers('x-forwarded-for') forwardedFor: string,
     @Headers('x-real-ip') realIp: string,
   ) {

@@ -184,9 +184,9 @@ export class WsJwtGuard implements CanActivate {
   }
 
   private extractDeviceId(client: Socket): string | null {
-    const headerDeviceId = client.handshake.headers['device-id'];
-    const headerDeviceIdLower = client.handshake.headers['device-id'.toLowerCase()];
-    const queryDeviceId = client.handshake.query['device-id'];
+    const headerDeviceId = client.handshake.headers['x-device-id'];
+    const headerDeviceIdLower = client.handshake.headers['x-device-id'.toLowerCase()];
+    const queryDeviceId = client.handshake.query['x-device-id'];
     const authDeviceId = client.handshake.auth?.deviceId;
     
     return (

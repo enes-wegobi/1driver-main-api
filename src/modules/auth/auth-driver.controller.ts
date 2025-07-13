@@ -153,7 +153,7 @@ export class AuthDriverController {
   @ApiResponse({ status: 404, description: 'Driver not found' })
   async completeSignin(
     @Body() validateOtpDto: ValidateOtpDto,
-    @Headers('device-id') deviceId: string,
+    @Headers('x-device-id') deviceId: string,
     @Headers('user-agent') userAgent: string,
     @Headers('x-forwarded-for') forwardedFor: string,
     @Headers('x-real-ip') realIp: string,

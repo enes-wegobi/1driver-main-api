@@ -66,9 +66,11 @@ import { TestHeadersMiddleware } from './middleware/test-headers.middleware';
   controllers: [QueueManagementController],
 })
 export class AppModule {
+  /*
   configure(consumer: MiddlewareConsumer) {
     consumer
       .apply(TestHeadersMiddleware)
       .forRoutes('*');
   }
+      */
 }
