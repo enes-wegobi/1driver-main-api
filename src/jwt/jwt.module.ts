@@ -1,4 +1,4 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { JwtModule as NestJwtModule } from '@nestjs/jwt';
 import { JwtService } from './jwt.service';
 import { ConfigService } from 'src/config/config.service';
@@ -7,7 +7,6 @@ import { JwtAuthGuard } from './jwt.guard';
 import { LogoutGuard } from './logout.guard';
 import { RedisModule } from 'src/redis/redis.module';
 import { WsJwtGuard } from './ws-jwt.guard';
-import { AuthModule } from 'src/modules/auth/auth.module';
 
 @Module({
   imports: [
@@ -20,7 +19,6 @@ import { AuthModule } from 'src/modules/auth/auth.module';
       }),
     }),
     RedisModule,
-    forwardRef(() => AuthModule),
   ],
   providers: [JwtService, JwtAuthGuard, LogoutGuard, WsJwtGuard],
   exports: [JwtService, JwtAuthGuard, LogoutGuard, WsJwtGuard],

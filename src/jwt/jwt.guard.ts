@@ -4,10 +4,11 @@ import {
   ExecutionContext,
   UnauthorizedException,
 } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { JwtService } from './jwt.service';
 import { TokenManagerService } from '../redis/services/token-manager.service';
 import { LoggerService } from '../logger/logger.service';
-import { ForceLogoutService } from '../modules/auth/force-logout.service';
+import { AUTH_EVENTS } from '../events/auth-events.service';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -15,8 +16,7 @@ export class JwtAuthGuard implements CanActivate {
     private jwtService: JwtService,
     private tokenManagerService: TokenManagerService,
     private loggerService: LoggerService,
-    private forceLogoutService: ForceLogoutService,
-    
+    private eventEmitter: EventEmitter2,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -61,14 +61,20 @@ export class JwtAuthGuard implements CanActivate {
             ipAddress: currentIpAddress,
           });
 
-        // Force logout and revoke token
-        await this.forceLogoutService.executeForceLogout(
-                     payload.userId,
-                     payload.userType,
-                     sessionMetadata.deviceId || 'unknown',
-                     currentDeviceInfo.deviceId || 'unknown',
-                     'Device binding validation failed'
-                   );
+          // Emit force logout event instead of direct service call
+          this.eventEmitter.emit(AUTH_EVENTS.FORCE_LOGOUT_REQUESTED, {
+            userId: payload.userId,
+            userType: payload.userType,
+            oldDeviceId: sessionMetadata.deviceId || 'unknown',
+            newDeviceId: currentDeviceInfo.deviceId || 'unknown',
+            reason: 'Device binding validation failed',
+            metadata: {
+              ipAddress: currentIpAddress,
+              userAgent: currentDeviceInfo.userAgent,
+              oldSessionInfo: sessionMetadata,
+            },
+            timestamp: new Date(),
+          });
 
           throw new UnauthorizedException('Device validation failed');
         }
@@ -127,13 +133,14 @@ export class JwtAuthGuard implements CanActivate {
   }
 
   private extractDeviceInfo(request: any): any {
-    return {
+    const deviceInfo = {
       userAgent: request.headers['user-agent'] || 'Unknown',
       platform: request.headers['x-platform'] || 'Unknown',
       appVersion: request.headers['x-app-version'] || 'Unknown',
       deviceId: request.headers['x-device-id'] || null,
       deviceModel: request.headers['x-device-model'] || 'Unknown',
     };
+    return deviceInfo;
   }
 
   private extractIpAddress(request: any): string {

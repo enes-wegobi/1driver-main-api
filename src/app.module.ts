@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, MiddlewareConsumer } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
 import { EventEmitterModule } from '@nestjs/event-emitter';
@@ -24,8 +24,8 @@ import { HealthModule } from './modules/health/health.module';
 import { QueueManagementController } from './modules/admin/queue-management.controller';
 import { TripEventsService } from './events/trip-events.service';
 import { TripApprovalHandler } from './events/handlers/trip-approval.handler';
-import { AuthEventsService } from './events/auth-events.service';
-import { AuthEventsHandler } from './events/handlers/auth-events.handler';
+import { AuthEventsModule } from './events/auth-events.module';
+import { TestHeadersMiddleware } from './middleware/test-headers.middleware';
 
 @Module({
   imports: [
@@ -53,6 +53,7 @@ import { AuthEventsHandler } from './events/handlers/auth-events.handler';
     QueueModule,
     HeartbeatModule,
     HealthModule,
+    AuthEventsModule,
   ],
   providers: [
     {
@@ -61,9 +62,13 @@ import { AuthEventsHandler } from './events/handlers/auth-events.handler';
     },
     TripEventsService,
     TripApprovalHandler,
-    AuthEventsService,
-    AuthEventsHandler,
   ],
   controllers: [QueueManagementController],
 })
-export class AppModule {}
+export class AppModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(TestHeadersMiddleware)
+      .forRoutes('*');
+  }
+}

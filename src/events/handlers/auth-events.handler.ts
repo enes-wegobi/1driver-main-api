@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { OnEvent } from '@nestjs/event-emitter';
+import { OnEvent, EventEmitter2 } from '@nestjs/event-emitter';
 import { LoggerService } from 'src/logger/logger.service';
 import { SessionMetadataService } from 'src/redis/services/session-metadata.service';
 import { ExpoNotificationsService } from 'src/modules/expo-notifications/expo-notifications.service';
@@ -20,6 +20,7 @@ export class AuthEventsHandler {
     private readonly sessionMetadata: SessionMetadataService,
     private readonly expoNotifications: ExpoNotificationsService,
     private readonly websocketService: WebSocketService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   @OnEvent(AUTH_EVENTS.FORCE_LOGOUT_REQUESTED)
@@ -194,8 +195,7 @@ export class AuthEventsHandler {
       timestamp: event.timestamp,
     };
     
-    // Use the event emitter to emit the session log event
-    // This is handled internally by NestJS event system
+    this.eventEmitter.emit(AUTH_EVENTS.SESSION_LOG, sessionLogEvent);
   }
 
   private emitWebSocketLogout(event: ForceLogoutRequestedEvent): void {
@@ -208,8 +208,7 @@ export class AuthEventsHandler {
       timestamp: event.timestamp,
     };
     
-    // Use the event emitter to emit the websocket logout event
-    // This is handled internally by NestJS event system
+    this.eventEmitter.emit(AUTH_EVENTS.WEBSOCKET_LOGOUT, webSocketEvent);
   }
 
   private emitPushNotificationLogout(event: ForceLogoutRequestedEvent): void {
@@ -222,7 +221,6 @@ export class AuthEventsHandler {
       timestamp: event.timestamp,
     };
     
-    // Use the event emitter to emit the push notification logout event
-    // This is handled internally by NestJS event system
+    this.eventEmitter.emit(AUTH_EVENTS.PUSH_NOTIFICATION_LOGOUT, pushNotificationEvent);
   }
 }

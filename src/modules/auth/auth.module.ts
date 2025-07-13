@@ -10,6 +10,7 @@ import { PaymentsModule } from '../payments/payments.module';
 import { DriversModule } from '../drivers/drivers.module';
 import { ForceLogoutService } from './force-logout.service';
 import { ExpoNotificationsModule } from '../expo-notifications/expo-notifications.module';
+import { AuthEventsModule } from '../../events/auth-events.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { ExpoNotificationsModule } from '../expo-notifications/expo-notification
     ExpoNotificationsModule,
     forwardRef(() => PaymentsModule),
     forwardRef(() => DriversModule),
+    AuthEventsModule,
   ],
   controllers: [AuthCustomerController, AuthDriverController],
   providers: [AuthService, ForceLogoutService],

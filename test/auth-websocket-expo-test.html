@@ -1,0 +1,1515 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auth + WebSocket + Expo Push Test Dashboard</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 0;
+            min-height: 800px;
+        }
+
+        .panel {
+            padding: 25px;
+            border-right: 1px solid #eee;
+            overflow-y: auto;
+            max-height: 800px;
+        }
+
+        .panel:last-child {
+            border-right: none;
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .panel-icon {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            font-size: 18px;
+            color: white;
+        }
+
+        .driver-panel .panel-icon {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+        }
+
+        .customer-panel .panel-icon {
+            background: linear-gradient(135deg, #4834d4, #686de0);
+        }
+
+        .expo-panel .panel-icon {
+            background: linear-gradient(135deg, #00b894, #00a085);
+        }
+
+        .panel-title {
+            font-size: 1.6em;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .section {
+            margin-bottom: 25px;
+        }
+
+        .section-title {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 12px;
+            padding-bottom: 6px;
+            border-bottom: 2px solid #ecf0f1;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            color: #555;
+            font-size: 13px;
+        }
+
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 13px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            padding: 10px 18px;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-right: 8px;
+            margin-bottom: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #00b894, #00a085);
+            color: white;
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #fdcb6e, #e17055);
+            color: white;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+
+        .status-connected {
+            background: #00b894;
+            box-shadow: 0 0 8px rgba(0, 184, 148, 0.5);
+        }
+
+        .status-disconnected {
+            background: #ff6b6b;
+        }
+
+        .status-connecting {
+            background: #fdcb6e;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .logs-section {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 8px;
+            height: 250px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            line-height: 1.4;
+            position: relative;
+        }
+
+        .log-entry {
+            margin-bottom: 6px;
+            padding: 4px;
+            border-radius: 3px;
+        }
+
+        .log-info {
+            background: rgba(52, 152, 219, 0.2);
+            border-left: 2px solid #3498db;
+        }
+
+        .log-success {
+            background: rgba(46, 204, 113, 0.2);
+            border-left: 2px solid #2ecc71;
+        }
+
+        .log-warning {
+            background: rgba(241, 196, 15, 0.2);
+            border-left: 2px solid #f1c40f;
+        }
+
+        .log-error {
+            background: rgba(231, 76, 60, 0.2);
+            border-left: 2px solid #e74c3c;
+        }
+
+        .timestamp {
+            color: #95a5a6;
+            font-size: 10px;
+        }
+
+        .clear-logs {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 10px;
+        }
+
+        .clear-logs:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .controls-group {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .token-display {
+            font-family: monospace;
+            font-size: 10px;
+            word-break: break-all;
+            background: #f8f9fa;
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #dee2e6;
+        }
+
+        .expo-token-generator {
+            background: #e8f4fd;
+            border: 1px solid #bee5eb;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 15px;
+        }
+
+        .expo-token-generator h4 {
+            color: #0c5460;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+
+        .notification-test {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 15px;
+        }
+
+        .notification-test h4 {
+            color: #856404;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+
+        @media (max-width: 1200px) {
+            .main-content {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .panel {
+                border-right: none;
+                border-bottom: 1px solid #eee;
+                max-height: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚗 Complete Test Dashboard</h1>
+            <p>Auth + WebSocket + Expo Push Notification Test Interface</p>
+        </div>
+
+        <div class="main-content">
+            <!-- Driver Panel -->
+            <div class="panel driver-panel">
+                <div class="panel-header">
+                    <div class="panel-icon">🚗</div>
+                    <div class="panel-title">Driver Panel</div>
+                </div>
+
+                <!-- Driver Authentication -->
+                <div class="section">
+                    <div class="section-title">Driver Authentication</div>
+                    
+                    <div class="form-group">
+                        <label>API Base URL:</label>
+                        <input type="text" id="driverApiUrl" value="http://localhost:3000">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Phone Number:</label>
+                        <input type="text" id="driverPhone" placeholder="+905551234567">
+                    </div>
+
+                    <div class="form-group" id="driverOtpGroup" style="display: none;">
+                        <label>OTP Code:</label>
+                        <input type="text" id="driverOtp" placeholder="123456" maxlength="6">
+                    </div>
+
+                    <div class="controls-group">
+                        <button class="btn btn-primary" onclick="initiateDriverSignup()" id="driverSignupBtn">Signup</button>
+                        <button class="btn btn-primary" onclick="initiateDriverLogin()" id="driverLoginBtn">Login</button>
+                        <button class="btn btn-success" onclick="completeDriverAuth()" id="driverOtpBtn" style="display: none;">Verify OTP</button>
+                        <button class="btn btn-warning" onclick="resendDriverOtp()" id="driverResendBtn" style="display: none;">Resend</button>
+                    </div>
+
+                    <div class="form-group" id="driverTokenGroup" style="display: none;">
+                        <label>Generated Token:</label>
+                        <textarea id="driverTokenDisplay" readonly rows="2" class="token-display"></textarea>
+                        <button class="btn btn-primary" onclick="copyDriverToken()" style="margin-top: 5px;">Copy Token</button>
+                    </div>
+                </div>
+
+                <!-- Driver WebSocket -->
+                <div class="section">
+                    <div class="section-title">WebSocket Connection</div>
+                    
+                    <div class="form-group">
+                        <label>WebSocket URL:</label>
+                        <input type="text" id="driverWsUrl" value="ws://localhost:3000">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Manual Token:</label>
+                        <input type="text" id="driverToken" placeholder="JWT Token">
+                    </div>
+
+                    <div style="margin-bottom: 15px;">
+                        <span class="status-indicator" id="driverStatus"></span>
+                        <span id="driverStatusText">Disconnected</span>
+                    </div>
+
+                    <div class="controls-group">
+                        <button class="btn btn-primary" onclick="connectDriver()">Connect</button>
+                        <button class="btn btn-danger" onclick="disconnectDriver()">Disconnect</button>
+                    </div>
+                </div>
+
+                <!-- Driver Controls -->
+                <div class="section">
+                    <div class="section-title">Driver Controls</div>
+                    
+                    <div class="controls-group">
+                        <button class="btn btn-warning" onclick="updateDriverAvailability('busy')">BUSY</button>
+                        <button class="btn btn-success" onclick="updateDriverAvailability('available')">AVAILABLE</button>
+                    </div>
+
+                    <div class="controls-group">
+                        <button class="btn btn-primary" onclick="sendDriverHeartbeat()">Heartbeat</button>
+                        <button class="btn btn-primary" onclick="sendDriverLocation()">Send Location</button>
+                    </div>
+                </div>
+
+                <!-- Driver Logs -->
+                <div class="section">
+                    <div class="section-title">Driver Logs</div>
+                    <div class="logs-section" id="driverLogs">
+                        <button class="clear-logs" onclick="clearLogs('driver')">Clear</button>
+                        <div class="log-entry log-info">
+                            <span class="timestamp">[Ready]</span> Driver panel initialized
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Customer Panel -->
+            <div class="panel customer-panel">
+                <div class="panel-header">
+                    <div class="panel-icon">👤</div>
+                    <div class="panel-title">Customer Panel</div>
+                </div>
+
+                <!-- Customer Authentication -->
+                <div class="section">
+                    <div class="section-title">Customer Authentication</div>
+                    
+                    <div class="form-group">
+                        <label>API Base URL:</label>
+                        <input type="text" id="customerApiUrl" value="http://localhost:3000">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Phone Number:</label>
+                        <input type="text" id="customerPhone" placeholder="+905551234567">
+                    </div>
+
+                    <div class="form-group" id="customerOtpGroup" style="display: none;">
+                        <label>OTP Code:</label>
+                        <input type="text" id="customerOtp" placeholder="123456" maxlength="6">
+                    </div>
+
+                    <div class="controls-group">
+                        <button class="btn btn-primary" onclick="initiateCustomerSignup()" id="customerSignupBtn">Signup</button>
+                        <button class="btn btn-primary" onclick="initiateCustomerLogin()" id="customerLoginBtn">Login</button>
+                        <button class="btn btn-success" onclick="completeCustomerAuth()" id="customerOtpBtn" style="display: none;">Verify OTP</button>
+                        <button class="btn btn-warning" onclick="resendCustomerOtp()" id="customerResendBtn" style="display: none;">Resend</button>
+                    </div>
+
+                    <div class="form-group" id="customerTokenGroup" style="display: none;">
+                        <label>Generated Token:</label>
+                        <textarea id="customerTokenDisplay" readonly rows="2" class="token-display"></textarea>
+                        <button class="btn btn-primary" onclick="copyCustomerToken()" style="margin-top: 5px;">Copy Token</button>
+                    </div>
+                </div>
+
+                <!-- Customer WebSocket -->
+                <div class="section">
+                    <div class="section-title">WebSocket Connection</div>
+                    
+                    <div class="form-group">
+                        <label>WebSocket URL:</label>
+                        <input type="text" id="customerWsUrl" value="ws://localhost:3000">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Manual Token:</label>
+                        <input type="text" id="customerToken" placeholder="JWT Token">
+                    </div>
+
+                    <div style="margin-bottom: 15px;">
+                        <span class="status-indicator" id="customerStatus"></span>
+                        <span id="customerStatusText">Disconnected</span>
+                    </div>
+
+                    <div class="controls-group">
+                        <button class="btn btn-primary" onclick="connectCustomer()">Connect</button>
+                        <button class="btn btn-danger" onclick="disconnectCustomer()">Disconnect</button>
+                    </div>
+                </div>
+
+                <!-- Customer Controls -->
+                <div class="section">
+                    <div class="section-title">Customer Controls</div>
+                    
+                    <div class="controls-group">
+                        <button class="btn btn-primary" onclick="sendCustomerHeartbeat()">Heartbeat</button>
+                        <button class="btn btn-primary" onclick="sendCustomerLocation()">Send Location</button>
+                    </div>
+                </div>
+
+                <!-- Customer Logs -->
+                <div class="section">
+                    <div class="section-title">Customer Logs</div>
+                    <div class="logs-section" id="customerLogs">
+                        <button class="clear-logs" onclick="clearLogs('customer')">Clear</button>
+                        <div class="log-entry log-info">
+                            <span class="timestamp">[Ready]</span> Customer panel initialized
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Expo Push Panel -->
+            <div class="panel expo-panel">
+                <div class="panel-header">
+                    <div class="panel-icon">🔔</div>
+                    <div class="panel-title">Expo Push Testing</div>
+                </div>
+
+                <!-- Expo Token Generation -->
+                <div class="section">
+                    <div class="section-title">Expo Token Management</div>
+                    
+                    <div class="expo-token-generator">
+                        <h4>🎲 Dummy Token Generator</h4>
+                        <div class="form-group">
+                            <label>Generated Expo Token:</label>
+                            <textarea id="expoToken" readonly rows="3" class="token-display"></textarea>
+                        </div>
+                        <div class="controls-group">
+                            <button class="btn btn-primary" onclick="generateDummyExpoToken()">Generate New Token</button>
+                            <button class="btn btn-success" onclick="copyExpoToken()">Copy Token</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Custom Expo Token:</label>
+                        <input type="text" id="customExpoToken" placeholder="Enter custom Expo token">
+                    </div>
+
+                    <div class="controls-group">
+                        <button class="btn btn-primary" onclick="useCustomExpoToken()">Use Custom Token</button>
+                        <button class="btn btn-warning" onclick="registerExpoToken('driver')">Register for Driver</button>
+                        <button class="btn btn-warning" onclick="registerExpoToken('customer')">Register for Customer</button>
+                    </div>
+                </div>
+
+                <!-- Force Logout Testing -->
+                <div class="section">
+                    <div class="section-title">Force Logout Testing</div>
+                    
+                    <div class="notification-test">
+                        <h4>⚠️ Security Alert Simulation</h4>
+                        <div class="form-group">
+                            <label>Target User Type:</label>
+                            <select id="forceLogoutUserType">
+                                <option value="driver">Driver</option>
+                                <option value="customer">Customer</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Device ID:</label>
+                            <input type="text" id="forceLogoutDeviceId" value="websocket-test-device">
+                        </div>
+                        <div class="form-group">
+                            <label>Reason:</label>
+                            <select id="forceLogoutReason">
+                                <option value="new_device_login">New Device Login</option>
+                                <option value="suspicious_activity">Suspicious Activity</option>
+                                <option value="security_breach">Security Breach</option>
+                                <option value="admin_force_logout">Admin Force Logout</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-danger" onclick="simulateForceLogout()">Simulate Force Logout</button>
+                    </div>
+                </div>
+
+                <!-- Push Notification Testing -->
+                <div class="section">
+                    <div class="section-title">Push Notification Testing</div>
+                    
+                    <div class="form-group">
+                        <label>Notification Type:</label>
+                        <select id="notificationType">
+                            <option value="force_logout">Force Logout Alert</option>
+                            <option value="trip_update">Trip Update</option>
+                            <option value="driver_assigned">Driver Assigned</option>
+                            <option value="trip_completed">Trip Completed</option>
+                            <option value="payment_required">Payment Required</option>
+                            <option value="security_alert">Security Alert</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Message Title:</label>
+                        <input type="text" id="notificationTitle" placeholder="Notification title">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Message Body:</label>
+                        <textarea id="notificationBody" placeholder="Notification message" rows="2"></textarea>
+                    </div>
+
+                    <div class="controls-group">
+                        <button class="btn btn-success" onclick="sendTestNotification()">Send Test Notification</button>
+                        <button class="btn btn-warning" onclick="fillSampleNotification()">Fill Sample</button>
+                    </div>
+                </div>
+
+                <!-- Expo Logs -->
+                <div class="section">
+                    <div class="section-title">Expo Logs</div>
+                    <div class="logs-section" id="expoLogs">
+                        <button class="clear-logs" onclick="clearLogs('expo')">Clear</button>
+                        <div class="log-entry log-info">
+                            <span class="timestamp">[Ready]</span> Expo push testing panel initialized
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let driverSocket = null;
+        let customerSocket = null;
+        let currentDriverAuthMode = null; // 'signup' or 'signin'
+        let currentCustomerAuthMode = null;
+        let currentExpoToken = null;
+
+        // Utility Functions
+        function getCurrentTimestamp() {
+            return new Date().toLocaleTimeString('tr-TR');
+        }
+
+        function addLog(panel, type, message) {
+            const logsContainer = document.getElementById(`${panel}Logs`);
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${type}`;
+            logEntry.innerHTML = `<span class="timestamp">[${getCurrentTimestamp()}]</span> ${message}`;
+            logsContainer.appendChild(logEntry);
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+        }
+
+        function clearLogs(panel) {
+            const logsContainer = document.getElementById(`${panel}Logs`);
+            logsContainer.innerHTML = `<button class="clear-logs" onclick="clearLogs('${panel}')">Clear</button>`;
+        }
+
+        function updateConnectionStatus(panel, status) {
+            const statusIndicator = document.getElementById(`${panel}Status`);
+            const statusText = document.getElementById(`${panel}StatusText`);
+            
+            statusIndicator.className = `status-indicator status-${status}`;
+            
+            switch(status) {
+                case 'connected':
+                    statusText.textContent = 'Connected';
+                    break;
+                case 'connecting':
+                    statusText.textContent = 'Connecting...';
+                    break;
+                case 'disconnected':
+                    statusText.textContent = 'Disconnected';
+                    break;
+            }
+        }
+
+        // Expo Token Functions
+        function generateDummyExpoToken() {
+            // Generate a realistic-looking Expo push token
+            const prefix = 'ExponentPushToken[';
+            const suffix = ']';
+            const tokenBody = Array.from({length: 22}, () => 
+                'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_'
+                .charAt(Math.floor(Math.random() * 64))
+            ).join('');
+            
+            const token = prefix + tokenBody + suffix;
+            document.getElementById('expoToken').value = token;
+            currentExpoToken = token;
+            
+            addLog('expo', 'success', `Generated dummy Expo token: ${token.substring(0, 30)}...`);
+        }
+
+        function copyExpoToken() {
+            const tokenField = document.getElementById('expoToken');
+            tokenField.select();
+            tokenField.setSelectionRange(0, 99999);
+            navigator.clipboard.writeText(tokenField.value);
+            addLog('expo', 'success', 'Expo token copied to clipboard!');
+        }
+
+        function useCustomExpoToken() {
+            const customToken = document.getElementById('customExpoToken').value;
+            if (!customToken) {
+                addLog('expo', 'error', 'Please enter a custom Expo token');
+                return;
+            }
+            
+            document.getElementById('expoToken').value = customToken;
+            currentExpoToken = customToken;
+            addLog('expo', 'info', `Using custom Expo token: ${customToken.substring(0, 30)}...`);
+        }
+
+        async function registerExpoToken(userType) {
+            const token = document.getElementById('expoToken').value || currentExpoToken;
+            if (!token) {
+                addLog('expo', 'error', 'No Expo token available. Generate or enter one first.');
+                return;
+            }
+
+            // This would typically be sent to your backend API
+            addLog('expo', 'info', `Registering Expo token for ${userType}: ${token.substring(0, 30)}...`);
+            
+            // Simulate API call
+            setTimeout(() => {
+                addLog('expo', 'success', `Expo token registered successfully for ${userType}`);
+            }, 1000);
+        }
+
+        // Force Logout Simulation
+        function simulateForceLogout() {
+            const userType = document.getElementById('forceLogoutUserType').value;
+            const deviceId = document.getElementById('forceLogoutDeviceId').value;
+            const reason = document.getElementById('forceLogoutReason').value;
+            const expoToken = document.getElementById('expoToken').value || currentExpoToken;
+
+            if (!expoToken) {
+                addLog('expo', 'error', 'No Expo token available for force logout simulation');
+                return;
+            }
+
+            addLog('expo', 'warning', `Simulating force logout for ${userType} with reason: ${reason}`);
+            
+            // Simulate the force logout process
+            const forceLogoutData = {
+                userType,
+                deviceId,
+                reason,
+                expoToken,
+                timestamp: new Date().toISOString()
+            };
+
+            // Log the simulation
+            addLog('expo', 'info', `Force logout data: ${JSON.stringify(forceLogoutData)}`);
+            
+            // Simulate WebSocket notification
+            setTimeout(() => {
+                addLog('expo', 'warning', '📡 WebSocket force logout event sent');
+            }, 500);
+
+            // Simulate push notification
+            setTimeout(() => {
+                addLog('expo', 'success', '🔔 Push notification sent - Force logout alert');
+                sendTestNotification('force_logout', 'Security Alert', `Your session was terminated due to: ${reason}`);
+            }, 1000);
+        }
+
+        // Notification Testing
+        function fillSampleNotification() {
+            const type = document.getElementById('notificationType').value;
+            let title, body;
+
+            switch(type) {
+                case 'force_logout':
+                    title = 'Security Alert';
+                    body = 'Your session has been terminated due to login from a new device.';
+                    break;
+                case 'trip_update':
+                    title = 'Trip Update';
+                    body = 'Your driver is 5 minutes away from your location.';
+                    break;
+                case 'driver_assigned':
+                    title = 'Driver Found';
+                    body = 'A driver has been assigned to your trip. Check the app for details.';
+                    break;
+                case 'trip_completed':
+                    title = 'Trip Completed';
+                    body = 'Your trip has been completed successfully. Please rate your experience.';
+                    break;
+                case 'payment_required':
+                    title = 'Payment Required';
+                    body = 'Please complete your payment to finalize the trip.';
+                    break;
+                case 'security_alert':
+                    title = 'Security Alert';
+                    body = 'Suspicious activity detected on your account. Please verify your identity.';
+                    break;
+                default:
+                    title = 'Test Notification';
+                    body = 'This is a test notification.';
+            }
+
+            document.getElementById('notificationTitle').value = title;
+            document.getElementById('notificationBody').value = body;
+        }
+
+        function sendTestNotification(type = null, title = null, body = null) {
+            const notificationType = type || document.getElementById('notificationType').value;
+            const notificationTitle = title || document.getElementById('notificationTitle').value;
+            const notificationBody = body || document.getElementById('notificationBody').value;
+            const expoToken = document.getElementById('expoToken').value || currentExpoToken;
+
+            if (!expoToken) {
+                addLog('expo', 'error', 'No Expo token available for sending notification');
+                return;
+            }
+
+            if (!notificationTitle || !notificationBody) {
+                addLog('expo', 'error', 'Please enter notification title and body');
+                return;
+            }
+
+            const notificationData = {
+                to: expoToken,
+                title: notificationTitle,
+                body: notificationBody,
+                type: notificationType,
+                data: {
+                    type: notificationType,
+                    timestamp: new Date().toISOString()
+                }
+            };
+
+            addLog('expo', 'info', `Sending ${notificationType} notification: ${notificationTitle}`);
+            addLog('expo', 'info', `Notification data: ${JSON.stringify(notificationData)}`);
+            
+            // Simulate successful notification send
+            setTimeout(() => {
+                addLog('expo', 'success', '🔔 Test notification sent successfully!');
+            }, 1000);
+        }
+
+        // Driver Authentication Functions
+        async function initiateDriverSignup() {
+            currentDriverAuthMode = 'signup';
+            const apiUrl = document.getElementById('driverApiUrl').value;
+            const phone = document.getElementById('driverPhone').value;
+
+            if (!phone) {
+                addLog('driver', 'error', 'Phone number required!');
+                return;
+            }
+
+            try {
+                addLog('driver', 'info', `Driver signup initiated: ${phone}`);
+                
+                const response = await fetch(`${apiUrl}/auth/driver/initiate-signup`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ phone: phone })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    addLog('driver', 'success', `Signup OTP sent: ${JSON.stringify(data)}`);
+                    showOtpInput('driver');
+                } else {
+                    addLog('driver', 'error', `Signup failed: ${JSON.stringify(data)}`);
+                }
+            } catch (error) {
+                addLog('driver', 'error', `Signup error: ${error.message}`);
+            }
+        }
+
+        async function initiateDriverLogin() {
+            currentDriverAuthMode = 'signin';
+            const apiUrl = document.getElementById('driverApiUrl').value;
+            const phone = document.getElementById('driverPhone').value;
+
+            if (!phone) {
+                addLog('driver', 'error', 'Phone number required!');
+                return;
+            }
+
+            try {
+                addLog('driver', 'info', `Driver login initiated: ${phone}`);
+                
+                const response = await fetch(`${apiUrl}/auth/driver/initiate-signin`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ phone: phone })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    addLog('driver', 'success', `Login OTP sent: ${JSON.stringify(data)}`);
+                    showOtpInput('driver');
+                } else {
+                    addLog('driver', 'error', `Login failed: ${JSON.stringify(data)}`);
+                }
+            } catch (error) {
+                addLog('driver', 'error', `Login error: ${error.message}`);
+            }
+        }
+
+        async function completeDriverAuth() {
+            const apiUrl = document.getElementById('driverApiUrl').value;
+            const phone = document.getElementById('driverPhone').value;
+            const otp = document.getElementById('driverOtp').value;
+
+            if (!otp) {
+                addLog('driver', 'error', 'OTP code required!');
+                return;
+            }
+
+            try {
+                const endpoint = currentDriverAuthMode === 'signup' ? 'complete-signup' : 'complete-signin';
+                addLog('driver', 'info', `Verifying OTP for ${currentDriverAuthMode}: ${otp}`);
+                
+                const response = await fetch(`${apiUrl}/auth/driver/${endpoint}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'device-id': 'websocket-test-dashboard'
+                    },
+                    body: JSON.stringify({ phone: phone, otp: otp })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.token) {
+                    addLog('driver', 'success', `${currentDriverAuthMode} successful! Token received.`);
+                    
+                    // Display and use token
+                    document.getElementById('driverTokenDisplay').value = data.token;
+                    document.getElementById('driverTokenGroup').style.display = 'block';
+                    document.getElementById('driverToken').value = data.token;
+                    
+                    hideOtpInput('driver');
+                } else {
+                    addLog('driver', 'error', `OTP verification failed: ${JSON.stringify(data)}`);
+                }
+            } catch (error) {
+                addLog('driver', 'error', `OTP verification error: ${error.message}`);
+            }
+        }
+
+        async function resendDriverOtp() {
+            const apiUrl = document.getElementById('driverApiUrl').value;
+            const phone = document.getElementById('driverPhone').value;
+
+            try {
+                addLog('driver', 'info', 'Resending driver OTP...');
+                
+                const response = await fetch(`${apiUrl}/auth/driver/resend-otp`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ phone: phone })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    addLog('driver', 'success', `OTP resent: ${JSON.stringify(data)}`);
+                } else {
+                    addLog('driver', 'error', `OTP resend failed: ${JSON.stringify(data)}`);
+                }
+            } catch (error) {
+                addLog('driver', 'error', `OTP resend error: ${error.message}`);
+            }
+        }
+
+        function copyDriverToken() {
+            const tokenDisplay = document.getElementById('driverTokenDisplay');
+            tokenDisplay.select();
+            navigator.clipboard.writeText(tokenDisplay.value);
+            addLog('driver', 'success', 'Driver token copied to clipboard!');
+        }
+
+        // Customer Authentication Functions (similar to driver)
+        async function initiateCustomerSignup() {
+            currentCustomerAuthMode = 'signup';
+            const apiUrl = document.getElementById('customerApiUrl').value;
+            const phone = document.getElementById('customerPhone').value;
+
+            if (!phone) {
+                addLog('customer', 'error', 'Phone number required!');
+                return;
+            }
+
+            try {
+                addLog('customer', 'info', `Customer signup initiated: ${phone}`);
+                
+                const response = await fetch(`${apiUrl}/auth/customer/initiate-signup`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ phone: phone })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    addLog('customer', 'success', `Signup OTP sent: ${JSON.stringify(data)}`);
+                    showOtpInput('customer');
+                } else {
+                    addLog('customer', 'error', `Signup failed: ${JSON.stringify(data)}`);
+                }
+            } catch (error) {
+                addLog('customer', 'error', `Signup error: ${error.message}`);
+            }
+        }
+
+        async function initiateCustomerLogin() {
+            currentCustomerAuthMode = 'signin';
+            const apiUrl = document.getElementById('customerApiUrl').value;
+            const phone = document.getElementById('customerPhone').value;
+
+            if (!phone) {
+                addLog('customer', 'error', 'Phone number required!');
+                return;
+            }
+
+            try {
+                addLog('customer', 'info', `Customer login initiated: ${phone}`);
+                
+                const response = await fetch(`${apiUrl}/auth/customer/initiate-signin`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ phone: phone })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    addLog('customer', 'success', `Login OTP sent: ${JSON.stringify(data)}`);
+                    showOtpInput('customer');
+                } else {
+                    addLog('customer', 'error', `Login failed: ${JSON.stringify(data)}`);
+                }
+            } catch (error) {
+                addLog('customer', 'error', `Login error: ${error.message}`);
+            }
+        }
+
+        async function completeCustomerAuth() {
+            const apiUrl = document.getElementById('customerApiUrl').value;
+            const phone = document.getElementById('customerPhone').value;
+            const otp = document.getElementById('customerOtp').value;
+
+            if (!otp) {
+                addLog('customer', 'error', 'OTP code required!');
+                return;
+            }
+
+            try {
+                const endpoint = currentCustomerAuthMode === 'signup' ? 'complete-signup' : 'complete-signin';
+                addLog('customer', 'info', `Verifying OTP for ${currentCustomerAuthMode}: ${otp}`);
+                
+                const response = await fetch(`${apiUrl}/auth/customer/${endpoint}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'device-id': 'websocket-test-dashboard'
+                    },
+                    body: JSON.stringify({ phone: phone, otp: otp })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.token) {
+                    addLog('customer', 'success', `${currentCustomerAuthMode} successful! Token received.`);
+                    
+                    // Display and use token
+                    document.getElementById('customerTokenDisplay').value = data.token;
+                    document.getElementById('customerTokenGroup').style.display = 'block';
+                    document.getElementById('customerToken').value = data.token;
+                    
+                    hideOtpInput('customer');
+                } else {
+                    addLog('customer', 'error', `OTP verification failed: ${JSON.stringify(data)}`);
+                }
+            } catch (error) {
+                addLog('customer', 'error', `OTP verification error: ${error.message}`);
+            }
+        }
+
+        async function resendCustomerOtp() {
+            const apiUrl = document.getElementById('customerApiUrl').value;
+            const phone = document.getElementById('customerPhone').value;
+
+            try {
+                addLog('customer', 'info', 'Resending customer OTP...');
+                
+                const response = await fetch(`${apiUrl}/auth/customer/resend-otp`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ phone: phone })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    addLog('customer', 'success', `OTP resent: ${JSON.stringify(data)}`);
+                } else {
+                    addLog('customer', 'error', `OTP resend failed: ${JSON.stringify(data)}`);
+                }
+            } catch (error) {
+                addLog('customer', 'error', `OTP resend error: ${error.message}`);
+            }
+        }
+
+        function copyCustomerToken() {
+            const tokenDisplay = document.getElementById('customerTokenDisplay');
+            tokenDisplay.select();
+            navigator.clipboard.writeText(tokenDisplay.value);
+            addLog('customer', 'success', 'Customer token copied to clipboard!');
+        }
+
+        // UI Helper Functions
+        function showOtpInput(userType) {
+            document.getElementById(`${userType}OtpGroup`).style.display = 'block';
+            document.getElementById(`${userType}SignupBtn`).style.display = 'none';
+            document.getElementById(`${userType}LoginBtn`).style.display = 'none';
+            document.getElementById(`${userType}OtpBtn`).style.display = 'inline-block';
+            document.getElementById(`${userType}ResendBtn`).style.display = 'inline-block';
+        }
+
+        function hideOtpInput(userType) {
+            document.getElementById(`${userType}OtpGroup`).style.display = 'none';
+            document.getElementById(`${userType}SignupBtn`).style.display = 'inline-block';
+            document.getElementById(`${userType}LoginBtn`).style.display = 'inline-block';
+            document.getElementById(`${userType}OtpBtn`).style.display = 'none';
+            document.getElementById(`${userType}ResendBtn`).style.display = 'none';
+            document.getElementById(`${userType}Otp`).value = '';
+        }
+
+        // WebSocket Functions
+        function connectDriver() {
+            const url = document.getElementById('driverWsUrl').value;
+            const token = document.getElementById('driverToken').value;
+
+            if (!token) {
+                addLog('driver', 'error', 'Token required for WebSocket connection!');
+                return;
+            }
+
+            updateConnectionStatus('driver', 'connecting');
+            addLog('driver', 'info', `Connecting to WebSocket: ${url}`);
+
+            driverSocket = io(url, {
+                auth: { 
+                    token: token,
+                    deviceId: 'websocket-test-dashboard'
+                },
+                query: {
+                    'device-id': 'websocket-test-dashboard'
+                },
+                transports: ['websocket']
+            });
+
+            setupDriverSocketEvents();
+        }
+
+        function setupDriverSocketEvents() {
+            driverSocket.on('connect', () => {
+                updateConnectionStatus('driver', 'connected');
+                addLog('driver', 'success', `WebSocket connected! Socket ID: ${driverSocket.id}`);
+                
+                // Send authentication event as required by the current project
+                addLog('driver', 'info', 'Sending authentication event...');
+                driverSocket.emit('authenticate');
+            });
+
+            driverSocket.on('connection_pending', (data) => {
+                addLog('driver', 'warning', `Authentication pending: ${JSON.stringify(data)}`);
+            });
+
+            driverSocket.on('auth_failed', (data) => {
+                addLog('driver', 'error', `Authentication failed: ${JSON.stringify(data)}`);
+                updateConnectionStatus('driver', 'disconnected');
+            });
+
+            driverSocket.on('connection', (data) => {
+                addLog('driver', 'success', `Authentication successful: ${JSON.stringify(data)}`);
+                if (data.availabilityStatus) {
+                    addLog('driver', 'info', `Driver availability: ${data.availabilityStatus}`);
+                }
+                if (data.heartbeatInterval) {
+                    addLog('driver', 'info', `Heartbeat interval: ${data.heartbeatInterval}ms`);
+                }
+            });
+
+            // Heartbeat acknowledgment
+            driverSocket.on('heartbeat-ack', (data) => {
+                addLog('driver', 'success', `💓 Heartbeat ACK: ${JSON.stringify(data)}`);
+            });
+
+            driverSocket.on('disconnect', () => {
+                updateConnectionStatus('driver', 'disconnected');
+                addLog('driver', 'warning', 'WebSocket disconnected');
+            });
+
+            driverSocket.on('error', (error) => {
+                addLog('driver', 'error', `WebSocket error: ${JSON.stringify(error)}`);
+            });
+
+            // Driver specific events
+            driverSocket.on('driver:location_updated', (data) => {
+                addLog('driver', 'info', `Location updated: ${JSON.stringify(data)}`);
+            });
+
+            driverSocket.on('driver:status_changed', (data) => {
+                addLog('driver', 'info', `Status changed: ${JSON.stringify(data)}`);
+            });
+
+            // Trip events
+            driverSocket.on('trip:requested', (data) => {
+                addLog('driver', 'info', `🚗 Trip requested: ${JSON.stringify(data)}`);
+            });
+
+            driverSocket.on('trip:driver_assigned', (data) => {
+                addLog('driver', 'success', `✅ Trip assigned: ${JSON.stringify(data)}`);
+            });
+
+            driverSocket.on('trip:cancelled', (data) => {
+                addLog('driver', 'warning', `❌ Trip cancelled: ${JSON.stringify(data)}`);
+            });
+
+            driverSocket.on('trip:completed', (data) => {
+                addLog('driver', 'success', `🏁 Trip completed: ${JSON.stringify(data)}`);
+            });
+
+            // Force logout events
+            driverSocket.on('force_logout', (data) => {
+                addLog('driver', 'error', `🚨 FORCE LOGOUT: ${JSON.stringify(data)}`);
+                updateConnectionStatus('driver', 'disconnected');
+            });
+
+            // Generic event listener for all other events
+            driverSocket.onAny((eventName, data) => {
+                if (!['connect', 'disconnect', 'connection', 'heartbeat-ack', 'driver:location_updated', 'driver:status_changed', 'trip:requested', 'trip:driver_assigned', 'trip:cancelled', 'trip:completed', 'force_logout'].includes(eventName)) {
+                    addLog('driver', 'info', `📡 Event: ${eventName} - ${JSON.stringify(data)}`);
+                }
+            });
+        }
+
+        function disconnectDriver() {
+            if (driverSocket) {
+                driverSocket.disconnect();
+                driverSocket = null;
+                updateConnectionStatus('driver', 'disconnected');
+                addLog('driver', 'info', 'WebSocket connection closed');
+            }
+        }
+
+        function connectCustomer() {
+            const url = document.getElementById('customerWsUrl').value;
+            const token = document.getElementById('customerToken').value;
+
+            if (!token) {
+                addLog('customer', 'error', 'Token required for WebSocket connection!');
+                return;
+            }
+
+            updateConnectionStatus('customer', 'connecting');
+            addLog('customer', 'info', `Connecting to WebSocket: ${url}`);
+
+            customerSocket = io(url, {
+                auth: { 
+                    token: token,
+                    deviceId: 'websocket-test-dashboard'
+                },
+                query: {
+                    'device-id': 'websocket-test-dashboard'
+                },
+                transports: ['websocket']
+            });
+
+            setupCustomerSocketEvents();
+        }
+
+        function setupCustomerSocketEvents() {
+            customerSocket.on('connect', () => {
+                updateConnectionStatus('customer', 'connected');
+                addLog('customer', 'success', `WebSocket connected! Socket ID: ${customerSocket.id}`);
+                
+                // Send authentication event as required by the current project
+                addLog('customer', 'info', 'Sending authentication event...');
+                customerSocket.emit('authenticate');
+            });
+
+            customerSocket.on('connection_pending', (data) => {
+                addLog('customer', 'warning', `Authentication pending: ${JSON.stringify(data)}`);
+            });
+
+            customerSocket.on('auth_failed', (data) => {
+                addLog('customer', 'error', `Authentication failed: ${JSON.stringify(data)}`);
+                updateConnectionStatus('customer', 'disconnected');
+            });
+
+            customerSocket.on('connection', (data) => {
+                addLog('customer', 'success', `Authentication successful: ${JSON.stringify(data)}`);
+                if (data.heartbeatInterval) {
+                    addLog('customer', 'info', `Heartbeat interval: ${data.heartbeatInterval}ms`);
+                }
+            });
+
+            // Heartbeat acknowledgment
+            customerSocket.on('heartbeat-ack', (data) => {
+                addLog('customer', 'success', `💓 Heartbeat ACK: ${JSON.stringify(data)}`);
+            });
+
+            customerSocket.on('disconnect', () => {
+                updateConnectionStatus('customer', 'disconnected');
+                addLog('customer', 'warning', 'WebSocket disconnected');
+            });
+
+            customerSocket.on('error', (error) => {
+                addLog('customer', 'error', `WebSocket error: ${JSON.stringify(error)}`);
+            });
+
+            // Customer specific events
+            customerSocket.on('customer:location_updated', (data) => {
+                addLog('customer', 'info', `Location updated: ${JSON.stringify(data)}`);
+            });
+
+            // Driver location updates (when in trip)
+            customerSocket.on('driver:location_updated', (data) => {
+                addLog('customer', 'info', `🚗 Driver location updated: ${JSON.stringify(data)}`);
+            });
+
+            // Trip events
+            customerSocket.on('trip:driver_assigned', (data) => {
+                addLog('customer', 'success', `✅ Driver assigned: ${JSON.stringify(data)}`);
+            });
+
+            customerSocket.on('trip:driver_en_route', (data) => {
+                addLog('customer', 'info', `🚗 Driver en route: ${JSON.stringify(data)}`);
+            });
+
+            customerSocket.on('trip:driver_arrived', (data) => {
+                addLog('customer', 'success', `📍 Driver arrived: ${JSON.stringify(data)}`);
+            });
+
+            customerSocket.on('trip:started', (data) => {
+                addLog('customer', 'info', `🚀 Trip started: ${JSON.stringify(data)}`);
+            });
+
+            customerSocket.on('trip:cancelled', (data) => {
+                addLog('customer', 'warning', `❌ Trip cancelled: ${JSON.stringify(data)}`);
+            });
+
+            customerSocket.on('trip:completed', (data) => {
+                addLog('customer', 'success', `🏁 Trip completed: ${JSON.stringify(data)}`);
+            });
+
+            customerSocket.on('trip:payment_required', (data) => {
+                addLog('customer', 'warning', `💳 Payment required: ${JSON.stringify(data)}`);
+            });
+
+            customerSocket.on('trip:payment_success', (data) => {
+                addLog('customer', 'success', `✅ Payment successful: ${JSON.stringify(data)}`);
+            });
+
+            customerSocket.on('trip:payment_failed', (data) => {
+                addLog('customer', 'error', `❌ Payment failed: ${JSON.stringify(data)}`);
+            });
+
+            // Notification events
+            customerSocket.on('notification', (data) => {
+                addLog('customer', 'info', `🔔 Notification: ${JSON.stringify(data)}`);
+            });
+
+            // Force logout events
+            customerSocket.on('force_logout', (data) => {
+                addLog('customer', 'error', `🚨 FORCE LOGOUT: ${JSON.stringify(data)}`);
+                updateConnectionStatus('customer', 'disconnected');
+            });
+
+            // Generic event listener for all other events
+            customerSocket.onAny((eventName, data) => {
+                if (!['connect', 'disconnect', 'connection', 'heartbeat-ack', 'customer:location_updated', 'driver:location_updated', 'trip:driver_assigned', 'trip:driver_en_route', 'trip:driver_arrived', 'trip:started', 'trip:cancelled', 'trip:completed', 'trip:payment_required', 'trip:payment_success', 'trip:payment_failed', 'notification', 'force_logout'].includes(eventName)) {
+                    addLog('customer', 'info', `📡 Event: ${eventName} - ${JSON.stringify(data)}`);
+                }
+            });
+        }
+
+        function disconnectCustomer() {
+            if (customerSocket) {
+                customerSocket.disconnect();
+                customerSocket = null;
+                updateConnectionStatus('customer', 'disconnected');
+                addLog('customer', 'info', 'WebSocket connection closed');
+            }
+        }
+
+        // Driver Controls
+        function updateDriverAvailability(status) {
+            if (!driverSocket || !driverSocket.connected) {
+                addLog('driver', 'error', 'WebSocket connection required!');
+                return;
+            }
+
+            addLog('driver', 'info', `Updating driver availability: ${status}`);
+            driverSocket.emit('updateDriverAvailability', { status: status });
+        }
+
+        function sendDriverHeartbeat() {
+            if (!driverSocket || !driverSocket.connected) {
+                addLog('driver', 'error', 'WebSocket connection required!');
+                return;
+            }
+
+            const heartbeatData = {
+                timestamp: new Date().toISOString(),
+                appState: 'active',
+                location: {
+                    latitude: 41.0082,
+                    longitude: 28.9784,
+                    accuracy: 10
+                }
+            };
+
+            addLog('driver', 'info', `Sending heartbeat: ${JSON.stringify(heartbeatData)}`);
+            driverSocket.emit('heartbeat', heartbeatData);
+        }
+
+        function sendDriverLocation() {
+            if (!driverSocket || !driverSocket.connected) {
+                addLog('driver', 'error', 'WebSocket connection required!');
+                return;
+            }
+
+            const locationData = {
+                latitude: 41.0082 + (Math.random() - 0.5) * 0.01,
+                longitude: 28.9784 + (Math.random() - 0.5) * 0.01,
+                speed: Math.random() * 60,
+                heading: Math.random() * 360,
+                accuracy: 10,
+                timestamp: new Date().toISOString()
+            };
+
+            addLog('driver', 'info', `Sending location: ${JSON.stringify(locationData)}`);
+            driverSocket.emit('updateLocation', locationData);
+        }
+
+        // Customer Controls
+        function sendCustomerHeartbeat() {
+            if (!customerSocket || !customerSocket.connected) {
+                addLog('customer', 'error', 'WebSocket connection required!');
+                return;
+            }
+
+            const heartbeatData = {
+                timestamp: new Date().toISOString(),
+                appState: 'active',
+                location: {
+                    latitude: 41.0082,
+                    longitude: 28.9784,
+                    accuracy: 10
+                }
+            };
+
+            addLog('customer', 'info', `Sending heartbeat: ${JSON.stringify(heartbeatData)}`);
+            customerSocket.emit('heartbeat', heartbeatData);
+        }
+
+        function sendCustomerLocation() {
+            if (!customerSocket || !customerSocket.connected) {
+                addLog('customer', 'error', 'WebSocket connection required!');
+                return;
+            }
+
+            const locationData = {
+                latitude: 41.0082 + (Math.random() - 0.5) * 0.01,
+                longitude: 28.9784 + (Math.random() - 0.5) * 0.01,
+                accuracy: Math.random() * 20 + 5,
+                altitude: Math.random() * 100,
+                timestamp: new Date().toISOString()
+            };
+
+            addLog('customer', 'info', `Sending location: ${JSON.stringify(locationData)}`);
+            customerSocket.emit('updateLocation', locationData);
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            updateConnectionStatus('driver', 'disconnected');
+            updateConnectionStatus('customer', 'disconnected');
+            
+            // Generate initial dummy expo token
+            generateDummyExpoToken();
+            
+            addLog('driver', 'info', 'Complete test dashboard initialized');
+            addLog('customer', 'info', 'Complete test dashboard initialized');
+            addLog('expo', 'info', 'Expo push testing initialized');
+        });
+    </script>
+</body>
+</html>

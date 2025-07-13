@@ -141,23 +141,17 @@ export class WebSocketService {
 
       let disconnectedSockets = 0;
 
-      // Send force logout event to all sockets for this device
+      // Send force logout event and immediately disconnect
       for (const connection of connections) {
         const socket = this.server.sockets.sockets.get(connection.socketId);
         
         if (socket) {
-          // Emit force logout event
+          // Emit force logout event and immediately disconnect
           socket.emit('force_logout', forceLogoutEvent);
-          
-          // Give the client a moment to handle the event gracefully
-          setTimeout(() => {
-            if (socket.connected) {
-              socket.disconnect(true);
-              disconnectedSockets++;
-            }
-          }, 2000);
+          socket.disconnect(true);
+          disconnectedSockets++;
 
-          this.logger.info('Force logout event sent to socket', {
+          this.logger.info('Force logout event sent and socket disconnected', {
             socketId: connection.socketId,
             deviceId,
             userId: connection.userId,
