@@ -8,6 +8,7 @@ import { NearbySearchService } from './services/nearby-search.service';
 import { ActiveTripService } from './services/active-trip.service';
 import { DriverTripQueueService } from './services/driver-trip-queue.service';
 import { TokenManagerService } from './services/token-manager.service';
+import { WebSocketRedisService } from './services/websocket-redis.service';
 
 @Module({
   imports: [ConfigModule],
@@ -20,6 +21,7 @@ import { TokenManagerService } from './services/token-manager.service';
     ActiveTripService,
     TokenManagerService,
     DriverTripQueueService,
+    WebSocketRedisService,
   ],
   exports: [
     BaseRedisService,
@@ -30,6 +32,7 @@ import { TokenManagerService } from './services/token-manager.service';
     ActiveTripService,
     TokenManagerService,
     DriverTripQueueService,
+    WebSocketRedisService,
   ],
 })
 export class RedisModule {}

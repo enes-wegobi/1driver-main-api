@@ -41,12 +41,11 @@ export class AuthEventsHandler {
   @OnEvent(AUTH_EVENTS.WEBSOCKET_LOGOUT)
   async handleWebSocketLogout(event: WebSocketLogoutEvent): Promise<void> {
     try {
-      const success = await this.websocketService.forceLogoutDevice(
-        event.deviceId,
+      const success = await this.websocketService.forceLogoutUser(
+        event.userId,
+        event.userType,
         event.reason,
         {
-          userId: event.userId,
-          userType: event.userType,
           timestamp: event.timestamp.toISOString(),
           newDeviceId: event.sessionInfo?.newDeviceId,
         },
@@ -56,14 +55,12 @@ export class AuthEventsHandler {
         this.logger.info('WebSocket force logout notification sent successfully', {
           userId: event.userId,
           userType: event.userType,
-          deviceId: event.deviceId,
           reason: event.reason,
         });
       } else {
-        this.logger.warn('WebSocket force logout notification failed - no active connections', {
+        this.logger.warn('WebSocket force logout notification failed - no active connection', {
           userId: event.userId,
           userType: event.userType,
-          deviceId: event.deviceId,
           reason: event.reason,
         });
       }
@@ -71,7 +68,6 @@ export class AuthEventsHandler {
       this.logger.error('Error sending WebSocket force logout notification', {
         userId: event.userId,
         userType: event.userType,
-        deviceId: event.deviceId,
         reason: event.reason,
         error: error.message,
       });

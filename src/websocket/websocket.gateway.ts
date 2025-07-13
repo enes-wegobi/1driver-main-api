@@ -79,12 +79,12 @@ export class WebSocketGateway
       const deviceId = client.data.deviceId;
       const clientId = client.id;
 
-      // Register device connection for tracking
-      await this.webSocketService.registerDeviceConnection(
-        deviceId,
-        client,
+      // Register user connection for tracking (single connection per user)
+      await this.webSocketService.registerUserConnection(
         userId,
         userType,
+        client,
+        deviceId,
       );
 
       // Join rooms based on user type and ID for easier targeting
@@ -136,14 +136,14 @@ export class WebSocketGateway
 
       // Listen to built-in ping/pong events for logging
       client.on('ping', () => {
-        this.webSocketService.updateDeviceActivity(deviceId, clientId);
+        this.webSocketService.updateUserActivity(userId, userType);
         this.logger.debug(
           `[PING] Received from ${userType}:${userId} (${clientId})`,
         );
       });
 
       client.on('pong', (latency) => {
-        this.webSocketService.updateDeviceActivity(deviceId, clientId);
+        this.webSocketService.updateUserActivity(userId, userType);
         this.logger.debug(
           `[PONG] Received from ${userType}:${userId} (${clientId}), latency: ${latency}ms`,
         );
@@ -196,8 +196,8 @@ export class WebSocketGateway
     const userType = client.data.userType;
     const deviceId = client.data.deviceId;
 
-    // Update device activity
-    await this.webSocketService.updateDeviceActivity(deviceId, client.id);
+    // Update user activity
+    await this.webSocketService.updateUserActivity(userId, userType);
 
     if (!userId) {
       client.emit('error', { message: 'User not authenticated' });
@@ -253,8 +253,8 @@ export class WebSocketGateway
     const userType = client.data.userType;
     const deviceId = client.data.deviceId;
 
-    // Update device activity
-    await this.webSocketService.updateDeviceActivity(deviceId, client.id);
+    // Update user activity
+    await this.webSocketService.updateUserActivity(userId, userType);
 
     if (!userId) {
       client.emit('error', { message: 'User not authenticated' });

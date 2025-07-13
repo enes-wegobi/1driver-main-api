@@ -80,8 +80,8 @@ export class AuthCustomerController {
         const ipAddress = forwardedFor || realIp || 'unknown';
         const finalDeviceId = deviceId || 'unknown-device';
 
-        // Check for existing session and handle force logout if needed
-        const existingSession = await this.tokenManagerService.storeActiveToken(
+        // Atomically replace existing session with new one
+        const existingSession = await this.tokenManagerService.replaceActiveToken(
           result.customer.id,
           UserType.CUSTOMER,
           result.token,
@@ -160,14 +160,8 @@ export class AuthCustomerController {
         const finalDeviceId = deviceId || 'unknown-device';
         const userId = result.customer._id;
 
-        // Get existing session before storing new one
-        const existingSession = await this.tokenManagerService.getActiveToken(
-          userId,
-          UserType.CUSTOMER,
-        );
-
-        // Store new active session with metadata
-        await this.tokenManagerService.storeActiveToken(
+        // Atomically replace existing session with new one
+        const existingSession = await this.tokenManagerService.replaceActiveToken(
           userId,
           UserType.CUSTOMER,
           result.token,

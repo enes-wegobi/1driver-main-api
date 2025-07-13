@@ -80,8 +80,8 @@ export class AuthDriverController {
         const ipAddress = forwardedFor || realIp || 'unknown';
         const finalDeviceId = deviceId || 'unknown-device';
 
-        // Check for existing session and handle force logout if needed
-        const existingSession = await this.tokenManagerService.storeActiveToken(
+        // Atomically replace existing session with new one
+        const existingSession = await this.tokenManagerService.replaceActiveToken(
           result.driver.id,
           UserType.DRIVER,
           result.token,
@@ -167,14 +167,8 @@ export class AuthDriverController {
         const finalDeviceId = deviceId || 'unknown-device';
         const userId = result.driver._id;
 
-        // Get existing session before storing new one
-        const existingSession = await this.tokenManagerService.getActiveToken(
-          userId,
-          UserType.DRIVER,
-        );
-
-        // Store new active session with metadata
-        await this.tokenManagerService.storeActiveToken(
+        // Atomically replace existing session with new one
+        const existingSession = await this.tokenManagerService.replaceActiveToken(
           userId,
           UserType.DRIVER,
           result.token,

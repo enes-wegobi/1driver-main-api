@@ -79,4 +79,9 @@ export class RedisKeyGenerator {
   static driverLastRequest(driverId: string): string {
     return `driver:${driverId}:last-request`;
   }
+
+  // WebSocket connection keys
+  static userActiveWebSocket(userId: string, userType: UserType): string {
+    return `ws:user:active_socket:${userType}:${userId}`;
+  }
 }

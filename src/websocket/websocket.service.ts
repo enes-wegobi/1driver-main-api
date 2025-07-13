@@ -3,22 +3,16 @@ import { Server, Socket } from 'socket.io';
 import { LoggerService } from 'src/logger/logger.service';
 import { EventType } from 'src/modules/event/enum/event-type.enum';
 import { UserType } from 'src/common/user-type.enum';
-
-export interface DeviceConnectionInfo {
-  socketId: string;
-  userId: string;
-  userType: UserType;
-  deviceId: string;
-  connectedAt: string;
-  lastActivity: string;
-}
+import { WebSocketRedisService } from 'src/redis/services/websocket-redis.service';
 
 @Injectable()
 export class WebSocketService {
   private server: Server;
-  private deviceConnections = new Map<string, DeviceConnectionInfo[]>();
 
-  constructor(private readonly logger: LoggerService) {}
+  constructor(
+    private readonly logger: LoggerService,
+    private readonly webSocketRedis: WebSocketRedisService,
+  ) {}
 
   setServer(server: Server) {
     this.server = server;
@@ -74,58 +68,64 @@ export class WebSocketService {
   }
 
   /**
-   * Register a device connection for tracking
+   * Register a WebSocket connection for a user (single connection per user)
+   * If user already has an active connection, disconnect the old one
    */
-  async registerDeviceConnection(
-    deviceId: string,
-    socket: Socket,
+  async registerUserConnection(
     userId: string,
     userType: UserType,
+    socket: Socket,
+    deviceId: string,
   ): Promise<void> {
-    const connectionInfo: DeviceConnectionInfo = {
-      socketId: socket.id,
+    // Check for existing connection and disconnect it
+    const existingConnection = await this.webSocketRedis.setActiveConnection(
       userId,
       userType,
+      socket.id,
       deviceId,
-      connectedAt: new Date().toISOString(),
-      lastActivity: new Date().toISOString(),
-    };
+    );
 
-    if (!this.deviceConnections.has(deviceId)) {
-      this.deviceConnections.set(deviceId, []);
+    if (existingConnection) {
+      await this.forceDisconnectSocket(existingConnection.socketId, 'new_session_established');
+      
+      this.logger.info('Previous WebSocket connection disconnected due to new login', {
+        userId,
+        userType,
+        oldSocketId: existingConnection.socketId,
+        oldDeviceId: existingConnection.deviceId,
+        newSocketId: socket.id,
+        newDeviceId: deviceId,
+      });
     }
 
-    const connections = this.deviceConnections.get(deviceId)!;
-    connections.push(connectionInfo);
-
-    this.logger.debug('Device connection registered', {
-      deviceId,
+    this.logger.info('User WebSocket connection registered', {
       userId,
       userType,
       socketId: socket.id,
-      totalConnections: connections.length,
+      deviceId,
+      hadPreviousConnection: !!existingConnection,
     });
   }
 
   /**
-   * Force logout a specific device
+   * Force logout a user (disconnect their active WebSocket)
    */
-  async forceLogoutDevice(
-    deviceId: string,
+  async forceLogoutUser(
+    userId: string,
+    userType: UserType,
     reason: string,
     metadata?: {
-      userId?: string;
-      userType?: UserType;
       timestamp?: string;
       newDeviceId?: string;
     },
   ): Promise<boolean> {
     try {
-      const connections = this.deviceConnections.get(deviceId) || [];
+      const activeConnection = await this.webSocketRedis.getActiveConnection(userId, userType);
       
-      if (connections.length === 0) {
-        this.logger.warn('No WebSocket connections found for device force logout', {
-          deviceId,
+      if (!activeConnection) {
+        this.logger.warn('No active WebSocket connection found for user force logout', {
+          userId,
+          userType,
           reason,
         });
         return false;
@@ -139,152 +139,23 @@ export class WebSocketService {
         message: 'Your session has been terminated from another device',
       };
 
-      let disconnectedSockets = 0;
+      // Send force logout event and disconnect
+      const success = await this.forceDisconnectSocket(activeConnection.socketId, reason, forceLogoutEvent);
 
-      // Send force logout event and immediately disconnect
-      for (const connection of connections) {
-        const socket = this.server.sockets.sockets.get(connection.socketId);
-        
-        if (socket) {
-          // Emit force logout event and immediately disconnect
-          socket.emit('force_logout', forceLogoutEvent);
-          socket.disconnect(true);
-          disconnectedSockets++;
+      if (success) {
+        // Remove connection from Redis
+        await this.webSocketRedis.removeActiveConnection(userId, userType);
 
-          this.logger.info('Force logout event sent and socket disconnected', {
-            socketId: connection.socketId,
-            deviceId,
-            userId: connection.userId,
-            reason,
-          });
-        }
-      }
-
-      // Remove device connections from tracking
-      this.deviceConnections.delete(deviceId);
-
-      this.logger.info('Device force logout completed', {
-        deviceId,
-        reason,
-        socketsNotified: connections.length,
-        socketsDisconnected: disconnectedSockets,
-      });
-
-      return true;
-    } catch (error) {
-      this.logger.error('Error during device force logout', {
-        deviceId,
-        reason,
-        error: error.message,
-      });
-      return false;
-    }
-  }
-
-  /**
-   * Handle socket disconnection cleanup
-   */
-  async handleSocketDisconnect(socket: Socket): Promise<void> {
-    const deviceId = socket.data.deviceId;
-    
-    if (deviceId) {
-      const connections = this.deviceConnections.get(deviceId) || [];
-      const filteredConnections = connections.filter(
-        conn => conn.socketId !== socket.id
-      );
-
-      if (filteredConnections.length === 0) {
-        this.deviceConnections.delete(deviceId);
-      } else {
-        this.deviceConnections.set(deviceId, filteredConnections);
-      }
-
-      this.logger.debug('Socket disconnection cleaned up', {
-        socketId: socket.id,
-        deviceId,
-        remainingConnections: filteredConnections.length,
-      });
-    }
-  }
-
-  /**
-   * Update activity timestamp for a device connection
-   */
-  async updateDeviceActivity(deviceId: string, socketId: string): Promise<void> {
-    const connections = this.deviceConnections.get(deviceId);
-    if (connections) {
-      const connection = connections.find(conn => conn.socketId === socketId);
-      if (connection) {
-        connection.lastActivity = new Date().toISOString();
-      }
-    }
-  }
-
-  /**
-   * Get all active connections for a device
-   */
-  getDeviceConnections(deviceId: string): DeviceConnectionInfo[] {
-    return this.deviceConnections.get(deviceId) || [];
-  }
-
-  /**
-   * Get all active devices for a user
-   */
-  getUserDevices(userId: string): string[] {
-    const devices: string[] = [];
-    
-    for (const [deviceId, connections] of this.deviceConnections.entries()) {
-      if (connections.some(conn => conn.userId === userId)) {
-        devices.push(deviceId);
-      }
-    }
-    
-    return devices;
-  }
-
-  /**
-   * Send force logout to user across all devices
-   */
-  async forceLogoutUser(
-    userId: string,
-    userType: UserType,
-    reason: string,
-    excludeDeviceId?: string,
-  ): Promise<boolean> {
-    try {
-      const userDevices = this.getUserDevices(userId);
-      const devicesToLogout = excludeDeviceId 
-        ? userDevices.filter(deviceId => deviceId !== excludeDeviceId)
-        : userDevices;
-
-      if (devicesToLogout.length === 0) {
-        this.logger.info('No devices to force logout for user', {
+        this.logger.info('User force logout completed', {
           userId,
           userType,
+          socketId: activeConnection.socketId,
+          deviceId: activeConnection.deviceId,
           reason,
         });
-        return true;
       }
 
-      let successCount = 0;
-      for (const deviceId of devicesToLogout) {
-        const success = await this.forceLogoutDevice(deviceId, reason, {
-          userId,
-          userType,
-          timestamp: new Date().toISOString(),
-        });
-        if (success) successCount++;
-      }
-
-      this.logger.info('User force logout completed', {
-        userId,
-        userType,
-        reason,
-        totalDevices: devicesToLogout.length,
-        successfulLogouts: successCount,
-      });
-
-      return successCount > 0;
+      return success;
     } catch (error) {
       this.logger.error('Error during user force logout', {
         userId,
@@ -294,5 +165,74 @@ export class WebSocketService {
       });
       return false;
     }
+  }
+
+  /**
+   * Force disconnect a specific socket
+   */
+  private async forceDisconnectSocket(
+    socketId: string,
+    reason: string,
+    forceLogoutEvent?: any,
+  ): Promise<boolean> {
+    const socket = this.server.sockets.sockets.get(socketId);
+    
+    if (!socket) {
+      this.logger.warn('Socket not found for force disconnect', { socketId, reason });
+      return false;
+    }
+
+    // Send force logout event if provided
+    if (forceLogoutEvent) {
+      socket.emit('force_logout', forceLogoutEvent);
+    }
+
+    // Disconnect socket
+    socket.disconnect(true);
+
+    this.logger.info('Socket force disconnected', {
+      socketId,
+      reason,
+      eventSent: !!forceLogoutEvent,
+    });
+
+    return true;
+  }
+
+  /**
+   * Handle socket disconnection cleanup
+   */
+  async handleSocketDisconnect(socket: Socket): Promise<void> {
+    const userId = socket.data.userId;
+    const userType = socket.data.userType;
+    
+    if (userId && userType) {
+      // Check if this socket is the active one for the user
+      const isActive = await this.webSocketRedis.isActiveSocket(userId, userType, socket.id);
+      
+      if (isActive) {
+        // Remove from Redis only if this is the active socket
+        await this.webSocketRedis.removeActiveConnection(userId, userType);
+        
+        this.logger.info('Active WebSocket connection cleaned up on disconnect', {
+          socketId: socket.id,
+          userId,
+          userType,
+        });
+      } else {
+        this.logger.debug('Inactive socket disconnected (not cleaning Redis)', {
+          socketId: socket.id,
+          userId,
+          userType,
+        });
+      }
+    }
+  }
+
+  /**
+   * Update activity timestamp for a user's WebSocket connection
+   */
+  async updateUserActivity(userId: string, userType: UserType): Promise<void> {
+    await this.webSocketRedis.updateLastActivity(userId, userType);
   }
 }

@@ -34,57 +34,6 @@ export class TokenManagerService extends BaseRedisService {
   }
 
   /**
-   * Store a new active token for a user with comprehensive session metadata
-   * @param userId The user ID
-   * @param userType The user type (customer or driver)
-   * @param token The JWT token
-   * @param deviceId The device ID
-   * @param expiresIn Token expiration time in seconds
-   * @param metadata Additional session metadata
-   */
-  @WithErrorHandling()
-  async storeActiveToken(
-    userId: string,
-    userType: UserType,
-    token: string,
-    deviceId: string,
-    expiresIn: number,
-    metadata?: {
-      deviceInfo?: SessionMetadata['deviceInfo'];
-      ipAddress?: string;
-      userAgent?: string;
-    },
-  ): Promise<SessionMetadata | null> {
-    // Check for existing active session
-    const existingSession = await this.getActiveToken(userId, userType);
-    
-    const now = new Date().toISOString();
-    const sessionData: SessionMetadata = {
-      token,
-      deviceId,
-      deviceInfo: metadata?.deviceInfo,
-      ipAddress: metadata?.ipAddress,
-      userAgent: metadata?.userAgent,
-      createdAt: now,
-      lastSeenAt: now,
-      isActive: true,
-    };
-
-    const key = RedisKeyGenerator.userActiveToken(userId, userType);
-    
-    // Store with TTL slightly longer than the token expiration
-    const ttl = (expiresIn + this.TOKEN_EXPIRY_BUFFER) * 1000;
-    await this.client.set(key, JSON.stringify(sessionData));
-    await this.client.pexpire(key, ttl);
-
-    this.customLogger.info(
-      `New session created for user ${userId} (${userType}) from device ${deviceId} at IP ${metadata?.ipAddress}`,
-    );
-
-    return existingSession;
-  }
-
-  /**
    * Get the active session for a user
    * @param userId The user ID
    * @param userType The user type (customer or driver)
@@ -138,19 +87,74 @@ export class TokenManagerService extends BaseRedisService {
   }
 
   /**
-   * Check if a device switch has occurred
+   * Invalidate and remove an active token from Redis
    * @param userId The user ID
    * @param userType The user type
-   * @param currentDeviceId The current device ID
-   * @returns True if device has switched, false otherwise
    */
-  @WithErrorHandling(false)
-  async hasDeviceSwitched(
+  @WithErrorHandling()
+  async invalidateToken(
     userId: string,
     userType: UserType,
-    currentDeviceId: string,
   ): Promise<boolean> {
-    const session = await this.getActiveToken(userId, userType);
-    return session ? session.deviceId !== currentDeviceId : false;
+    const key = RedisKeyGenerator.userActiveToken(userId, userType);
+    const result = await this.client.del(key);
+    
+    this.customLogger.info(
+      `Token invalidated for user ${userId} (${userType})`,
+    );
+    
+    return result > 0;
+  }
+
+  /**
+   * Atomically replace an existing active token with a new one
+   * @param userId The user ID
+   * @param userType The user type
+   * @param newToken The new JWT token
+   * @param newDeviceId The new device ID
+   * @param expiresIn Token expiration time in seconds
+   * @param metadata Additional session metadata
+   * @returns The previous session metadata if it existed
+   */
+  @WithErrorHandling()
+  async replaceActiveToken(
+    userId: string,
+    userType: UserType,
+    newToken: string,
+    newDeviceId: string,
+    expiresIn: number,
+    metadata?: {
+      deviceInfo?: SessionMetadata['deviceInfo'];
+      ipAddress?: string;
+      userAgent?: string;
+    },
+  ): Promise<SessionMetadata | null> {
+    // Get existing session before replacing
+    const existingSession = await this.getActiveToken(userId, userType);
+    
+    const now = new Date().toISOString();
+    const sessionData: SessionMetadata = {
+      token: newToken,
+      deviceId: newDeviceId,
+      deviceInfo: metadata?.deviceInfo,
+      ipAddress: metadata?.ipAddress,
+      userAgent: metadata?.userAgent,
+      createdAt: now,
+      lastSeenAt: now,
+      isActive: true,
+    };
+
+    const key = RedisKeyGenerator.userActiveToken(userId, userType);
+    
+    // Atomically replace the session data
+    const ttl = (expiresIn + this.TOKEN_EXPIRY_BUFFER) * 1000;
+    await this.client.set(key, JSON.stringify(sessionData));
+    await this.client.pexpire(key, ttl);
+
+    this.customLogger.info(
+      `Session replaced for user ${userId} (${userType}) from device ${existingSession?.deviceId || 'none'} to ${newDeviceId} at IP ${metadata?.ipAddress}`,
+    );
+
+    return existingSession;
   }
 }
