@@ -82,7 +82,7 @@ export class AuthCustomerController {
 
         // Atomically replace existing session with new one
         const existingSession = await this.tokenManagerService.replaceActiveToken(
-          result.customer.id,
+          result.customer._id,
           UserType.CUSTOMER,
           result.token,
           finalDeviceId,
@@ -96,7 +96,7 @@ export class AuthCustomerController {
         // If there was an existing session, execute force logout
         if (existingSession && existingSession.deviceId !== finalDeviceId) {
           await this.forceLogoutService.executeForceLogout(
-            result.customer.id,
+            result.customer._id,
             UserType.CUSTOMER,
             existingSession.deviceId,
             finalDeviceId,

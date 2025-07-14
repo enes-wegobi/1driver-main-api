@@ -43,7 +43,7 @@ export class AuthService {
         });
       }
 
-      return { token: result.token };
+      return { token: result.token, customer: result.customer };
     }
 
     return result;
@@ -80,7 +80,7 @@ export class AuthService {
         });
       }
 
-      return { token: result.token };
+      return { token: result.token, driver: result.driver };
     }
 
     return result;

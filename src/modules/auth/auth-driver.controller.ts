@@ -82,7 +82,7 @@ export class AuthDriverController {
 
         // Atomically replace existing session with new one
         const existingSession = await this.tokenManagerService.replaceActiveToken(
-          result.driver.id,
+          result.driver._id,
           UserType.DRIVER,
           result.token,
           finalDeviceId,
@@ -96,7 +96,7 @@ export class AuthDriverController {
         // If there was an existing session, execute force logout
         if (existingSession && existingSession.deviceId !== finalDeviceId) {
           await this.forceLogoutService.executeForceLogout(
-            result.driver.id,
+            result.driver._id,
             UserType.DRIVER,
             existingSession.deviceId,
             finalDeviceId,
@@ -110,7 +110,7 @@ export class AuthDriverController {
         }
 
         this.logger.info('Driver signup completed successfully', {
-          driverId: result.driver.id,
+          driverId: result.driver._id,
           deviceId: finalDeviceId,
           ipAddress,
           hadExistingSession: !!existingSession,
