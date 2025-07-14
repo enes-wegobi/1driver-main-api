@@ -423,6 +423,14 @@
                         <button class="btn btn-success" onclick="updateDriverAvailability('available')">AVAILABLE</button>
                     </div>
 
+                    <div class="form-group">
+                        <label>Current App State:</label>
+                        <select id="driverAppState">
+                            <option value="foreground">FOREGROUND</option>
+                            <option value="background">BACKGROUND</option>
+                        </select>
+                    </div>
+
                     <div class="controls-group">
                         <button class="btn btn-primary" onclick="sendDriverHeartbeat()">Heartbeat</button>
                         <button class="btn btn-primary" onclick="sendDriverLocation()">Send Location</button>
@@ -520,6 +528,14 @@
                 <div class="section">
                     <div class="section-title">Customer Controls</div>
                     
+                    <div class="form-group">
+                        <label>Current App State:</label>
+                        <select id="customerAppState">
+                            <option value="foreground">FOREGROUND</option>
+                            <option value="background">BACKGROUND</option>
+                        </select>
+                    </div>
+
                     <div class="controls-group">
                         <button class="btn btn-primary" onclick="sendCustomerHeartbeat()">Heartbeat</button>
                         <button class="btn btn-primary" onclick="sendCustomerLocation()">Send Location</button>
@@ -1460,9 +1476,10 @@
                 return;
             }
 
+            const appState = document.getElementById('driverAppState').value;
             const heartbeatData = {
                 timestamp: new Date().toISOString(),
-                appState: 'active',
+                appState: appState,
                 location: {
                     latitude: 41.0082,
                     longitude: 28.9784,
@@ -1500,9 +1517,10 @@
                 return;
             }
 
+            const appState = document.getElementById('customerAppState').value;
             const heartbeatData = {
                 timestamp: new Date().toISOString(),
-                appState: 'active',
+                appState: appState,
                 location: {
                     latitude: 41.0082,
                     longitude: 28.9784,

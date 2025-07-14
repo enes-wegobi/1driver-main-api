@@ -6,9 +6,8 @@ import {
   IsString,
   Matches,
   IsPhoneNumber,
-  ValidateNested,
+  Length,
 } from 'class-validator';
-import { Type } from 'class-transformer';
 
 export class CreateDriverDto {
   @ApiProperty({
@@ -60,4 +59,14 @@ export class CreateDriverDto {
   @IsOptional()
   @IsString()
   expoToken?: string;
+
+
+  @ApiProperty({
+    example: '123456',
+    description: '6-digit password',
+  })
+  @IsString()
+  @IsNotEmpty()
+  @Length(6, 6)
+  password: string;
 }

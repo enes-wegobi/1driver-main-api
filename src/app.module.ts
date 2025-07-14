@@ -25,7 +25,6 @@ import { QueueManagementController } from './modules/admin/queue-management.cont
 import { TripEventsService } from './events/trip-events.service';
 import { TripApprovalHandler } from './events/handlers/trip-approval.handler';
 import { AuthEventsModule } from './events/auth-events.module';
-import { TestHeadersMiddleware } from './middleware/test-headers.middleware';
 
 @Module({
   imports: [
@@ -65,12 +64,4 @@ import { TestHeadersMiddleware } from './middleware/test-headers.middleware';
   ],
   controllers: [QueueManagementController],
 })
-export class AppModule {
-  /*
-  configure(consumer: MiddlewareConsumer) {
-    consumer
-      .apply(TestHeadersMiddleware)
-      .forRoutes('*');
-  }
-      */
-}
+export class AppModule {}

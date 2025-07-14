@@ -95,7 +95,6 @@ export class WebSocketGateway
     const clientId = client.id;
     const token = this.extractToken(client);
     const deviceId = this.extractDeviceId(client);
-    const userId = client.data.userId;
     const userType = client.data.userType;
 
     if (!token) {
@@ -117,11 +116,14 @@ export class WebSocketGateway
     try {
       const payload = await this.jwtService.validateToken(token);
 
+
       if (!payload || !payload.userId) {
         client.emit('error', { message: 'Invalid token' });
         client.disconnect(true);
         return;
       }
+
+      const userId = payload.userId;
 
       const userType = payload.userType;
       if (userType !== UserType.DRIVER && userType !== UserType.CUSTOMER) {
@@ -131,7 +133,7 @@ export class WebSocketGateway
       }
 
       // Check active session
-      const activeSession = await this.tokenManager.getActiveToken(payload.userId, userType);
+      const activeSession = await this.tokenManager.getActiveToken(userId, userType);
       if (!activeSession) {
         client.emit('error', { message: 'No active session found - please login again' });
         client.disconnect(true);
@@ -151,7 +153,7 @@ export class WebSocketGateway
       // Verify device ID matches the active session
       if (activeSession.deviceId !== deviceId) {
         this.logger.warn(
-          `Device ID mismatch for user ${payload.userId}: session device ${activeSession.deviceId} vs connection device ${deviceId}`,
+          `Device ID mismatch for user ${userId}: session device ${activeSession.deviceId} vs connection device ${deviceId}`,
         );
         client.emit('error', { 
           message: 'Device ID mismatch - please login with this device',
@@ -164,16 +166,16 @@ export class WebSocketGateway
       }
 
       // Store user data in the socket
-      client.data.userId = payload.userId;
+      client.data.userId = userId;
       client.data.userType = userType;
       client.data.deviceId = deviceId;
       
-      this.logger.info(`WebSocket connection set for user ${payload.userId} (${userType}), socket: ${client.id}, device: ${deviceId}`);
+      this.logger.info(`WebSocket connection set for user ${userId} (${userType}), socket: ${client.id}, device: ${deviceId}`);
       
       // Register user connection for tracking (single connection per user)
       // This will automatically disconnect any existing connection for this user
       await this.webSocketService.registerUserConnection(
-        payload.userId,
+        userId,
         userType,
         client,
         deviceId,
@@ -240,7 +242,7 @@ export class WebSocketGateway
       });
       this.logger.info(`WebSocket client authenticated successfully`, {
         clientId,
-        userId: payload.userId,
+        userId: userId,
         userType,
         deviceId,
         connectionTime: new Date().toISOString(),
