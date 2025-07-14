@@ -136,7 +136,7 @@ export class DriverEarningsService {
     const durationMinutes = durationSeconds / 60;
     let earnings = Math.round(durationMinutes * multiplier * 100) / 100;
     if(finalCost = 5){
-        earnings = 2,5;
+        earnings = 2.5;
     }
     return {
       earnings,

@@ -4,6 +4,9 @@ import { LoggerService } from 'src/logger/logger.service';
 import { EventType } from 'src/modules/event/enum/event-type.enum';
 import { UserType } from 'src/common/user-type.enum';
 import { WebSocketRedisService } from 'src/redis/services/websocket-redis.service';
+import { DriverStatusService } from 'src/redis/services/driver-status.service';
+import { CustomerStatusService } from 'src/redis/services/customer-status.service';
+import { DriverAvailabilityStatus } from 'src/common/enums/driver-availability-status.enum';
 
 @Injectable()
 export class WebSocketService {
@@ -12,6 +15,9 @@ export class WebSocketService {
   constructor(
     private readonly logger: LoggerService,
     private readonly webSocketRedis: WebSocketRedisService,
+    private readonly driverStatusService: DriverStatusService,
+    private readonly customerStatusService: CustomerStatusService,
+    
   ) {}
 
   setServer(server: Server) {
@@ -119,7 +125,7 @@ export class WebSocketService {
       
       // Wait a moment to ensure server is fully initialized and try disconnect
       await new Promise(resolve => setTimeout(resolve, 100));
-      const disconnected = await this.forceDisconnectSocket(existingConnection.socketId, forceLogoutEvent.reason, forceLogoutEvent);
+      const disconnected = await this.forceDisconnectSocket(userId, userType, existingConnection.socketId, forceLogoutEvent.reason, forceLogoutEvent);
       
       // If disconnect failed, try again with more aggressive cleanup
       if (!disconnected) {
@@ -133,7 +139,7 @@ export class WebSocketService {
         
         // Try one more time with a longer delay
         await new Promise(resolve => setTimeout(resolve, 200));
-        await this.forceDisconnectSocket(existingConnection.socketId, forceLogoutEvent.reason, forceLogoutEvent);
+        await this.forceDisconnectSocket(userId, userType, existingConnection.socketId, forceLogoutEvent.reason, forceLogoutEvent);
       }
       
       this.logger.info('Previous WebSocket connection handled', {
@@ -203,7 +209,7 @@ export class WebSocketService {
       };
 
       // Send force logout event and disconnect
-      const success = await this.forceDisconnectSocket(activeConnection.socketId, reason, forceLogoutEvent);
+      const success = await this.forceDisconnectSocket(userId, userType, activeConnection.socketId, reason, forceLogoutEvent);
 
       if (success) {
         // Remove connection from Redis
@@ -234,6 +240,8 @@ export class WebSocketService {
    * Force disconnect a specific socket
    */
   private async forceDisconnectSocket(
+    userId: string,
+    userType: UserType,
     socketId: string,
     reason: string,
     forceLogoutEvent?: any,
@@ -248,6 +256,25 @@ export class WebSocketService {
         this.server.to(socketId).emit('force_logout', forceLogoutEvent);
         await new Promise(resolve => setTimeout(resolve, 100));
       }
+
+      if (userId) {
+            if (userType === UserType.DRIVER) {
+              await this.driverStatusService.markDriverAsDisconnected(userId);
+              await this.driverStatusService.setDriverAppStateOnDisconnect(userId);
+              const status =
+                await this.driverStatusService.getDriverAvailability(userId);
+              if (status !== DriverAvailabilityStatus.ON_TRIP) {
+                await this.driverStatusService.deleteDriverAvailability(userId);
+              }
+
+            } else if (userType === UserType.CUSTOMER) {
+              await this.customerStatusService.markCustomerAsInactive(userId);
+              await this.customerStatusService.setCustomerAppStateOnDisconnect(
+                userId,
+              );
+
+            }
+          }
 
       this.server.to(socketId).disconnectSockets(true);
 
