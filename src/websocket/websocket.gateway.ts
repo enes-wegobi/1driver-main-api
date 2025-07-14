@@ -199,7 +199,7 @@ export class WebSocketGateway
 
         const status = await this.driverStatusService.getDriverAvailability(userId);
 
-        client.emit('authenticated', {
+        client.emit('connection', {
           status: 'connected',
           clientId: clientId,
           userType: userType,
@@ -212,7 +212,7 @@ export class WebSocketGateway
         await this.customerStatusService.markCustomerAsActive(userId);
         await this.customerStatusService.setCustomerAppStateOnConnect(userId);
 
-        client.emit('authenticated', {
+        client.emit('connection', {
           status: 'connected',
           clientId: clientId,
           userType: userType,
