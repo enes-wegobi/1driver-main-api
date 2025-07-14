@@ -41,7 +41,7 @@ export class JwtAuthGuard implements CanActivate {
 
       if (sessionMetadata) {
         if (sessionMetadata.token && sessionMetadata.token !== token) {
-
+/*
           this.eventEmitter.emit(AUTH_EVENTS.FORCE_LOGOUT_REQUESTED, {
             userId: payload.userId,
             userType: payload.userType,
@@ -54,13 +54,14 @@ export class JwtAuthGuard implements CanActivate {
             },
             timestamp: new Date(),
           });
-
+*/
           throw new UnauthorizedException('Token validation failed');
         }
 
         const isValidDevice = this.validateDeviceBinding(currentDeviceInfo, sessionMetadata);
         
         if (!isValidDevice) {
+          /*
           this.eventEmitter.emit(AUTH_EVENTS.FORCE_LOGOUT_REQUESTED, {
             userId: payload.userId,
             userType: payload.userType,
@@ -74,7 +75,7 @@ export class JwtAuthGuard implements CanActivate {
             },
             timestamp: new Date(),
           });
-
+*/
           throw new UnauthorizedException('Device validation failed');
         }
 

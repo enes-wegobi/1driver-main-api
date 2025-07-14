@@ -72,6 +72,41 @@ export class AuthEventsHandler {
     }
   }
 
+  @OnEvent(AUTH_EVENTS.MANUAL_LOGOUT)
+  async handleManualLogout(event: WebSocketLogoutEvent): Promise<void> {
+    try {
+      const success = await this.websocketService.forceLogoutUser(
+        event.userId,
+        event.userType,
+        event.reason,
+        {
+          timestamp: event.timestamp.toISOString(),
+        },
+      );
+
+      if (success) {
+        this.logger.info('Manual WebSocket logout completed successfully', {
+          userId: event.userId,
+          userType: event.userType,
+          reason: event.reason,
+        });
+      } else {
+        this.logger.warn('Manual WebSocket logout failed - no active connection', {
+          userId: event.userId,
+          userType: event.userType,
+          reason: event.reason,
+        });
+      }
+    } catch (error) {
+      this.logger.error('Error during manual WebSocket logout', {
+        userId: event.userId,
+        userType: event.userType,
+        reason: event.reason,
+        error: error.message,
+      });
+    }
+  }
+
   private emitWebSocketLogout(event: ForceLogoutRequestedEvent): void {
     const webSocketEvent: WebSocketLogoutEvent = {
       userId: event.userId,

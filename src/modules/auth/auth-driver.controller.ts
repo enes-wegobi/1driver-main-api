@@ -4,7 +4,6 @@ import {
   Body,
   HttpException,
   HttpStatus,
-  Logger,
   Headers,
   UseGuards,
 } from '@nestjs/common';
@@ -22,18 +21,19 @@ import { TokenManagerService } from '../../redis/services/token-manager.service'
 import { UserType } from '../../common/user-type.enum';
 import { ConfigService } from '@nestjs/config';
 import { LogoutGuard } from '../../jwt/logout.guard';
+import { LoggerService } from 'src/logger/logger.service';
 import { ForceLogoutService } from './force-logout.service';
 
 @ApiTags('auth-driver')
 @Controller('auth/driver')
 export class AuthDriverController {
-  private readonly logger = new Logger(AuthDriverController.name);
   private readonly jwtExpiresIn: number;
 
   constructor(
     private readonly authService: AuthService,
     private readonly tokenManagerService: TokenManagerService,
     private readonly configService: ConfigService,
+    private readonly logger: LoggerService,
     private readonly forceLogoutService: ForceLogoutService,
   ) {
     this.jwtExpiresIn = this.configService.get<number>('jwt.expiresIn', 2592000); // Default: 30 days
@@ -109,7 +109,7 @@ export class AuthDriverController {
           );
         }
 
-        this.logger.log('Driver signup completed successfully', {
+        this.logger.info('Driver signup completed successfully', {
           driverId: result.driver.id,
           deviceId: finalDeviceId,
           ipAddress,

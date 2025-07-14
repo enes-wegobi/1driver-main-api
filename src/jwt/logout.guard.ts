@@ -4,14 +4,18 @@ import {
   CanActivate,
   UnauthorizedException,
 } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { JwtService } from './jwt.service';
 import { TokenManagerService } from '../redis/services/token-manager.service';
+import { AUTH_EVENTS } from '../events/auth-events.service';
+import { UserType } from '../common/user-type.enum';
 
 @Injectable()
 export class LogoutGuard implements CanActivate {
   constructor(
     private readonly jwtService: JwtService,
     private readonly tokenManagerService: TokenManagerService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -20,13 +24,6 @@ export class LogoutGuard implements CanActivate {
 
     if (!token) {
       throw new UnauthorizedException('No token provided');
-    }
-    /*
-    // Check if token is already blacklisted
-    const isBlacklisted =
-      await this.tokenManagerService.isTokenBlacklisted(token);
-    if (isBlacklisted) {
-      throw new UnauthorizedException('Token has been revoked');
     }
 
     // Validate the token
@@ -38,21 +35,20 @@ export class LogoutGuard implements CanActivate {
     // Add user to request
     request['user'] = payload;
 
-    // Decode token to get expiration
-    const decoded = this.jwtService.decodeToken(token);
-    if (!decoded || !decoded.exp) {
-      throw new UnauthorizedException('Invalid token format');
-    }
-
-    // Blacklist token
-    await this.tokenManagerService.blacklistToken(token, decoded.exp);
+    // Emit manual logout event
+    this.eventEmitter.emit(AUTH_EVENTS.MANUAL_LOGOUT, {
+      userId: payload.userId,
+      userType: payload.userType as UserType,
+      deviceId: '',
+      reason: 'manual_logout',
+      timestamp: new Date(),
+    });
 
     // Invalidate active token
-    await this.tokenManagerService.invalidateActiveToken(
+    await this.tokenManagerService.invalidateToken(
       payload.userId,
       payload.userType,
     );
-    */
 
     return true;
   }

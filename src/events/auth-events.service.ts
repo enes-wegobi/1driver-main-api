@@ -10,6 +10,7 @@ export const AUTH_EVENTS = {
   FORCE_LOGOUT_REQUESTED: 'auth.forceLogout.requested',
   FORCE_LOGOUT_COMPLETED: 'auth.forceLogout.completed',
   WEBSOCKET_LOGOUT: 'auth.websocket.logout',
+  MANUAL_LOGOUT: 'auth.manual.logout',
 } as const;
 
 @Injectable()
@@ -26,6 +27,10 @@ export class AuthEventsService {
 
   emitWebSocketLogout(event: WebSocketLogoutEvent): void {
     this.eventEmitter.emit(AUTH_EVENTS.WEBSOCKET_LOGOUT, event);
+  }
+
+  emitManualLogout(event: WebSocketLogoutEvent): void {
+    this.eventEmitter.emit(AUTH_EVENTS.MANUAL_LOGOUT, event);
   }
 
 }
