@@ -38,7 +38,9 @@ RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nodejs --ingroup nodejs
 
 WORKDIR /app
-RUN chown -R nodejs:nodejs /app
+
+RUN mkdir -p /app/logs && \
+    chown -R nodejs:nodejs /app
 
 ENV NODE_ENV=production \
     PORT=3000 \
