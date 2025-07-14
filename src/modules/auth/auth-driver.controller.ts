@@ -67,8 +67,8 @@ export class AuthDriverController {
   @ApiResponse({ status: 400, description: 'Invalid OTP' })
   async completeSignup(
     @Body() validateOtpDto: ValidateOtpDto,
-    @Headers('device-id') deviceId: string,
-    @Headers('user-agent') userAgent: string,
+    @Headers('x-device-id') deviceId: string,
+    @Headers('x-user-agent') userAgent: string,
     @Headers('x-forwarded-for') forwardedFor: string,
     @Headers('x-real-ip') realIp: string,
   ) {
