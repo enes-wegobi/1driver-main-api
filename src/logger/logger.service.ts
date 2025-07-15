@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as winston from 'winston';
-import * as DatadogWinston from 'datadog-winston';
 import * as DailyRotateFile from 'winston-daily-rotate-file';
 import { v4 as uuidv4 } from 'uuid';
 import { UserType } from 'src/common/user-type.enum';
+import * as Sentry from '@sentry/node';
 
 export interface SimpleLogContext {
   requestId?: string;
@@ -76,22 +76,6 @@ export class LoggerService {
       );
     }
 
-    // DataDog transport for production
-    if (
-      this.configService.get('datadog.enabled') &&
-      this.configService.get('datadog.apiKey')
-    ) {
-      transports.push(
-        new DatadogWinston({
-          apiKey: this.configService.get('datadog.apiKey'),
-          hostname: this.configService.get('datadog.hostname'),
-          service: this.configService.get('datadog.service'),
-          ddsource: 'nodejs',
-          ddtags: `env:${this.configService.get('datadog.env')},service:${this.configService.get('datadog.service')}`,
-        }),
-      );
-    }
-
     return winston.createLogger({
       level: this.configService.get('logging.level', 'info'),
       format: winston.format.combine(
@@ -110,18 +94,22 @@ export class LoggerService {
   // Basic logging methods
   info(message: string, context?: SimpleLogContext): void {
     this.logger.info(message, context);
+    Sentry.logger.info(message, context);
   }
 
   error(message: string, context?: SimpleLogContext): void {
     this.logger.error(message, context);
+    Sentry.logger.error(message, context);
   }
 
   warn(message: string, context?: SimpleLogContext): void {
     this.logger.warn(message, context);
+    Sentry.logger.warn(message, context);
   }
 
   debug(message: string, context?: SimpleLogContext): void {
     this.logger.debug(message, context);
+    Sentry.logger.debug(message, context);
   }
 
   // HTTP Request logging
@@ -181,6 +169,16 @@ export class LoggerService {
 
   // Error with stack trace
   logError(error: Error, context?: SimpleLogContext): void {
+    Sentry.captureException(error, {
+      user: context?.userId ? { id: context.userId } : undefined,
+      tags: {
+        requestId: context?.requestId,
+        userType: context?.userType,
+        tripId: context?.tripId,
+      },
+      extra: context,
+    });
+
     this.error(error.message, {
       ...context,
       error: {

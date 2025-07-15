@@ -1,7 +1,9 @@
 import { Module, MiddlewareConsumer } from '@nestjs/common';
-import { APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_INTERCEPTOR, APP_FILTER } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { SentryModule } from '@sentry/nestjs/setup';
+import { SentryGlobalFilter } from '@sentry/nestjs/setup';
 import { ConfigModule } from './config/config.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { JwtModule } from './jwt/jwt.module';
@@ -28,6 +30,7 @@ import { AuthEventsModule } from './events/auth-events.module';
 
 @Module({
   imports: [
+    SentryModule.forRoot(),
     ScheduleModule.forRoot(),
     EventEmitterModule.forRoot({
       wildcard: true,
@@ -55,6 +58,10 @@ import { AuthEventsModule } from './events/auth-events.module';
     AuthEventsModule,
   ],
   providers: [
+    {
+      provide: APP_FILTER,
+      useClass: SentryGlobalFilter,
+    },
     {
       provide: APP_INTERCEPTOR,
       useClass: RequestIdInterceptor,

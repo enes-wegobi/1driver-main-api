@@ -91,15 +91,14 @@ export default () => ({
     maxFiles: process.env.LOG_MAX_FILES || '14d',
     errorMaxFiles: process.env.LOG_ERROR_MAX_FILES || '30d',
   },
-  datadog: {
-    enabled: process.env.DATADOG_ENABLED === 'true',
-    apiKey: secretsService.readSecret('datadog_api_key', 'DATADOG_API_KEY'),
-    service: process.env.DATADOG_SERVICE || '1driver-main-api',
-    env: process.env.DATADOG_ENV || process.env.NODE_ENV || 'development',
-    version: process.env.DATADOG_VERSION || '1.0.0',
-    hostname: process.env.DATADOG_HOSTNAME || require('os').hostname(),
-    logLevel: process.env.DATADOG_LOG_LEVEL || 'info',
-    tags: process.env.DATADOG_TAGS || '',
+  sentry: {
+    dsn: secretsService.readSecret('sentry_dsn', 'SENTRY_DSN'),
+    environment: process.env.NODE_ENV || 'development',
+    release: process.env.SENTRY_RELEASE || process.env.DATADOG_VERSION || '1.0.0',
+    serverName: process.env.SENTRY_SERVER_NAME || process.env.DATADOG_HOSTNAME || require('os').hostname(),
+    service: process.env.SENTRY_SERVICE || process.env.DATADOG_SERVICE || '1driver-main-api',
+    tracesSampleRate: parseFloat(process.env.SENTRY_TRACES_SAMPLE_RATE || '0.1'),
+    profilesSampleRate: parseFloat(process.env.SENTRY_PROFILES_SAMPLE_RATE || '0.1'),
   },
   spaces: {
     region: process.env.SPACES_REGION,

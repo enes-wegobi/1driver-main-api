@@ -1,5 +1,4 @@
-// Initialize DataDog tracer first (before any other imports)
-import './tracer';
+import "./instrument";
 
 import { config } from 'dotenv';
 import { NestFactory } from '@nestjs/core';
