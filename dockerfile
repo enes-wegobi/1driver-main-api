@@ -45,11 +45,8 @@ COPY --from=builder --chown=nodejs:nodejs /app/package.json ./
 COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
 COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
 
-USER nodejs
-RUN mkdir -p /app/logs
-
-USER root
-RUN chown -R nodejs:nodejs /app/logs && \
+RUN mkdir -p /app/logs && \
+    chown -R nodejs:nodejs /app/logs && \
     chmod -R 755 /app/logs
 
 USER nodejs
