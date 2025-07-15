@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.4
 
-FROM node:20-alpine AS deps
+FROM node:23-alpine AS deps
 
 WORKDIR /app
 
@@ -14,7 +14,7 @@ COPY package.json package-lock.json* ./
 RUN --mount=type=cache,target=/root/.npm \
     npm ci --no-audit --no-fund
 
-FROM node:20-alpine AS builder
+FROM node:23-alpine AS builder
 WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
@@ -30,9 +30,9 @@ RUN npm run build && \
          -o -name ".travis.yml" -o -name ".gitignore" \
          -o -name ".editorconfig" \) -delete || true
 
-FROM node:20-alpine AS runner
+FROM node:23-alpine AS runner
 
-RUN apk add --no-cache dumb-init
+RUN apk add --no-cache dumb-init wget
 
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nodejs --ingroup nodejs
@@ -41,18 +41,16 @@ WORKDIR /app
 
 RUN mkdir -p /app/logs && \
     chown -R nodejs:nodejs /app && \
-    chmod -R 755 /app/logs
+    chmod -R 755 /app
 
-ENV NODE_ENV=production \
-    PORT=3000 \
-    HOST=0.0.0.0 \
-    NODE_OPTIONS="--max-old-space-size=256"
+ENV NODE_ENV=production
 
 COPY --from=builder --chown=nodejs:nodejs /app/package.json ./
 COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
 COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
 
-RUN chown -R nodejs:nodejs /app/logs && \
+RUN mkdir -p /app/logs && \
+    chown -R nodejs:nodejs /app/logs && \
     chmod -R 755 /app/logs
 
 USER nodejs
