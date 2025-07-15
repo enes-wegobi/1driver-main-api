@@ -40,7 +40,8 @@ RUN addgroup --system --gid 1001 nodejs && \
 WORKDIR /app
 
 RUN mkdir -p /app/logs && \
-    chown -R nodejs:nodejs /app
+    chown -R nodejs:nodejs /app && \
+    chmod -R 755 /app/logs
 
 ENV NODE_ENV=production \
     PORT=3000 \
@@ -50,6 +51,9 @@ ENV NODE_ENV=production \
 COPY --from=builder --chown=nodejs:nodejs /app/package.json ./
 COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
 COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
+
+RUN chown -R nodejs:nodejs /app/logs && \
+    chmod -R 755 /app/logs
 
 USER nodejs
 
