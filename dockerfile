@@ -46,8 +46,8 @@ COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
 COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
 
 RUN mkdir -p /app/logs && \
-    chown -R nodejs:nodejs /app/logs && \
-    chmod -R 755 /app/logs
+    chown -R nodejs:nodejs /app && \
+    chmod -R 755 /app
 
 USER nodejs
 
@@ -57,4 +57,4 @@ ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 
 WORKDIR /app
 
-CMD ["node", "dist/main.js"]
+CMD ["sh", "-c", "mkdir -p /app/logs && exec node dist/main.js"]
