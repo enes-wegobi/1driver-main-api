@@ -24,6 +24,14 @@ export class SocketIORedisAdapter extends IoAdapter {
     const password = configService.get('valkey.password', '');
     const tls = configService.get('valkey.tls', false) ? {} : undefined;
 
+    console.log('Valkey Config:', {
+      host,
+      port,
+      username,
+      hasPassword: !!password,
+      tls: !!tls
+    });
+
     this.pubClient = new Redis({
       host,
       port,

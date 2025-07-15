@@ -34,14 +34,26 @@ export class BaseRedisService implements OnModuleInit, OnModuleDestroy {
     this.customLogger = customLogger;
     // Initialize the Redis client only once (singleton pattern)
     if (!BaseRedisService.redisClient) {
+      const host = this.configService.get<string>('valkey.host', 'localhost');
+      const port = this.configService.get<number>('valkey.port', 6379);
+      const username = this.configService.get<string>('valkey.username', '');
+      const password = this.configService.get<string>('valkey.password', '');
+      const tls = this.configService.get<boolean>('valkey.tls', false);
+
+      console.log('BaseRedisService Valkey Config:', {
+        host,
+        port,
+        username,
+        hasPassword: !!password,
+        tls
+      });
+
       BaseRedisService.redisClient = new Redis({
-        host: this.configService.get<string>('valkey.host', 'localhost'),
-        port: this.configService.get<number>('valkey.port', 6379),
-        username: this.configService.get<string>('valkey.username', ''),
-        password: this.configService.get<string>('valkey.password', ''),
-        tls: this.configService.get<boolean>('valkey.tls', false)
-          ? {}
-          : undefined,
+        host,
+        port,
+        username,
+        password,
+        tls: tls ? {} : undefined,
       });
 
       // Set up event listeners only once
