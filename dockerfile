@@ -59,4 +59,6 @@ EXPOSE 3000
 
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 
+WORKDIR /app
+
 CMD ["node", "dist/main.js"]
