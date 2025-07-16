@@ -51,8 +51,8 @@ export class AuthCustomerController {
     @Headers('x-forwarded-for') forwardedFor: string,
     @Headers('x-real-ip') realIp: string,) {
       try {
-        return
-          await this.authService.initiateCustomerSignup(createCustomerDto);
+        return await this.authService.initiateCustomerSignup(createCustomerDto);
+          
       } catch (error) {
         this.logger.error(
           `User signup initiation error: ${error.message}`,
