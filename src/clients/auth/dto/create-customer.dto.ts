@@ -83,13 +83,4 @@ export class CreateCustomerDto {
   @IsOptional()
   @IsString()
   expoToken?: string;
-
-  @ApiProperty({
-    example: '123456',
-    description: '6-digit password',
-  })
-  @IsString()
-  @IsNotEmpty()
-  @Length(6, 6)
-  password: string;
 }

@@ -51,49 +51,7 @@ export class AuthDriverController {
     @Headers('x-real-ip') realIp: string,
   ) {
     try {
-      const result = await this.authService.initiateDriverSignup(createDriverDto);
-      if (result && result.token && result.driver) {
-        const ipAddress = forwardedFor || realIp || 'unknown';
-        const finalDeviceId = deviceId || 'unknown-device';
-
-        // Atomically replace existing session with new one
-        const existingSession = await this.tokenManagerService.replaceActiveToken(
-          result.driver._id,
-          UserType.DRIVER,
-          result.token,
-          finalDeviceId,
-          this.jwtExpiresIn,
-          {
-            ipAddress,
-            userAgent,
-          },
-        );
-
-        // If there was an existing session, execute force logout
-        if (existingSession && existingSession.deviceId !== finalDeviceId) {
-          await this.forceLogoutService.executeForceLogout(
-            result.driver._id,
-            UserType.DRIVER,
-            existingSession.deviceId,
-            finalDeviceId,
-            'new_device_signup',
-            {
-              ipAddress,
-              userAgent,
-              oldSessionInfo: existingSession,
-            },
-          );
-        }
-
-        this.logger.info('Driver signup completed successfully', {
-          driverId: result.driver._id,
-          deviceId: finalDeviceId,
-          ipAddress,
-          hadExistingSession: !!existingSession,
-        });
-      }
-
-      return result;
+      return await this.authService.initiateDriverSignup(createDriverDto);
     } catch (error) {
       this.logger.error(
         `Driver signup initiation error: ${error.message}`,
@@ -187,44 +145,7 @@ export class AuthDriverController {
     @Headers('x-forwarded-for') forwardedFor: string,
     @Headers('x-real-ip') realIp: string,) {
     try {
-      const result = await this.authService.signinDriver(signinDto);
-            if (result && result.token && result.driver) {
-        const ipAddress = forwardedFor || realIp || 'unknown';
-        const finalDeviceId = deviceId || 'unknown-device';
-        const userId = result.driver._id;
-
-        // Atomically replace existing session with new one
-        const existingSession = await this.tokenManagerService.replaceActiveToken(
-          userId,
-          UserType.DRIVER,
-          result.token,
-          finalDeviceId,
-          this.jwtExpiresIn,
-          {
-            ipAddress,
-            userAgent,
-          },
-        );
-
-        // If there was an existing session on a different device, execute force logout
-        if (existingSession) {
-          await this.forceLogoutService.executeForceLogout(
-            userId,
-            UserType.DRIVER,
-            existingSession.deviceId,
-            finalDeviceId,
-            'new_device_signin',
-            {
-              ipAddress,
-              userAgent,
-              oldSessionInfo: existingSession,
-            },
-          );
-        }
-        return { token: result.token };
-      }
-
-      return result;
+      return await this.authService.signinDriver(signinDto);
     } catch (error) {
       this.logger.error(`Driver signin error: ${error.message}`, error.stack);
       throw new HttpException(

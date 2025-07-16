@@ -51,43 +51,8 @@ export class AuthCustomerController {
     @Headers('x-forwarded-for') forwardedFor: string,
     @Headers('x-real-ip') realIp: string,) {
       try {
-        const result =
+        return
           await this.authService.initiateCustomerSignup(createCustomerDto);
-        if (result && result.token && result.customer) {
-          const ipAddress = forwardedFor || realIp || 'unknown';
-          const finalDeviceId = deviceId || 'unknown-device';
-
-          // Atomically replace existing session with new one
-          const existingSession = await this.tokenManagerService.replaceActiveToken(
-            result.customer._id,
-            UserType.CUSTOMER,
-            result.token,
-            finalDeviceId,
-            this.jwtExpiresIn,
-            {
-              ipAddress,
-              userAgent,
-            },
-          );
-
-          // If there was an existing session, execute force logout
-          if (existingSession && existingSession.deviceId !== finalDeviceId) {
-            await this.forceLogoutService.executeForceLogout(
-              result.customer._id,
-              UserType.CUSTOMER,
-              existingSession.deviceId,
-              finalDeviceId,
-              'new_device_signup',
-              {
-                ipAddress,
-                userAgent,
-                oldSessionInfo: existingSession,
-              },
-            );
-          }
-        }
-
-        return result;
       } catch (error) {
         this.logger.error(
           `User signup initiation error: ${error.message}`,
@@ -177,44 +142,7 @@ export class AuthCustomerController {
     @Headers('x-real-ip') realIp: string,
   ) {
     try {
-      const result = await this.authService.signinCustomer(signinDto);
-      if (result && result.token && result.customer) {
-        const ipAddress = forwardedFor || realIp || 'unknown';
-        const finalDeviceId = deviceId || 'unknown-device';
-        const userId = result.customer._id;
-
-        // Atomically replace existing session with new one
-        const existingSession = await this.tokenManagerService.replaceActiveToken(
-          userId,
-          UserType.CUSTOMER,
-          result.token,
-          finalDeviceId,
-          this.jwtExpiresIn,
-          {
-            ipAddress,
-            userAgent,
-          },
-        );
-
-        // If there was an existing session on a different device, execute force logout
-        if (existingSession) {
-          await this.forceLogoutService.executeForceLogout(
-            userId,
-            UserType.CUSTOMER,
-            existingSession.deviceId,
-            finalDeviceId,
-            'new_device_signin',
-            {
-              ipAddress,
-              userAgent,
-              oldSessionInfo: existingSession,
-            },
-          );
-        }
-        return { token: result.token };
-      }
-
-      return result;
+      return await this.authService.signinCustomer(signinDto);
     } catch (error) {
       this.logger.error(`User signin error: ${error.message}`, error.stack);
       throw new HttpException(

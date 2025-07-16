@@ -20,30 +20,7 @@ export class AuthService {
 
   // Customer Auth Methods
   async initiateCustomerSignup(createCustomerDto: CreateCustomerDto) {
-    //return this.authClient.initiateCustomerSignup(createCustomerDto);
-    const result = await this.authClient.initiateCustomerSignup(createCustomerDto);
-
-        // Create Stripe customer after successful signup
-    if (result && result.token && result.customer) {
-      try {
-        await this.paymentsService.createStripeCustomer(result.customer._id, {
-          name: `${result.customer.name} ${result.customer.surname}`,
-          email: result.customer.email,
-          phone: result.customer.phone,
-        });
-      } catch (error) {
-        // Log error but don't fail the signup
-        this.logger.logError(error, {
-          userId: result.customer._id,
-          userType: UserType.CUSTOMER,
-          action: 'create_stripe_customer_failed',
-        });
-      }
-
-      return { token: result.token, customer: result.customer };
-    }
-
-    return result;
+    return this.authClient.initiateCustomerSignup(createCustomerDto);
   }
 
   async completeCustomerSignup(validateOtpDto: ValidateOtpDto) {
@@ -82,26 +59,7 @@ export class AuthService {
 
   // Driver Auth Methods
   async initiateDriverSignup(createDriverDto: CreateDriverDto) {
-     const result = await this.authClient.initiateDriverSignup(createDriverDto);
-    // Create initial weekly earnings record after successful driver signup
-      if (result && result.token && result.driver) {
-        try {
-          await this.driverEarningsService.findOrCreateCurrentWeekRecord(
-            result.driver._id,
-          );
-        } catch (error) {
-          // Log error but don't fail the signup
-          this.logger.logError(error, {
-            userId: result.driver._id,
-            userType: UserType.DRIVER,
-            action: 'create_weekly_earnings_record_failed',
-          });
-        }
-
-        return { token: result.token, driver: result.driver };
-      }
-
-      return result;
+     return await this.authClient.initiateDriverSignup(createDriverDto);
   }
 
   async completeDriverSignup(validateOtpDto: ValidateOtpDto) {
