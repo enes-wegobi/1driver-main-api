@@ -72,7 +72,7 @@ export class SMSService implements OnModuleInit {
       const params = {
         ApiKey: this.config.apiKey!,
         ClientId: this.config.clientId!,
-        SenderId: dto.senderId,
+        SenderId: dto.senderId || this.configService.get<string>('sms.senderId') || 'DRIVER',
         Message: finalMessage,
         MobileNumbers: dto.mobileNumber,
       };

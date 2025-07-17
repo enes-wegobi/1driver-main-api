@@ -11,6 +11,7 @@ import { UserType } from 'src/common/user-type.enum';
 import { SMSService } from '../sms/sms.service';
 import { SendSMSDto } from '../sms/dto/send-sms.dto';
 import { MessageType } from '../sms/enums/message-type.enum';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AuthService {
@@ -158,7 +159,6 @@ export class AuthService {
   private async sendOTPSMS(phone: string, otp: string): Promise<void> {
     try {
       const smsDto = new SendSMSDto();
-      smsDto.senderId = 'DRIVER';
       smsDto.messageType = MessageType.OTP;
       smsDto.message = 'OTP Verification';
       smsDto.mobileNumber = phone;

@@ -191,5 +191,6 @@ export default () => ({
     ),
     baseUrl: process.env.SMS_BASE_URL || 'https://user.digitizebirdsms.com/api/v2',
     otpExpiryMinutes: parseInt(process.env.SMS_OTP_EXPIRY_MINUTES || '5', 10),
+    senderId: process.env.SMS_SENDER_ID || 'DRIVER',
   },
 });
