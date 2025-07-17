@@ -7,9 +7,9 @@ import {
   ValidateNested,
   IsEnum,
   IsDateString,
-  IsPhoneNumber,
   Length,
 } from 'class-validator';
+import { IsAllowedPhoneCountry } from '../../../common/validators/allowed-phone-countries.validator';
 import { Type } from 'class-transformer';
 import { CreateVehicleDto } from './create-vehicle.dto';
 import { Gender } from '../gender.enum';
@@ -35,7 +35,7 @@ export class CreateCustomerDto {
     example: '+905551234567',
     description: 'Phone number in international format',
   })
-  @IsPhoneNumber()
+  @IsAllowedPhoneCountry()
   @IsNotEmpty()
   phone: string;
 

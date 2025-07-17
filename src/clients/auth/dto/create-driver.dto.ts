@@ -5,9 +5,9 @@ import {
   IsOptional,
   IsString,
   Matches,
-  IsPhoneNumber,
   Length,
 } from 'class-validator';
+import { IsAllowedPhoneCountry } from '../../../common/validators/allowed-phone-countries.validator';
 
 export class CreateDriverDto {
   @ApiProperty({
@@ -30,7 +30,7 @@ export class CreateDriverDto {
     example: '+905551234567',
     description: 'Phone number in international format',
   })
-  @IsPhoneNumber()
+  @IsAllowedPhoneCountry()
   @IsNotEmpty()
   phone: string;
 

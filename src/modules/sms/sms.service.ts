@@ -74,7 +74,7 @@ export class SMSService implements OnModuleInit {
         ClientId: this.config.clientId!,
         SenderId: dto.senderId || this.configService.get<string>('sms.senderId') || 'DRIVER',
         Message: finalMessage,
-        MobileNumbers: dto.mobileNumber,
+        MobileNumbers: dto.mobileNumber.replace(/^\+/, ''),
       };
 
       if (dto.isUnicode !== undefined) {
