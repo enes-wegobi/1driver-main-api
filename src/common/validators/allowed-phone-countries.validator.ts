@@ -1,8 +1,10 @@
 import { ValidatorConstraint, ValidatorConstraintInterface, ValidationOptions, registerDecorator } from 'class-validator';
-import { parsePhoneNumber, isValidPhoneNumber } from 'libphonenumber-js';
+import { isValidPhoneNumber } from 'libphonenumber-js';
 
 @ValidatorConstraint({ name: 'allowedPhoneCountries', async: false })
+
 export class AllowedPhoneCountriesConstraint implements ValidatorConstraintInterface {
+  constructor() {}
   private readonly allowedCountryCodes = [
     '+90',  // Turkey
     '+91',  // India
@@ -31,6 +33,12 @@ export class AllowedPhoneCountriesConstraint implements ValidatorConstraintInter
   validate(phone: string) {
     if (!phone || typeof phone !== 'string') {
       return false;
+    }
+
+    // Skip validation in development environment
+    const skipInDevelopment = process.env.NODE_ENV === 'development';
+    if (skipInDevelopment) {
+      return isValidPhoneNumber(phone);
     }
 
     // First check if it's a valid phone number format
