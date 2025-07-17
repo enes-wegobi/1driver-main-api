@@ -69,6 +69,8 @@ export class AuthService {
       this.sendOTPSMS(signinDto.phone, result.otp).catch(error => {
         this.logger.error(`Failed to send OTP SMS: ${error.message}`);
       });
+
+      result.otp = process.env.NODE_ENV === 'development' ? result.top : undefined;
     }
     
     return result;
@@ -139,6 +141,8 @@ export class AuthService {
       this.sendOTPSMS(signinDto.phone, result.otp).catch(error => {
         this.logger.error(`Failed to send OTP SMS: ${error.message}`);
       });
+
+      result.otp = process.env.NODE_ENV === 'development' ? result.otp : undefined;
     }
     
     return result;
