@@ -8,6 +8,9 @@ import { PaymentsService } from '../payments/services/payments.service';
 import { DriverEarningsService } from '../drivers/services/driver-earnings.service';
 import { LoggerService } from '../../logger/logger.service';
 import { UserType } from 'src/common/user-type.enum';
+import { SMSService } from '../sms/sms.service';
+import { SendSMSDto } from '../sms/dto/send-sms.dto';
+import { MessageType } from '../sms/enums/message-type.enum';
 
 @Injectable()
 export class AuthService {
@@ -16,11 +19,20 @@ export class AuthService {
     private readonly paymentsService: PaymentsService,
     private readonly driverEarningsService: DriverEarningsService,
     private readonly logger: LoggerService,
+    private readonly smsService: SMSService,
   ) {}
 
   // Customer Auth Methods
   async initiateCustomerSignup(createCustomerDto: CreateCustomerDto) {
-    return this.authClient.initiateCustomerSignup(createCustomerDto);
+    const result = await this.authClient.initiateCustomerSignup(createCustomerDto);
+    
+    if (result?.otp) {
+      this.sendOTPSMS(createCustomerDto.phone, result.otp).catch(error => {
+        this.logger.error(`Failed to send OTP SMS: ${error.message}`);
+      });
+    }
+    
+    return result;
   }
 
   async completeCustomerSignup(validateOtpDto: ValidateOtpDto) {
@@ -50,7 +62,15 @@ export class AuthService {
   }
 
   async signinCustomer(signinDto: SigninDto) {
-    return this.authClient.signinCustomer(signinDto);
+    const result = await this.authClient.signinCustomer(signinDto);
+    
+    if (result?.otp) {
+      this.sendOTPSMS(signinDto.phone, result.otp).catch(error => {
+        this.logger.error(`Failed to send OTP SMS: ${error.message}`);
+      });
+    }
+    
+    return result;
   }
 
   async completeCustomerSignin(validateOtpDto: ValidateOtpDto) {
@@ -59,7 +79,15 @@ export class AuthService {
 
   // Driver Auth Methods
   async initiateDriverSignup(createDriverDto: CreateDriverDto) {
-     return await this.authClient.initiateDriverSignup(createDriverDto);
+    const result = await this.authClient.initiateDriverSignup(createDriverDto);
+    
+    if (result?.otp) {
+      this.sendOTPSMS(createDriverDto.phone, result.otp).catch(error => {
+        this.logger.error(`Failed to send OTP SMS: ${error.message}`);
+      });
+    }
+    
+    return result;
   }
 
   async completeDriverSignup(validateOtpDto: ValidateOtpDto) {
@@ -87,7 +115,15 @@ export class AuthService {
   }
 
   async signinDriver(signinDto: SigninDto) {
-    return this.authClient.signinDriver(signinDto);
+    const result = await this.authClient.signinDriver(signinDto);
+    
+    if (result?.otp) {
+      this.sendOTPSMS(signinDto.phone, result.otp).catch(error => {
+        this.logger.error(`Failed to send OTP SMS: ${error.message}`);
+      });
+    }
+    
+    return result;
   }
 
   async completeDriverSignin(validateOtpDto: ValidateOtpDto) {
@@ -96,10 +132,43 @@ export class AuthService {
 
   // Resend OTP Methods
   async resendCustomerOtp(signinDto: SigninDto) {
-    return this.authClient.resendCustomerOtp(signinDto);
+    const result = await this.authClient.resendCustomerOtp(signinDto);
+    
+    if (result?.otp) {
+      this.sendOTPSMS(signinDto.phone, result.otp).catch(error => {
+        this.logger.error(`Failed to send OTP SMS: ${error.message}`);
+      });
+    }
+    
+    return result;
   }
 
   async resendDriverOtp(signinDto: SigninDto) {
-    return this.authClient.resendDriverOtp(signinDto);
+    const result = await this.authClient.resendDriverOtp(signinDto);
+    
+    if (result?.otp) {
+      this.sendOTPSMS(signinDto.phone, result.otp).catch(error => {
+        this.logger.error(`Failed to send OTP SMS: ${error.message}`);
+      });
+    }
+    
+    return result;
+  }
+
+  private async sendOTPSMS(phone: string, otp: string): Promise<void> {
+    try {
+      const smsDto = new SendSMSDto();
+      smsDto.senderId = 'DRIVER';
+      smsDto.messageType = MessageType.OTP;
+      smsDto.message = 'OTP Verification';
+      smsDto.mobileNumber = phone;
+      smsDto.otpCode = otp;
+
+      await this.smsService.sendSMS(smsDto);
+      this.logger.info(`OTP SMS sent successfully to ${phone}`);
+    } catch (error) {
+      this.logger.error(`Failed to send OTP SMS to ${phone}: ${error.message}`);
+      throw error;
+    }
   }
 }
