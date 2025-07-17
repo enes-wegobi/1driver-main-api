@@ -180,4 +180,16 @@ export default () => ({
       'EXPO_ACCESS_TOKEN',
     ),
   },
+  sms: {
+    apiKey: secretsService.readSecret(
+      'sms_api_key',
+      'SMS_API_KEY',
+    ),
+    clientId: secretsService.readSecret(
+      'sms_client_id',
+      'SMS_CLIENT_ID',
+    ),
+    baseUrl: process.env.SMS_BASE_URL || 'https://user.digitizebirdsms.com/api/v2',
+    otpExpiryMinutes: parseInt(process.env.SMS_OTP_EXPIRY_MINUTES || '5', 10),
+  },
 });
