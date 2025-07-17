@@ -18,6 +18,7 @@ export class AllowedPhoneCountriesConstraint implements ValidatorConstraintInter
     '+98',  // Iran
     '+94',  // Sri Lanka
     '+977', // Nepal
+    '+971',
     '+1',   // United States
     '+49',  // Germany
     '+962', // Jordan
