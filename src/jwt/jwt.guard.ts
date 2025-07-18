@@ -101,6 +101,8 @@ export class JwtAuthGuard implements CanActivate {
     } catch (error) {
       this.loggerService.error('JWT Guard validation error', {
         error: error.message,
+        url: request.originalUrl,
+        method: request.method,
         userId: payload.userId,
         userType: payload.userType,
         deviceInfo: currentDeviceInfo,
