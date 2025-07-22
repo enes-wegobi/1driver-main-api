@@ -81,7 +81,6 @@ export class StripeService {
     customerId: string,
     type: 'card' = 'card',
   ): Promise<Stripe.PaymentMethod[]> {
-    this.logger.info(`Getting payment methods for customer ${customerId}`);
 
     const paymentMethods = await this.stripe.paymentMethods.list({
       customer: customerId,

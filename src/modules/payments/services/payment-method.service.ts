@@ -24,7 +24,6 @@ export class PaymentMethodService {
    * Get all payment methods for a customer
    */
   async getPaymentMethods(customerId: string): Promise<PaymentMethod[]> {
-    this.logger.info(`Getting payment methods for customer ${customerId}`);
     return this.paymentMethodRepository.findByCustomerId(customerId);
   }
 
