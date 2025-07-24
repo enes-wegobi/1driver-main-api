@@ -836,7 +836,11 @@ export class TripService {
   private calculateEstimatedCost(durationInSeconds: number): number {
     const durationInMinutes = durationInSeconds / 60;
     const costPerMinute = this.configService.tripCostPerMinute;
-    return Math.round(durationInMinutes * costPerMinute * 100) / 100;
+    const estimatedCost = Math.round(durationInMinutes * costPerMinute * 100) / 100;
+    if (estimatedCost < 15) {
+        return 15;
+    }
+    return estimatedCost;
   }
 
   private calculateFinalTripCost(tripDetails: TripDocument): {
