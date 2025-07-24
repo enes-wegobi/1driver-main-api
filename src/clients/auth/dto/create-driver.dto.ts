@@ -59,5 +59,4 @@ export class CreateDriverDto {
   @IsOptional()
   @IsString()
   expoToken?: string;
-
 }

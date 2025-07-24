@@ -45,7 +45,7 @@ export class BaseRedisService implements OnModuleInit, OnModuleDestroy {
         port,
         username,
         hasPassword: !!password,
-        tls
+        tls,
       });
 
       BaseRedisService.redisClient = new Redis({

@@ -110,14 +110,15 @@ export class DriversController {
     }
 
     try {
+      const userId = user.userId;
       const fileExists = await this.driversService.checkFileExists(
-        user.userId,
+        userId,
         fileType,
       );
 
       if (fileExists) {
         const existingFileKey = await this.driversService.deleteFile(
-          user.userId,
+          userId,
           fileType,
         );
         if (existingFileKey) {
@@ -125,11 +126,11 @@ export class DriversController {
         }
       }
 
-      const fileKey = `${user.userId}/${fileType}/${uuidv4()}-${file.originalname}`;
+      const fileKey = `${userId}/${fileType}/${uuidv4()}-${file.originalname}`;
       await this.s3Service.uploadFileWithKey(file, fileKey);
       const fileUrl = this.s3Service.getPublicUrl(fileKey);
       await this.driversService.notifyFileUploaded(
-        user.userId,
+        userId,
         fileType,
         fileUrl,
         file.mimetype,
@@ -592,11 +593,11 @@ export class DriversController {
     }
 
     try {
-      const fileKey = `profile-photos/drivers/${user.userId}/${uuidv4()}-${file.originalname}`;
-
+      const userId = user.userId;
+      const fileKey = `profile-photos/drivers/${userId}/${uuidv4()}-${file.originalname}`;
       await this.s3Service.uploadFileWithKey(file, fileKey);
       const photoUrl = this.s3Service.getPublicUrl(fileKey);
-      await this.driversService.updatePhoto(user.userId, photoUrl);
+      await this.driversService.updatePhoto(userId, photoUrl);
 
       return {
         message: 'Profile photo uploaded successfully',

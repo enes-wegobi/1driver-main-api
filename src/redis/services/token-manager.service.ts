@@ -76,7 +76,7 @@ export class TokenManagerService extends BaseRedisService {
 
     const key = RedisKeyGenerator.userActiveToken(userId, userType);
     await this.client.set(key, JSON.stringify(session));
-    
+
     // Maintain the existing TTL
     const ttl = await this.client.pttl(key);
     if (ttl > 0) {
@@ -92,17 +92,14 @@ export class TokenManagerService extends BaseRedisService {
    * @param userType The user type
    */
   @WithErrorHandling()
-  async invalidateToken(
-    userId: string,
-    userType: UserType,
-  ): Promise<boolean> {
+  async invalidateToken(userId: string, userType: UserType): Promise<boolean> {
     const key = RedisKeyGenerator.userActiveToken(userId, userType);
     const result = await this.client.del(key);
-    
+
     this.customLogger.info(
       `Token invalidated for user ${userId} (${userType})`,
     );
-    
+
     return result > 0;
   }
 
@@ -131,7 +128,7 @@ export class TokenManagerService extends BaseRedisService {
   ): Promise<SessionMetadata | null> {
     // Get existing session before replacing
     const existingSession = await this.getActiveToken(userId, userType);
-    
+
     const now = new Date().toISOString();
     const sessionData: SessionMetadata = {
       token: newToken,
@@ -145,7 +142,7 @@ export class TokenManagerService extends BaseRedisService {
     };
 
     const key = RedisKeyGenerator.userActiveToken(userId, userType);
-    
+
     // Atomically replace the session data
     const ttl = (expiresIn + this.TOKEN_EXPIRY_BUFFER) * 1000;
     await this.client.set(key, JSON.stringify(sessionData));

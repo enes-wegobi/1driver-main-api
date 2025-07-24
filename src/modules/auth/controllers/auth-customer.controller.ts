@@ -36,33 +36,35 @@ export class AuthCustomerController {
     private readonly logger: LoggerService,
     private readonly forceLogoutService: ForceLogoutService,
   ) {
-    this.jwtExpiresIn = this.configService.get<number>('jwt.expiresIn', 2592000); // Default: 30 days
+    this.jwtExpiresIn = this.configService.get<number>(
+      'jwt.expiresIn',
+      2592000,
+    ); // Default: 30 days
   }
 
   @Post('initiate-signup')
   @ApiOperation({ summary: 'Initiate customer registration process' })
   @ApiResponse({ status: 201, description: 'Signup initiated, OTP sent' })
   @ApiResponse({ status: 409, description: 'Customer already exists' })
-  
   async initiateSignup(
     @Body() createCustomerDto: CreateCustomerDto,
     @Headers('x-device-id') deviceId: string,
     @Headers('x-user-agent') userAgent: string,
     @Headers('x-forwarded-for') forwardedFor: string,
-    @Headers('x-real-ip') realIp: string,) {
-      try {
-        return await this.authService.initiateCustomerSignup(createCustomerDto);
-          
-      } catch (error) {
-        this.logger.error(
-          `User signup initiation error: ${error.message}`,
-          error.stack,
-        );
-        throw new HttpException(
-          error.response?.data || 'An error occurred during signup initiation',
-          error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
-        );
-      }
+    @Headers('x-real-ip') realIp: string,
+  ) {
+    try {
+      return await this.authService.initiateCustomerSignup(createCustomerDto);
+    } catch (error) {
+      this.logger.error(
+        `User signup initiation error: ${error.message}`,
+        error.stack,
+      );
+      throw new HttpException(
+        error.response?.data || 'An error occurred during signup initiation',
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 
   @Post('complete-signup')
@@ -88,17 +90,18 @@ export class AuthCustomerController {
         const finalDeviceId = deviceId || 'unknown-device';
 
         // Atomically replace existing session with new one
-        const existingSession = await this.tokenManagerService.replaceActiveToken(
-          result.customer._id,
-          UserType.CUSTOMER,
-          result.token,
-          finalDeviceId,
-          this.jwtExpiresIn,
-          {
-            ipAddress,
-            userAgent,
-          },
-        );
+        const existingSession =
+          await this.tokenManagerService.replaceActiveToken(
+            result.customer._id,
+            UserType.CUSTOMER,
+            result.token,
+            finalDeviceId,
+            this.jwtExpiresIn,
+            {
+              ipAddress,
+              userAgent,
+            },
+          );
 
         // If there was an existing session, execute force logout
         if (existingSession && existingSession.deviceId !== finalDeviceId) {
@@ -174,17 +177,18 @@ export class AuthCustomerController {
         const userId = result.customer._id;
 
         // Atomically replace existing session with new one
-        const existingSession = await this.tokenManagerService.replaceActiveToken(
-          userId,
-          UserType.CUSTOMER,
-          result.token,
-          finalDeviceId,
-          this.jwtExpiresIn,
-          {
-            ipAddress,
-            userAgent,
-          },
-        );
+        const existingSession =
+          await this.tokenManagerService.replaceActiveToken(
+            userId,
+            UserType.CUSTOMER,
+            result.token,
+            finalDeviceId,
+            this.jwtExpiresIn,
+            {
+              ipAddress,
+              userAgent,
+            },
+          );
 
         // If there was an existing session on a different device, execute force logout
         if (existingSession) {

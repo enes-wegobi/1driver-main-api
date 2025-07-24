@@ -17,7 +17,6 @@ export class WebSocketService {
     private readonly webSocketRedis: WebSocketRedisService,
     private readonly driverStatusService: DriverStatusService,
     private readonly customerStatusService: CustomerStatusService,
-    
   ) {}
 
   setServer(server: Server) {
@@ -94,54 +93,79 @@ export class WebSocketService {
     if (existingConnection) {
       // Always disconnect existing connection - either same device (new token) or different device
       if (existingConnection.deviceId === deviceId) {
-        this.logger.info('Same device reconnecting with new token - disconnecting old session', {
-          userId,
-          userType,
-          deviceId,
-          oldSocketId: existingConnection.socketId,
-          newSocketId: socket.id,
-        });
+        this.logger.info(
+          'Same device reconnecting with new token - disconnecting old session',
+          {
+            userId,
+            userType,
+            deviceId,
+            oldSocketId: existingConnection.socketId,
+            newSocketId: socket.id,
+          },
+        );
       } else {
-        this.logger.warn('Different device attempting to connect - disconnecting old session', {
-          userId,
-          userType,
-          oldDeviceId: existingConnection.deviceId,
-          newDeviceId: deviceId,
-          oldSocketId: existingConnection.socketId,
-          newSocketId: socket.id,
-        });
+        this.logger.warn(
+          'Different device attempting to connect - disconnecting old session',
+          {
+            userId,
+            userType,
+            oldDeviceId: existingConnection.deviceId,
+            newDeviceId: deviceId,
+            oldSocketId: existingConnection.socketId,
+            newSocketId: socket.id,
+          },
+        );
       }
 
       const forceLogoutEvent = {
-        reason: existingConnection.deviceId === deviceId ? 'same_device_new_token' : 'new_device_connection',
+        reason:
+          existingConnection.deviceId === deviceId
+            ? 'same_device_new_token'
+            : 'new_device_connection',
         timestamp: new Date().toISOString(),
         action: 'immediate_disconnect',
         oldDeviceId: existingConnection.deviceId,
         newDeviceId: deviceId,
-        message: existingConnection.deviceId === deviceId 
-          ? 'Session refreshed - please reconnect with new token' 
-          : 'Your session has been terminated due to login from another device',
+        message:
+          existingConnection.deviceId === deviceId
+            ? 'Session refreshed - please reconnect with new token'
+            : 'Your session has been terminated due to login from another device',
       };
-      
+
       // Wait a moment to ensure server is fully initialized and try disconnect
-      await new Promise(resolve => setTimeout(resolve, 100));
-      const disconnected = await this.forceDisconnectSocket(userId, userType, existingConnection.socketId, forceLogoutEvent.reason, forceLogoutEvent);
-      
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      const disconnected = await this.forceDisconnectSocket(
+        userId,
+        userType,
+        existingConnection.socketId,
+        forceLogoutEvent.reason,
+        forceLogoutEvent,
+      );
+
       // If disconnect failed, try again with more aggressive cleanup
       if (!disconnected) {
-        this.logger.warn('First disconnect attempt failed, trying aggressive cleanup', {
-          socketId: existingConnection.socketId,
-          reason: forceLogoutEvent.reason,
-        });
-        
+        this.logger.warn(
+          'First disconnect attempt failed, trying aggressive cleanup',
+          {
+            socketId: existingConnection.socketId,
+            reason: forceLogoutEvent.reason,
+          },
+        );
+
         // Force cleanup from Redis regardless
         await this.webSocketRedis.removeActiveConnection(userId, userType);
-        
+
         // Try one more time with a longer delay
-        await new Promise(resolve => setTimeout(resolve, 200));
-        await this.forceDisconnectSocket(userId, userType, existingConnection.socketId, forceLogoutEvent.reason, forceLogoutEvent);
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        await this.forceDisconnectSocket(
+          userId,
+          userType,
+          existingConnection.socketId,
+          forceLogoutEvent.reason,
+          forceLogoutEvent,
+        );
       }
-      
+
       this.logger.info('Previous WebSocket connection handled', {
         userId,
         userType,
@@ -182,21 +206,27 @@ export class WebSocketService {
         reason,
       });
 
-      const activeConnection = await this.webSocketRedis.getActiveConnection(userId, userType);
-      
+      const activeConnection = await this.webSocketRedis.getActiveConnection(
+        userId,
+        userType,
+      );
+
       this.logger.debug('Active connection lookup result', {
         userId,
         userType,
         hasConnection: !!activeConnection,
         connection: activeConnection,
       });
-      
+
       if (!activeConnection) {
-        this.logger.warn('No active WebSocket connection found for user force logout', {
-          userId,
-          userType,
-          reason,
-        });
+        this.logger.warn(
+          'No active WebSocket connection found for user force logout',
+          {
+            userId,
+            userType,
+            reason,
+          },
+        );
         return false;
       }
 
@@ -209,7 +239,13 @@ export class WebSocketService {
       };
 
       // Send force logout event and disconnect
-      const success = await this.forceDisconnectSocket(userId, userType, activeConnection.socketId, reason, forceLogoutEvent);
+      const success = await this.forceDisconnectSocket(
+        userId,
+        userType,
+        activeConnection.socketId,
+        reason,
+        forceLogoutEvent,
+      );
 
       if (success) {
         // Remove connection from Redis
@@ -247,34 +283,35 @@ export class WebSocketService {
     forceLogoutEvent?: any,
   ): Promise<boolean> {
     if (!this.server) {
-      this.logger.error('WebSocket server not initialized for force disconnect', { socketId, reason });
+      this.logger.error(
+        'WebSocket server not initialized for force disconnect',
+        { socketId, reason },
+      );
       return false;
     }
 
     try {
       if (forceLogoutEvent) {
         this.server.to(socketId).emit('force_logout', forceLogoutEvent);
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 100));
       }
 
       if (userId) {
-            if (userType === UserType.DRIVER) {
-              await this.driverStatusService.markDriverAsDisconnected(userId);
-              await this.driverStatusService.setDriverAppStateOnDisconnect(userId);
-              const status =
-                await this.driverStatusService.getDriverAvailability(userId);
-              if (status !== DriverAvailabilityStatus.ON_TRIP) {
-                await this.driverStatusService.deleteDriverAvailability(userId);
-              }
-
-            } else if (userType === UserType.CUSTOMER) {
-              await this.customerStatusService.markCustomerAsInactive(userId);
-              await this.customerStatusService.setCustomerAppStateOnDisconnect(
-                userId,
-              );
-
-            }
+        if (userType === UserType.DRIVER) {
+          await this.driverStatusService.markDriverAsDisconnected(userId);
+          await this.driverStatusService.setDriverAppStateOnDisconnect(userId);
+          const status =
+            await this.driverStatusService.getDriverAvailability(userId);
+          if (status !== DriverAvailabilityStatus.ON_TRIP) {
+            await this.driverStatusService.deleteDriverAvailability(userId);
           }
+        } else if (userType === UserType.CUSTOMER) {
+          await this.customerStatusService.markCustomerAsInactive(userId);
+          await this.customerStatusService.setCustomerAppStateOnDisconnect(
+            userId,
+          );
+        }
+      }
 
       this.server.to(socketId).disconnectSockets(true);
 
@@ -286,11 +323,14 @@ export class WebSocketService {
 
       return true;
     } catch (error) {
-      this.logger.error('Socket disconnect failed - socket may already be disconnected', {
-        socketId,
-        reason,
-        error: error.message,
-      });
+      this.logger.error(
+        'Socket disconnect failed - socket may already be disconnected',
+        {
+          socketId,
+          reason,
+          error: error.message,
+        },
+      );
       return true; // Return true since socket is already gone
     }
   }
@@ -301,20 +341,27 @@ export class WebSocketService {
   async handleSocketDisconnect(socket: Socket): Promise<void> {
     const userId = socket.data.userId;
     const userType = socket.data.userType;
-    
+
     if (userId && userType) {
       // Check if this socket is the active one for the user
-      const isActive = await this.webSocketRedis.isActiveSocket(userId, userType, socket.id);
-      
+      const isActive = await this.webSocketRedis.isActiveSocket(
+        userId,
+        userType,
+        socket.id,
+      );
+
       if (isActive) {
         // Remove from Redis only if this is the active socket
         await this.webSocketRedis.removeActiveConnection(userId, userType);
-        
-        this.logger.info('Active WebSocket connection cleaned up on disconnect', {
-          socketId: socket.id,
-          userId,
-          userType,
-        });
+
+        this.logger.info(
+          'Active WebSocket connection cleaned up on disconnect',
+          {
+            socketId: socket.id,
+            userId,
+            userType,
+          },
+        );
       } else {
         this.logger.debug('Inactive socket disconnected (not cleaning Redis)', {
           socketId: socket.id,

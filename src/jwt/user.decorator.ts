@@ -1,7 +1,7 @@
 import {
   createParamDecorator,
   ExecutionContext,
-  InternalServerErrorException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { IJwtPayload } from './jwt-payload.interface';
 
@@ -13,8 +13,8 @@ export const GetUser = createParamDecorator(
     const request = ctx.switchToHttp().getRequest();
     const user = request.user as IJwtPayload;
 
-    if (!user) {
-      throw new InternalServerErrorException('User not found on request');
+    if (!user || !user.userId) {
+      throw new UnauthorizedException('User not authenticated');
     }
 
     return data ? user[data] : user;

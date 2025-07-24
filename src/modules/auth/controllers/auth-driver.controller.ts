@@ -36,7 +36,10 @@ export class AuthDriverController {
     private readonly logger: LoggerService,
     private readonly forceLogoutService: ForceLogoutService,
   ) {
-    this.jwtExpiresIn = this.configService.get<number>('jwt.expiresIn', 2592000); // Default: 30 days
+    this.jwtExpiresIn = this.configService.get<number>(
+      'jwt.expiresIn',
+      2592000,
+    ); // Default: 30 days
   }
 
   @Post('initiate-signup')
@@ -87,17 +90,18 @@ export class AuthDriverController {
         const finalDeviceId = deviceId || 'unknown-device';
 
         // Atomically replace existing session with new one
-        const existingSession = await this.tokenManagerService.replaceActiveToken(
-          result.driver._id,
-          UserType.DRIVER,
-          result.token,
-          finalDeviceId,
-          this.jwtExpiresIn,
-          {
-            ipAddress,
-            userAgent,
-          },
-        );
+        const existingSession =
+          await this.tokenManagerService.replaceActiveToken(
+            result.driver._id,
+            UserType.DRIVER,
+            result.token,
+            finalDeviceId,
+            this.jwtExpiresIn,
+            {
+              ipAddress,
+              userAgent,
+            },
+          );
 
         // If there was an existing session, execute force logout
         if (existingSession && existingSession.deviceId !== finalDeviceId) {
@@ -140,10 +144,13 @@ export class AuthDriverController {
   @ApiOperation({ summary: 'Sign in a driver' })
   @ApiResponse({ status: 200, description: 'OTP sent successfully' })
   @ApiResponse({ status: 404, description: 'Driver not found' })
-  async signin(@Body() signinDto: SigninDto,     @Headers('x-device-id') deviceId: string,
+  async signin(
+    @Body() signinDto: SigninDto,
+    @Headers('x-device-id') deviceId: string,
     @Headers('x-user-agent') userAgent: string,
     @Headers('x-forwarded-for') forwardedFor: string,
-    @Headers('x-real-ip') realIp: string,) {
+    @Headers('x-real-ip') realIp: string,
+  ) {
     try {
       return await this.authService.signinDriver(signinDto);
     } catch (error) {
@@ -177,17 +184,18 @@ export class AuthDriverController {
         const userId = result.driver._id;
 
         // Atomically replace existing session with new one
-        const existingSession = await this.tokenManagerService.replaceActiveToken(
-          userId,
-          UserType.DRIVER,
-          result.token,
-          finalDeviceId,
-          this.jwtExpiresIn,
-          {
-            ipAddress,
-            userAgent,
-          },
-        );
+        const existingSession =
+          await this.tokenManagerService.replaceActiveToken(
+            userId,
+            UserType.DRIVER,
+            result.token,
+            finalDeviceId,
+            this.jwtExpiresIn,
+            {
+              ipAddress,
+              userAgent,
+            },
+          );
 
         // If there was an existing session on a different device, execute force logout
         if (existingSession) {

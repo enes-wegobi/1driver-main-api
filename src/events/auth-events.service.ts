@@ -32,5 +32,4 @@ export class AuthEventsService {
   emitManualLogout(event: WebSocketLogoutEvent): void {
     this.eventEmitter.emit(AUTH_EVENTS.MANUAL_LOGOUT, event);
   }
-
 }

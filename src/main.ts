@@ -1,4 +1,4 @@
-import "./instrument";
+import './instrument';
 
 import { config } from 'dotenv';
 import { NestFactory } from '@nestjs/core';

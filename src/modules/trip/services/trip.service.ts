@@ -163,7 +163,9 @@ export class TripService {
             trip.route[0].lat,
             trip.route[0].lon,
           );
-          this.logger.info(`Found ${driverIds.length} drivers before filtering`);
+          this.logger.info(
+            `Found ${driverIds.length} drivers before filtering`,
+          );
           /*
           // Filter out previously rejected drivers for existing trips
           if (tripId && trip.rejectedDriverIds && trip.rejectedDriverIds.length > 0) {
@@ -475,11 +477,12 @@ export class TripService {
                   trip.tripStartTime,
                 );
             }
-            const asd = trip.driver &&
+            const asd =
+              trip.driver &&
               this.driverPenaltyService.shouldApplyPenalty(
-                timeDifferenceSeconds)
-            if (asd
-            ) {
+                timeDifferenceSeconds,
+              );
+            if (asd) {
               try {
                 await this.updateTripWithData(tripId, {
                   status: TripStatus.CANCELLED_PAYMENT,

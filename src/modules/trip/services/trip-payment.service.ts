@@ -211,7 +211,10 @@ export class TripPaymentService {
     if (trip.driver?.id && trip.actualDuration) {
       try {
         const earningsCalculation =
-          this.driverEarningsService.calculateTripEarnings(trip.finalCost, trip.actualDuration);
+          this.driverEarningsService.calculateTripEarnings(
+            trip.finalCost,
+            trip.actualDuration,
+          );
 
         await this.driverEarningsService.addTripToWeeklyEarnings(
           trip.driver.id,

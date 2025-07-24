@@ -30,54 +30,6 @@ export class DriverEarningsController {
     private readonly driverEarningsService: DriverEarningsService,
     private readonly logger: LoggerService,
   ) {}
-
-  /**
-   * Get current week earnings for driver
-  
-  @ApiOperation({ summary: 'Get current week earnings for driver' })
-  @ApiResponse({
-    status: 200,
-    description: 'Current week earnings retrieved successfully',
-  })
-  @Get('current-week')
-  async getCurrentWeekEarnings(@GetUser() user: IJwtPayload) {
-    this.logger.info(`Getting current week earnings for driver ${user.userId}`);
-
-    const earnings = await this.driverEarningsService.getCurrentWeekEarnings(
-      user.userId,
-    );
-
-    if (!earnings) {
-      return {
-        driverId: user.userId,
-        totalTrips: 0,
-        totalDuration: 0,
-        totalEarnings: 0,
-        trips: [],
-        status: 'ACTIVE',
-        weekStartDate: null,
-        weekEndDate: null,
-      };
-    }
-
-    return {
-      driverId: earnings.driverId,
-      totalTrips: earnings.totalTrips,
-      totalDuration: earnings.totalDuration,
-      totalEarnings: earnings.totalEarnings,
-      trips: earnings.trips.map((trip) => ({
-        tripId: trip.tripId.toString(),
-        tripDate: trip.tripDate,
-        duration: trip.duration,
-        multiplier: trip.multiplier,
-        earnings: trip.earnings,
-      })),
-      status: earnings.status,
-      weekStartDate: earnings.weekStartDate,
-      weekEndDate: earnings.weekEndDate,
-    };
-  }
- */
   /**
    * Get all earnings for driver with pagination
    */
@@ -111,15 +63,9 @@ export class DriverEarningsController {
     @Query('limit', new ParseIntPipe({ optional: true })) limit: number = 10,
     @Query('sortOrder') sortOrder: 'asc' | 'desc' = 'desc',
   ) {
-    // Validate sortOrder parameter
     if (!['asc', 'desc'].includes(sortOrder)) {
       sortOrder = 'desc';
     }
-
-    this.logger.info(
-      `Getting all earnings for driver ${user.userId} - page: ${page}, limit: ${limit}, sortOrder: ${sortOrder}`,
-    );
-
     const result = await this.driverEarningsService.getAllEarnings(
       user.userId,
       page,

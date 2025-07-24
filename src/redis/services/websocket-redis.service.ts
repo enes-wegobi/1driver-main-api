@@ -36,10 +36,10 @@ export class WebSocketRedisService extends BaseRedisService {
     deviceId: string,
   ): Promise<ActiveWebSocketConnection | null> {
     const key = RedisKeyGenerator.userActiveWebSocket(userId, userType);
-    
+
     // Get existing connection first
     const existingConnection = await this.getActiveConnection(userId, userType);
-    
+
     const connectionData: ActiveWebSocketConnection = {
       socketId,
       deviceId,
@@ -81,11 +81,11 @@ export class WebSocketRedisService extends BaseRedisService {
   ): Promise<boolean> {
     const key = RedisKeyGenerator.userActiveWebSocket(userId, userType);
     const result = await this.client.del(key);
-    
+
     this.customLogger.info(
       `WebSocket connection removed for user ${userId} (${userType})`,
     );
-    
+
     return result > 0;
   }
 
@@ -106,7 +106,7 @@ export class WebSocketRedisService extends BaseRedisService {
 
     const key = RedisKeyGenerator.userActiveWebSocket(userId, userType);
     await this.client.set(key, JSON.stringify(connection));
-    
+
     // Maintain the existing TTL
     const ttl = await this.client.ttl(key);
     if (ttl > 0) {

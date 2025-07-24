@@ -68,13 +68,6 @@ export class LocationController {
     @GetUser() user: IJwtPayload,
     @Body() payload: DriverLocationDto,
   ) {
-    if (!user.userId) {
-      return {
-        success: false,
-        message: 'User not authenticated',
-      };
-    }
-
     if (user.userType !== UserType.DRIVER) {
       return {
         success: false,

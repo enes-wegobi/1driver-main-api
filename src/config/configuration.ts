@@ -94,11 +94,22 @@ export default () => ({
   sentry: {
     dsn: secretsService.readSecret('sentry_dsn', 'SENTRY_DSN'),
     environment: process.env.NODE_ENV || 'development',
-    release: process.env.SENTRY_RELEASE || process.env.DATADOG_VERSION || '1.0.0',
-    serverName: process.env.SENTRY_SERVER_NAME || process.env.DATADOG_HOSTNAME || require('os').hostname(),
-    service: process.env.SENTRY_SERVICE || process.env.DATADOG_SERVICE || '1driver-main-api',
-    tracesSampleRate: parseFloat(process.env.SENTRY_TRACES_SAMPLE_RATE || '0.1'),
-    profilesSampleRate: parseFloat(process.env.SENTRY_PROFILES_SAMPLE_RATE || '0.1'),
+    release:
+      process.env.SENTRY_RELEASE || process.env.DATADOG_VERSION || '1.0.0',
+    serverName:
+      process.env.SENTRY_SERVER_NAME ||
+      process.env.DATADOG_HOSTNAME ||
+      require('os').hostname(),
+    service:
+      process.env.SENTRY_SERVICE ||
+      process.env.DATADOG_SERVICE ||
+      '1driver-main-api',
+    tracesSampleRate: parseFloat(
+      process.env.SENTRY_TRACES_SAMPLE_RATE || '0.1',
+    ),
+    profilesSampleRate: parseFloat(
+      process.env.SENTRY_PROFILES_SAMPLE_RATE || '0.1',
+    ),
   },
   spaces: {
     region: process.env.SPACES_REGION,
@@ -181,15 +192,10 @@ export default () => ({
     ),
   },
   sms: {
-    apiKey: secretsService.readSecret(
-      'sms_api_key',
-      'SMS_API_KEY',
-    ),
-    clientId: secretsService.readSecret(
-      'sms_client_id',
-      'SMS_CLIENT_ID',
-    ),
-    baseUrl: process.env.SMS_BASE_URL || 'https://user.digitizebirdsms.com/api/v2',
+    apiKey: secretsService.readSecret('sms_api_key', 'SMS_API_KEY'),
+    clientId: secretsService.readSecret('sms_client_id', 'SMS_CLIENT_ID'),
+    baseUrl:
+      process.env.SMS_BASE_URL || 'https://user.digitizebirdsms.com/api/v2',
     otpExpiryMinutes: parseInt(process.env.SMS_OTP_EXPIRY_MINUTES || '2', 10),
     senderId: process.env.SMS_SENDER_ID || 'DRIVER',
   },

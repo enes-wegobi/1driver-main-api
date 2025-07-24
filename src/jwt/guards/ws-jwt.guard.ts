@@ -16,7 +16,7 @@ export class WsJwtGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     try {
       const client = context.switchToWs().getClient<Socket>();
-      
+
       // Extract authentication data
       const token = this.extractToken(client);
       const deviceId = this.extractDeviceId(client);
@@ -27,7 +27,7 @@ export class WsJwtGuard implements CanActivate {
           socketId: client.id,
           ipAddress,
         });
-        client.emit('auth_failed', { 
+        client.emit('auth_failed', {
           reason: 'no_token',
           message: 'Authentication token required',
           timestamp: new Date().toISOString(),
@@ -37,11 +37,14 @@ export class WsJwtGuard implements CanActivate {
       }
 
       if (!deviceId) {
-        this.logger.warn('WebSocket authentication failed: No device ID provided', {
-          socketId: client.id,
-          ipAddress,
-        });
-        client.emit('auth_failed', { 
+        this.logger.warn(
+          'WebSocket authentication failed: No device ID provided',
+          {
+            socketId: client.id,
+            ipAddress,
+          },
+        );
+        client.emit('auth_failed', {
           reason: 'no_device_id',
           message: 'Device ID header required',
           timestamp: new Date().toISOString(),
@@ -58,7 +61,7 @@ export class WsJwtGuard implements CanActivate {
           deviceId,
           ipAddress,
         });
-        client.emit('auth_failed', { 
+        client.emit('auth_failed', {
           reason: 'invalid_token',
           message: 'Invalid authentication token',
           timestamp: new Date().toISOString(),
@@ -71,7 +74,10 @@ export class WsJwtGuard implements CanActivate {
       const userId = payload.userId;
 
       // Check active session and verify all details
-      const activeSession = await this.tokenManager.getActiveToken(userId, userType);
+      const activeSession = await this.tokenManager.getActiveToken(
+        userId,
+        userType,
+      );
       if (!activeSession) {
         this.logger.warn('WebSocket authentication failed: No active session', {
           userId,
@@ -79,7 +85,7 @@ export class WsJwtGuard implements CanActivate {
           deviceId,
           socketId: client.id,
         });
-        client.emit('auth_failed', { 
+        client.emit('auth_failed', {
           reason: 'no_active_session',
           message: 'No active session found',
           timestamp: new Date().toISOString(),
@@ -90,15 +96,18 @@ export class WsJwtGuard implements CanActivate {
 
       // Verify device ID matches
       if (activeSession.deviceId !== deviceId) {
-        this.logger.warn('WebSocket authentication failed: Device ID mismatch', {
-          userId,
-          userType,
-          expectedDeviceId: activeSession.deviceId,
-          actualDeviceId: deviceId,
-          ipAddress,
-          socketId: client.id,
-        });
-        client.emit('auth_failed', { 
+        this.logger.warn(
+          'WebSocket authentication failed: Device ID mismatch',
+          {
+            userId,
+            userType,
+            expectedDeviceId: activeSession.deviceId,
+            actualDeviceId: deviceId,
+            ipAddress,
+            socketId: client.id,
+          },
+        );
+        client.emit('auth_failed', {
           reason: 'device_mismatch',
           message: 'Device mismatch - please login again',
           timestamp: new Date().toISOString(),
@@ -115,7 +124,7 @@ export class WsJwtGuard implements CanActivate {
           deviceId,
           socketId: client.id,
         });
-        client.emit('auth_failed', { 
+        client.emit('auth_failed', {
           reason: 'token_mismatch',
           message: 'Token mismatch - please login again',
           timestamp: new Date().toISOString(),
@@ -161,9 +170,9 @@ export class WsJwtGuard implements CanActivate {
         error: error.message,
         socketId: context.switchToWs().getClient().id,
       });
-      
+
       const client = context.switchToWs().getClient<Socket>();
-      client.emit('auth_failed', { 
+      client.emit('auth_failed', {
         reason: 'authentication_error',
         message: 'Authentication failed',
         timestamp: new Date().toISOString(),
@@ -185,10 +194,11 @@ export class WsJwtGuard implements CanActivate {
 
   private extractDeviceId(client: Socket): string | null {
     const headerDeviceId = client.handshake.headers['x-device-id'];
-    const headerDeviceIdLower = client.handshake.headers['x-device-id'.toLowerCase()];
+    const headerDeviceIdLower =
+      client.handshake.headers['x-device-id'.toLowerCase()];
     const queryDeviceId = client.handshake.query['x-device-id'];
     const authDeviceId = client.handshake.auth?.deviceId;
-    
+
     return (
       (typeof headerDeviceId === 'string' ? headerDeviceId : null) ||
       (typeof headerDeviceIdLower === 'string' ? headerDeviceIdLower : null) ||
@@ -201,9 +211,11 @@ export class WsJwtGuard implements CanActivate {
   private extractIpAddress(client: Socket): string {
     const forwardedFor = client.handshake.headers['x-forwarded-for'];
     const realIp = client.handshake.headers['x-real-ip'];
-    
+
     return (
-      (typeof forwardedFor === 'string' ? forwardedFor.split(',')[0].trim() : null) ||
+      (typeof forwardedFor === 'string'
+        ? forwardedFor.split(',')[0].trim()
+        : null) ||
       (typeof realIp === 'string' ? realIp : null) ||
       client.handshake.address ||
       'unknown'

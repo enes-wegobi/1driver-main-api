@@ -19,7 +19,9 @@ export class AuthEventsHandler {
   ) {}
 
   @OnEvent(AUTH_EVENTS.FORCE_LOGOUT_REQUESTED)
-  async handleForceLogoutRequested(event: ForceLogoutRequestedEvent): Promise<void> {
+  async handleForceLogoutRequested(
+    event: ForceLogoutRequestedEvent,
+  ): Promise<void> {
     this.logger.warn(
       `Force logout initiated for user ${event.userId} (${event.userType}): ${event.oldDeviceId} → ${event.newDeviceId}`,
       {
@@ -50,17 +52,23 @@ export class AuthEventsHandler {
       );
 
       if (success) {
-        this.logger.info('WebSocket force logout notification sent successfully', {
-          userId: event.userId,
-          userType: event.userType,
-          reason: event.reason,
-        });
+        this.logger.info(
+          'WebSocket force logout notification sent successfully',
+          {
+            userId: event.userId,
+            userType: event.userType,
+            reason: event.reason,
+          },
+        );
       } else {
-        this.logger.warn('WebSocket force logout notification failed - no active connection', {
-          userId: event.userId,
-          userType: event.userType,
-          reason: event.reason,
-        });
+        this.logger.warn(
+          'WebSocket force logout notification failed - no active connection',
+          {
+            userId: event.userId,
+            userType: event.userType,
+            reason: event.reason,
+          },
+        );
       }
     } catch (error) {
       this.logger.error('Error sending WebSocket force logout notification', {
@@ -91,11 +99,14 @@ export class AuthEventsHandler {
           reason: event.reason,
         });
       } else {
-        this.logger.warn('Manual WebSocket logout failed - no active connection', {
-          userId: event.userId,
-          userType: event.userType,
-          reason: event.reason,
-        });
+        this.logger.warn(
+          'Manual WebSocket logout failed - no active connection',
+          {
+            userId: event.userId,
+            userType: event.userType,
+            reason: event.reason,
+          },
+        );
       }
     } catch (error) {
       this.logger.error('Error during manual WebSocket logout', {
@@ -116,8 +127,7 @@ export class AuthEventsHandler {
       sessionInfo: event.metadata?.oldSessionInfo,
       timestamp: event.timestamp,
     };
-    
+
     this.eventEmitter.emit(AUTH_EVENTS.WEBSOCKET_LOGOUT, webSocketEvent);
   }
-
 }

@@ -24,14 +24,15 @@ export class AuthService {
 
   // Customer Auth Methods
   async initiateCustomerSignup(createCustomerDto: CreateCustomerDto) {
-    const result = await this.authClient.initiateCustomerSignup(createCustomerDto);
-    
+    const result =
+      await this.authClient.initiateCustomerSignup(createCustomerDto);
+
     if (result?.otp) {
-      this.sendOTPSMS(createCustomerDto.phone, result.otp).catch(error => {
+      this.sendOTPSMS(createCustomerDto.phone, result.otp).catch((error) => {
         this.logger.error(`Failed to send OTP SMS: ${error.message}`);
       });
     }
-    
+
     return result;
   }
 
@@ -63,15 +64,16 @@ export class AuthService {
 
   async signinCustomer(signinDto: SigninDto) {
     const result = await this.authClient.signinCustomer(signinDto);
-    
+
     if (result?.otp) {
-      this.sendOTPSMS(signinDto.phone, result.otp).catch(error => {
+      this.sendOTPSMS(signinDto.phone, result.otp).catch((error) => {
         this.logger.error(`Failed to send OTP SMS: ${error.message}`);
       });
 
-      result.otp = process.env.NODE_ENV === 'development' ? result.top : undefined;
+      result.otp =
+        process.env.NODE_ENV === 'development' ? result.top : undefined;
     }
-    
+
     return result;
   }
 
@@ -82,13 +84,13 @@ export class AuthService {
   // Driver Auth Methods
   async initiateDriverSignup(createDriverDto: CreateDriverDto) {
     const result = await this.authClient.initiateDriverSignup(createDriverDto);
-    
+
     if (result?.otp) {
-      this.sendOTPSMS(createDriverDto.phone, result.otp).catch(error => {
+      this.sendOTPSMS(createDriverDto.phone, result.otp).catch((error) => {
         this.logger.error(`Failed to send OTP SMS: ${error.message}`);
       });
     }
-    
+
     return result;
   }
 
@@ -118,13 +120,13 @@ export class AuthService {
 
   async signinDriver(signinDto: SigninDto) {
     const result = await this.authClient.signinDriver(signinDto);
-    
+
     if (result?.otp) {
-      this.sendOTPSMS(signinDto.phone, result.otp).catch(error => {
+      this.sendOTPSMS(signinDto.phone, result.otp).catch((error) => {
         this.logger.error(`Failed to send OTP SMS: ${error.message}`);
       });
     }
-    
+
     return result;
   }
 
@@ -135,27 +137,28 @@ export class AuthService {
   // Resend OTP Methods
   async resendCustomerOtp(signinDto: SigninDto) {
     const result = await this.authClient.resendCustomerOtp(signinDto);
-    
+
     if (result?.otp) {
-      this.sendOTPSMS(signinDto.phone, result.otp).catch(error => {
+      this.sendOTPSMS(signinDto.phone, result.otp).catch((error) => {
         this.logger.error(`Failed to send OTP SMS: ${error.message}`);
       });
 
-      result.otp = process.env.NODE_ENV === 'development' ? result.otp : undefined;
+      result.otp =
+        process.env.NODE_ENV === 'development' ? result.otp : undefined;
     }
-    
+
     return result;
   }
 
   async resendDriverOtp(signinDto: SigninDto) {
     const result = await this.authClient.resendDriverOtp(signinDto);
-    
+
     if (result?.otp) {
-      this.sendOTPSMS(signinDto.phone, result.otp).catch(error => {
+      this.sendOTPSMS(signinDto.phone, result.otp).catch((error) => {
         this.logger.error(`Failed to send OTP SMS: ${error.message}`);
       });
     }
-    
+
     return result;
   }
 

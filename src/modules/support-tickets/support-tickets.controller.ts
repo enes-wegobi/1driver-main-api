@@ -74,8 +74,6 @@ export class SupportTicketsController {
     @GetUser() user: IJwtPayload,
     @Body() createSupportTicketDto: CreateSupportTicketDto,
   ) {
-    this.logger.info(`Creating support ticket for customer ID: ${user.userId}`);
-
     let fileKey: string | null = null;
     let fileUrl: string | null = null;
 
@@ -134,8 +132,6 @@ export class SupportTicketsController {
     @GetUser() user: IJwtPayload,
     @Body() createSupportTicketDto: CreateSupportTicketDto,
   ) {
-    this.logger.info(`Creating support ticket for driver ID: ${user.userId}`);
-
     let fileKey: string | null = null;
     let fileUrl: string | null = null;
 

@@ -34,25 +34,41 @@ export class JwtAuthGuard implements CanActivate {
     const currentIpAddress = this.extractIpAddress(request);
 
     try {
-      const sessionMetadata = await this.tokenManagerService.getActiveToken(payload.userId, payload.userType);
+      const sessionMetadata = await this.tokenManagerService.getActiveToken(
+        payload.userId,
+        payload.userType,
+      );
 
       if (sessionMetadata) {
         if (sessionMetadata.token && sessionMetadata.token !== token) {
           throw new UnauthorizedException('Token validation failed');
         }
 
-        const isValidDevice = this.validateDeviceBinding(currentDeviceInfo, sessionMetadata);
-        
+        const isValidDevice = this.validateDeviceBinding(
+          currentDeviceInfo,
+          sessionMetadata,
+        );
+
         if (!isValidDevice) {
           throw new UnauthorizedException('Device validation failed');
         }
 
         // Check for significant IP changes (optional security measure)
-        if (sessionMetadata.ipAddress && sessionMetadata.ipAddress !== currentIpAddress) {
-          await this.tokenManagerService.updateLastSeen(payload.userId, payload.userType, currentIpAddress);
+        if (
+          sessionMetadata.ipAddress &&
+          sessionMetadata.ipAddress !== currentIpAddress
+        ) {
+          await this.tokenManagerService.updateLastSeen(
+            payload.userId,
+            payload.userType,
+            currentIpAddress,
+          );
         } else {
           // Regular activity update
-          await this.tokenManagerService.updateLastSeen(payload.userId, payload.userType);
+          await this.tokenManagerService.updateLastSeen(
+            payload.userId,
+            payload.userType,
+          );
         }
       } else {
         // No session metadata found - this shouldn't happen for valid tokens
@@ -65,7 +81,6 @@ export class JwtAuthGuard implements CanActivate {
 
         throw new UnauthorizedException('Session validation failed');
       }
-
     } catch (error) {
       this.loggerService.error('JWT Guard validation error', {
         error: error.message,
@@ -114,7 +129,10 @@ export class JwtAuthGuard implements CanActivate {
     );
   }
 
-  private validateDeviceBinding(currentDevice: any, sessionMetadata: any): boolean {
+  private validateDeviceBinding(
+    currentDevice: any,
+    sessionMetadata: any,
+  ): boolean {
     // Primary validation: Device ID (if available)
     if (currentDevice.deviceId && sessionMetadata.deviceId) {
       return currentDevice.deviceId === sessionMetadata.deviceId;

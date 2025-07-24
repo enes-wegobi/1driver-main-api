@@ -87,5 +87,4 @@ export class ForceLogoutService {
       return result;
     }
   }
-
 }

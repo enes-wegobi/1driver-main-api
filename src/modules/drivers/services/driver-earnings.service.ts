@@ -127,16 +127,19 @@ export class DriverEarningsService {
   /**
    * Calculate trip earnings based on duration and config
    */
-  calculateTripEarnings(finalCost: number, durationSeconds: number): {
+  calculateTripEarnings(
+    finalCost: number,
+    durationSeconds: number,
+  ): {
     earnings: number;
     multiplier: number;
   } {
     const multiplier =
-      this.configService.get<number>('driverEarnings.perMinuteRate') || 0.5; 
+      this.configService.get<number>('driverEarnings.perMinuteRate') || 0.5;
     const durationMinutes = durationSeconds / 60;
     let earnings = Math.round(durationMinutes * multiplier * 100) / 100;
-    if(finalCost = 5){
-        earnings = 2.5;
+    if ((finalCost = 5)) {
+      earnings = 2.5;
     }
     return {
       earnings,

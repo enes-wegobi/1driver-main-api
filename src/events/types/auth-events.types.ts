@@ -39,4 +39,3 @@ export interface WebSocketLogoutEvent {
   sessionInfo?: any;
   timestamp: Date;
 }
-

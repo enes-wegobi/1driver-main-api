@@ -1,33 +1,39 @@
-import { ValidatorConstraint, ValidatorConstraintInterface, ValidationOptions, registerDecorator } from 'class-validator';
+import {
+  ValidatorConstraint,
+  ValidatorConstraintInterface,
+  ValidationOptions,
+  registerDecorator,
+} from 'class-validator';
 import { isValidPhoneNumber } from 'libphonenumber-js';
 
 @ValidatorConstraint({ name: 'allowedPhoneCountries', async: false })
-
-export class AllowedPhoneCountriesConstraint implements ValidatorConstraintInterface {
+export class AllowedPhoneCountriesConstraint
+  implements ValidatorConstraintInterface
+{
   constructor() {}
   private readonly allowedCountryCodes = [
-    '+90',  // Turkey
-    '+91',  // India
-    '+92',  // Pakistan
+    '+90', // Turkey
+    '+91', // India
+    '+92', // Pakistan
     '+966', // Saudi Arabia
     '+880', // Bangladesh
-    '+63',  // Philippines
-    '+44',  // United Kingdom
-    '+20',  // Egypt
-    '+7',   // Russia
-    '+86',  // China
+    '+63', // Philippines
+    '+44', // United Kingdom
+    '+20', // Egypt
+    '+7', // Russia
+    '+86', // China
     '+968', // Oman
-    '+98',  // Iran
-    '+94',  // Sri Lanka
+    '+98', // Iran
+    '+94', // Sri Lanka
     '+977', // Nepal
     '+971',
-    '+1',   // United States
-    '+49',  // Germany
+    '+1', // United States
+    '+49', // Germany
     '+962', // Jordan
     '+974', // Qatar
     '+965', // Kuwait
     '+973', // Bahrain
-    '+33',  // France
+    '+33', // France
   ];
 
   validate(phone: string) {
@@ -47,7 +53,7 @@ export class AllowedPhoneCountriesConstraint implements ValidatorConstraintInter
     }
 
     // Check if phone starts with any of the allowed country codes
-    return this.allowedCountryCodes.some(code => phone.startsWith(code));
+    return this.allowedCountryCodes.some((code) => phone.startsWith(code));
   }
 
   defaultMessage() {

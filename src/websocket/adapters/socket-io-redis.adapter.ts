@@ -29,7 +29,7 @@ export class SocketIORedisAdapter extends IoAdapter {
       port,
       username,
       hasPassword: !!password,
-      tls: !!tls
+      tls: !!tls,
     });
 
     this.pubClient = new Redis({

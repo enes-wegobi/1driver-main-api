@@ -333,57 +333,7 @@ export class CustomersController {
       );
     }
   }
-  /*
-  @Get('nearby-drivers')
-  @ApiOperation({ summary: 'Get nearby available drivers' })
-  @ApiQuery({
-    name: 'latitude',
-    description: 'Latitude coordinate',
-    required: true,
-  })
-  @ApiQuery({
-    name: 'longitude',
-    description: 'Longitude coordinate',
-    required: true,
-  })
-  @ApiQuery({
-    name: 'radius',
-    description: 'Search radius in kilometers',
-    required: false,
-    default: 5,
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'List of nearby available drivers',
-    type: NearbyDriversResponseDto,
-  })
-  async getNearbyDrivers(
-    @Query(ValidationPipe) query: NearbyDriversQueryDto,
-    @GetUser() user: IJwtPayload,
-  ): Promise<NearbyDriversResponseDto> {
-    this.logger.debug(
-      `User ${user.userId} requested nearby drivers at [${query.latitude}, ${query.longitude}]`,
-    );
 
-    try {
-      return await this.customersService.findNearbyDrivers(
-        query.latitude,
-        query.longitude,
-        query.radius,
-      );
-    } catch (error) {
-      this.logger.error(
-        `Error finding nearby drivers: ${error.message}`,
-        error.stack,
-      );
-      throw new HttpException(
-        error.response?.data ||
-          'An error occurred while finding nearby drivers',
-        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-*/
   @Post('photo')
   @UseInterceptors(FileInterceptor('photo'))
   @ApiOperation({ summary: 'Upload profile photo' })
@@ -410,10 +360,11 @@ export class CustomersController {
     }
 
     try {
-      const fileKey = `profile-photos/customers/${user.userId}/${uuidv4()}-${file.originalname}`;
+      const userId = user.userId;
+      const fileKey = `profile-photos/customers/${userId}/${uuidv4()}-${file.originalname}`;
       const photoUrl = this.s3Service.getPublicUrl(fileKey);
       await this.s3Service.uploadFileWithKey(file, fileKey);
-      await this.customersService.updatePhoto(user.userId, photoUrl);
+      await this.customersService.updatePhoto(userId, photoUrl);
 
       // Get both signed URL (for backward compatibility) and permanent public URL
 
@@ -433,7 +384,7 @@ export class CustomersController {
   @ApiOperation({ summary: 'Delete profile photo' })
   async deleteProfilePhoto(@GetUser() user: IJwtPayload) {
     try {
-      const result = await this.customersService.deletePhoto(user.userId);
+      await this.customersService.deletePhoto(user.userId);
       return { message: 'Profile photo deleted successfully' };
     } catch (error) {
       this.logger.error(

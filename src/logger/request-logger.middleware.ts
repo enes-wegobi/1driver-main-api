@@ -8,7 +8,7 @@ export class RequestLoggerMiddleware implements NestMiddleware {
 
   use(req: Request, res: Response, next: NextFunction): void {
     const originalSend = res.send;
-    
+
     res.send = function (data) {
       if (res.statusCode >= 400) {
         const logData = {
@@ -21,7 +21,10 @@ export class RequestLoggerMiddleware implements NestMiddleware {
           platform: req.get('x-platform'),
         };
 
-        this.loggerService.error(`Request failed: ${req.method} ${req.originalUrl}`, logData);
+        this.loggerService.error(
+          `Request failed: ${req.method} ${req.originalUrl}`,
+          logData,
+        );
       }
 
       return originalSend.call(this, data);

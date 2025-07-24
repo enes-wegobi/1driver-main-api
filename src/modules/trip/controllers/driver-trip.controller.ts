@@ -103,11 +103,12 @@ export class DriversTripsController {
     @Param('tripId') tripId: string,
     @GetUser() user: IJwtPayload,
   ) {
-    const result = await this.tripService.declineTrip(tripId, user.userId);
+    const userId = user.userId;
+    const result = await this.tripService.declineTrip(tripId, userId);
 
     // Clear last request after declining
     if (result.success) {
-      await this.driverTripQueueService.clearDriverLastRequest(user.userId);
+      await this.driverTripQueueService.clearDriverLastRequest(userId);
     }
 
     return result;

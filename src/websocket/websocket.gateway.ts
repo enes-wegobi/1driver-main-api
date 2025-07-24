@@ -62,36 +62,35 @@ export class WebSocketGateway
     this.webSocketService.setServer(server);
   }
 
+  private extractToken(client: Socket): string | null {
+    // Try multiple sources for the token
+    return (
+      client.handshake.auth?.token ||
+      client.handshake.query?.token ||
+      client.handshake.headers.authorization?.replace('Bearer ', '') ||
+      null
+    );
+  }
 
-    private extractToken(client: Socket): string | null {
-      // Try multiple sources for the token
-      return (
-        client.handshake.auth?.token ||
-        client.handshake.query?.token ||
-        client.handshake.headers.authorization?.replace('Bearer ', '') ||
-        null
-      );
-    }
-  
-    private extractDeviceId(client: Socket): string | null {
-      const headerDeviceId = client.handshake.headers['x-device-id'];
-      const headerDeviceIdLower = client.handshake.headers['x-device-id'.toLowerCase()];
-      const queryDeviceId = client.handshake.query['x-device-id'];
-      const authDeviceId = client.handshake.auth?.deviceId;
-      
-      return (
-        (typeof headerDeviceId === 'string' ? headerDeviceId : null) ||
-        (typeof headerDeviceIdLower === 'string' ? headerDeviceIdLower : null) ||
-        (typeof queryDeviceId === 'string' ? queryDeviceId : null) ||
-        (typeof authDeviceId === 'string' ? authDeviceId : null) ||
-        null
-      );
-    }
-  
+  private extractDeviceId(client: Socket): string | null {
+    const headerDeviceId = client.handshake.headers['x-device-id'];
+    const headerDeviceIdLower =
+      client.handshake.headers['x-device-id'.toLowerCase()];
+    const queryDeviceId = client.handshake.query['x-device-id'];
+    const authDeviceId = client.handshake.auth?.deviceId;
+
+    return (
+      (typeof headerDeviceId === 'string' ? headerDeviceId : null) ||
+      (typeof headerDeviceIdLower === 'string' ? headerDeviceIdLower : null) ||
+      (typeof queryDeviceId === 'string' ? queryDeviceId : null) ||
+      (typeof authDeviceId === 'string' ? authDeviceId : null) ||
+      null
+    );
+  }
 
   async handleConnection(client: Socket, ...args: any[]) {
     this.logger.debug(`Client connected: ${client.id}`);
-    
+
     const clientId = client.id;
     const token = this.extractToken(client);
     const deviceId = this.extractDeviceId(client);
@@ -116,7 +115,6 @@ export class WebSocketGateway
     try {
       const payload = await this.jwtService.validateToken(token);
 
-
       if (!payload || !payload.userId) {
         client.emit('error', { message: 'Invalid token' });
         client.disconnect(true);
@@ -133,18 +131,23 @@ export class WebSocketGateway
       }
 
       // Check active session
-      const activeSession = await this.tokenManager.getActiveToken(userId, userType);
+      const activeSession = await this.tokenManager.getActiveToken(
+        userId,
+        userType,
+      );
       if (!activeSession) {
-        client.emit('error', { message: 'No active session found - please login again' });
+        client.emit('error', {
+          message: 'No active session found - please login again',
+        });
         client.disconnect(true);
         return;
       }
 
       // Verify token matches the active session
       if (activeSession.token !== token) {
-        client.emit('error', { 
+        client.emit('error', {
           message: 'Token mismatch - session expired or invalid',
-          reason: 'token_mismatch' 
+          reason: 'token_mismatch',
         });
         client.disconnect(true);
         return;
@@ -155,11 +158,11 @@ export class WebSocketGateway
         this.logger.warn(
           `Device ID mismatch for user ${userId}: session device ${activeSession.deviceId} vs connection device ${deviceId}`,
         );
-        client.emit('error', { 
+        client.emit('error', {
           message: 'Device ID mismatch - please login with this device',
           reason: 'device_mismatch',
           sessionDeviceId: activeSession.deviceId,
-          requestedDeviceId: deviceId
+          requestedDeviceId: deviceId,
         });
         client.disconnect(true);
         return;
@@ -169,9 +172,11 @@ export class WebSocketGateway
       client.data.userId = userId;
       client.data.userType = userType;
       client.data.deviceId = deviceId;
-      
-      this.logger.info(`WebSocket connection set for user ${userId} (${userType}), socket: ${client.id}, device: ${deviceId}`);
-      
+
+      this.logger.info(
+        `WebSocket connection set for user ${userId} (${userType}), socket: ${client.id}, device: ${deviceId}`,
+      );
+
       // Register user connection for tracking (single connection per user)
       // This will automatically disconnect any existing connection for this user
       await this.webSocketService.registerUserConnection(
@@ -186,7 +191,7 @@ export class WebSocketGateway
       client.join(`type:${userType}`);
       client.join(`device:${deviceId}`);
 
-       this.logger.debug(
+      this.logger.debug(
         `[ROOM_JOIN] Client ${clientId} joined rooms: user:${userId}, type:${userType}, device:${deviceId}`,
       );
 
@@ -199,7 +204,8 @@ export class WebSocketGateway
           DriverAvailabilityStatus.BUSY,
         );
 
-        const status = await this.driverStatusService.getDriverAvailability(userId);
+        const status =
+          await this.driverStatusService.getDriverAvailability(userId);
 
         client.emit('connection', {
           status: 'connected',
@@ -256,10 +262,10 @@ export class WebSocketGateway
         token: token ? 'provided' : 'missing',
         deviceId: deviceId || 'missing',
       });
-      client.emit('error', { 
-        message: 'Authentication failed', 
+      client.emit('error', {
+        message: 'Authentication failed',
         reason: 'server_error',
-        timestamp: new Date().toISOString() 
+        timestamp: new Date().toISOString(),
       });
       client.disconnect(true);
     }

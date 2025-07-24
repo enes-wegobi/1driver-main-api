@@ -5,7 +5,6 @@ import {
   HttpCode,
   HttpStatus,
   UseGuards,
-  Logger,
   HttpException,
 } from '@nestjs/common';
 import {
@@ -70,13 +69,7 @@ export class HeartbeatController {
     const userId = user.userId;
     const userType = user.userType;
 
-    if (!userId) {
-      throw new HttpException(
-        'User not authenticated',
-        HttpStatus.UNAUTHORIZED,
-      );
-    }
-    this.logger.info(`Heartbeat user id: ${userId}, user type: ${userType}`)
+    this.logger.info(`Heartbeat user id: ${userId}, user type: ${userType}`);
 
     try {
       if (userType === UserType.DRIVER) {
