@@ -1,17 +1,16 @@
 import { Injectable } from '@nestjs/common';
-import { AuthClient } from '../../clients/auth/auth.client';
-import { CreateCustomerDto } from '../../clients/auth/dto/create-customer.dto';
-import { CreateDriverDto } from '../../clients/auth/dto/create-driver.dto';
-import { ValidateOtpDto } from '../../clients/auth/dto/validate-otp.dto';
-import { SigninDto } from '../../clients/auth/dto/signin.dto';
-import { PaymentsService } from '../payments/services/payments.service';
-import { DriverEarningsService } from '../drivers/services/driver-earnings.service';
-import { LoggerService } from '../../logger/logger.service';
+import { AuthClient } from 'src/clients/auth/auth.client';
+import { CreateCustomerDto } from 'src/clients/auth/dto/create-customer.dto';
+import { CreateDriverDto } from 'src/clients/auth/dto/create-driver.dto';
+import { SigninDto } from 'src/clients/auth/dto/signin.dto';
+import { ValidateOtpDto } from 'src/clients/auth/dto/validate-otp.dto';
 import { UserType } from 'src/common/user-type.enum';
-import { SMSService } from '../sms/sms.service';
-import { SendSMSDto } from '../sms/dto/send-sms.dto';
-import { MessageType } from '../sms/enums/message-type.enum';
-import { ConfigService } from '@nestjs/config';
+import { LoggerService } from 'src/logger/logger.service';
+import { DriverEarningsService } from 'src/modules/drivers/services/driver-earnings.service';
+import { PaymentsService } from 'src/modules/payments/services/payments.service';
+import { SendSMSDto } from 'src/modules/sms/dto/send-sms.dto';
+import { MessageType } from 'src/modules/sms/enums/message-type.enum';
+import { SMSService } from 'src/modules/sms/sms.service';
 
 @Injectable()
 export class AuthService {

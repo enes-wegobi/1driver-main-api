@@ -8,25 +8,25 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import {
+  ApiBearerAuth,
   ApiOperation,
   ApiResponse,
   ApiTags,
-  ApiBearerAuth,
 } from '@nestjs/swagger';
-import { AuthService } from './auth.service';
-import { CreateDriverDto } from '../../clients/auth/dto/create-driver.dto';
-import { ValidateOtpDto } from '../../clients/auth/dto/validate-otp.dto';
-import { SigninDto } from '../../clients/auth/dto/signin.dto';
-import { TokenManagerService } from '../../redis/services/token-manager.service';
-import { UserType } from '../../common/user-type.enum';
 import { ConfigService } from '@nestjs/config';
-import { LogoutGuard } from '../../jwt/guards/logout.guard';
 import { LoggerService } from 'src/logger/logger.service';
-import { ForceLogoutService } from './force-logout.service';
+import { AuthService } from '../services/auth.service';
+import { TokenManagerService } from 'src/redis/services/token-manager.service';
+import { ForceLogoutService } from '../services/force-logout.service';
+import { CreateCustomerDto } from 'src/clients/auth/dto/create-customer.dto';
+import { ValidateOtpDto } from 'src/clients/auth/dto/validate-otp.dto';
+import { UserType } from 'src/common/user-type.enum';
+import { SigninDto } from 'src/clients/auth/dto/signin.dto';
+import { LogoutGuard } from 'src/jwt/guards/logout.guard';
 
-@ApiTags('auth-driver')
-@Controller('auth/driver')
-export class AuthDriverController {
+@ApiTags('auth-customer')
+@Controller('auth/customer')
+export class AuthCustomerController {
   private readonly jwtExpiresIn: number;
 
   constructor(
@@ -40,32 +40,33 @@ export class AuthDriverController {
   }
 
   @Post('initiate-signup')
-  @ApiOperation({ summary: 'Initiate driver registration process' })
+  @ApiOperation({ summary: 'Initiate customer registration process' })
   @ApiResponse({ status: 201, description: 'Signup initiated, OTP sent' })
-  @ApiResponse({ status: 409, description: 'Driver already exists' })
+  @ApiResponse({ status: 409, description: 'Customer already exists' })
+  
   async initiateSignup(
-    @Body() createDriverDto: CreateDriverDto,
+    @Body() createCustomerDto: CreateCustomerDto,
     @Headers('x-device-id') deviceId: string,
     @Headers('x-user-agent') userAgent: string,
     @Headers('x-forwarded-for') forwardedFor: string,
-    @Headers('x-real-ip') realIp: string,
-  ) {
-    try {
-      return await this.authService.initiateDriverSignup(createDriverDto);
-    } catch (error) {
-      this.logger.error(
-        `Driver signup initiation error: ${error.message}`,
-        error.stack,
-      );
-      throw new HttpException(
-        error.response?.data || 'An error occurred during signup initiation',
-        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
+    @Headers('x-real-ip') realIp: string,) {
+      try {
+        return await this.authService.initiateCustomerSignup(createCustomerDto);
+          
+      } catch (error) {
+        this.logger.error(
+          `User signup initiation error: ${error.message}`,
+          error.stack,
+        );
+        throw new HttpException(
+          error.response?.data || 'An error occurred during signup initiation',
+          error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      }
   }
 
   @Post('complete-signup')
-  @ApiOperation({ summary: 'Complete driver registration with OTP' })
+  @ApiOperation({ summary: 'Complete customer registration with OTP' })
   @ApiResponse({
     status: 200,
     description: 'Registration completed, token returned',
@@ -80,16 +81,16 @@ export class AuthDriverController {
   ) {
     try {
       const result =
-        await this.authService.completeDriverSignup(validateOtpDto);
+        await this.authService.completeCustomerSignup(validateOtpDto);
 
-      if (result && result.token && result.driver) {
+      if (result && result.token && result.customer) {
         const ipAddress = forwardedFor || realIp || 'unknown';
         const finalDeviceId = deviceId || 'unknown-device';
 
         // Atomically replace existing session with new one
         const existingSession = await this.tokenManagerService.replaceActiveToken(
-          result.driver._id,
-          UserType.DRIVER,
+          result.customer._id,
+          UserType.CUSTOMER,
           result.token,
           finalDeviceId,
           this.jwtExpiresIn,
@@ -102,8 +103,8 @@ export class AuthDriverController {
         // If there was an existing session, execute force logout
         if (existingSession && existingSession.deviceId !== finalDeviceId) {
           await this.forceLogoutService.executeForceLogout(
-            result.driver._id,
-            UserType.DRIVER,
+            result.customer._id,
+            UserType.CUSTOMER,
             existingSession.deviceId,
             finalDeviceId,
             'new_device_signup',
@@ -114,19 +115,12 @@ export class AuthDriverController {
             },
           );
         }
-
-        this.logger.info('Driver signup completed successfully', {
-          driverId: result.driver._id,
-          deviceId: finalDeviceId,
-          ipAddress,
-          hadExistingSession: !!existingSession,
-        });
       }
 
       return result;
     } catch (error) {
       this.logger.error(
-        `Driver signup completion error: ${error.message}`,
+        `User signup completion error: ${error.message}`,
         error.stack,
       );
       throw new HttpException(
@@ -137,17 +131,20 @@ export class AuthDriverController {
   }
 
   @Post('initiate-signin')
-  @ApiOperation({ summary: 'Sign in a driver' })
+  @ApiOperation({ summary: 'Sign in a customer' })
   @ApiResponse({ status: 200, description: 'OTP sent successfully' })
-  @ApiResponse({ status: 404, description: 'Driver not found' })
-  async signin(@Body() signinDto: SigninDto,     @Headers('x-device-id') deviceId: string,
+  @ApiResponse({ status: 404, description: 'Customer not found' })
+  async signin(
+    @Body() signinDto: SigninDto,
+    @Headers('x-device-id') deviceId: string,
     @Headers('x-user-agent') userAgent: string,
     @Headers('x-forwarded-for') forwardedFor: string,
-    @Headers('x-real-ip') realIp: string,) {
+    @Headers('x-real-ip') realIp: string,
+  ) {
     try {
-      return await this.authService.signinDriver(signinDto);
+      return await this.authService.signinCustomer(signinDto);
     } catch (error) {
-      this.logger.error(`Driver signin error: ${error.message}`, error.stack);
+      this.logger.error(`User signin error: ${error.message}`, error.stack);
       throw new HttpException(
         error.response?.data || 'An error occurred during signin',
         error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
@@ -156,30 +153,30 @@ export class AuthDriverController {
   }
 
   @Post('complete-signin')
-  @ApiOperation({ summary: 'Complete sign in a driver' })
+  @ApiOperation({ summary: 'Complete sign in a customer' })
   @ApiResponse({ status: 200, description: 'Token generated successfully' })
   @ApiResponse({ status: 400, description: 'Invalid OTP' })
-  @ApiResponse({ status: 404, description: 'Driver not found' })
+  @ApiResponse({ status: 404, description: 'User not found' })
   async completeSignin(
     @Body() validateOtpDto: ValidateOtpDto,
     @Headers('x-device-id') deviceId: string,
-    @Headers('user-agent') userAgent: string,
+    @Headers('x-user-agent') userAgent: string,
     @Headers('x-forwarded-for') forwardedFor: string,
     @Headers('x-real-ip') realIp: string,
   ) {
     try {
       const result =
-        await this.authService.completeDriverSignin(validateOtpDto);
+        await this.authService.completeCustomerSignin(validateOtpDto);
 
-      if (result && result.token && result.driver) {
+      if (result && result.token && result.customer) {
         const ipAddress = forwardedFor || realIp || 'unknown';
         const finalDeviceId = deviceId || 'unknown-device';
-        const userId = result.driver._id;
+        const userId = result.customer._id;
 
         // Atomically replace existing session with new one
         const existingSession = await this.tokenManagerService.replaceActiveToken(
           userId,
-          UserType.DRIVER,
+          UserType.CUSTOMER,
           result.token,
           finalDeviceId,
           this.jwtExpiresIn,
@@ -193,7 +190,7 @@ export class AuthDriverController {
         if (existingSession) {
           await this.forceLogoutService.executeForceLogout(
             userId,
-            UserType.DRIVER,
+            UserType.CUSTOMER,
             existingSession.deviceId,
             finalDeviceId,
             'new_device_signin',
@@ -210,7 +207,7 @@ export class AuthDriverController {
       return result;
     } catch (error) {
       this.logger.error(
-        `Driver complete signin error: ${error.message}`,
+        `User complete signin error: ${error.message}`,
         error.stack,
       );
       throw new HttpException(
@@ -221,15 +218,15 @@ export class AuthDriverController {
   }
 
   @Post('resend-otp')
-  @ApiOperation({ summary: 'Resend OTP to driver' })
+  @ApiOperation({ summary: 'Resend OTP to customer' })
   @ApiResponse({ status: 200, description: 'OTP resent successfully' })
-  @ApiResponse({ status: 404, description: 'Driver not found' })
+  @ApiResponse({ status: 404, description: 'Customer not found' })
   async resendOtp(@Body() signinDto: SigninDto) {
     try {
-      return await this.authService.resendDriverOtp(signinDto);
+      return await this.authService.resendCustomerOtp(signinDto);
     } catch (error) {
       this.logger.error(
-        `Driver resend OTP error: ${error.message}`,
+        `Customer resend OTP error: ${error.message}`,
         error.stack,
       );
       throw new HttpException(
@@ -242,13 +239,13 @@ export class AuthDriverController {
   @Post('logout')
   @UseGuards(LogoutGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Logout a driver' })
+  @ApiOperation({ summary: 'Logout a customer' })
   @ApiResponse({ status: 200, description: 'Logged out successfully' })
   async logout() {
     try {
       return { success: true, message: 'Logged out successfully' };
     } catch (error) {
-      this.logger.error(`Driver logout error: ${error.message}`, error.stack);
+      this.logger.error(`Customer logout error: ${error.message}`, error.stack);
       throw new HttpException(
         error.message || 'An error occurred during logout',
         error.status || HttpStatus.INTERNAL_SERVER_ERROR,

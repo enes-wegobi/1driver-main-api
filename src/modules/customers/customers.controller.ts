@@ -28,7 +28,7 @@ import { CustomersService } from './customers.service';
 import { FileInterceptor } from '@nest-lab/fastify-multer';
 import { S3Service } from 'src/s3/s3.service';
 import { v4 as uuidv4 } from 'uuid';
-import { GetUser } from 'src/jwt/user.decoretor';
+import { GetUser } from 'src/jwt/user.decorator';
 import { IJwtPayload } from 'src/jwt/jwt-payload.interface';
 import { UpdateNotificationPermissionsDto } from 'src/clients/customer/dto/update-notification-permissions.dto';
 import { UpdateCustomerExpoTokenDto } from './dto/update-customer-expo-token.dto';

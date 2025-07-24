@@ -20,7 +20,7 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/jwt/guards/jwt.guard';
-import { GetUser } from 'src/jwt/user.decoretor';
+import { GetUser } from 'src/jwt/user.decorator';
 import { IJwtPayload } from 'src/jwt/jwt-payload.interface';
 import { PromotionsService } from './promotions.service';
 import { CreatePromotionDto } from './dto/create-promotion.dto';

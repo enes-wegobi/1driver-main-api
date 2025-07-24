@@ -28,7 +28,7 @@ import {
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/jwt/guards/jwt.guard';
 import { DriversService } from './drivers.service';
-import { GetUser } from 'src/jwt/user.decoretor';
+import { GetUser } from 'src/jwt/user.decorator';
 import { IJwtPayload } from 'src/jwt/jwt-payload.interface';
 import { v4 as uuidv4 } from 'uuid';
 import { FileInterceptor } from '@nest-lab/fastify-multer';

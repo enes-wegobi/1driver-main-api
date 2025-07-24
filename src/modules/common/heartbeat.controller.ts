@@ -16,7 +16,7 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/jwt/guards/jwt.guard';
-import { GetUser } from 'src/jwt/user.decoretor';
+import { GetUser } from 'src/jwt/user.decorator';
 import { IJwtPayload } from 'src/jwt/jwt-payload.interface';
 import { HeartbeatDto } from 'src/websocket/dto/heartbeat.dto';
 import { DriverStatusService } from 'src/redis/services/driver-status.service';
@@ -76,6 +76,7 @@ export class HeartbeatController {
         HttpStatus.UNAUTHORIZED,
       );
     }
+    this.logger.info(`Heartbeat user id: ${userId}, user type: ${userType}`)
 
     try {
       if (userType === UserType.DRIVER) {

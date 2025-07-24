@@ -24,7 +24,6 @@ import { LoggerModule } from './logger/logger.module';
 import { RequestIdInterceptor } from './logger/request-id.interceptor';
 import { RequestLoggerMiddleware } from './logger/request-logger.middleware';
 import { HealthModule } from './modules/health/health.module';
-import { QueueManagementController } from './modules/admin/queue-management.controller';
 import { TripEventsService } from './events/trip-events.service';
 import { TripApprovalHandler } from './events/handlers/trip-approval.handler';
 import { AuthEventsModule } from './events/auth-events.module';
@@ -72,7 +71,6 @@ import { SMSModule } from './modules/sms/sms.module';
     TripEventsService,
     TripApprovalHandler,
   ],
-  controllers: [QueueManagementController],
 })
 export class AppModule {
   configure(consumer: MiddlewareConsumer) {

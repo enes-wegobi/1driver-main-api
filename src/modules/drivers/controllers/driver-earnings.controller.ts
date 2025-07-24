@@ -16,7 +16,7 @@ import {
   ApiParam,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/jwt/guards/jwt.guard';
-import { GetUser } from 'src/jwt/user.decoretor';
+import { GetUser } from 'src/jwt/user.decorator';
 import { IJwtPayload } from 'src/jwt/jwt-payload.interface';
 import { DriverEarningsService } from '../services/driver-earnings.service';
 import { LoggerService } from 'src/logger/logger.service';

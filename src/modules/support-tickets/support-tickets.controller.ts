@@ -9,7 +9,7 @@ import {
   HttpStatus,
   Body,
 } from '@nestjs/common';
-import { GetUser } from 'src/jwt/user.decoretor';
+import { GetUser } from 'src/jwt/user.decorator';
 import {
   ApiTags,
   ApiBearerAuth,
