@@ -1291,7 +1291,6 @@ export class TripService {
   private async validateCustomerHasPaymentMethod(
     customerId: string,
   ): Promise<void> {
-    try {
       const defaultPaymentMethod =
         await this.paymentMethodService.getDefaultPaymentMethod(customerId);
 
@@ -1302,18 +1301,6 @@ export class TripService {
           HttpStatus.BAD_REQUEST,
         );
       }
-    } catch (error) {
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
-
-      this.logger.error(
-        `Error validating payment method for customer ${customerId}: ${error.message}`,
-      );
-      throw new BadRequestException(
-        'Unable to validate payment method. Please try again.',
-      );
-    }
   }
 
   private async getTrip(tripId: string): Promise<TripDocument> {
