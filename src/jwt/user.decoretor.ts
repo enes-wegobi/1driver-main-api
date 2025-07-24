@@ -14,9 +14,6 @@ export const GetUser = createParamDecorator(
     const user = request.user as IJwtPayload;
 
     if (!user) {
-      console.error(
-        'GetUser decorator used without a valid user object on request.',
-      );
       throw new InternalServerErrorException('User not found on request');
     }
 

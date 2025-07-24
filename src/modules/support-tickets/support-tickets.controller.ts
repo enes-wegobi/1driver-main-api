@@ -18,7 +18,7 @@ import {
   ApiBody,
   ApiResponse,
 } from '@nestjs/swagger';
-import { JwtAuthGuard } from 'src/jwt/jwt.guard';
+import { JwtAuthGuard } from 'src/jwt/guards/jwt.guard';
 import { SupportTicketsService } from './support-tickets.service';
 import { FileInterceptor } from '@nest-lab/fastify-multer';
 import { CreateSupportTicketDto } from './dto/create-support-ticket.dto';

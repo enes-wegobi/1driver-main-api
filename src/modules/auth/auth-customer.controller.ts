@@ -20,7 +20,7 @@ import { SigninDto } from '../../clients/auth/dto/signin.dto';
 import { TokenManagerService } from '../../redis/services/token-manager.service';
 import { UserType } from '../../common/user-type.enum';
 import { ConfigService } from '@nestjs/config';
-import { LogoutGuard } from '../../jwt/logout.guard';
+import { LogoutGuard } from '../../jwt/guards/logout.guard';
 import { LoggerService } from 'src/logger/logger.service';
 import { ForceLogoutService } from './force-logout.service';
 

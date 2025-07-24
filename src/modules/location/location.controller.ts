@@ -14,7 +14,7 @@ import {
   ApiResponse,
   ApiBody,
 } from '@nestjs/swagger';
-import { JwtAuthGuard } from 'src/jwt/jwt.guard';
+import { JwtAuthGuard } from 'src/jwt/guards/jwt.guard';
 import { GetUser } from 'src/jwt/user.decoretor';
 import { IJwtPayload } from 'src/jwt/jwt-payload.interface';
 import { LocationService } from './location.service';

@@ -3,10 +3,10 @@ import { JwtModule as NestJwtModule } from '@nestjs/jwt';
 import { JwtService } from './jwt.service';
 import { ConfigService } from 'src/config/config.service';
 import { ConfigModule } from 'src/config/config.module';
-import { JwtAuthGuard } from './jwt.guard';
-import { LogoutGuard } from './logout.guard';
+import { JwtAuthGuard } from './guards/jwt.guard';
+import { LogoutGuard } from './guards/logout.guard';
 import { RedisModule } from 'src/redis/redis.module';
-import { WsJwtGuard } from './ws-jwt.guard';
+import { WsJwtGuard } from './guards/ws-jwt.guard';
 
 @Module({
   imports: [

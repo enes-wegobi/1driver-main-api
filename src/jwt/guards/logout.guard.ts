@@ -5,10 +5,10 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { JwtService } from './jwt.service';
-import { TokenManagerService } from '../redis/services/token-manager.service';
-import { AUTH_EVENTS } from '../events/auth-events.service';
-import { UserType } from '../common/user-type.enum';
+import { JwtService } from '../jwt.service';
+import { TokenManagerService } from '../../redis/services/token-manager.service';
+import { AUTH_EVENTS } from '../../events/auth-events.service';
+import { UserType } from '../../common/user-type.enum';
 
 @Injectable()
 export class LogoutGuard implements CanActivate {

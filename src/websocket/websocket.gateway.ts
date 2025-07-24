@@ -19,7 +19,7 @@ import { TripService } from 'src/modules/trip/services/trip.service';
 import { EventType } from 'src/modules/event/enum/event-type.enum';
 import { DriverAvailabilityStatus } from 'src/common/enums/driver-availability-status.enum';
 import { LoggerService } from 'src/logger/logger.service';
-import { WsJwtGuard } from '../jwt/ws-jwt.guard';
+import { WsJwtGuard } from '../jwt/guards/ws-jwt.guard';
 import { JwtService } from 'src/jwt/jwt.service';
 import { TokenManagerService } from 'src/redis/services/token-manager.service';
 

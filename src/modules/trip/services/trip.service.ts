@@ -159,11 +159,20 @@ export class TripService {
           const lat = trip.route[0].lat;
           const lon = trip.route[0].lon;
 
-          const driverIds = await this.searchDriver(
+          let driverIds = await this.searchDriver(
             trip.route[0].lat,
             trip.route[0].lon,
           );
-          this.logger.info(`Found ${driverIds.length} drivers`);
+          this.logger.info(`Found ${driverIds.length} drivers before filtering`);
+          /*
+          // Filter out previously rejected drivers for existing trips
+          if (tripId && trip.rejectedDriverIds && trip.rejectedDriverIds.length > 0) {
+            const originalCount = driverIds.length;
+            driverIds = driverIds.filter(driverId => !trip.rejectedDriverIds.includes(driverId));
+            this.logger.info(`Filtered out ${originalCount - driverIds.length} previously rejected drivers`);
+          }
+          */
+
           const updateData = this.buildDriverRequestUpdateData(
             driverIds,
             trip.callRetryCount,

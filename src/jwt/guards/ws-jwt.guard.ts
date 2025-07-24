@@ -1,9 +1,9 @@
 import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
 import { Socket } from 'socket.io';
-import { JwtService } from './jwt.service';
-import { TokenManagerService } from '../redis/services/token-manager.service';
-import { LoggerService } from '../logger/logger.service';
-import { UserType } from '../common/user-type.enum';
+import { JwtService } from '../jwt.service';
+import { TokenManagerService } from '../../redis/services/token-manager.service';
+import { LoggerService } from '../../logger/logger.service';
+import { UserType } from '../../common/user-type.enum';
 
 @Injectable()
 export class WsJwtGuard implements CanActivate {

@@ -4,11 +4,9 @@ import {
   ExecutionContext,
   UnauthorizedException,
 } from '@nestjs/common';
-import { JwtService } from './jwt.service';
-import { TokenManagerService } from '../redis/services/token-manager.service';
-import { LoggerService } from '../logger/logger.service';
-import { EventEmitter2 } from '@nestjs/event-emitter';
-import { AUTH_EVENTS } from 'src/events/auth-events.service';
+import { JwtService } from '../jwt.service';
+import { TokenManagerService } from '../../redis/services/token-manager.service';
+import { LoggerService } from '../../logger/logger.service';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -16,7 +14,6 @@ export class JwtAuthGuard implements CanActivate {
     private jwtService: JwtService,
     private tokenManagerService: TokenManagerService,
     private loggerService: LoggerService,
-    private eventEmitter: EventEmitter2,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -41,41 +38,12 @@ export class JwtAuthGuard implements CanActivate {
 
       if (sessionMetadata) {
         if (sessionMetadata.token && sessionMetadata.token !== token) {
-/*
-          this.eventEmitter.emit(AUTH_EVENTS.FORCE_LOGOUT_REQUESTED, {
-            userId: payload.userId,
-            userType: payload.userType,
-            oldDeviceId: sessionMetadata.deviceId || 'unknown',
-            newDeviceId: currentDeviceInfo.deviceId || 'unknown',
-            reason: 'Token validation failed - token mismatch',
-            metadata: {
-              ipAddress: currentIpAddress,
-              userAgent: currentDeviceInfo.userAgent,
-            },
-            timestamp: new Date(),
-          });
-*/
           throw new UnauthorizedException('Token validation failed');
         }
 
         const isValidDevice = this.validateDeviceBinding(currentDeviceInfo, sessionMetadata);
         
         if (!isValidDevice) {
-          /*
-          this.eventEmitter.emit(AUTH_EVENTS.FORCE_LOGOUT_REQUESTED, {
-            userId: payload.userId,
-            userType: payload.userType,
-            oldDeviceId: sessionMetadata.deviceId || 'unknown',
-            newDeviceId: currentDeviceInfo.deviceId || 'unknown',
-            reason: 'Device binding validation failed',
-            metadata: {
-              ipAddress: currentIpAddress,
-              userAgent: currentDeviceInfo.userAgent,
-              oldSessionInfo: sessionMetadata,
-            },
-            timestamp: new Date(),
-          });
-*/
           throw new UnauthorizedException('Device validation failed');
         }
 

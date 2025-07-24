@@ -5,7 +5,7 @@ import {
   S3Client,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from 'src/config/config.service';
 import { LoggerService } from 'src/logger/logger.service';
 import { v4 as uuidv4 } from 'uuid';
@@ -27,7 +27,6 @@ export class S3Service {
       `Initializing S3 client with region: ${this.region}, bucket: ${this.bucketName}`,
     );
 
-    // Digital Ocean Spaces için S3Client konfigürasyonu
     this.s3Client = new S3Client({
       region: this.region,
       endpoint: this.configService.spacesEndpoint,
@@ -115,10 +114,7 @@ export class S3Service {
    */
   getPublicUrl(fileKey: string): string {
     this.logger.info(`Generating public URL for file with key: ${fileKey}`);
-    // Using the endpoint from config to construct the URL
-    // Format: https://<bucket-name>.<region>.digitaloceanspaces.com/<file-key>
     const endpoint = this.configService.spacesCdnEndpoint;
-    // Remove the https:// prefix if it exists
     const cleanEndpoint = endpoint.replace(/^https?:\/\//, '');
 
     return `https://${cleanEndpoint}/${fileKey}`;

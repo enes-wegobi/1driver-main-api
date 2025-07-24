@@ -20,7 +20,7 @@ import {
   ApiResponse,
   ApiParam,
 } from '@nestjs/swagger';
-import { JwtAuthGuard } from 'src/jwt/jwt.guard';
+import { JwtAuthGuard } from 'src/jwt/guards/jwt.guard';
 import { GetUser } from 'src/jwt/user.decoretor';
 import { EstimateTripDto } from '../dto/estimate-trip.dto';
 import { IJwtPayload } from 'src/jwt/jwt-payload.interface';
