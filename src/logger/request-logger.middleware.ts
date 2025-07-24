@@ -1,6 +1,7 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { LoggerService } from './logger.service';
+import { randomUUID } from 'crypto';
 
 @Injectable()
 export class RequestLoggerMiddleware implements NestMiddleware {
@@ -8,26 +9,40 @@ export class RequestLoggerMiddleware implements NestMiddleware {
 
   use(req: Request, res: Response, next: NextFunction): void {
     const startTime = Date.now();
-    const logger = this.loggerService;
+    const requestId = this.loggerService.generateRequestId() || randomUUID(); // Generate ID early
 
-    res.on('finish', () => {
+    (req as any).requestId = requestId;
+
+    const requestData = {
+      method: req.method,
+      url: req.originalUrl,
+      ip: req.ip || req.connection.remoteAddress,
+      userAgent: req.headers['user-agent'],
+      deviceId: req.headers['x-device-id'],
+      platform: req.headers['x-platform'],
+    };
+
+    const logOnEnd = () => {
       const duration = Date.now() - startTime;
       const logContext = {
-        requestId: logger.generateRequestId(),
-          ip: req.ip || req.connection.remoteAddress,
-          userAgent: req.get('User-Agent'),
-          deviceId: req.get('x-device-id'),
-          platform: req.get('x-platform'),
-        };
+        requestId,
+        ip: requestData.ip,
+        userAgent: requestData.userAgent,
+        deviceId: requestData.deviceId,
+        platform: requestData.platform,
+      };
 
-      logger.logRequest(
-        req.method,
-        req.originalUrl,
+      this.loggerService.logRequest(
+        requestData.method,
+        requestData.url,
         res.statusCode,
         duration,
         logContext,
       );
-    });
+    };
+
+    res.on('finish', logOnEnd);
+    res.on('close', logOnEnd);
 
     next();
   }
