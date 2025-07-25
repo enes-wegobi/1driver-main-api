@@ -857,8 +857,8 @@ export class TripService {
     const durationInMinutes = Math.ceil(actualDuration / 60);
     const costPerMinute = this.configService.tripCostPerMinute;
     let finalCost = durationInMinutes * costPerMinute;
-    if (finalCost < 5) {
-      finalCost = 5;
+    if (finalCost < 15) {
+      finalCost = 15;
     }
 
     return {

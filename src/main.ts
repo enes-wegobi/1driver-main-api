@@ -60,8 +60,7 @@ async function bootstrap() {
   );
 
   const config = new DocumentBuilder()
-    .setTitle('Customer API Gateway')
-    .setDescription('The Customer API Gateway description')
+    .setTitle('1Driver-Main-Api')
     .setVersion('1.0')
     .addTag('users')
     .addBearerAuth()
