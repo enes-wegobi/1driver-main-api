@@ -57,7 +57,7 @@ export class AllowedPhoneCountriesConstraint
   }
 
   defaultMessage() {
-    return 'Phone number must be valid and start with one of the allowed country codes: +90, +91, +92, +966, +880, +63, +44, +20, +7, +86, +968, +98, +94, +977, +1, +49, +962, +974, +965, +973, +33';
+    return 'Invalid phone number format.';
   }
 }
 
