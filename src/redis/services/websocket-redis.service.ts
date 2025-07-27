@@ -3,8 +3,9 @@ import { ConfigService } from '@nestjs/config';
 import { BaseRedisService } from './base-redis.service';
 import { UserType } from '../../common/user-type.enum';
 import { WithErrorHandling } from '../decorators/with-error-handling.decorator';
-import { RedisKeyGenerator } from '../redis-key.generator';
 import { LoggerService } from 'src/logger/logger.service';
+import { UnifiedUserStatusService } from './unified-user-status.service';
+import { AppState } from '../../common/enums/app-state.enum';
 
 export interface ActiveWebSocketConnection {
   socketId: string;
@@ -15,11 +16,10 @@ export interface ActiveWebSocketConnection {
 
 @Injectable()
 export class WebSocketRedisService extends BaseRedisService {
-  private readonly WEBSOCKET_TTL = 24 * 60 * 60; // 24 hours in seconds
-
   constructor(
     configService: ConfigService,
     protected readonly customLogger: LoggerService,
+    private readonly unifiedUserStatusService: UnifiedUserStatusService,
   ) {
     super(configService, customLogger);
   }
@@ -35,27 +35,23 @@ export class WebSocketRedisService extends BaseRedisService {
     socketId: string,
     deviceId: string,
   ): Promise<ActiveWebSocketConnection | null> {
-    const key = RedisKeyGenerator.userActiveWebSocket(userId, userType);
-
     // Get existing connection first
     const existingConnection = await this.getActiveConnection(userId, userType);
 
-    const connectionData: ActiveWebSocketConnection = {
-      socketId,
-      deviceId,
-      connectedAt: new Date().toISOString(),
-      lastActivity: new Date().toISOString(),
-    };
-
-    // Store new connection
-    await this.client.set(key, JSON.stringify(connectionData));
-    await this.client.expire(key, this.WEBSOCKET_TTL);
+    // Use unified service to set user active with WebSocket data
+    const previousStatus = await this.unifiedUserStatusService.setUserActive(
+      userId,
+      userType,
+      AppState.FOREGROUND,
+      { socketId, deviceId },
+    );
 
     this.customLogger.info(
       `WebSocket connection set for user ${userId} (${userType}), socket: ${socketId}, device: ${deviceId}`,
     );
 
-    return existingConnection;
+    // Return previous WebSocket connection if it existed
+    return previousStatus?.websocket || null;
   }
 
   /**
@@ -66,9 +62,7 @@ export class WebSocketRedisService extends BaseRedisService {
     userId: string,
     userType: UserType,
   ): Promise<ActiveWebSocketConnection | null> {
-    const key = RedisKeyGenerator.userActiveWebSocket(userId, userType);
-    const data = await this.client.get(key);
-    return data ? JSON.parse(data) : null;
+    return await this.unifiedUserStatusService.getWebSocketConnection(userId, userType);
   }
 
   /**
@@ -79,14 +73,13 @@ export class WebSocketRedisService extends BaseRedisService {
     userId: string,
     userType: UserType,
   ): Promise<boolean> {
-    const key = RedisKeyGenerator.userActiveWebSocket(userId, userType);
-    const result = await this.client.del(key);
+    await this.unifiedUserStatusService.setUserInactive(userId, userType);
 
     this.customLogger.info(
       `WebSocket connection removed for user ${userId} (${userType})`,
     );
 
-    return result > 0;
+    return true;
   }
 
   /**
@@ -97,23 +90,11 @@ export class WebSocketRedisService extends BaseRedisService {
     userId: string,
     userType: UserType,
   ): Promise<boolean> {
-    const connection = await this.getActiveConnection(userId, userType);
-    if (!connection) {
-      return false;
-    }
-
-    connection.lastActivity = new Date().toISOString();
-
-    const key = RedisKeyGenerator.userActiveWebSocket(userId, userType);
-    await this.client.set(key, JSON.stringify(connection));
-
-    // Maintain the existing TTL
-    const ttl = await this.client.ttl(key);
-    if (ttl > 0) {
-      await this.client.expire(key, ttl);
-    }
-
-    return true;
+    return await this.unifiedUserStatusService.updateHeartbeat(
+      userId,
+      userType,
+      true, // updateWebSocketActivity = true
+    );
   }
 
   /**
@@ -125,7 +106,10 @@ export class WebSocketRedisService extends BaseRedisService {
     userType: UserType,
     socketId: string,
   ): Promise<boolean> {
-    const connection = await this.getActiveConnection(userId, userType);
-    return connection ? connection.socketId === socketId : false;
+    return await this.unifiedUserStatusService.isActiveSocket(
+      userId,
+      userType,
+      socketId,
+    );
   }
 }

@@ -8,16 +8,26 @@ import { InitiatePhoneUpdateDto } from 'src/clients/customer/dto/initiate-phone-
 import { UpdateCustomerDto } from 'src/clients/customer/dto/update-customer.dto';
 import { UpdateNotificationPermissionsDto } from 'src/clients/customer/dto/update-notification-permissions.dto';
 import { LoggerService } from 'src/logger/logger.service';
+import { PaymentMethodService } from '../payments/services/payment-method.service';
 
 @Injectable()
 export class CustomersService {
   constructor(
     private readonly customersClient: CustomersClient,
     private readonly logger: LoggerService,
+    private readonly paymentMethodService: PaymentMethodService,
   ) {}
 
   async findOne(id: string, fields?: string | string[]) {
-    return this.customersClient.findOne(id, fields);
+    const customer = await this.customersClient.findOne(id, fields);
+
+    if (customer) {
+      const paymentMethods =
+        await this.paymentMethodService.getPaymentMethods(id);
+      customer.paymentMethods = paymentMethods;
+    }
+
+    return customer;
   }
 
   async updateProfile(id: string, profileData: UpdateCustomerDto) {

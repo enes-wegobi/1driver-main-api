@@ -22,6 +22,7 @@ import { LoggerService } from 'src/logger/logger.service';
 import { WsJwtGuard } from '../jwt/guards/ws-jwt.guard';
 import { JwtService } from 'src/jwt/jwt.service';
 import { TokenManagerService } from 'src/redis/services/token-manager.service';
+import { UnifiedUserStatusService } from 'src/redis/services/unified-user-status.service';
 
 const PING_INTERVAL = 5000;
 const PING_TIMEOUT = 2000;
@@ -52,6 +53,8 @@ export class WebSocketGateway
     private readonly logger: LoggerService,
     private readonly jwtService: JwtService,
     private readonly tokenManager: TokenManagerService,
+    private readonly unifiedUserStatusService: UnifiedUserStatusService,
+    
   ) {}
 
   @WebSocketServer()
@@ -94,7 +97,6 @@ export class WebSocketGateway
     const clientId = client.id;
     const token = this.extractToken(client);
     const deviceId = this.extractDeviceId(client);
-    const userType = client.data.userType;
 
     if (!token) {
       client.emit('error', {
@@ -122,15 +124,14 @@ export class WebSocketGateway
       }
 
       const userId = payload.userId;
-
       const userType = payload.userType;
+
       if (userType !== UserType.DRIVER && userType !== UserType.CUSTOMER) {
         client.emit('error', { message: 'Invalid user type' });
         client.disconnect(true);
         return;
       }
 
-      // Check active session
       const activeSession = await this.tokenManager.getActiveToken(
         userId,
         userType,
@@ -153,7 +154,6 @@ export class WebSocketGateway
         return;
       }
 
-      // Verify device ID matches the active session
       if (activeSession.deviceId !== deviceId) {
         this.logger.warn(
           `Device ID mismatch for user ${userId}: session device ${activeSession.deviceId} vs connection device ${deviceId}`,
@@ -196,16 +196,18 @@ export class WebSocketGateway
       );
 
       if (userType === UserType.DRIVER) {
+        await this.unifiedUserStatusService.setUserActive(userId, UserType.DRIVER);
+
         await this.driverStatusService.markDriverAsConnected(userId);
         await this.driverStatusService.setDriverAppStateOnConnect(userId);
 
-        await this.driverStatusService.updateDriverAvailability(
-          userId,
-          DriverAvailabilityStatus.BUSY,
-        );
-
-        const status =
-          await this.driverStatusService.getDriverAvailability(userId);
+        const status = await this.driverStatusService.getDriverAvailability(userId);
+        if(status !== DriverAvailabilityStatus.AVAILABLE && status !== DriverAvailabilityStatus.ON_TRIP ){
+          await this.driverStatusService.updateDriverAvailability(
+            userId,
+            DriverAvailabilityStatus.BUSY,
+          );
+        }
 
         client.emit('connection', {
           status: 'connected',

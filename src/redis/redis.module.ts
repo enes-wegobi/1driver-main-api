@@ -9,11 +9,17 @@ import { ActiveTripService } from './services/active-trip.service';
 import { DriverTripQueueService } from './services/driver-trip-queue.service';
 import { TokenManagerService } from './services/token-manager.service';
 import { WebSocketRedisService } from './services/websocket-redis.service';
+import { UnifiedUserStatusService } from './services/unified-user-status.service';
+import { DriverAvailabilityService } from './services/driver-availability.service';
+import { UnifiedUserRedisService } from './services/unified-user-redis.service';
 
 @Module({
   imports: [ConfigModule],
   providers: [
     BaseRedisService,
+    UnifiedUserRedisService,
+    UnifiedUserStatusService,
+    DriverAvailabilityService,
     LocationService,
     DriverStatusService,
     CustomerStatusService,
@@ -25,6 +31,9 @@ import { WebSocketRedisService } from './services/websocket-redis.service';
   ],
   exports: [
     BaseRedisService,
+    UnifiedUserRedisService,
+    UnifiedUserStatusService,
+    DriverAvailabilityService,
     LocationService,
     DriverStatusService,
     CustomerStatusService,

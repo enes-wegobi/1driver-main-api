@@ -19,7 +19,6 @@ import { TripModule } from './modules/trip/trip.module';
 import { SupportTicketsModule } from './modules/support-tickets/support-tickets.module';
 import { LocationModule } from './modules/location/location.module';
 import { QueueModule } from './queue/queue.module';
-import { HeartbeatModule } from './modules/common/heartbeat.module';
 import { LoggerModule } from './logger/logger.module';
 import { RequestIdInterceptor } from './logger/request-id.interceptor';
 import { RequestLoggerMiddleware } from './logger/request-logger.middleware';
@@ -28,6 +27,7 @@ import { TripEventsService } from './events/trip-events.service';
 import { TripApprovalHandler } from './events/handlers/trip-approval.handler';
 import { AuthEventsModule } from './events/auth-events.module';
 import { SMSModule } from './modules/sms/sms.module';
+import { CommonModule } from './modules/common/common.module';
 
 @Module({
   imports: [
@@ -54,7 +54,7 @@ import { SMSModule } from './modules/sms/sms.module';
     SupportTicketsModule,
     LocationModule,
     QueueModule,
-    HeartbeatModule,
+    CommonModule,
     HealthModule,
     AuthEventsModule,
     SMSModule,

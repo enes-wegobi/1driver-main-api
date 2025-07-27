@@ -21,7 +21,7 @@ export class RedisKeyGenerator {
     return `location:${userType}:geo`;
   }
 
-  // Active user keys
+  // Active user keys (legacy - use unified keys instead)
   static driverActive(driverId: string): string {
     return `driver:active:${driverId}`;
   }
@@ -30,12 +30,22 @@ export class RedisKeyGenerator {
     return `customer:active:${customerId}`;
   }
 
-  // Driver status key
+  // Unified user status keys
+  static userActiveStatus(userId: string, userType: UserType): string {
+    return `user:active:${userType}:${userId}`;
+  }
+
+  // Driver availability key (specialized for drivers only)
+  static driverAvailability(driverId: string): string {
+    return `driver:availability:${driverId}`;
+  }
+
+  // Driver status key (legacy - use driverAvailability instead)
   static driverStatus(driverId: string): string {
     return `driver:status:${driverId}`;
   }
 
-  // ========== OPTIONAL: APP STATE KEY ==========
+  // ========== OPTIONAL: APP STATE KEY (LEGACY) ==========
   // (Only add if you need to track app state separately)
   static driverAppState(driverId: string): string {
     return `driver:app-state:${driverId}`;
@@ -45,13 +55,18 @@ export class RedisKeyGenerator {
     return `customer:app-state:${customerId}`;
   }
 
-  // Active users sets
+  // Active users sets (legacy - use unified sets instead)
   static activeDriversSet(): string {
     return 'drivers:active';
   }
 
   static activeCustomersSet(): string {
     return 'customers:active';
+  }
+
+  // Unified active users sets
+  static activeUsersSet(userType: UserType): string {
+    return `users:active:${userType}s`;
   }
 
   // Helper method for nearby users
@@ -61,10 +76,6 @@ export class RedisKeyGenerator {
 
   static userActiveToken(userId: string, userType: UserType): string {
     return `auth:user:active_token:${userType}:${userId}`;
-  }
-
-  static sessionActivity(userId: string, userType: UserType): string {
-    return `auth:user:session_activity:${userType}:${userId}`;
   }
 
   // Driver trip queue keys (new sequential system)
@@ -83,5 +94,24 @@ export class RedisKeyGenerator {
   // WebSocket connection keys
   static userActiveWebSocket(userId: string, userType: UserType): string {
     return `ws:user:active_socket:${userType}:${userId}`;
+  }
+
+
+
+  
+  static getUserLocationKey(userId: string): string {
+    return `location:user:${userId}`;
+  }
+
+  static getActiveDriversSetKey(): string {
+    return 'users:active:drivers';
+  }
+
+  static getActiveCustomersSetKey(): string {
+    return 'users:active:customers';
+  }
+
+  static getDriverGeoKey(): string {
+    return 'location:driver:geo';
   }
 }

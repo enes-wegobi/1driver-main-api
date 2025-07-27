@@ -1,57 +1,42 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { BaseRedisService } from './base-redis.service';
-import { RedisKeyGenerator } from '../redis-key.generator';
 import { WithErrorHandling } from '../decorators/with-error-handling.decorator';
 import { AppState } from 'src/common/enums/app-state.enum';
 import { LoggerService } from 'src/logger/logger.service';
 import { UserType } from 'src/common/user-type.enum';
+import { UnifiedUserStatusService } from './unified-user-status.service';
 
 @Injectable()
 export class CustomerStatusService extends BaseRedisService {
   constructor(
     configService: ConfigService,
     protected readonly customLogger: LoggerService,
+    private readonly unifiedUserStatusService: UnifiedUserStatusService,
   ) {
     super(configService, customLogger);
   }
 
   @WithErrorHandling()
   async markCustomerAsActive(customerId: string) {
-    const pipeline = this.client.multi();
-    const key = RedisKeyGenerator.customerActive(customerId);
-
-    pipeline.set(key, new Date().toISOString());
-    pipeline.expire(key, this.ACTIVE_CUSTOMER_EXPIRY);
-    pipeline.sadd(RedisKeyGenerator.activeCustomersSet(), customerId);
-
-    await pipeline.exec();
+    await this.unifiedUserStatusService.setUserActive(customerId, UserType.CUSTOMER);
     return true;
   }
 
   @WithErrorHandling()
   async markCustomerAsInactive(customerId: string) {
-    const pipeline = this.client.multi();
-    const key = RedisKeyGenerator.customerActive(customerId);
-
-    pipeline.del(key);
-    pipeline.srem(RedisKeyGenerator.activeCustomersSet(), customerId);
-
-    await pipeline.exec();
+    await this.unifiedUserStatusService.setUserInactive(customerId, UserType.CUSTOMER);
     return true;
   }
 
   @WithErrorHandling(false)
   async isCustomerActive(customerId: string): Promise<boolean> {
-    const key = RedisKeyGenerator.customerActive(customerId);
-    const result = await this.client.exists(key);
-
-    return result === 1;
+    return await this.unifiedUserStatusService.isUserActive(customerId, UserType.CUSTOMER);
   }
 
   @WithErrorHandling([])
   async getActiveCustomers(): Promise<string[]> {
-    return await this.client.smembers(RedisKeyGenerator.activeCustomersSet());
+    return await this.unifiedUserStatusService.getActiveUsers(UserType.CUSTOMER);
   }
 
   // ========== APP STATE METHODS ==========
@@ -61,36 +46,22 @@ export class CustomerStatusService extends BaseRedisService {
     customerId: string,
     appState: AppState,
   ): Promise<void> {
-    const key = RedisKeyGenerator.customerAppState(customerId);
-    const pipeline = this.client.multi();
-
-    pipeline.set(key, appState);
-    pipeline.expire(key, this.ACTIVE_CUSTOMER_EXPIRY);
-
-    await pipeline.exec();
+    await this.unifiedUserStatusService.updateAppState(customerId, UserType.CUSTOMER, appState);
   }
 
   @WithErrorHandling()
   async getCustomerAppState(customerId: string): Promise<AppState> {
-    const key = RedisKeyGenerator.customerAppState(customerId);
-    const appState = await this.client.get(key);
-
-    return (appState as AppState) || null;
+    return await this.unifiedUserStatusService.getAppState(customerId, UserType.CUSTOMER);
   }
 
   @WithErrorHandling()
   async setCustomerAppStateOnConnect(customerId: string): Promise<void> {
-    await this.updateCustomerAppState(customerId, AppState.FOREGROUND);
+    await this.unifiedUserStatusService.updateAppState(customerId, UserType.CUSTOMER, AppState.FOREGROUND);
   }
 
   @WithErrorHandling()
   async setCustomerAppStateOnDisconnect(customerId: string): Promise<void> {
-    const key = RedisKeyGenerator.customerAppState(customerId);
-    const pipeline = this.client.multi();
-
-    pipeline.del(key);
-
-    await pipeline.exec();
+    await this.unifiedUserStatusService.setUserInactive(customerId, UserType.CUSTOMER);
 
     this.customLogger.debug(
       `Customer ${customerId} app state deleted on disconnect`,
