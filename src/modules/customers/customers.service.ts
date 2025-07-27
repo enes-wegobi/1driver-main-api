@@ -15,17 +15,10 @@ export class CustomersService {
   constructor(
     private readonly customersClient: CustomersClient,
     private readonly logger: LoggerService,
-    private readonly paymentMethodService: PaymentMethodService,
   ) {}
 
   async findOne(id: string, fields?: string | string[]) {
     const customer = await this.customersClient.findOne(id, fields);
-
-    if (customer) {
-      const paymentMethods =
-        await this.paymentMethodService.getPaymentMethods(id);
-      customer.paymentMethods = paymentMethods;
-    }
 
     return customer;
   }
