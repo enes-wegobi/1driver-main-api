@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
-import { HeartbeatController } from './heartbeat.controller';
 import { RedisModule } from 'src/redis/redis.module';
 import { JwtModule } from 'src/jwt/jwt.module';
+import { CommonController } from './common.controller';
 
 @Module({
   imports: [RedisModule, JwtModule],
-  controllers: [HeartbeatController],
+  controllers: [CommonController],
 })
-export class HeartbeatModule {}
+export class CommonModule {}

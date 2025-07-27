@@ -19,7 +19,7 @@ import { TripModule } from './modules/trip/trip.module';
 import { SupportTicketsModule } from './modules/support-tickets/support-tickets.module';
 import { LocationModule } from './modules/location/location.module';
 import { QueueModule } from './queue/queue.module';
-import { HeartbeatModule } from './modules/common/heartbeat.module';
+import { CommonModule } from './modules/common/common.module';
 import { LoggerModule } from './logger/logger.module';
 import { RequestIdInterceptor } from './logger/request-id.interceptor';
 import { RequestLoggerMiddleware } from './logger/request-logger.middleware';
@@ -54,7 +54,7 @@ import { SMSModule } from './modules/sms/sms.module';
     SupportTicketsModule,
     LocationModule,
     QueueModule,
-    HeartbeatModule,
+    CommonModule,
     HealthModule,
     AuthEventsModule,
     SMSModule,
