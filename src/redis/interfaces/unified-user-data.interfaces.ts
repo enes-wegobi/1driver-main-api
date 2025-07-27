@@ -30,7 +30,6 @@ export interface DriverLocationData {
   availability: DriverAvailabilityStatus;
   
   // User status
-  isActive: boolean;
   appState: AppState;
   
   // WebSocket connection (optional)

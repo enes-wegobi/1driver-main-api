@@ -18,6 +18,8 @@ import { RedisKeyGenerator } from '../redis-key.generator';
 export class UnifiedUserRedisService extends BaseRedisService {
   private readonly USER_STATUS_TTL = 30 * 60; // 30 minutes
   private readonly LOCATION_TTL = 15 * 60; // 15 minutes
+  private readonly DRIVER_BACKGROUND_TTL = 40 * 60; // 40 minutes for background state preservation
+  private readonly DRIVER_ON_TRIP_TTL = 2 * 60 * 60; // 2 hours for ON_TRIP state preservation
 
   constructor(
     configService: ConfigService,
@@ -44,17 +46,14 @@ export class UnifiedUserRedisService extends BaseRedisService {
     const shouldForceLogout = !!(existingData?.websocket?.socketId && 
                                  existingData.websocket.socketId !== socketId);
     
-    // 3. Preserve availability status or default to AVAILABLE
     const preservedAvailability = existingData?.availability || DriverAvailabilityStatus.AVAILABLE;
 
-    // 4. Create new driver data with preserved availability
     const driverData: DriverLocationData = {
       lat,
       lng,
       timestamp: new Date().toISOString(),
       availability: preservedAvailability,
-      isActive: true,
-      appState: AppState.FOREGROUND, // Always foreground on connect
+      appState: AppState.FOREGROUND,
       websocket: {
         socketId,
         deviceId,
@@ -387,6 +386,137 @@ export class UnifiedUserRedisService extends BaseRedisService {
     };
 
     await this.client.set(key, JSON.stringify(updatedData));
+    return true;
+  }
+
+  // ===============================
+  // DISCONNECT METHODS
+  // ===============================
+
+  /**
+   * Smart disconnect driver with state preservation based on app state and availability
+   */
+  @WithErrorHandling()
+  async disconnectDriver(
+    driverId: string,
+    socketId?: string,
+    appState?: AppState,
+  ): Promise<boolean> {
+    const currentData = await this.getDriverStatus(driverId);
+    if (!currentData) {
+      return false;
+    }
+
+    // Verify socket ID if provided
+    if (socketId && currentData.websocket?.socketId !== socketId) {
+      this.customLogger.warn(
+        `Socket ID mismatch for driver ${driverId} disconnect`,
+        {
+          userId: driverId,
+          userType: UserType.DRIVER,
+          expectedSocketId: currentData.websocket?.socketId,
+          providedSocketId: socketId,
+        },
+      );
+      return false;
+    }
+
+    const currentAppState = appState || currentData.appState;
+    const availability = currentData.availability;
+
+    // Determine if we should preserve state (background mode)
+    const shouldPreserve = currentAppState === AppState.BACKGROUND;
+
+    if (shouldPreserve) {
+      // Background disconnect - preserve state with appropriate TTL
+      const ttl = availability === DriverAvailabilityStatus.ON_TRIP 
+        ? this.DRIVER_ON_TRIP_TTL 
+        : this.DRIVER_BACKGROUND_TTL;
+      
+      return await this.preserveDriverDataWithTTL(driverId, ttl, 'background_disconnect');
+    } else {
+      // Foreground disconnect - full cleanup
+      return await this.setDriverInactive(driverId);
+    }
+  }
+
+  /**
+   * Disconnect customer with immediate full cleanup
+   */
+  @WithErrorHandling()
+  async disconnectCustomer(
+    customerId: string,
+    socketId?: string,
+  ): Promise<boolean> {
+    const currentData = await this.getCustomerStatus(customerId);
+    if (!currentData) {
+      return false;
+    }
+
+    // Verify socket ID if provided
+    if (socketId && currentData.websocket?.socketId !== socketId) {
+      this.customLogger.warn(
+        `Socket ID mismatch for customer ${customerId} disconnect`,
+        {
+          userId: customerId,
+          userType: UserType.CUSTOMER,
+          expectedSocketId: currentData.websocket?.socketId,
+          providedSocketId: socketId,
+        },
+      );
+      return false;
+    }
+
+    // Always immediate full cleanup for customers
+    return await this.setCustomerInactive(customerId);
+  }
+
+  /**
+   * Preserve driver data with custom TTL, removing only websocket info
+   */
+  @WithErrorHandling()
+  async preserveDriverDataWithTTL(
+    driverId: string,
+    ttlSeconds: number,
+    reason: string = 'preserve_state',
+  ): Promise<boolean> {
+    const currentData = await this.getDriverStatus(driverId);
+    if (!currentData) {
+      return false;
+    }
+
+    // Create preserved data without websocket info
+    const preservedData: DriverLocationData = {
+      ...currentData,
+      websocket: undefined, // Remove websocket data
+      timestamp: new Date().toISOString(),
+    };
+
+    const key = RedisKeyGenerator.getUserLocationKey(driverId);
+    const pipeline = this.client.multi();
+
+    // Update data with removed websocket and custom TTL
+    pipeline.set(key, JSON.stringify(preservedData));
+    pipeline.expire(key, ttlSeconds);
+
+    // Keep driver in active set and geo index with same TTL
+    pipeline.expire(RedisKeyGenerator.getActiveDriversSetKey(), ttlSeconds);
+    pipeline.expire(RedisKeyGenerator.getDriverGeoKey(), ttlSeconds);
+
+    await pipeline.exec();
+
+    this.customLogger.info(
+      `Driver ${driverId} data preserved with ${ttlSeconds}s TTL`,
+      {
+        userId: driverId,
+        userType: UserType.DRIVER,
+        ttlSeconds,
+        reason,
+        availability: currentData.availability,
+        appState: currentData.appState,
+      },
+    );
+
     return true;
   }
 

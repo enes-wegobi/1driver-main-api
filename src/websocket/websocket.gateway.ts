@@ -23,6 +23,7 @@ import { WsJwtGuard } from '../jwt/guards/ws-jwt.guard';
 import { JwtService } from 'src/jwt/jwt.service';
 import { TokenManagerService } from 'src/redis/services/token-manager.service';
 import { UnifiedUserStatusService } from 'src/redis/services/unified-user-status.service';
+import { UnifiedUserRedisService } from 'src/redis/services/unified-user-redis.service';
 
 const PING_INTERVAL = 5000;
 const PING_TIMEOUT = 2000;
@@ -54,6 +55,7 @@ export class WebSocketGateway
     private readonly jwtService: JwtService,
     private readonly tokenManager: TokenManagerService,
     private readonly unifiedUserStatusService: UnifiedUserStatusService,
+    private readonly unifiedUserRedisService: UnifiedUserRedisService,
     
   ) {}
 
@@ -283,25 +285,37 @@ export class WebSocketGateway
 
     if (userId) {
       if (userType === UserType.DRIVER) {
+        // Get current app state for smart disconnect
+        const currentData = await this.unifiedUserRedisService.getDriverStatus(userId);
+        const appState = currentData?.appState;
+
+        // Use unified disconnect with smart state preservation
+        await this.unifiedUserRedisService.disconnectDriver(
+          userId, 
+          client.id, 
+          appState
+        );
+
+        // Update legacy services for compatibility
         await this.driverStatusService.markDriverAsDisconnected(userId);
         await this.driverStatusService.setDriverAppStateOnDisconnect(userId);
-        const status =
-          await this.driverStatusService.getDriverAvailability(userId);
-        if (status !== DriverAvailabilityStatus.ON_TRIP) {
-          await this.driverStatusService.deleteDriverAvailability(userId);
-        }
-        this.logger.info(`Driver disconnected and marked as inactive`, {
+
+        this.logger.info(`Driver disconnected with smart state handling`, {
           userId,
           deviceId,
           clientId: client.id,
+          appState,
           disconnectionTime: new Date().toISOString(),
         });
       } else if (userType === UserType.CUSTOMER) {
+        // Use unified disconnect with immediate cleanup
+        await this.unifiedUserRedisService.disconnectCustomer(userId, client.id);
+
+        // Update legacy services for compatibility
         await this.customerStatusService.markCustomerAsInactive(userId);
-        await this.customerStatusService.setCustomerAppStateOnDisconnect(
-          userId,
-        );
-        this.logger.info(`Customer disconnected and marked as inactive`, {
+        await this.customerStatusService.setCustomerAppStateOnDisconnect(userId);
+
+        this.logger.info(`Customer disconnected with immediate cleanup`, {
           userId,
           deviceId,
           clientId: client.id,
