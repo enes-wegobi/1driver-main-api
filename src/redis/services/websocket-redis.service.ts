@@ -62,7 +62,8 @@ export class WebSocketRedisService extends BaseRedisService {
     userId: string,
     userType: UserType,
   ): Promise<ActiveWebSocketConnection | null> {
-    return await this.unifiedUserStatusService.getWebSocketConnection(userId, userType);
+    const connection = await this.unifiedUserStatusService.getWebSocketConnection(userId, userType);
+    return connection || null;
   }
 
   /**

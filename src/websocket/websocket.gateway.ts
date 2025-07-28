@@ -11,7 +11,6 @@ import { Server, Socket } from 'socket.io';
 import { WebSocketService } from './websocket.service';
 import { LocationDto } from './dto/location.dto';
 import { DriverStatusService } from 'src/redis/services/driver-status.service';
-import { CustomerStatusService } from 'src/redis/services/customer-status.service';
 import { LocationService } from 'src/redis/services/location.service';
 import { ActiveTripService } from 'src/redis/services/active-trip.service';
 import { UserType } from 'src/common/user-type.enum';
@@ -22,7 +21,6 @@ import { LoggerService } from 'src/logger/logger.service';
 import { WsJwtGuard } from '../jwt/guards/ws-jwt.guard';
 import { JwtService } from 'src/jwt/jwt.service';
 import { TokenManagerService } from 'src/redis/services/token-manager.service';
-import { UnifiedUserStatusService } from 'src/redis/services/unified-user-status.service';
 import { UnifiedUserRedisService } from 'src/redis/services/unified-user-redis.service';
 
 const PING_INTERVAL = 5000;
@@ -47,14 +45,12 @@ export class WebSocketGateway
   constructor(
     private readonly webSocketService: WebSocketService,
     private readonly driverStatusService: DriverStatusService,
-    private readonly customerStatusService: CustomerStatusService,
     private readonly locationService: LocationService,
     private readonly activeTripService: ActiveTripService,
     private readonly tripService: TripService,
     private readonly logger: LoggerService,
     private readonly jwtService: JwtService,
     private readonly tokenManager: TokenManagerService,
-    private readonly unifiedUserStatusService: UnifiedUserStatusService,
     private readonly unifiedUserRedisService: UnifiedUserRedisService,
     
   ) {}
@@ -175,19 +171,6 @@ export class WebSocketGateway
       client.data.userType = userType;
       client.data.deviceId = deviceId;
 
-      this.logger.info(
-        `WebSocket connection set for user ${userId} (${userType}), socket: ${client.id}, device: ${deviceId}`,
-      );
-
-      // Register user connection for tracking (single connection per user)
-      // This will automatically disconnect any existing connection for this user
-      await this.webSocketService.registerUserConnection(
-        userId,
-        userType,
-        client,
-        deviceId,
-      );
-
       // Join rooms based on user type and ID for easier targeting
       client.join(`user:${userId}`);
       client.join(`type:${userType}`);
@@ -198,17 +181,36 @@ export class WebSocketGateway
       );
 
       if (userType === UserType.DRIVER) {
-        await this.unifiedUserStatusService.setUserActive(userId, UserType.DRIVER);
+        // Use unified service for driver connection with single device enforcement
+        const connectionResult = await this.unifiedUserRedisService.connectDriver(
+          userId,
+          0, // Default lat - will be updated on first location update
+          0, // Default lng - will be updated on first location update
+          client.id,
+          deviceId,
+        );
 
-        await this.driverStatusService.markDriverAsConnected(userId);
-        await this.driverStatusService.setDriverAppStateOnConnect(userId);
+        // Handle single device enforcement
+        if (connectionResult.shouldForceLogout && connectionResult.previousSocket) {
+          const action = connectionResult.deviceEnforcement.action;
+          if (action !== 'new_connection') {
+            const forceLogoutEvent = this.unifiedUserRedisService.getForceLogoutEvent(
+              action,
+              connectionResult.previousSocket.deviceId,
+              deviceId,
+            );
 
-        const status = await this.driverStatusService.getDriverAvailability(userId);
-        if(status !== DriverAvailabilityStatus.AVAILABLE && status !== DriverAvailabilityStatus.ON_TRIP ){
-          await this.driverStatusService.updateDriverAvailability(
-            userId,
-            DriverAvailabilityStatus.BUSY,
-          );
+            // Disconnect previous socket
+            await this.webSocketService.forceLogoutUser(
+              userId,
+              userType,
+              forceLogoutEvent.reason,
+              {
+                timestamp: forceLogoutEvent.timestamp,
+                newDeviceId: deviceId,
+              },
+            );
+          }
         }
 
         client.emit('connection', {
@@ -216,14 +218,41 @@ export class WebSocketGateway
           clientId: clientId,
           userType: userType,
           deviceId: deviceId,
-          availabilityStatus: status,
+          availabilityStatus: connectionResult.preservedAvailability,
           message: 'Authentication successful',
           timestamp: new Date().toISOString(),
+          deviceEnforcement: connectionResult.deviceEnforcement,
         });
       } else if (userType === UserType.CUSTOMER) {
-        await this.customerStatusService.markCustomerAsActive(userId);
-        await this.customerStatusService.setCustomerAppStateOnConnect(userId);
+        // Use unified service for customer connection with single device enforcement
+        const connectionResult = await this.unifiedUserRedisService.connectCustomer(
+          userId,
+          client.id,
+          deviceId,
+        );
 
+        // Handle single device enforcement
+        if (connectionResult.shouldForceLogout && connectionResult.previousSocket) {
+          const action = connectionResult.deviceEnforcement.action;
+          if (action !== 'new_connection') {
+            const forceLogoutEvent = this.unifiedUserRedisService.getForceLogoutEvent(
+              action,
+              connectionResult.previousSocket.deviceId,
+              deviceId,
+            );
+
+            // Disconnect previous socket
+            await this.webSocketService.forceLogoutUser(
+              userId,
+              userType,
+              forceLogoutEvent.reason,
+              {
+                timestamp: forceLogoutEvent.timestamp,
+                newDeviceId: deviceId,
+              },
+            );
+          }
+        }
         client.emit('connection', {
           status: 'connected',
           clientId: clientId,
@@ -231,6 +260,7 @@ export class WebSocketGateway
           deviceId: deviceId,
           message: 'Authentication successful',
           timestamp: new Date().toISOString(),
+          deviceEnforcement: connectionResult.deviceEnforcement,
         });
       }
 
@@ -238,18 +268,6 @@ export class WebSocketGateway
         `Client ${clientId} authenticated as ${userType} with userId: ${userId}, deviceId: ${deviceId}`,
       );
 
-      // Listen to built-in ping/pong events for logging
-      client.on('ping', () => {
-        this.logger.debug(
-          `[PING] Received from ${userType}:${userId} (${clientId})`,
-        );
-      });
-
-      client.on('pong', (latency) => {
-        this.logger.debug(
-          `[PONG] Received from ${userType}:${userId} (${clientId}), latency: ${latency}ms`,
-        );
-      });
       this.logger.info(`WebSocket client authenticated successfully`, {
         clientId,
         userId: userId,
@@ -280,9 +298,6 @@ export class WebSocketGateway
     const userType = client.data.userType;
     const deviceId = client.data.deviceId;
 
-    // Clean up WebSocket service tracking
-    await this.webSocketService.handleSocketDisconnect(client);
-
     if (userId) {
       if (userType === UserType.DRIVER) {
         // Get current app state for smart disconnect
@@ -296,10 +311,6 @@ export class WebSocketGateway
           appState
         );
 
-        // Update legacy services for compatibility
-        await this.driverStatusService.markDriverAsDisconnected(userId);
-        await this.driverStatusService.setDriverAppStateOnDisconnect(userId);
-
         this.logger.info(`Driver disconnected with smart state handling`, {
           userId,
           deviceId,
@@ -310,10 +321,6 @@ export class WebSocketGateway
       } else if (userType === UserType.CUSTOMER) {
         // Use unified disconnect with immediate cleanup
         await this.unifiedUserRedisService.disconnectCustomer(userId, client.id);
-
-        // Update legacy services for compatibility
-        await this.customerStatusService.markCustomerAsInactive(userId);
-        await this.customerStatusService.setCustomerAppStateOnDisconnect(userId);
 
         this.logger.info(`Customer disconnected with immediate cleanup`, {
           userId,
@@ -335,6 +342,7 @@ export class WebSocketGateway
     const deviceId = client.data.deviceId;
 
     // Update user activity
+    //burada yine mevcut dataya koyalım unifed redise
     await this.webSocketService.updateUserActivity(userId, userType);
 
     if (!userId) {
@@ -458,43 +466,7 @@ export class WebSocketGateway
       };
     }
   }
-  /*
-  @SubscribeMessage('eventAck')
-  async handleEventAck(client: Socket, payload: EventAckPayload) {
-    const userId = client.data.userId;
 
-    if (!userId) {
-      client.emit('error', { message: 'User not authenticated' });
-      return { success: false, message: 'User not authenticated' };
-    }
-
-    try {
-      await this.keyspaceEventService.removeTTLKey(userId, payload.eventId);
-
-      this.logger.debug(
-        `Event acknowledged and TTL key cleaned: ${payload.eventId}`,
-        {
-          eventId: payload.eventId,
-          userId,
-        },
-      );
-
-      return {
-        success: true,
-        eventId: payload.eventId,
-      };
-    } catch (error) {
-      this.logger.error(
-        `Error processing ACK for event ${payload.eventId}: ${error.message}`,
-      );
-      return {
-        success: false,
-        eventId: payload.eventId,
-        message: 'Failed to process acknowledgment',
-      };
-    }
-  }
-*/
   private async storeUserLocation(
     userId: string,
     userType: string,

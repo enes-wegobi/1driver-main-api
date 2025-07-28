@@ -1,0 +1,1836 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>1Driver WebSocket Test Dashboard</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            gap: 0;
+            min-height: 800px;
+        }
+
+        .panel {
+            padding: 20px;
+            border-right: 1px solid #eee;
+            overflow-y: auto;
+            max-height: 800px;
+        }
+
+        .panel:last-child {
+            border-right: none;
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .panel-icon {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            font-size: 18px;
+            color: white;
+        }
+
+        .driver-panel .panel-icon {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+        }
+
+        .customer-panel .panel-icon {
+            background: linear-gradient(135deg, #4834d4, #686de0);
+        }
+
+        .admin-panel .panel-icon {
+            background: linear-gradient(135deg, #00b894, #00a085);
+        }
+
+        .testing-panel .panel-icon {
+            background: linear-gradient(135deg, #fdcb6e, #e17055);
+        }
+
+        .panel-title {
+            font-size: 1.4em;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .section {
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-size: 1em;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 2px solid #ecf0f1;
+        }
+
+        .form-group {
+            margin-bottom: 10px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 4px;
+            font-weight: 600;
+            color: #555;
+            font-size: 12px;
+        }
+
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 8px;
+            border: 2px solid #e0e0e0;
+            border-radius: 5px;
+            font-size: 12px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 5px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-right: 5px;
+            margin-bottom: 5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #00b894, #00a085);
+            color: white;
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #fdcb6e, #e17055);
+            color: white;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: white;
+        }
+
+        .btn-info {
+            background: linear-gradient(135deg, #74b9ff, #0984e3);
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 10px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+
+        .status-connected {
+            background: #00b894;
+            box-shadow: 0 0 8px rgba(0, 184, 148, 0.5);
+        }
+
+        .status-disconnected {
+            background: #ff6b6b;
+        }
+
+        .status-connecting {
+            background: #fdcb6e;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .logs-section {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 10px;
+            border-radius: 6px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 10px;
+            line-height: 1.3;
+            position: relative;
+        }
+
+        .log-entry {
+            margin-bottom: 4px;
+            padding: 3px;
+            border-radius: 2px;
+        }
+
+        .log-info {
+            background: rgba(52, 152, 219, 0.2);
+            border-left: 2px solid #3498db;
+        }
+
+        .log-success {
+            background: rgba(46, 204, 113, 0.2);
+            border-left: 2px solid #2ecc71;
+        }
+
+        .log-warning {
+            background: rgba(241, 196, 15, 0.2);
+            border-left: 2px solid #f1c40f;
+        }
+
+        .log-error {
+            background: rgba(231, 76, 60, 0.2);
+            border-left: 2px solid #e74c3c;
+        }
+
+        .timestamp {
+            color: #95a5a6;
+            font-size: 9px;
+        }
+
+        .clear-logs {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 2px;
+            cursor: pointer;
+            font-size: 9px;
+        }
+
+        .controls-group {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+
+        .token-display {
+            font-family: monospace;
+            font-size: 9px;
+            word-break: break-all;
+            background: #f8f9fa;
+            padding: 6px;
+            border-radius: 3px;
+            border: 1px solid #dee2e6;
+        }
+
+        .scenario-section {
+            background: #e8f4fd;
+            border: 1px solid #bee5eb;
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 15px;
+        }
+
+        .scenario-section h4 {
+            color: #0c5460;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+
+        .connection-info {
+            background: #f8f9fa;
+            padding: 8px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            font-size: 11px;
+        }
+
+        .event-simulator {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 15px;
+        }
+
+        .event-simulator h4 {
+            color: #856404;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+
+        @media (max-width: 1400px) {
+            .main-content {
+                grid-template-columns: 1fr 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 1000px) {
+            .main-content {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .panel {
+                border-right: none;
+                border-bottom: 1px solid #eee;
+                max-height: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚗 1Driver WebSocket Test Center</h1>
+            <p>Comprehensive Testing Environment for Driver, Customer, Admin & Scenarios</p>
+        </div>
+
+        <div class="main-content">
+            <!-- Driver Panel -->
+            <div class="panel driver-panel">
+                <div class="panel-header">
+                    <div class="panel-icon">🚗</div>
+                    <div class="panel-title">Driver Panel</div>
+                </div>
+
+                <!-- Driver Connection -->
+                <div class="section">
+                    <div class="section-title">WebSocket Connection</div>
+                    
+                    <div class="event-simulator">
+                        <h4>🔑 Authentication Help</h4>
+                        <p style="font-size: 11px; margin-bottom: 8px;">To connect, you need a valid JWT token and matching device ID:</p>
+                        <div style="font-size: 10px; line-height: 1.4;">
+                            <strong>1. Get Driver Token:</strong><br>
+                            POST /auth/driver/complete-signin<br>
+                            Body: {"phone": "+905551234567", "otp": "123456", "deviceId": "websocket-test-driver"}<br><br>
+                            <strong>2. Use the same Device ID</strong> in both login and WebSocket connection
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>WebSocket URL:</label>
+                        <input type="text" id="driverWsUrl" value="ws://localhost:3000">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Driver Token:</label>
+                        <input type="text" id="driverToken" placeholder="JWT Token from login endpoint">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Device ID:</label>
+                        <input type="text" id="driverDeviceId" value="websocket-test-driver">
+                    </div>
+
+                    <div class="connection-info">
+                        <span class="status-indicator" id="driverStatus"></span>
+                        <span id="driverStatusText">Disconnected</span>
+                    </div>
+
+                    <div class="controls-group">
+                        <button class="btn btn-primary" onclick="connectDriver()">Connect</button>
+                        <button class="btn btn-danger" onclick="disconnectDriver()">Disconnect</button>
+                    </div>
+                </div>
+
+                <!-- Driver Controls -->
+                <div class="section">
+                    <div class="section-title">Driver Actions</div>
+                    
+                    <div class="controls-group">
+                        <button class="btn btn-warning" onclick="updateDriverAvailability('busy')">BUSY</button>
+                        <button class="btn btn-success" onclick="updateDriverAvailability('available')">AVAILABLE</button>
+                        <button class="btn btn-info" onclick="updateDriverAvailability('offline')">OFFLINE</button>
+                    </div>
+
+                    <div class="form-group">
+                        <label>App State:</label>
+                        <select id="driverAppState">
+                            <option value="foreground">FOREGROUND</option>
+                            <option value="background">BACKGROUND</option>
+                        </select>
+                    </div>
+
+                    <div class="controls-group">
+                        <button class="btn btn-primary" onclick="sendDriverHeartbeat()">Heartbeat</button>
+                        <button class="btn btn-primary" onclick="sendDriverLocation()">Send Location</button>
+                        <button class="btn btn-info" onclick="updateDriverAppState()">Update App State</button>
+                    </div>
+                </div>
+
+                <!-- Driver Trip Controls -->
+                <div class="section">
+                    <div class="section-title">Trip Controls</div>
+                    
+                    <div class="form-group">
+                        <label>Trip ID:</label>
+                        <input type="text" id="driverTripId" placeholder="trip_123">
+                    </div>
+
+                    <div class="controls-group">
+                        <button class="btn btn-success" onclick="acceptTrip()">Accept Trip</button>
+                        <button class="btn btn-danger" onclick="rejectTrip()">Reject Trip</button>
+                        <button class="btn btn-warning" onclick="cancelTrip()">Cancel Trip</button>
+                    </div>
+
+                    <div class="controls-group">
+                        <button class="btn btn-info" onclick="startTrip()">Start Trip</button>
+                        <button class="btn btn-success" onclick="completeTrip()">Complete Trip</button>
+                        <button class="btn btn-warning" onclick="arrivedAtPickup()">Arrived Pickup</button>
+                    </div>
+                </div>
+
+                <!-- Driver Logs -->
+                <div class="section">
+                    <div class="section-title">Driver Logs</div>
+                    <div class="logs-section" id="driverLogs">
+                        <button class="clear-logs" onclick="clearLogs('driver')">Clear</button>
+                        <div class="log-entry log-info">
+                            <span class="timestamp">[Ready]</span> Driver panel initialized
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Customer Panel -->
+            <div class="panel customer-panel">
+                <div class="panel-header">
+                    <div class="panel-icon">👤</div>
+                    <div class="panel-title">Customer Panel</div>
+                </div>
+
+                <!-- Customer Connection -->
+                <div class="section">
+                    <div class="section-title">WebSocket Connection</div>
+                    
+                    <div class="event-simulator">
+                        <h4>🔑 Authentication Help</h4>
+                        <p style="font-size: 11px; margin-bottom: 8px;">To connect, you need a valid JWT token and matching device ID:</p>
+                        <div style="font-size: 10px; line-height: 1.4;">
+                            <strong>1. Get Customer Token:</strong><br>
+                            POST /auth/customer/complete-signin<br>
+                            Body: {"phone": "+905551234567", "otp": "123456", "deviceId": "websocket-test-customer"}<br><br>
+                            <strong>2. Use the same Device ID</strong> in both login and WebSocket connection
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>WebSocket URL:</label>
+                        <input type="text" id="customerWsUrl" value="ws://localhost:3000">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Customer Token:</label>
+                        <input type="text" id="customerToken" placeholder="JWT Token from login endpoint">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Device ID:</label>
+                        <input type="text" id="customerDeviceId" value="websocket-test-customer">
+                    </div>
+
+                    <div class="connection-info">
+                        <span class="status-indicator" id="customerStatus"></span>
+                        <span id="customerStatusText">Disconnected</span>
+                    </div>
+
+                    <div class="controls-group">
+                        <button class="btn btn-primary" onclick="connectCustomer()">Connect</button>
+                        <button class="btn btn-danger" onclick="disconnectCustomer()">Disconnect</button>
+                    </div>
+                </div>
+
+                <!-- Customer Controls -->
+                <div class="section">
+                    <div class="section-title">Customer Actions</div>
+                    
+                    <div class="form-group">
+                        <label>App State:</label>
+                        <select id="customerAppState">
+                            <option value="foreground">FOREGROUND</option>
+                            <option value="background">BACKGROUND</option>
+                        </select>
+                    </div>
+
+                    <div class="controls-group">
+                        <button class="btn btn-primary" onclick="sendCustomerHeartbeat()">Heartbeat</button>
+                        <button class="btn btn-primary" onclick="sendCustomerLocation()">Send Location</button>
+                        <button class="btn btn-info" onclick="updateCustomerAppState()">Update App State</button>
+                    </div>
+                </div>
+
+                <!-- Customer Trip Controls -->
+                <div class="section">
+                    <div class="section-title">Trip Management</div>
+                    
+                    <div class="form-group">
+                        <label>Pickup Location:</label>
+                        <input type="text" id="pickupLocation" value="Taksim Square">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Destination:</label>
+                        <input type="text" id="destination" value="Istanbul Airport">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Trip ID:</label>
+                        <input type="text" id="customerTripId" placeholder="trip_123">
+                    </div>
+
+                    <div class="controls-group">
+                        <button class="btn btn-success" onclick="requestTrip()">Request Trip</button>
+                        <button class="btn btn-danger" onclick="cancelCustomerTrip()">Cancel Trip</button>
+                        <button class="btn btn-warning" onclick="rateTrip()">Rate Trip</button>
+                    </div>
+                </div>
+
+                <!-- Customer Logs -->
+                <div class="section">
+                    <div class="section-title">Customer Logs</div>
+                    <div class="logs-section" id="customerLogs">
+                        <button class="clear-logs" onclick="clearLogs('customer')">Clear</button>
+                        <div class="log-entry log-info">
+                            <span class="timestamp">[Ready]</span> Customer panel initialized
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Admin Panel -->
+            <div class="panel admin-panel">
+                <div class="panel-header">
+                    <div class="panel-icon">🔧</div>
+                    <div class="panel-title">Admin Panel</div>
+                </div>
+
+                <!-- Admin Connection -->
+                <div class="section">
+                    <div class="section-title">Admin Connection</div>
+                    
+                    <div class="form-group">
+                        <label>WebSocket URL:</label>
+                        <input type="text" id="adminWsUrl" value="ws://localhost:3000">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Admin Token:</label>
+                        <input type="text" id="adminToken" placeholder="Admin JWT Token">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Device ID:</label>
+                        <input type="text" id="adminDeviceId" value="websocket-test-admin">
+                    </div>
+
+                    <div class="connection-info">
+                        <span class="status-indicator" id="adminStatus"></span>
+                        <span id="adminStatusText">Disconnected</span>
+                    </div>
+
+                    <div class="controls-group">
+                        <button class="btn btn-primary" onclick="connectAdmin()">Connect</button>
+                        <button class="btn btn-danger" onclick="disconnectAdmin()">Disconnect</button>
+                    </div>
+                </div>
+
+                <!-- Force Logout Section -->
+                <div class="section">
+                    <div class="section-title">Force Logout</div>
+                    
+                    <div class="event-simulator">
+                        <h4>⚠️ Force Logout Simulation</h4>
+                        <div class="form-group">
+                            <label>User Type:</label>
+                            <select id="forceLogoutUserType">
+                                <option value="driver">Driver</option>
+                                <option value="customer">Customer</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Target Device ID:</label>
+                            <input type="text" id="forceLogoutDeviceId" value="websocket-test-device">
+                        </div>
+                        <div class="form-group">
+                            <label>Reason:</label>
+                            <select id="forceLogoutReason">
+                                <option value="new_device_login">New Device Login</option>
+                                <option value="suspicious_activity">Suspicious Activity</option>
+                                <option value="security_breach">Security Breach</option>
+                                <option value="admin_force_logout">Admin Force Logout</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-danger" onclick="simulateForceLogout()">Simulate Force Logout</button>
+                    </div>
+                </div>
+
+                <!-- Notification Testing -->
+                <div class="section">
+                    <div class="section-title">Push Notifications</div>
+                    
+                    <div class="form-group">
+                        <label>Target User:</label>
+                        <select id="notificationTarget">
+                            <option value="driver">Driver</option>
+                            <option value="customer">Customer</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Notification Type:</label>
+                        <select id="notificationType">
+                            <option value="trip_update">Trip Update</option>
+                            <option value="driver_assigned">Driver Assigned</option>
+                            <option value="payment_required">Payment Required</option>
+                            <option value="security_alert">Security Alert</option>
+                            <option value="system_message">System Message</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Message:</label>
+                        <textarea id="notificationMessage" rows="2" placeholder="Notification message"></textarea>
+                    </div>
+
+                    <div class="controls-group">
+                        <button class="btn btn-success" onclick="sendNotification()">Send Notification</button>
+                        <button class="btn btn-warning" onclick="fillSampleNotification()">Sample</button>
+                    </div>
+                </div>
+
+                <!-- Admin Logs -->
+                <div class="section">
+                    <div class="section-title">Admin Logs</div>
+                    <div class="logs-section" id="adminLogs">
+                        <button class="clear-logs" onclick="clearLogs('admin')">Clear</button>
+                        <div class="log-entry log-info">
+                            <span class="timestamp">[Ready]</span> Admin panel initialized
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Testing & Scenarios Panel -->
+            <div class="panel testing-panel">
+                <div class="panel-header">
+                    <div class="panel-icon">🧪</div>
+                    <div class="panel-title">Test Scenarios</div>
+                </div>
+
+                <!-- Connection Testing -->
+                <div class="section">
+                    <div class="section-title">Connection Tests</div>
+                    
+                    <div class="scenario-section">
+                        <h4>🔗 Connection Scenarios</h4>
+                        <div class="controls-group">
+                            <button class="btn btn-primary" onclick="testReconnection()">Test Reconnection</button>
+                            <button class="btn btn-warning" onclick="testBadToken()">Bad Token</button>
+                            <button class="btn btn-danger" onclick="testNetworkFailure()">Network Failure</button>
+                        </div>
+                    </div>
+
+                    <div class="scenario-section">
+                        <h4>📱 Device Tests</h4>
+                        <div class="controls-group">
+                            <button class="btn btn-info" onclick="testDuplicateDevice()">Duplicate Device</button>
+                            <button class="btn btn-warning" onclick="testAppStateChanges()">App State Changes</button>
+                            <button class="btn btn-primary" onclick="testHeartbeatFailure()">Heartbeat Failure</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Trip Scenarios -->
+                <div class="section">
+                    <div class="section-title">Trip Scenarios</div>
+                    
+                    <div class="scenario-section">
+                        <h4>🚗 Trip Flow Tests</h4>
+                        <div class="controls-group">
+                            <button class="btn btn-success" onclick="runFullTripScenario()">Full Trip Flow</button>
+                            <button class="btn btn-warning" onclick="runCancelledTripScenario()">Cancelled Trip</button>
+                            <button class="btn btn-danger" onclick="runFailedTripScenario()">Failed Trip</button>
+                        </div>
+                    </div>
+
+                    <div class="scenario-section">
+                        <h4>⏱️ Timing Tests</h4>
+                        <div class="controls-group">
+                            <button class="btn btn-info" onclick="testDriverTimeout()">Driver Timeout</button>
+                            <button class="btn btn-warning" onclick="testLocationUpdates()">Location Updates</button>
+                            <button class="btn btn-primary" onclick="testConcurrentRequests()">Concurrent Requests</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Performance Testing -->
+                <div class="section">
+                    <div class="section-title">Performance Tests</div>
+                    
+                    <div class="scenario-section">
+                        <h4>⚡ Load Tests</h4>
+                        <div class="form-group">
+                            <label>Message Count:</label>
+                            <input type="number" id="loadTestCount" value="100" min="1" max="1000">
+                        </div>
+                        <div class="controls-group">
+                            <button class="btn btn-primary" onclick="runLoadTest()">Load Test</button>
+                            <button class="btn btn-warning" onclick="stressTestConnections()">Stress Test</button>
+                        </div>
+                    </div>
+
+                    <div class="scenario-section">
+                        <h4>📊 Monitoring</h4>
+                        <div class="controls-group">
+                            <button class="btn btn-info" onclick="monitorLatency()">Monitor Latency</button>
+                            <button class="btn btn-success" onclick="checkMemoryUsage()">Memory Usage</button>
+                            <button class="btn btn-warning" onclick="exportTestResults()">Export Results</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Security Testing -->
+                <div class="section">
+                    <div class="section-title">Security Tests</div>
+                    
+                    <div class="scenario-section">
+                        <h4>🔒 Security Scenarios</h4>
+                        <div class="controls-group">
+                            <button class="btn btn-danger" onclick="testTokenExpiry()">Token Expiry</button>
+                            <button class="btn btn-warning" onclick="testUnauthorizedAccess()">Unauthorized Access</button>
+                            <button class="btn btn-info" onclick="testRolePermissions()">Role Permissions</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Test Logs -->
+                <div class="section">
+                    <div class="section-title">Test Results</div>
+                    <div class="logs-section" id="testLogs">
+                        <button class="clear-logs" onclick="clearLogs('test')">Clear</button>
+                        <div class="log-entry log-info">
+                            <span class="timestamp">[Ready]</span> Test scenarios initialized
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let driverSocket = null;
+        let customerSocket = null;
+        let adminSocket = null;
+        let testResults = [];
+        let currentTestRun = null;
+
+        // Utility Functions
+        function getCurrentTimestamp() {
+            return new Date().toLocaleTimeString('tr-TR');
+        }
+
+        function addLog(panel, type, message) {
+            const logsContainer = document.getElementById(`${panel}Logs`);
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${type}`;
+            logEntry.innerHTML = `<span class="timestamp">[${getCurrentTimestamp()}]</span> ${message}`;
+            logsContainer.appendChild(logEntry);
+            logsContainer.scrollTop = logsContainer.scrollHeight;
+        }
+
+        function clearLogs(panel) {
+            const logsContainer = document.getElementById(`${panel}Logs`);
+            logsContainer.innerHTML = `<button class="clear-logs" onclick="clearLogs('${panel}')">Clear</button>`;
+        }
+
+        function updateConnectionStatus(panel, status) {
+            const statusIndicator = document.getElementById(`${panel}Status`);
+            const statusText = document.getElementById(`${panel}StatusText`);
+            
+            statusIndicator.className = `status-indicator status-${status}`;
+            
+            switch(status) {
+                case 'connected':
+                    statusText.textContent = 'Connected';
+                    break;
+                case 'connecting':
+                    statusText.textContent = 'Connecting...';
+                    break;
+                case 'disconnected':
+                    statusText.textContent = 'Disconnected';
+                    break;
+            }
+        }
+
+        // Driver Functions
+        function connectDriver() {
+            const url = document.getElementById('driverWsUrl').value;
+            const token = document.getElementById('driverToken').value;
+            const deviceId = document.getElementById('driverDeviceId').value;
+
+            if (!token) {
+                addLog('driver', 'error', 'Token required for WebSocket connection!');
+                return;
+            }
+
+            updateConnectionStatus('driver', 'connecting');
+            addLog('driver', 'info', `Connecting driver to: ${url}`);
+
+            driverSocket = io(url, {
+                auth: { 
+                    token: token,
+                    deviceId: deviceId
+                },
+                extraHeaders: {
+                    'x-device-id': deviceId
+                },
+                transports: ['websocket']
+            });
+
+            setupDriverSocketEvents();
+        }
+
+        function setupDriverSocketEvents() {
+            driverSocket.on('connect', () => {
+                addLog('driver', 'success', `WebSocket connected! Socket ID: ${driverSocket.id}`);
+                addLog('driver', 'info', 'Waiting for authentication...');
+            });
+
+            driverSocket.on('connection', (data) => {
+                updateConnectionStatus('driver', 'connected');
+                addLog('driver', 'success', `✅ Driver authenticated successfully!`);
+                addLog('driver', 'info', `Authentication data: ${JSON.stringify(data, null, 2)}`);
+            });
+
+            driverSocket.on('authenticated', (data) => {
+                updateConnectionStatus('driver', 'connected');
+                addLog('driver', 'success', `Driver authenticated: ${JSON.stringify(data)}`);
+            });
+
+            driverSocket.on('auth_failed', (data) => {
+                addLog('driver', 'error', `❌ Authentication failed: ${JSON.stringify(data, null, 2)}`);
+                updateConnectionStatus('driver', 'disconnected');
+            });
+
+            driverSocket.on('error', (data) => {
+                addLog('driver', 'error', `🚫 Connection error: ${JSON.stringify(data, null, 2)}`);
+                updateConnectionStatus('driver', 'disconnected');
+                
+                // Show helpful error messages
+                if (data.message) {
+                    if (data.message.includes('Authentication required')) {
+                        addLog('driver', 'warning', '💡 Tip: You need a valid JWT token. Get one from /auth/login endpoint');
+                    } else if (data.message.includes('Device ID required')) {
+                        addLog('driver', 'warning', '💡 Tip: Device ID is required. It should match your token\'s device ID');
+                    } else if (data.message.includes('Invalid token')) {
+                        addLog('driver', 'warning', '💡 Tip: Token is invalid or expired. Get a new one from login');
+                    } else if (data.message.includes('No active session')) {
+                        addLog('driver', 'warning', '💡 Tip: No active session found. Login again to create a session');
+                    } else if (data.message.includes('Token mismatch')) {
+                        addLog('driver', 'warning', '💡 Tip: Token doesn\'t match active session. Login again');
+                    } else if (data.message.includes('Device ID mismatch')) {
+                        addLog('driver', 'warning', '💡 Tip: Device ID doesn\'t match token. Use the same device ID from login');
+                    }
+                }
+            });
+
+            driverSocket.on('connect_error', (error) => {
+                addLog('driver', 'error', `🔌 Connection error: ${error.message}`);
+                updateConnectionStatus('driver', 'disconnected');
+                addLog('driver', 'warning', '💡 Check if server is running on the correct port');
+            });
+
+            driverSocket.on('heartbeat-ack', (data) => {
+                addLog('driver', 'success', `💓 Heartbeat ACK: ${JSON.stringify(data)}`);
+            });
+
+            driverSocket.on('trip:requested', (data) => {
+                addLog('driver', 'info', `🚗 Trip requested: ${JSON.stringify(data)}`);
+            });
+
+            driverSocket.on('trip:cancelled', (data) => {
+                addLog('driver', 'warning', `❌ Trip cancelled: ${JSON.stringify(data)}`);
+            });
+
+            driverSocket.on('force_logout', (data) => {
+                addLog('driver', 'error', `🚨 FORCE LOGOUT: ${JSON.stringify(data)}`);
+                updateConnectionStatus('driver', 'disconnected');
+            });
+
+            driverSocket.on('disconnect', (reason) => {
+                updateConnectionStatus('driver', 'disconnected');
+                addLog('driver', 'warning', `Driver WebSocket disconnected: ${reason}`);
+                if (reason === 'io server disconnect') {
+                    addLog('driver', 'error', '⚠️ Server disconnected the client (likely authentication failure)');
+                }
+            });
+
+            driverSocket.onAny((eventName, data) => {
+                if (!['connect', 'disconnect', 'connection', 'authenticated', 'auth_failed', 'heartbeat-ack', 'error', 'connect_error'].includes(eventName)) {
+                    addLog('driver', 'info', `📡 ${eventName}: ${JSON.stringify(data)}`);
+                }
+            });
+        }
+
+        function disconnectDriver() {
+            if (driverSocket) {
+                driverSocket.disconnect();
+                driverSocket = null;
+                updateConnectionStatus('driver', 'disconnected');
+                addLog('driver', 'info', 'Driver WebSocket disconnected');
+            }
+        }
+
+        function updateDriverAvailability(status) {
+            if (!driverSocket || !driverSocket.connected) {
+                addLog('driver', 'error', 'WebSocket connection required!');
+                return;
+            }
+
+            addLog('driver', 'info', `Updating driver availability: ${status}`);
+            driverSocket.emit('updateDriverAvailability', { status: status });
+        }
+
+        function sendDriverHeartbeat() {
+            if (!driverSocket || !driverSocket.connected) {
+                addLog('driver', 'error', 'WebSocket connection required!');
+                return;
+            }
+
+            const appState = document.getElementById('driverAppState').value;
+            const heartbeatData = {
+                timestamp: new Date().toISOString(),
+                appState: appState,
+                location: {
+                    latitude: 41.0082 + (Math.random() - 0.5) * 0.01,
+                    longitude: 28.9784 + (Math.random() - 0.5) * 0.01,
+                    accuracy: 10
+                }
+            };
+
+            addLog('driver', 'info', `Sending heartbeat: ${JSON.stringify(heartbeatData)}`);
+            driverSocket.emit('heartbeat', heartbeatData);
+        }
+
+        function sendDriverLocation() {
+            if (!driverSocket || !driverSocket.connected) {
+                addLog('driver', 'error', 'WebSocket connection required!');
+                return;
+            }
+
+            const locationData = {
+                latitude: 41.0082 + (Math.random() - 0.5) * 0.01,
+                longitude: 28.9784 + (Math.random() - 0.5) * 0.01,
+                speed: Math.random() * 60,
+                heading: Math.random() * 360,
+                accuracy: 10,
+                timestamp: new Date().toISOString()
+            };
+
+            addLog('driver', 'info', `Sending location: Lat:${locationData.latitude.toFixed(4)} Lng:${locationData.longitude.toFixed(4)}`);
+            driverSocket.emit('updateLocation', locationData);
+        }
+
+        function updateDriverAppState() {
+            if (!driverSocket || !driverSocket.connected) {
+                addLog('driver', 'error', 'WebSocket connection required!');
+                return;
+            }
+
+            const appState = document.getElementById('driverAppState').value;
+            addLog('driver', 'info', `Updating app state: ${appState}`);
+            driverSocket.emit('updateAppState', { appState: appState });
+        }
+
+        function acceptTrip() {
+            const tripId = document.getElementById('driverTripId').value;
+            if (!tripId) {
+                addLog('driver', 'error', 'Trip ID required!');
+                return;
+            }
+
+            if (!driverSocket || !driverSocket.connected) {
+                addLog('driver', 'error', 'WebSocket connection required!');
+                return;
+            }
+
+            addLog('driver', 'success', `Accepting trip: ${tripId}`);
+            driverSocket.emit('trip:accept', { tripId: tripId });
+        }
+
+        function rejectTrip() {
+            const tripId = document.getElementById('driverTripId').value;
+            if (!tripId) {
+                addLog('driver', 'error', 'Trip ID required!');
+                return;
+            }
+
+            if (!driverSocket || !driverSocket.connected) {
+                addLog('driver', 'error', 'WebSocket connection required!');
+                return;
+            }
+
+            addLog('driver', 'warning', `Rejecting trip: ${tripId}`);
+            driverSocket.emit('trip:reject', { tripId: tripId, reason: 'Driver declined' });
+        }
+
+        function cancelTrip() {
+            const tripId = document.getElementById('driverTripId').value;
+            if (!tripId) {
+                addLog('driver', 'error', 'Trip ID required!');
+                return;
+            }
+
+            if (!driverSocket || !driverSocket.connected) {
+                addLog('driver', 'error', 'WebSocket connection required!');
+                return;
+            }
+
+            addLog('driver', 'warning', `Cancelling trip: ${tripId}`);
+            driverSocket.emit('trip:cancel', { tripId: tripId, reason: 'Driver cancelled' });
+        }
+
+        function startTrip() {
+            const tripId = document.getElementById('driverTripId').value;
+            if (!tripId) {
+                addLog('driver', 'error', 'Trip ID required!');
+                return;
+            }
+
+            if (!driverSocket || !driverSocket.connected) {
+                addLog('driver', 'error', 'WebSocket connection required!');
+                return;
+            }
+
+            addLog('driver', 'info', `Starting trip: ${tripId}`);
+            driverSocket.emit('trip:start', { tripId: tripId });
+        }
+
+        function completeTrip() {
+            const tripId = document.getElementById('driverTripId').value;
+            if (!tripId) {
+                addLog('driver', 'error', 'Trip ID required!');
+                return;
+            }
+
+            if (!driverSocket || !driverSocket.connected) {
+                addLog('driver', 'error', 'WebSocket connection required!');
+                return;
+            }
+
+            addLog('driver', 'success', `Completing trip: ${tripId}`);
+            driverSocket.emit('trip:complete', { tripId: tripId });
+        }
+
+        function arrivedAtPickup() {
+            const tripId = document.getElementById('driverTripId').value;
+            if (!tripId) {
+                addLog('driver', 'error', 'Trip ID required!');
+                return;
+            }
+
+            if (!driverSocket || !driverSocket.connected) {
+                addLog('driver', 'error', 'WebSocket connection required!');
+                return;
+            }
+
+            addLog('driver', 'info', `Arrived at pickup: ${tripId}`);
+            driverSocket.emit('trip:arrived_pickup', { tripId: tripId });
+        }
+
+        // Customer Functions
+        function connectCustomer() {
+            const url = document.getElementById('customerWsUrl').value;
+            const token = document.getElementById('customerToken').value;
+            const deviceId = document.getElementById('customerDeviceId').value;
+
+            if (!token) {
+                addLog('customer', 'error', 'Token required for WebSocket connection!');
+                return;
+            }
+
+            updateConnectionStatus('customer', 'connecting');
+            addLog('customer', 'info', `Connecting customer to: ${url}`);
+
+            customerSocket = io(url, {
+                auth: { 
+                    token: token,
+                    deviceId: deviceId
+                },
+                extraHeaders: {
+                    'x-device-id': deviceId
+                },
+                transports: ['websocket']
+            });
+
+            setupCustomerSocketEvents();
+        }
+
+        function setupCustomerSocketEvents() {
+            customerSocket.on('connect', () => {
+                addLog('customer', 'success', `WebSocket connected! Socket ID: ${customerSocket.id}`);
+                addLog('customer', 'info', 'Waiting for authentication...');
+            });
+
+            customerSocket.on('connection', (data) => {
+                updateConnectionStatus('customer', 'connected');
+                addLog('customer', 'success', `✅ Customer authenticated successfully!`);
+                addLog('customer', 'info', `Authentication data: ${JSON.stringify(data, null, 2)}`);
+            });
+
+            customerSocket.on('authenticated', (data) => {
+                updateConnectionStatus('customer', 'connected');
+                addLog('customer', 'success', `Customer authenticated: ${JSON.stringify(data)}`);
+            });
+
+            customerSocket.on('auth_failed', (data) => {
+                addLog('customer', 'error', `❌ Authentication failed: ${JSON.stringify(data, null, 2)}`);
+                updateConnectionStatus('customer', 'disconnected');
+            });
+
+            customerSocket.on('error', (data) => {
+                addLog('customer', 'error', `🚫 Connection error: ${JSON.stringify(data, null, 2)}`);
+                updateConnectionStatus('customer', 'disconnected');
+                
+                // Show helpful error messages
+                if (data.message) {
+                    if (data.message.includes('Authentication required')) {
+                        addLog('customer', 'warning', '💡 Tip: You need a valid JWT token. Get one from /auth/customer/complete-signin endpoint');
+                    } else if (data.message.includes('Device ID required')) {
+                        addLog('customer', 'warning', '💡 Tip: Device ID is required. It should match your token\'s device ID');
+                    } else if (data.message.includes('Invalid token')) {
+                        addLog('customer', 'warning', '💡 Tip: Token is invalid or expired. Get a new one from login');
+                    } else if (data.message.includes('No active session')) {
+                        addLog('customer', 'warning', '💡 Tip: No active session found. Login again to create a session');
+                    } else if (data.message.includes('Token mismatch')) {
+                        addLog('customer', 'warning', '💡 Tip: Token doesn\'t match active session. Login again');
+                    } else if (data.message.includes('Device ID mismatch')) {
+                        addLog('customer', 'warning', '💡 Tip: Device ID doesn\'t match token. Use the same device ID from login');
+                    }
+                }
+            });
+
+            customerSocket.on('connect_error', (error) => {
+                addLog('customer', 'error', `🔌 Connection error: ${error.message}`);
+                updateConnectionStatus('customer', 'disconnected');
+                addLog('customer', 'warning', '💡 Check if server is running on the correct port');
+            });
+
+            customerSocket.on('heartbeat-ack', (data) => {
+                addLog('customer', 'success', `💓 Heartbeat ACK: ${JSON.stringify(data)}`);
+            });
+
+            customerSocket.on('trip:driver_assigned', (data) => {
+                addLog('customer', 'success', `✅ Driver assigned: ${JSON.stringify(data)}`);
+            });
+
+            customerSocket.on('trip:driver_en_route', (data) => {
+                addLog('customer', 'info', `🚗 Driver en route: ${JSON.stringify(data)}`);
+            });
+
+            customerSocket.on('trip:started', (data) => {
+                addLog('customer', 'info', `🚀 Trip started: ${JSON.stringify(data)}`);
+            });
+
+            customerSocket.on('trip:completed', (data) => {
+                addLog('customer', 'success', `🏁 Trip completed: ${JSON.stringify(data)}`);
+            });
+
+            customerSocket.on('force_logout', (data) => {
+                addLog('customer', 'error', `🚨 FORCE LOGOUT: ${JSON.stringify(data)}`);
+                updateConnectionStatus('customer', 'disconnected');
+            });
+
+            customerSocket.on('disconnect', (reason) => {
+                updateConnectionStatus('customer', 'disconnected');
+                addLog('customer', 'warning', `Customer WebSocket disconnected: ${reason}`);
+                if (reason === 'io server disconnect') {
+                    addLog('customer', 'error', '⚠️ Server disconnected the client (likely authentication failure)');
+                }
+            });
+
+            customerSocket.onAny((eventName, data) => {
+                if (!['connect', 'disconnect', 'connection', 'authenticated', 'auth_failed', 'heartbeat-ack', 'error', 'connect_error'].includes(eventName)) {
+                    addLog('customer', 'info', `📡 ${eventName}: ${JSON.stringify(data)}`);
+                }
+            });
+        }
+
+        function disconnectCustomer() {
+            if (customerSocket) {
+                customerSocket.disconnect();
+                customerSocket = null;
+                updateConnectionStatus('customer', 'disconnected');
+                addLog('customer', 'info', 'Customer WebSocket disconnected');
+            }
+        }
+
+        function sendCustomerHeartbeat() {
+            if (!customerSocket || !customerSocket.connected) {
+                addLog('customer', 'error', 'WebSocket connection required!');
+                return;
+            }
+
+            const appState = document.getElementById('customerAppState').value;
+            const heartbeatData = {
+                timestamp: new Date().toISOString(),
+                appState: appState,
+                location: {
+                    latitude: 41.0082 + (Math.random() - 0.5) * 0.01,
+                    longitude: 28.9784 + (Math.random() - 0.5) * 0.01,
+                    accuracy: 10
+                }
+            };
+
+            addLog('customer', 'info', `Sending heartbeat: ${JSON.stringify(heartbeatData)}`);
+            customerSocket.emit('heartbeat', heartbeatData);
+        }
+
+        function sendCustomerLocation() {
+            if (!customerSocket || !customerSocket.connected) {
+                addLog('customer', 'error', 'WebSocket connection required!');
+                return;
+            }
+
+            const locationData = {
+                latitude: 41.0082 + (Math.random() - 0.5) * 0.01,
+                longitude: 28.9784 + (Math.random() - 0.5) * 0.01,
+                accuracy: Math.random() * 20 + 5,
+                timestamp: new Date().toISOString()
+            };
+
+            addLog('customer', 'info', `Sending location: Lat:${locationData.latitude.toFixed(4)} Lng:${locationData.longitude.toFixed(4)}`);
+            customerSocket.emit('updateLocation', locationData);
+        }
+
+        function updateCustomerAppState() {
+            if (!customerSocket || !customerSocket.connected) {
+                addLog('customer', 'error', 'WebSocket connection required!');
+                return;
+            }
+
+            const appState = document.getElementById('customerAppState').value;
+            addLog('customer', 'info', `Updating app state: ${appState}`);
+            customerSocket.emit('updateAppState', { appState: appState });
+        }
+
+        function requestTrip() {
+            if (!customerSocket || !customerSocket.connected) {
+                addLog('customer', 'error', 'WebSocket connection required!');
+                return;
+            }
+
+            const pickupLocation = document.getElementById('pickupLocation').value;
+            const destination = document.getElementById('destination').value;
+
+            const tripRequest = {
+                pickupLocation: pickupLocation,
+                destination: destination,
+                pickupCoordinates: {
+                    latitude: 41.0082 + (Math.random() - 0.5) * 0.01,
+                    longitude: 28.9784 + (Math.random() - 0.5) * 0.01
+                },
+                destinationCoordinates: {
+                    latitude: 41.0082 + (Math.random() - 0.5) * 0.02,
+                    longitude: 28.9784 + (Math.random() - 0.5) * 0.02
+                },
+                timestamp: new Date().toISOString()
+            };
+
+            addLog('customer', 'info', `Requesting trip: ${pickupLocation} → ${destination}`);
+            customerSocket.emit('trip:request', tripRequest);
+        }
+
+        function cancelCustomerTrip() {
+            const tripId = document.getElementById('customerTripId').value;
+            if (!tripId) {
+                addLog('customer', 'error', 'Trip ID required!');
+                return;
+            }
+
+            if (!customerSocket || !customerSocket.connected) {
+                addLog('customer', 'error', 'WebSocket connection required!');
+                return;
+            }
+
+            addLog('customer', 'warning', `Cancelling trip: ${tripId}`);
+            customerSocket.emit('trip:cancel', { tripId: tripId, reason: 'Customer cancelled' });
+        }
+
+        function rateTrip() {
+            const tripId = document.getElementById('customerTripId').value;
+            if (!tripId) {
+                addLog('customer', 'error', 'Trip ID required!');
+                return;
+            }
+
+            if (!customerSocket || !customerSocket.connected) {
+                addLog('customer', 'error', 'WebSocket connection required!');
+                return;
+            }
+
+            const rating = Math.floor(Math.random() * 5) + 1;
+            addLog('customer', 'success', `Rating trip ${tripId}: ${rating} stars`);
+            customerSocket.emit('trip:rate', { tripId: tripId, rating: rating, comment: 'Test rating' });
+        }
+
+        // Admin Functions
+        function connectAdmin() {
+            const url = document.getElementById('adminWsUrl').value;
+            const token = document.getElementById('adminToken').value;
+            const deviceId = document.getElementById('adminDeviceId').value;
+
+            if (!token) {
+                addLog('admin', 'error', 'Admin token required for WebSocket connection!');
+                return;
+            }
+
+            updateConnectionStatus('admin', 'connecting');
+            addLog('admin', 'info', `Connecting admin to: ${url}`);
+
+            adminSocket = io(url, {
+                auth: { 
+                    token: token,
+                    deviceId: deviceId
+                },
+                extraHeaders: {
+                    'x-device-id': deviceId
+                },
+                transports: ['websocket']
+            });
+
+            setupAdminSocketEvents();
+        }
+
+        function setupAdminSocketEvents() {
+            adminSocket.on('connect', () => {
+                addLog('admin', 'success', `Admin WebSocket connected! Socket ID: ${adminSocket.id}`);
+            });
+
+            adminSocket.on('authenticated', (data) => {
+                updateConnectionStatus('admin', 'connected');
+                addLog('admin', 'success', `Admin authenticated: ${JSON.stringify(data)}`);
+            });
+
+            adminSocket.on('auth_failed', (data) => {
+                addLog('admin', 'error', `Admin authentication failed: ${JSON.stringify(data)}`);
+                updateConnectionStatus('admin', 'disconnected');
+            });
+
+            adminSocket.on('disconnect', () => {
+                updateConnectionStatus('admin', 'disconnected');
+                addLog('admin', 'warning', 'Admin WebSocket disconnected');
+            });
+
+            adminSocket.onAny((eventName, data) => {
+                if (!['connect', 'disconnect', 'authenticated', 'auth_failed'].includes(eventName)) {
+                    addLog('admin', 'info', `📡 ${eventName}: ${JSON.stringify(data)}`);
+                }
+            });
+        }
+
+        function disconnectAdmin() {
+            if (adminSocket) {
+                adminSocket.disconnect();
+                adminSocket = null;
+                updateConnectionStatus('admin', 'disconnected');
+                addLog('admin', 'info', 'Admin WebSocket disconnected');
+            }
+        }
+
+        function simulateForceLogout() {
+            const userType = document.getElementById('forceLogoutUserType').value;
+            const deviceId = document.getElementById('forceLogoutDeviceId').value;
+            const reason = document.getElementById('forceLogoutReason').value;
+
+            if (!adminSocket || !adminSocket.connected) {
+                addLog('admin', 'error', 'Admin WebSocket connection required!');
+                return;
+            }
+
+            addLog('admin', 'warning', `Simulating force logout for ${userType} with reason: ${reason}`);
+            
+            const forceLogoutData = {
+                userType,
+                deviceId,
+                reason,
+                timestamp: new Date().toISOString()
+            };
+
+            adminSocket.emit('admin:force_logout', forceLogoutData);
+        }
+
+        function sendNotification() {
+            const target = document.getElementById('notificationTarget').value;
+            const type = document.getElementById('notificationType').value;
+            const message = document.getElementById('notificationMessage').value;
+
+            if (!message) {
+                addLog('admin', 'error', 'Notification message required!');
+                return;
+            }
+
+            if (!adminSocket || !adminSocket.connected) {
+                addLog('admin', 'error', 'Admin WebSocket connection required!');
+                return;
+            }
+
+            const notificationData = {
+                target,
+                type,
+                message,
+                timestamp: new Date().toISOString()
+            };
+
+            addLog('admin', 'info', `Sending notification to ${target}: ${message}`);
+            adminSocket.emit('admin:send_notification', notificationData);
+        }
+
+        function fillSampleNotification() {
+            const type = document.getElementById('notificationType').value;
+            let message;
+
+            switch(type) {
+                case 'trip_update':
+                    message = 'Your driver is 5 minutes away from your location.';
+                    break;
+                case 'driver_assigned':
+                    message = 'A driver has been assigned to your trip. Check the app for details.';
+                    break;
+                case 'payment_required':
+                    message = 'Please complete your payment to finalize the trip.';
+                    break;
+                case 'security_alert':
+                    message = 'Suspicious activity detected on your account. Please verify your identity.';
+                    break;
+                case 'system_message':
+                    message = 'System maintenance will be performed tonight from 2-4 AM.';
+                    break;
+                default:
+                    message = 'This is a test notification.';
+            }
+
+            document.getElementById('notificationMessage').value = message;
+        }
+
+        // Test Scenario Functions
+        function testReconnection() {
+            addLog('test', 'info', '🔄 Testing reconnection scenario...');
+            
+            if (driverSocket && driverSocket.connected) {
+                addLog('test', 'warning', 'Disconnecting driver to test reconnection');
+                driverSocket.disconnect();
+                
+                setTimeout(() => {
+                    addLog('test', 'info', 'Attempting to reconnect driver...');
+                    connectDriver();
+                }, 2000);
+            } else {
+                addLog('test', 'error', 'Driver not connected - cannot test reconnection');
+            }
+        }
+
+        function testBadToken() {
+            addLog('test', 'warning', '🔐 Testing bad token scenario...');
+            
+            const originalToken = document.getElementById('driverToken').value;
+            document.getElementById('driverToken').value = 'invalid_token_12345';
+            
+            connectDriver();
+            
+            setTimeout(() => {
+                addLog('test', 'info', 'Restoring original token...');
+                document.getElementById('driverToken').value = originalToken;
+            }, 5000);
+        }
+
+        function testNetworkFailure() {
+            addLog('test', 'error', '📡 Simulating network failure...');
+            
+            if (driverSocket) {
+                driverSocket.disconnect();
+            }
+            if (customerSocket) {
+                customerSocket.disconnect();
+            }
+            
+            addLog('test', 'warning', 'All connections forcibly disconnected');
+        }
+
+        function testDuplicateDevice() {
+            addLog('test', 'warning', '📱 Testing duplicate device connection...');
+            
+            const originalDeviceId = document.getElementById('driverDeviceId').value;
+            
+            if (driverSocket && driverSocket.connected) {
+                addLog('test', 'info', 'Creating duplicate connection with same device ID...');
+                
+                const duplicateSocket = io(document.getElementById('driverWsUrl').value, {
+                    auth: { 
+                        token: document.getElementById('driverToken').value,
+                        deviceId: originalDeviceId
+                    },
+                    extraHeaders: {
+                        'x-device-id': originalDeviceId
+                    },
+                    transports: ['websocket']
+                });
+                
+                duplicateSocket.on('connect', () => {
+                    addLog('test', 'warning', 'Duplicate connection established');
+                });
+                
+                duplicateSocket.on('auth_failed', (data) => {
+                    addLog('test', 'success', `Duplicate connection rejected: ${JSON.stringify(data)}`);
+                });
+            }
+        }
+
+        function testAppStateChanges() {
+            addLog('test', 'info', '📱 Testing app state changes...');
+            
+            if (!driverSocket || !driverSocket.connected) {
+                addLog('test', 'error', 'Driver not connected');
+                return;
+            }
+            
+            const states = ['foreground', 'background', 'foreground'];
+            let index = 0;
+            
+            const stateInterval = setInterval(() => {
+                if (index < states.length) {
+                    document.getElementById('driverAppState').value = states[index];
+                    updateDriverAppState();
+                    addLog('test', 'info', `App state changed to: ${states[index]}`);
+                    index++;
+                } else {
+                    clearInterval(stateInterval);
+                    addLog('test', 'success', 'App state change test completed');
+                }
+            }, 2000);
+        }
+
+        function testHeartbeatFailure() {
+            addLog('test', 'warning', '💓 Testing heartbeat failure...');
+            
+            if (!driverSocket || !driverSocket.connected) {
+                addLog('test', 'error', 'Driver not connected');
+                return;
+            }
+            
+            addLog('test', 'info', 'Stopping heartbeats for 30 seconds...');
+            
+            setTimeout(() => {
+                addLog('test', 'info', 'Resuming heartbeats...');
+                sendDriverHeartbeat();
+            }, 30000);
+        }
+
+        function runFullTripScenario() {
+            addLog('test', 'success', '🚗 Running full trip scenario...');
+            
+            if (!driverSocket || !customerSocket) {
+                addLog('test', 'error', 'Both driver and customer must be connected');
+                return;
+            }
+            
+            const tripId = 'test_trip_' + Date.now();
+            document.getElementById('driverTripId').value = tripId;
+            document.getElementById('customerTripId').value = tripId;
+            
+            addLog('test', 'info', `Starting trip scenario with ID: ${tripId}`);
+            
+            setTimeout(() => requestTrip(), 1000);
+            setTimeout(() => acceptTrip(), 3000);
+            setTimeout(() => arrivedAtPickup(), 5000);
+            setTimeout(() => startTrip(), 7000);
+            setTimeout(() => completeTrip(), 10000);
+            
+            setTimeout(() => {
+                addLog('test', 'success', 'Full trip scenario completed');
+            }, 12000);
+        }
+
+        function runCancelledTripScenario() {
+            addLog('test', 'warning', '❌ Running cancelled trip scenario...');
+            
+            const tripId = 'cancelled_trip_' + Date.now();
+            document.getElementById('customerTripId').value = tripId;
+            
+            setTimeout(() => requestTrip(), 1000);
+            setTimeout(() => cancelCustomerTrip(), 3000);
+        }
+
+        function runFailedTripScenario() {
+            addLog('test', 'error', '💥 Running failed trip scenario...');
+            
+            addLog('test', 'info', 'Simulating various failure conditions...');
+            
+            if (driverSocket && driverSocket.connected) {
+                driverSocket.disconnect();
+                addLog('test', 'warning', 'Driver disconnected during trip');
+            }
+        }
+
+        function testDriverTimeout() {
+            addLog('test', 'warning', '⏱️ Testing driver timeout...');
+            
+            const tripId = 'timeout_trip_' + Date.now();
+            document.getElementById('driverTripId').value = tripId;
+            
+            requestTrip();
+            addLog('test', 'info', 'Trip requested - driver not responding...');
+        }
+
+        function testLocationUpdates() {
+            addLog('test', 'info', '📍 Testing rapid location updates...');
+            
+            if (!driverSocket || !driverSocket.connected) {
+                addLog('test', 'error', 'Driver not connected');
+                return;
+            }
+            
+            let updateCount = 0;
+            const maxUpdates = 10;
+            
+            const locationInterval = setInterval(() => {
+                if (updateCount < maxUpdates) {
+                    sendDriverLocation();
+                    updateCount++;
+                } else {
+                    clearInterval(locationInterval);
+                    addLog('test', 'success', `Location update test completed (${maxUpdates} updates)`);
+                }
+            }, 1000);
+        }
+
+        function testConcurrentRequests() {
+            addLog('test', 'info', '🔄 Testing concurrent requests...');
+            
+            if (!customerSocket || !customerSocket.connected) {
+                addLog('test', 'error', 'Customer not connected');
+                return;
+            }
+            
+            for (let i = 0; i < 5; i++) {
+                setTimeout(() => {
+                    requestTrip();
+                    addLog('test', 'info', `Concurrent request ${i + 1}/5`);
+                }, i * 500);
+            }
+        }
+
+        function runLoadTest() {
+            const messageCount = parseInt(document.getElementById('loadTestCount').value);
+            addLog('test', 'info', `⚡ Running load test with ${messageCount} messages...`);
+            
+            if (!driverSocket || !driverSocket.connected) {
+                addLog('test', 'error', 'Driver not connected');
+                return;
+            }
+            
+            const startTime = Date.now();
+            let sentCount = 0;
+            
+            for (let i = 0; i < messageCount; i++) {
+                setTimeout(() => {
+                    sendDriverLocation();
+                    sentCount++;
+                    
+                    if (sentCount === messageCount) {
+                        const duration = Date.now() - startTime;
+                        addLog('test', 'success', `Load test completed: ${messageCount} messages in ${duration}ms`);
+                    }
+                }, i * 10);
+            }
+        }
+
+        function stressTestConnections() {
+            addLog('test', 'warning', '💪 Running stress test...');
+            
+            for (let i = 0; i < 3; i++) {
+                setTimeout(() => {
+                    if (driverSocket) driverSocket.disconnect();
+                    if (customerSocket) customerSocket.disconnect();
+                    
+                    setTimeout(() => {
+                        connectDriver();
+                        connectCustomer();
+                    }, 1000);
+                    
+                    addLog('test', 'info', `Stress test cycle ${i + 1}/3`);
+                }, i * 5000);
+            }
+        }
+
+        function monitorLatency() {
+            addLog('test', 'info', '📊 Monitoring latency...');
+            
+            if (!driverSocket || !driverSocket.connected) {
+                addLog('test', 'error', 'Driver not connected');
+                return;
+            }
+            
+            const startTime = Date.now();
+            
+            driverSocket.once('heartbeat-ack', () => {
+                const latency = Date.now() - startTime;
+                addLog('test', 'success', `Current latency: ${latency}ms`);
+            });
+            
+            sendDriverHeartbeat();
+        }
+
+        function checkMemoryUsage() {
+            addLog('test', 'info', '💾 Checking memory usage...');
+            
+            if (performance.memory) {
+                const memory = performance.memory;
+                addLog('test', 'info', `Used: ${(memory.usedJSHeapSize / 1024 / 1024).toFixed(2)}MB`);
+                addLog('test', 'info', `Total: ${(memory.totalJSHeapSize / 1024 / 1024).toFixed(2)}MB`);
+                addLog('test', 'info', `Limit: ${(memory.jsHeapSizeLimit / 1024 / 1024).toFixed(2)}MB`);
+            } else {
+                addLog('test', 'warning', 'Memory API not available');
+            }
+        }
+
+        function exportTestResults() {
+            addLog('test', 'info', '📄 Exporting test results...');
+            
+            const results = {
+                timestamp: new Date().toISOString(),
+                connections: {
+                    driver: driverSocket ? driverSocket.connected : false,
+                    customer: customerSocket ? customerSocket.connected : false,
+                    admin: adminSocket ? adminSocket.connected : false
+                },
+                testResults: testResults
+            };
+            
+            const blob = new Blob([JSON.stringify(results, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `websocket-test-results-${Date.now()}.json`;
+            a.click();
+            
+            addLog('test', 'success', 'Test results exported successfully');
+        }
+
+        function testTokenExpiry() {
+            addLog('test', 'warning', '⏰ Testing token expiry scenario...');
+            
+            addLog('test', 'info', 'This would require server-side token expiry simulation');
+        }
+
+        function testUnauthorizedAccess() {
+            addLog('test', 'danger', '🚫 Testing unauthorized access...');
+            
+            const badSocket = io(document.getElementById('driverWsUrl').value, {
+                auth: { 
+                    token: 'completely_invalid_token',
+                    deviceId: 'unauthorized_device'
+                },
+                transports: ['websocket']
+            });
+            
+            badSocket.on('auth_failed', (data) => {
+                addLog('test', 'success', `Unauthorized access properly blocked: ${JSON.stringify(data)}`);
+                badSocket.disconnect();
+            });
+        }
+
+        function testRolePermissions() {
+            addLog('test', 'info', '👮 Testing role permissions...');
+            
+            addLog('test', 'info', 'This would require role-based access control testing');
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            updateConnectionStatus('driver', 'disconnected');
+            updateConnectionStatus('customer', 'disconnected');
+            updateConnectionStatus('admin', 'disconnected');
+            
+            addLog('driver', 'info', 'Driver panel initialized');
+            addLog('customer', 'info', 'Customer panel initialized');
+            addLog('admin', 'info', 'Admin panel initialized');
+            addLog('test', 'info', 'Test scenarios initialized');
+        });
+    </script>
+</body>
+</html>

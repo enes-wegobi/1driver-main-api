@@ -11,6 +11,8 @@ import {
   CustomerLocationData,
   DriverConnectionResult,
   CustomerConnectionResult,
+  DeviceEnforcementResult,
+  WebSocketConnectionData,
 } from '../interfaces/unified-user-data.interfaces';
 import { RedisKeyGenerator } from '../redis-key.generator';
 
@@ -29,7 +31,7 @@ export class UnifiedUserRedisService extends BaseRedisService {
   }
 
   /**
-   * Connect driver with preserve availability logic and force logout handling
+   * Connect driver with preserve availability logic and single device enforcement
    */
   @WithErrorHandling()
   async connectDriver(
@@ -42,9 +44,14 @@ export class UnifiedUserRedisService extends BaseRedisService {
     // 1. Get existing data to preserve availability status
     const existingData = await this.getDriverStatus(driverId);
     
-    // 2. Determine if we need to force logout previous socket
-    const shouldForceLogout = !!(existingData?.websocket?.socketId && 
-                                 existingData.websocket.socketId !== socketId);
+    // 2. Enforce single device restriction
+    const deviceEnforcement = await this.enforceDeviceRestriction(
+      driverId, 
+      UserType.DRIVER, 
+      deviceId, 
+      socketId,
+      existingData?.websocket
+    );
     
     const preservedAvailability = existingData?.availability || DriverAvailabilityStatus.AVAILABLE;
 
@@ -62,7 +69,7 @@ export class UnifiedUserRedisService extends BaseRedisService {
       },
     };
 
-    // 5. Store the new data
+    // 3. Store the new data
     const key = RedisKeyGenerator.getUserLocationKey(driverId);
     const pipeline = this.client.multi();
     
@@ -79,22 +86,23 @@ export class UnifiedUserRedisService extends BaseRedisService {
         userId: driverId,
         userType: UserType.DRIVER,
         preservedAvailability,
-        shouldForceLogout,
-        previousSocketId: existingData?.websocket?.socketId,
+        deviceEnforcement,
         newSocketId: socketId,
+        newDeviceId: deviceId,
       },
     );
 
     return {
       userId: driverId,
-      previousSocket: existingData?.websocket,
+      previousSocket: deviceEnforcement.previousSocket as WebSocketConnectionData | undefined,
       preservedAvailability,
-      shouldForceLogout,
+      shouldForceLogout: deviceEnforcement.shouldForceLogout,
+      deviceEnforcement,
     };
   }
 
   /**
-   * Connect customer with optional location and force logout handling
+   * Connect customer with optional location and single device enforcement
    */
   @WithErrorHandling()
   async connectCustomer(
@@ -106,16 +114,21 @@ export class UnifiedUserRedisService extends BaseRedisService {
     // 1. Get existing data to check for previous socket
     const existingData = await this.getCustomerStatus(customerId);
     
-    // 2. Determine if we need to force logout previous socket
-    const shouldForceLogout = !!(existingData?.websocket?.socketId && 
-                                 existingData.websocket.socketId !== socketId);
+    // 2. Enforce single device restriction
+    const deviceEnforcement = await this.enforceDeviceRestriction(
+      customerId, 
+      UserType.CUSTOMER, 
+      deviceId, 
+      socketId,
+      existingData?.websocket
+    );
 
     // 3. Create new customer data
     const customerData: CustomerLocationData = {
       ...(location && { lat: location.lat, lng: location.lng }),
       timestamp: new Date().toISOString(),
       isActive: true,
-      appState: AppState.FOREGROUND, // Always foreground on connect
+      appState: AppState.FOREGROUND,
       websocket: {
         socketId,
         deviceId,
@@ -140,16 +153,17 @@ export class UnifiedUserRedisService extends BaseRedisService {
         userId: customerId,
         userType: UserType.CUSTOMER,
         hasLocation: !!location,
-        shouldForceLogout,
-        previousSocketId: existingData?.websocket?.socketId,
+        deviceEnforcement,
         newSocketId: socketId,
+        newDeviceId: deviceId,
       },
     );
 
     return {
       userId: customerId,
-      previousSocket: existingData?.websocket,
-      shouldForceLogout,
+      previousSocket: deviceEnforcement.previousSocket as WebSocketConnectionData | undefined,
+      shouldForceLogout: deviceEnforcement.shouldForceLogout,
+      deviceEnforcement,
     };
   }
 
@@ -518,6 +532,146 @@ export class UnifiedUserRedisService extends BaseRedisService {
     );
 
     return true;
+  }
+
+  // ===============================
+  // SINGLE DEVICE ENFORCEMENT
+  // ===============================
+
+  /**
+   * Enforce single device restriction for user connections
+   */
+  @WithErrorHandling()
+  async enforceDeviceRestriction(
+    userId: string,
+    userType: UserType,
+    newDeviceId: string,
+    newSocketId: string,
+    existingWebSocket?: { socketId: string; deviceId: string },
+  ): Promise<DeviceEnforcementResult> {
+    if (!existingWebSocket?.socketId) {
+      return {
+        shouldForceLogout: false,
+        previousSocket: null,
+        action: 'new_connection',
+      };
+    }
+
+    const isSameDevice = existingWebSocket.deviceId === newDeviceId;
+    const isSameSocket = existingWebSocket.socketId === newSocketId;
+
+    if (isSameSocket) {
+      return {
+        shouldForceLogout: false,
+        previousSocket: null,
+        action: 'same_device',
+      };
+    }
+
+    this.customLogger.info(
+      `Device enforcement triggered for user ${userId}`,
+      {
+        userId,
+        userType,
+        isSameDevice,
+        existingDevice: existingWebSocket.deviceId,
+        newDevice: newDeviceId,
+        existingSocket: existingWebSocket.socketId,
+        newSocket: newSocketId,
+      },
+    );
+
+    return {
+      shouldForceLogout: true,
+      previousSocket: existingWebSocket,
+      action: isSameDevice ? 'same_device' : 'different_device',
+      reason: isSameDevice 
+        ? 'Same device reconnecting with new socket/token'
+        : 'Different device attempting to connect',
+    };
+  }
+
+  /**
+   * Get force logout event data for WebSocket emission
+   */
+  getForceLogoutEvent(
+    action: 'same_device' | 'different_device',
+    oldDeviceId: string,
+    newDeviceId: string,
+  ): {
+    reason: string;
+    timestamp: string;
+    action: string;
+    oldDeviceId: string;
+    newDeviceId: string;
+    message: string;
+  } {
+    const isSameDevice = action === 'same_device';
+    
+    return {
+      reason: isSameDevice ? 'same_device_new_token' : 'new_device_connection',
+      timestamp: new Date().toISOString(),
+      action: 'immediate_disconnect',
+      oldDeviceId,
+      newDeviceId,
+      message: isSameDevice
+        ? 'Session refreshed - please reconnect with new token'
+        : 'Your session has been terminated due to login from another device',
+    };
+  }
+
+  /**
+   * Force logout - completely remove user data without preservation
+   */
+  @WithErrorHandling()
+  async forceLogoutUser(
+    userId: string,
+    userType: UserType,
+    socketId?: string,
+  ): Promise<boolean> {
+    if (userType === UserType.DRIVER) {
+      const currentData = await this.getDriverStatus(userId);
+      if (!currentData) {
+        return false;
+      }
+
+      // Verify socket ID if provided
+      if (socketId && currentData.websocket?.socketId !== socketId) {
+        this.customLogger.warn(
+          `Socket ID mismatch for driver ${userId} force logout`,
+          {
+            userId,
+            userType: UserType.DRIVER,
+            expectedSocketId: currentData.websocket?.socketId,
+            providedSocketId: socketId,
+          },
+        );
+      }
+
+      // Complete removal - no preservation for force logout
+      return await this.setDriverInactive(userId);
+    } else {
+      const currentData = await this.getCustomerStatus(userId);
+      if (!currentData) {
+        return false;
+      }
+
+      // Verify socket ID if provided
+      if (socketId && currentData.websocket?.socketId !== socketId) {
+        this.customLogger.warn(
+          `Socket ID mismatch for customer ${userId} force logout`,
+          {
+            userId,
+            userType: UserType.CUSTOMER,
+            expectedSocketId: currentData.websocket?.socketId,
+            providedSocketId: socketId,
+          },
+        );
+      }
+
+      // Complete removal for customers
+      return await this.setCustomerInactive(userId);
+    }
   }
 
 //write cleanup service

@@ -86,17 +86,26 @@ export interface BatchUserStatusResult {
   data?: DriverLocationData | CustomerLocationData;
 }
 
+export interface DeviceEnforcementResult {
+  shouldForceLogout: boolean;
+  previousSocket: { socketId: string; deviceId: string } | null;
+  action: 'same_device' | 'different_device' | 'new_connection';
+  reason?: string;
+}
+
 export interface DriverConnectionResult {
   userId: string;
   previousSocket?: WebSocketConnectionData;
   preservedAvailability: DriverAvailabilityStatus;
   shouldForceLogout: boolean;
+  deviceEnforcement: DeviceEnforcementResult;
 }
 
 export interface CustomerConnectionResult {
   userId: string;
   previousSocket?: WebSocketConnectionData;
   shouldForceLogout: boolean;
+  deviceEnforcement: DeviceEnforcementResult;
 }
 
 export interface UserStatusSummary {

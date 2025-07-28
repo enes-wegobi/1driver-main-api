@@ -83,10 +83,14 @@ export class DriverStatusService extends BaseRedisService {
   async checkDriversActiveStatus(
     driverIds: string[],
   ): Promise<{ driverId: string; isActive: boolean }[]> {
-    return await this.unifiedUserStatusService.checkUsersActiveStatus(
+    const results = await this.unifiedUserStatusService.checkUsersActiveStatus(
       driverIds,
       UserType.DRIVER,
     );
+    return results.map(result => ({
+      driverId: result.userId,
+      isActive: result.isActive,
+    }));
   }
 
   @WithErrorHandling(false)
@@ -139,9 +143,9 @@ export class DriverStatusService extends BaseRedisService {
     await this.unifiedUserStatusService.updateAppState(driverId, UserType.DRIVER, appState);
   }
 
-  @WithErrorHandling()
+  @WithErrorHandling(AppState.FOREGROUND)
   async getDriverAppState(driverId: string): Promise<AppState> {
-    return await this.unifiedUserStatusService.getAppState(driverId, UserType.DRIVER);
+    return await this.unifiedUserStatusService.getAppState(driverId, UserType.DRIVER) || AppState.FOREGROUND;
   }
 
   @WithErrorHandling()

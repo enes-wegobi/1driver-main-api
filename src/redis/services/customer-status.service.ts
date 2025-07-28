@@ -49,9 +49,9 @@ export class CustomerStatusService extends BaseRedisService {
     await this.unifiedUserStatusService.updateAppState(customerId, UserType.CUSTOMER, appState);
   }
 
-  @WithErrorHandling()
+  @WithErrorHandling(AppState.FOREGROUND)
   async getCustomerAppState(customerId: string): Promise<AppState> {
-    return await this.unifiedUserStatusService.getAppState(customerId, UserType.CUSTOMER);
+    return await this.unifiedUserStatusService.getAppState(customerId, UserType.CUSTOMER) || AppState.FOREGROUND;
   }
 
   @WithErrorHandling()
