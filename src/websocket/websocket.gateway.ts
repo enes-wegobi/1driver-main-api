@@ -342,8 +342,8 @@ export class WebSocketGateway
     const deviceId = client.data.deviceId;
 
     // Update user activity
-    //burada yine mevcut dataya koyalım unifed redise
-    await this.webSocketService.updateUserActivity(userId, userType);
+    await this.unifiedUserRedisService.updateUserActivity(userId, userType);
+
 
     if (!userId) {
       client.emit('error', { message: 'User not authenticated' });
@@ -400,7 +400,7 @@ export class WebSocketGateway
     const deviceId = client.data.deviceId;
 
     // Update user activity
-    await this.webSocketService.updateUserActivity(userId, userType);
+    await this.unifiedUserRedisService.updateUserActivity(userId, userType);
 
     if (!userId) {
       client.emit('error', { message: 'User not authenticated' });

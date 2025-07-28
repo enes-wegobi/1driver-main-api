@@ -621,6 +621,50 @@ export class UnifiedUserRedisService extends BaseRedisService {
   }
 
   /**
+   * Update user activity timestamp in websocket data
+   */
+  @WithErrorHandling()
+  async updateUserActivity(
+    userId: string,
+    userType: UserType,
+  ): Promise<boolean> {
+    let currentData: DriverLocationData | CustomerLocationData | null;
+    const key = RedisKeyGenerator.getUserLocationKey(userId);
+
+    if (userType === UserType.DRIVER) {
+      currentData = await this.getDriverStatus(userId);
+    } else {
+      currentData = await this.getCustomerStatus(userId);
+    }
+
+    if (!currentData || !currentData.websocket) {
+      return false;
+    }
+
+    const updatedData = {
+      ...currentData,
+      websocket: {
+        ...currentData.websocket,
+        lastActivity: new Date().toISOString(),
+      },
+      timestamp: new Date().toISOString(),
+    };
+
+    await this.client.set(key, JSON.stringify(updatedData));
+
+    this.customLogger.debug(
+      `Updated activity for ${userType} ${userId}`,
+      {
+        userId,
+        userType,
+        lastActivity: updatedData.websocket.lastActivity,
+      },
+    );
+
+    return true;
+  }
+
+  /**
    * Force logout - completely remove user data without preservation
    */
   @WithErrorHandling()
