@@ -96,9 +96,6 @@ export class RedisKeyGenerator {
     return `ws:user:active_socket:${userType}:${userId}`;
   }
 
-
-
-  
   static getUserLocationKey(userId: string): string {
     return `location:user:${userId}`;
   }

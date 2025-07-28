@@ -43,17 +43,18 @@ export class UnifiedUserRedisService extends BaseRedisService {
   ): Promise<DriverConnectionResult> {
     // 1. Get existing data to preserve availability status
     const existingData = await this.getDriverStatus(driverId);
-    
+
     // 2. Enforce single device restriction
     const deviceEnforcement = await this.enforceDeviceRestriction(
-      driverId, 
-      UserType.DRIVER, 
-      deviceId, 
+      driverId,
+      UserType.DRIVER,
+      deviceId,
       socketId,
-      existingData?.websocket
+      existingData?.websocket,
     );
-    
-    const preservedAvailability = existingData?.availability || DriverAvailabilityStatus.AVAILABLE;
+
+    const preservedAvailability =
+      existingData?.availability || DriverAvailabilityStatus.AVAILABLE;
 
     const driverData: DriverLocationData = {
       lat,
@@ -72,7 +73,7 @@ export class UnifiedUserRedisService extends BaseRedisService {
     // 3. Store the new data
     const key = RedisKeyGenerator.getUserLocationKey(driverId);
     const pipeline = this.client.multi();
-    
+
     pipeline.set(key, JSON.stringify(driverData));
     pipeline.expire(key, this.LOCATION_TTL);
     pipeline.sadd(RedisKeyGenerator.getActiveDriversSetKey(), driverId);
@@ -94,7 +95,9 @@ export class UnifiedUserRedisService extends BaseRedisService {
 
     return {
       userId: driverId,
-      previousSocket: deviceEnforcement.previousSocket as WebSocketConnectionData | undefined,
+      previousSocket: deviceEnforcement.previousSocket as
+        | WebSocketConnectionData
+        | undefined,
       preservedAvailability,
       shouldForceLogout: deviceEnforcement.shouldForceLogout,
       deviceEnforcement,
@@ -113,14 +116,14 @@ export class UnifiedUserRedisService extends BaseRedisService {
   ): Promise<CustomerConnectionResult> {
     // 1. Get existing data to check for previous socket
     const existingData = await this.getCustomerStatus(customerId);
-    
+
     // 2. Enforce single device restriction
     const deviceEnforcement = await this.enforceDeviceRestriction(
-      customerId, 
-      UserType.CUSTOMER, 
-      deviceId, 
+      customerId,
+      UserType.CUSTOMER,
+      deviceId,
       socketId,
-      existingData?.websocket
+      existingData?.websocket,
     );
 
     // 3. Create new customer data
@@ -140,28 +143,27 @@ export class UnifiedUserRedisService extends BaseRedisService {
     // 4. Store the new data
     const key = RedisKeyGenerator.getUserLocationKey(customerId);
     const pipeline = this.client.multi();
-    
+
     pipeline.set(key, JSON.stringify(customerData));
     pipeline.expire(key, this.USER_STATUS_TTL);
     pipeline.sadd(RedisKeyGenerator.getActiveCustomersSetKey(), customerId);
 
     await pipeline.exec();
 
-    this.customLogger.info(
-      `Customer ${customerId} connected`,
-      {
-        userId: customerId,
-        userType: UserType.CUSTOMER,
-        hasLocation: !!location,
-        deviceEnforcement,
-        newSocketId: socketId,
-        newDeviceId: deviceId,
-      },
-    );
+    this.customLogger.info(`Customer ${customerId} connected`, {
+      userId: customerId,
+      userType: UserType.CUSTOMER,
+      hasLocation: !!location,
+      deviceEnforcement,
+      newSocketId: socketId,
+      newDeviceId: deviceId,
+    });
 
     return {
       userId: customerId,
-      previousSocket: deviceEnforcement.previousSocket as WebSocketConnectionData | undefined,
+      previousSocket: deviceEnforcement.previousSocket as
+        | WebSocketConnectionData
+        | undefined,
       shouldForceLogout: deviceEnforcement.shouldForceLogout,
       deviceEnforcement,
     };
@@ -189,11 +191,17 @@ export class UnifiedUserRedisService extends BaseRedisService {
     };
 
     const pipeline = this.client.multi();
-    
+
     // Update location data
-    pipeline.set(RedisKeyGenerator.getUserLocationKey(driverId), JSON.stringify(updatedData));
-    pipeline.expire(RedisKeyGenerator.getUserLocationKey(driverId), this.LOCATION_TTL);
-    
+    pipeline.set(
+      RedisKeyGenerator.getUserLocationKey(driverId),
+      JSON.stringify(updatedData),
+    );
+    pipeline.expire(
+      RedisKeyGenerator.getUserLocationKey(driverId),
+      this.LOCATION_TTL,
+    );
+
     // Update geo index
     pipeline.geoadd(RedisKeyGenerator.getDriverGeoKey(), lng, lat, driverId);
 
@@ -244,7 +252,7 @@ export class UnifiedUserRedisService extends BaseRedisService {
   async getDriverStatus(driverId: string): Promise<DriverLocationData | null> {
     const key = RedisKeyGenerator.getUserLocationKey(driverId);
     const data = await this.client.get(key);
-    
+
     if (!data) {
       return null;
     }
@@ -275,7 +283,9 @@ export class UnifiedUserRedisService extends BaseRedisService {
    * Get driver's current availability
    */
   @WithErrorHandling(DriverAvailabilityStatus.BUSY)
-  async getDriverAvailability(driverId: string): Promise<DriverAvailabilityStatus> {
+  async getDriverAvailability(
+    driverId: string,
+  ): Promise<DriverAvailabilityStatus> {
     const data = await this.getDriverStatus(driverId);
     return data?.availability || DriverAvailabilityStatus.BUSY;
   }
@@ -289,7 +299,7 @@ export class UnifiedUserRedisService extends BaseRedisService {
     newStatus: DriverAvailabilityStatus,
   ): Promise<{ canChange: boolean; reason?: string }> {
     const currentData = await this.getDriverStatus(driverId);
-    
+
     if (!currentData) {
       return {
         canChange: false,
@@ -327,22 +337,22 @@ export class UnifiedUserRedisService extends BaseRedisService {
   @WithErrorHandling()
   async setDriverInactive(driverId: string): Promise<boolean> {
     const pipeline = this.client.multi();
-    
+
     // Remove from location data
     pipeline.del(RedisKeyGenerator.getUserLocationKey(driverId));
-    
+
     // Remove from active set
     pipeline.srem(RedisKeyGenerator.getActiveDriversSetKey(), driverId);
-    
+
     // Remove from geo index
     pipeline.zrem(RedisKeyGenerator.getDriverGeoKey(), driverId);
 
     await pipeline.exec();
 
-    this.customLogger.info(
-      `Driver ${driverId} set as inactive`,
-      { userId: driverId, userType: UserType.DRIVER },
-    );
+    this.customLogger.info(`Driver ${driverId} set as inactive`, {
+      userId: driverId,
+      userType: UserType.DRIVER,
+    });
 
     return true;
   }
@@ -355,10 +365,12 @@ export class UnifiedUserRedisService extends BaseRedisService {
    * Get complete customer status data
    */
   @WithErrorHandling(null)
-  async getCustomerStatus(customerId: string): Promise<CustomerLocationData | null> {
+  async getCustomerStatus(
+    customerId: string,
+  ): Promise<CustomerLocationData | null> {
     const key = RedisKeyGenerator.getUserLocationKey(customerId);
     const data = await this.client.get(key);
-    
+
     if (!data) {
       return null;
     }
@@ -391,19 +403,19 @@ export class UnifiedUserRedisService extends BaseRedisService {
   @WithErrorHandling()
   async setCustomerInactive(customerId: string): Promise<boolean> {
     const pipeline = this.client.multi();
-    
+
     // Remove from location data
     pipeline.del(RedisKeyGenerator.getUserLocationKey(customerId));
-    
+
     // Remove from active set
     pipeline.srem(RedisKeyGenerator.getActiveCustomersSetKey(), customerId);
 
     await pipeline.exec();
 
-    this.customLogger.info(
-      `Customer ${customerId} set as inactive`,
-      { userId: customerId, userType: UserType.CUSTOMER },
-    );
+    this.customLogger.info(`Customer ${customerId} set as inactive`, {
+      userId: customerId,
+      userType: UserType.CUSTOMER,
+    });
 
     return true;
   }
@@ -484,11 +496,16 @@ export class UnifiedUserRedisService extends BaseRedisService {
 
     if (shouldPreserve) {
       // Background disconnect - preserve state with appropriate TTL
-      const ttl = availability === DriverAvailabilityStatus.ON_TRIP 
-        ? this.DRIVER_ON_TRIP_TTL 
-        : this.DRIVER_BACKGROUND_TTL;
-      
-      return await this.preserveDriverDataWithTTL(driverId, ttl, 'background_disconnect');
+      const ttl =
+        availability === DriverAvailabilityStatus.ON_TRIP
+          ? this.DRIVER_ON_TRIP_TTL
+          : this.DRIVER_BACKGROUND_TTL;
+
+      return await this.preserveDriverDataWithTTL(
+        driverId,
+        ttl,
+        'background_disconnect',
+      );
     } else {
       // Foreground disconnect - full cleanup
       return await this.setDriverInactive(driverId);
@@ -609,24 +626,21 @@ export class UnifiedUserRedisService extends BaseRedisService {
       };
     }
 
-    this.customLogger.info(
-      `Device enforcement triggered for user ${userId}`,
-      {
-        userId,
-        userType,
-        isSameDevice,
-        existingDevice: existingWebSocket.deviceId,
-        newDevice: newDeviceId,
-        existingSocket: existingWebSocket.socketId,
-        newSocket: newSocketId,
-      },
-    );
+    this.customLogger.info(`Device enforcement triggered for user ${userId}`, {
+      userId,
+      userType,
+      isSameDevice,
+      existingDevice: existingWebSocket.deviceId,
+      newDevice: newDeviceId,
+      existingSocket: existingWebSocket.socketId,
+      newSocket: newSocketId,
+    });
 
     return {
       shouldForceLogout: true,
       previousSocket: existingWebSocket,
       action: isSameDevice ? 'same_device' : 'different_device',
-      reason: isSameDevice 
+      reason: isSameDevice
         ? 'Same device reconnecting with new socket/token'
         : 'Different device attempting to connect',
     };
@@ -648,7 +662,7 @@ export class UnifiedUserRedisService extends BaseRedisService {
     message: string;
   } {
     const isSameDevice = action === 'same_device';
-    
+
     return {
       reason: isSameDevice ? 'same_device_new_token' : 'new_device_connection',
       timestamp: new Date().toISOString(),
@@ -693,14 +707,11 @@ export class UnifiedUserRedisService extends BaseRedisService {
 
     await this.client.set(key, JSON.stringify(updatedData));
 
-    this.customLogger.debug(
-      `Updated activity for ${userType} ${userId}`,
-      {
-        userId,
-        userType,
-        lastActivity: updatedData.websocket.lastActivity,
-      },
-    );
+    this.customLogger.debug(`Updated activity for ${userType} ${userId}`, {
+      userId,
+      userType,
+      lastActivity: updatedData.websocket.lastActivity,
+    });
 
     return true;
   }
@@ -759,5 +770,5 @@ export class UnifiedUserRedisService extends BaseRedisService {
     }
   }
 
-//write cleanup service
+  //write cleanup service
 }

@@ -22,16 +22,16 @@ export interface DriverLocationData {
   // Geographic coordinates
   lat: number;
   lng: number;
-  
+
   // Timestamps
   timestamp: string;
-  
+
   // Driver business logic
   availability: DriverAvailabilityStatus;
-  
+
   // User status
   appState: AppState;
-  
+
   // WebSocket connection (optional)
   websocket?: WebSocketConnectionData;
 }
@@ -40,14 +40,14 @@ export interface CustomerLocationData {
   // Optional geographic coordinates (can be added later)
   lat?: number;
   lng?: number;
-  
+
   // Timestamps
   timestamp: string;
-  
+
   // User status
   isActive: boolean;
   appState: AppState;
-  
+
   // WebSocket connection (optional)
   websocket?: WebSocketConnectionData;
 }
@@ -58,14 +58,14 @@ export interface UserStatusResponse {
   isActive: boolean;
   appState: AppState;
   timestamp: string;
-  
+
   // WebSocket data (common)
   websocket?: WebSocketConnectionData;
-  
+
   // Driver-specific data
   location?: LocationCoordinates;
   availability?: DriverAvailabilityStatus;
-  
+
   // Customer-specific data
   customerLocation?: LocationWithTimestamp;
 }

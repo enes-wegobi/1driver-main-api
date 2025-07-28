@@ -339,10 +339,12 @@ export class Event2Service {
     userType: UserType,
   ): Promise<boolean> {
     if (userType === UserType.DRIVER) {
-      const driverData = await this.unifiedUserRedisService.getDriverStatus(userId);
+      const driverData =
+        await this.unifiedUserRedisService.getDriverStatus(userId);
       return driverData?.appState === AppState.FOREGROUND;
     } else {
-      const customerData = await this.unifiedUserRedisService.getCustomerStatus(userId);
+      const customerData =
+        await this.unifiedUserRedisService.getCustomerStatus(userId);
       return customerData?.appState === AppState.FOREGROUND;
     }
   }

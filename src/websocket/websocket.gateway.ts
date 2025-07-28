@@ -50,7 +50,6 @@ export class WebSocketGateway
     private readonly jwtService: JwtService,
     private readonly tokenManager: TokenManagerService,
     private readonly unifiedUserRedisService: UnifiedUserRedisService,
-    
   ) {}
 
   @WebSocketServer()
@@ -180,23 +179,28 @@ export class WebSocketGateway
 
       if (userType === UserType.DRIVER) {
         // Use unified service for driver connection with single device enforcement
-        const connectionResult = await this.unifiedUserRedisService.connectDriver(
-          userId,
-          0, // Default lat - will be updated on first location update
-          0, // Default lng - will be updated on first location update
-          client.id,
-          deviceId,
-        );
+        const connectionResult =
+          await this.unifiedUserRedisService.connectDriver(
+            userId,
+            0, // Default lat - will be updated on first location update
+            0, // Default lng - will be updated on first location update
+            client.id,
+            deviceId,
+          );
 
         // Handle single device enforcement
-        if (connectionResult.shouldForceLogout && connectionResult.previousSocket) {
+        if (
+          connectionResult.shouldForceLogout &&
+          connectionResult.previousSocket
+        ) {
           const action = connectionResult.deviceEnforcement.action;
           if (action !== 'new_connection') {
-            const forceLogoutEvent = this.unifiedUserRedisService.getForceLogoutEvent(
-              action,
-              connectionResult.previousSocket.deviceId,
-              deviceId,
-            );
+            const forceLogoutEvent =
+              this.unifiedUserRedisService.getForceLogoutEvent(
+                action,
+                connectionResult.previousSocket.deviceId,
+                deviceId,
+              );
 
             // Disconnect previous socket
             await this.webSocketService.forceLogoutUser(
@@ -223,21 +227,26 @@ export class WebSocketGateway
         });
       } else if (userType === UserType.CUSTOMER) {
         // Use unified service for customer connection with single device enforcement
-        const connectionResult = await this.unifiedUserRedisService.connectCustomer(
-          userId,
-          client.id,
-          deviceId,
-        );
+        const connectionResult =
+          await this.unifiedUserRedisService.connectCustomer(
+            userId,
+            client.id,
+            deviceId,
+          );
 
         // Handle single device enforcement
-        if (connectionResult.shouldForceLogout && connectionResult.previousSocket) {
+        if (
+          connectionResult.shouldForceLogout &&
+          connectionResult.previousSocket
+        ) {
           const action = connectionResult.deviceEnforcement.action;
           if (action !== 'new_connection') {
-            const forceLogoutEvent = this.unifiedUserRedisService.getForceLogoutEvent(
-              action,
-              connectionResult.previousSocket.deviceId,
-              deviceId,
-            );
+            const forceLogoutEvent =
+              this.unifiedUserRedisService.getForceLogoutEvent(
+                action,
+                connectionResult.previousSocket.deviceId,
+                deviceId,
+              );
 
             // Disconnect previous socket
             await this.webSocketService.forceLogoutUser(
@@ -299,14 +308,15 @@ export class WebSocketGateway
     if (userId) {
       if (userType === UserType.DRIVER) {
         // Get current app state for smart disconnect
-        const currentData = await this.unifiedUserRedisService.getDriverStatus(userId);
+        const currentData =
+          await this.unifiedUserRedisService.getDriverStatus(userId);
         const appState = currentData?.appState;
 
         // Use unified disconnect with smart state preservation
         await this.unifiedUserRedisService.disconnectDriver(
-          userId, 
-          client.id, 
-          appState
+          userId,
+          client.id,
+          appState,
         );
 
         this.logger.info(`Driver disconnected with smart state handling`, {
@@ -318,7 +328,10 @@ export class WebSocketGateway
         });
       } else if (userType === UserType.CUSTOMER) {
         // Use unified disconnect with immediate cleanup
-        await this.unifiedUserRedisService.disconnectCustomer(userId, client.id);
+        await this.unifiedUserRedisService.disconnectCustomer(
+          userId,
+          client.id,
+        );
 
         this.logger.info(`Customer disconnected with immediate cleanup`, {
           userId,
@@ -341,7 +354,6 @@ export class WebSocketGateway
 
     // Update user activity
     await this.unifiedUserRedisService.updateUserActivity(userId, userType);
-
 
     if (!userId) {
       client.emit('error', { message: 'User not authenticated' });
@@ -432,10 +444,11 @@ export class WebSocketGateway
 
     try {
       // Check if driver can change availability
-      const validation = await this.unifiedUserRedisService.canChangeAvailability(
-        userId,
-        payload.status,
-      );
+      const validation =
+        await this.unifiedUserRedisService.canChangeAvailability(
+          userId,
+          payload.status,
+        );
 
       if (!validation.canChange) {
         client.emit('error', { message: validation.reason });

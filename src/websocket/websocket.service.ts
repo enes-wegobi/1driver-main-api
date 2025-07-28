@@ -85,7 +85,8 @@ export class WebSocketService {
         const driverData = await this.unifiedUserRedis.getDriverStatus(userId);
         activeConnection = driverData?.websocket;
       } else {
-        const customerData = await this.unifiedUserRedis.getCustomerStatus(userId);
+        const customerData =
+          await this.unifiedUserRedis.getCustomerStatus(userId);
         activeConnection = customerData?.websocket;
       }
 
@@ -117,7 +118,11 @@ export class WebSocketService {
 
       if (success) {
         // Remove connection from unified Redis service (complete removal for force logout)
-        await this.unifiedUserRedis.forceLogoutUser(userId, userType, activeConnection.socketId);
+        await this.unifiedUserRedis.forceLogoutUser(
+          userId,
+          userType,
+          activeConnection.socketId,
+        );
       }
 
       return success;
@@ -167,5 +172,4 @@ export class WebSocketService {
       return true;
     }
   }
-
 }
