@@ -26,7 +26,6 @@ import { TripStatusService } from './trip-status.service';
 import { DriverPenaltyService } from './driver-penalty.service';
 import { PaymentMethodService } from '../../payments/services/payment-method.service';
 import { StripeService } from '../../payments/services/stripe.service';
-import { DriverStatusService } from 'src/redis/services/driver-status.service';
 import { TripQueueService } from '../../../queue/services/trip-queue.service';
 import { DriverTripQueueService } from 'src/redis/services/driver-trip-queue.service';
 import { TripHistoryQueryDto } from '../dto/trip-history-query.dto';
@@ -42,6 +41,7 @@ import { EstimateTripDto } from '../dto/estimate-trip.dto';
 import { LockService } from 'src/lock/lock.service';
 import { LoggerService } from 'src/logger/logger.service';
 import { TripEventsService } from 'src/events/trip-events.service';
+import { UnifiedUserRedisService } from 'src/redis/services/unified-user-redis.service';
 
 export interface TripOperationResult {
   success: boolean;
@@ -84,13 +84,13 @@ export class TripService {
     private readonly mapsService: MapsService,
     private readonly locationService: LocationService,
     private readonly paymentMethodService: PaymentMethodService,
-    private readonly driverStatusService: DriverStatusService,
     private readonly stripeService: StripeService,
     private readonly tripQueueService: TripQueueService,
     private readonly driverTripQueueService: DriverTripQueueService,
     private readonly event2Service: Event2Service,
     private readonly logger: LoggerService,
     private readonly tripEventsService: TripEventsService,
+    private readonly unifiedUserRedisService: UnifiedUserRedisService,
   ) {}
 
   // ================================
@@ -453,7 +453,7 @@ export class TripService {
               trip.driver.id,
               UserType.DRIVER,
             );
-            await this.driverStatusService.updateDriverAvailability(
+            await this.unifiedUserRedisService.updateDriverAvailability(
               trip.driver.id,
               DriverAvailabilityStatus.AVAILABLE,
             );
@@ -1095,7 +1095,7 @@ export class TripService {
         trip.customer.id,
         UserType.CUSTOMER,
       ),
-      this.driverStatusService.updateDriverAvailability(
+      this.unifiedUserRedisService.updateDriverAvailability(
         driverId,
         DriverAvailabilityStatus.ON_TRIP,
       ),
@@ -1244,7 +1244,7 @@ export class TripService {
     );
 
     // Set driver status back to AVAILABLE when trip is completed
-    await this.driverStatusService.updateDriverAvailability(
+    await this.unifiedUserRedisService.updateDriverAvailability(
       driverId,
       DriverAvailabilityStatus.AVAILABLE,
     );
@@ -1264,7 +1264,7 @@ export class TripService {
     );
 
     // Set driver status back to AVAILABLE when trip is completed
-    await this.driverStatusService.updateDriverAvailability(
+    await this.unifiedUserRedisService.updateDriverAvailability(
       driverId,
       DriverAvailabilityStatus.AVAILABLE,
     );
@@ -1482,7 +1482,7 @@ export class TripService {
     );
 
     // Set driver status back to AVAILABLE when trip is cancelled
-    await this.driverStatusService.updateDriverAvailability(
+    await this.unifiedUserRedisService.updateDriverAvailability(
       driverId,
       DriverAvailabilityStatus.AVAILABLE,
     );

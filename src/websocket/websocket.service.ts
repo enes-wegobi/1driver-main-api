@@ -3,7 +3,6 @@ import { Server } from 'socket.io';
 import { LoggerService } from 'src/logger/logger.service';
 import { EventType } from 'src/modules/event/enum/event-type.enum';
 import { UserType } from 'src/common/user-type.enum';
-import { WebSocketRedisService } from 'src/redis/services/websocket-redis.service';
 import { UnifiedUserRedisService } from 'src/redis/services/unified-user-redis.service';
 
 @Injectable()
@@ -12,7 +11,6 @@ export class WebSocketService {
 
   constructor(
     private readonly logger: LoggerService,
-    private readonly webSocketRedis: WebSocketRedisService,
     private readonly unifiedUserRedis: UnifiedUserRedisService,
   ) {}
 
@@ -170,10 +168,4 @@ export class WebSocketService {
     }
   }
 
-  /**
-   * Update activity timestamp for a user's WebSocket connection
-   */
-  async updateUserActivity(userId: string, userType: UserType): Promise<void> {
-    await this.webSocketRedis.updateLastActivity(userId, userType);
-  }
 }

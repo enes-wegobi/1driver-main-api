@@ -19,8 +19,7 @@ import {
 import { JwtAuthGuard } from 'src/jwt/guards/jwt.guard';
 import { GetUser } from 'src/jwt/user.decorator';
 import { IJwtPayload } from 'src/jwt/jwt-payload.interface';
-import { DriverStatusService } from 'src/redis/services/driver-status.service';
-import { CustomerStatusService } from 'src/redis/services/customer-status.service';
+import { UnifiedUserRedisService } from 'src/redis/services/unified-user-redis.service';
 import { UserType } from 'src/common/user-type.enum';
 import { LoggerService } from 'src/logger/logger.service';
 import { UpdateAppStateDto } from './dto/update-app-state.dto';
@@ -33,8 +32,7 @@ import { TokenManagerService } from 'src/redis/services/token-manager.service';
 @UseGuards(JwtAuthGuard)
 export class CommonController {
   constructor(
-    private readonly driverStatusService: DriverStatusService,
-    private readonly customerStatusService: CustomerStatusService,
+    private readonly unifiedUserRedisService: UnifiedUserRedisService,
     private readonly tokenManagerService: TokenManagerService,
     private readonly logger: LoggerService,
   ) {}
@@ -82,19 +80,12 @@ export class CommonController {
     );
 
     try {
-      if (userType === UserType.DRIVER) {
-        await this.driverStatusService.updateDriverHeartbeat(userId);
-        await this.driverStatusService.updateDriverAppState(
-          userId,
-          payload.state,
-        );
-      } else if (userType === UserType.CUSTOMER) {
-        await this.customerStatusService.markCustomerAsActive(userId);
-        await this.customerStatusService.updateCustomerAppState(
-          userId,
-          payload.state,
-        );
-      }
+      await this.unifiedUserRedisService.updateUserActivity(userId, userType);
+      await this.unifiedUserRedisService.updateAppState(
+        userId,
+        userType,
+        payload.state,
+      );
 
       return {
         success: true,

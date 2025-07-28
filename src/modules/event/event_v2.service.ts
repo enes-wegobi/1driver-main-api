@@ -3,8 +3,7 @@ import { WebSocketService } from 'src/websocket/websocket.service';
 import { DriversService } from 'src/modules/drivers/drivers.service';
 import { CustomersService } from 'src/modules/customers/customers.service';
 import { ExpoNotificationsService } from 'src/modules/expo-notifications/expo-notifications.service';
-import { DriverStatusService } from 'src/redis/services/driver-status.service';
-import { CustomerStatusService } from 'src/redis/services/customer-status.service';
+import { UnifiedUserRedisService } from 'src/redis/services/unified-user-redis.service';
 import { EventType } from './enum/event-type.enum';
 import { EventDeliveryMethod } from './constants/trip.constant';
 import { UserType } from 'src/common/user-type.enum';
@@ -16,8 +15,7 @@ import { v4 as uuidv4 } from 'uuid';
 export class Event2Service {
   constructor(
     private readonly webSocketService: WebSocketService,
-    private readonly driverStatusService: DriverStatusService,
-    private readonly customerStatusService: CustomerStatusService,
+    private readonly unifiedUserRedisService: UnifiedUserRedisService,
     private readonly driversService: DriversService,
     private readonly customersService: CustomersService,
     private readonly expoNotificationsService: ExpoNotificationsService,
@@ -341,12 +339,11 @@ export class Event2Service {
     userType: UserType,
   ): Promise<boolean> {
     if (userType === UserType.DRIVER) {
-      const appState = await this.driverStatusService.getDriverAppState(userId);
-      return appState === AppState.FOREGROUND;
+      const driverData = await this.unifiedUserRedisService.getDriverStatus(userId);
+      return driverData?.appState === AppState.FOREGROUND;
     } else {
-      const appState =
-        await this.customerStatusService.getCustomerAppState(userId);
-      return appState === AppState.FOREGROUND;
+      const customerData = await this.unifiedUserRedisService.getCustomerStatus(userId);
+      return customerData?.appState === AppState.FOREGROUND;
     }
   }
 

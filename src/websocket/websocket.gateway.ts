@@ -10,7 +10,6 @@ import { UseGuards } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import { WebSocketService } from './websocket.service';
 import { LocationDto } from './dto/location.dto';
-import { DriverStatusService } from 'src/redis/services/driver-status.service';
 import { LocationService } from 'src/redis/services/location.service';
 import { ActiveTripService } from 'src/redis/services/active-trip.service';
 import { UserType } from 'src/common/user-type.enum';
@@ -44,7 +43,6 @@ export class WebSocketGateway
 {
   constructor(
     private readonly webSocketService: WebSocketService,
-    private readonly driverStatusService: DriverStatusService,
     private readonly locationService: LocationService,
     private readonly activeTripService: ActiveTripService,
     private readonly tripService: TripService,
@@ -434,7 +432,7 @@ export class WebSocketGateway
 
     try {
       // Check if driver can change availability
-      const validation = await this.driverStatusService.canChangeAvailability(
+      const validation = await this.unifiedUserRedisService.canChangeAvailability(
         userId,
         payload.status,
       );
@@ -447,7 +445,7 @@ export class WebSocketGateway
         };
       }
 
-      await this.driverStatusService.updateDriverAvailability(
+      await this.unifiedUserRedisService.updateDriverAvailability(
         userId,
         payload.status,
       );

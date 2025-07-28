@@ -15,10 +15,6 @@ export class ActiveTripService extends BaseRedisService {
     super(configService, customLogger);
   }
 
-  /*
-    in this redis we can store trip id with connected driver and customer ids
-  */
-
   @WithErrorHandling()
   async setUserActiveTripId(
     userId: string,

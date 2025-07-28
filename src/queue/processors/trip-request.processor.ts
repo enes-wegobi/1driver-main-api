@@ -3,7 +3,6 @@ import { Injectable } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { TripRequestJob, JobResult } from '../interfaces/queue-job.interface';
 import { TripService } from '../../modules/trip/services/trip.service';
-import { DriverStatusService } from '../../redis/services/driver-status.service';
 import { TripStatus } from '../../common/enums/trip-status.enum';
 import { TripQueueService } from '../services/trip-queue.service';
 import { DriverAvailabilityStatus } from 'src/common/enums/driver-availability-status.enum';
@@ -14,18 +13,19 @@ import { BatchDistanceRequest } from 'src/clients/maps/maps.interface';
 import { UserType } from 'src/common/user-type.enum';
 import { LocationService } from 'src/redis/services/location.service';
 import { LoggerService } from 'src/logger/logger.service';
+import { UnifiedUserRedisService } from 'src/redis/services/unified-user-redis.service';
 
 @Processor('trip-requests')
 @Injectable()
 export class TripRequestProcessor extends WorkerHost {
   constructor(
     private readonly tripService: TripService,
-    private readonly driverStatusService: DriverStatusService,
     private readonly event2Service: Event2Service,
     private readonly tripQueueService: TripQueueService,
     private readonly locationService: LocationService,
     private readonly mapsService: MapsService,
     private readonly logger: LoggerService,
+    private readonly unifiedUserRedisService: UnifiedUserRedisService,
   ) {
     super();
   }
@@ -75,7 +75,7 @@ export class TripRequestProcessor extends WorkerHost {
       }
 
       const driverStatus =
-        await this.driverStatusService.getDriverAvailability(driverId);
+        await this.unifiedUserRedisService.getDriverAvailability(driverId);
       if (
         !driverStatus ||
         driverStatus !== DriverAvailabilityStatus.AVAILABLE

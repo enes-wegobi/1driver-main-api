@@ -281,6 +281,47 @@ export class UnifiedUserRedisService extends BaseRedisService {
   }
 
   /**
+   * Check if driver can change availability status
+   */
+  @WithErrorHandling({ canChange: false, reason: 'Service error' })
+  async canChangeAvailability(
+    driverId: string,
+    newStatus: DriverAvailabilityStatus,
+  ): Promise<{ canChange: boolean; reason?: string }> {
+    const currentData = await this.getDriverStatus(driverId);
+    
+    if (!currentData) {
+      return {
+        canChange: false,
+        reason: 'Driver not found or not active',
+      };
+    }
+
+    const currentStatus = currentData.availability;
+
+    // Drivers cannot directly set themselves to ON_TRIP
+    if (newStatus === DriverAvailabilityStatus.ON_TRIP) {
+      return {
+        canChange: false,
+        reason: 'ON_TRIP status is controlled by the trip system',
+      };
+    }
+
+    // If driver is currently ON_TRIP, they cannot change to other statuses
+    if (currentStatus === DriverAvailabilityStatus.ON_TRIP) {
+      return {
+        canChange: false,
+        reason: 'Cannot change availability while on trip',
+      };
+    }
+
+    // Allow all other status changes (AVAILABLE, BUSY, OFFLINE)
+    return {
+      canChange: true,
+    };
+  }
+
+  /**
    * Set driver as inactive
    */
   @WithErrorHandling()
