@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { OnEvent, EventEmitter2 } from '@nestjs/event-emitter';
 import { LoggerService } from 'src/logger/logger.service';
-import { ExpoNotificationsService } from 'src/modules/expo-notifications/expo-notifications.service';
 import { WebSocketService } from 'src/websocket/websocket.service';
 import { AUTH_EVENTS } from '../auth-events.service';
 import {
@@ -13,7 +12,6 @@ import {
 export class AuthEventsHandler {
   constructor(
     private readonly logger: LoggerService,
-    private readonly expoNotifications: ExpoNotificationsService,
     private readonly websocketService: WebSocketService,
     private readonly eventEmitter: EventEmitter2,
   ) {}

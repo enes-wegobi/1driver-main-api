@@ -57,34 +57,6 @@ export class DriverTripQueueService extends BaseRedisService {
   }
 
   /**
-   * Get the next trip for driver (highest priority)
-   */
-  @WithErrorHandling(null)
-  async getNextTripForDriver(
-    driverId: string,
-  ): Promise<DriverQueueItem | null> {
-    const queueKey = RedisKeyGenerator.driverTripQueue(driverId);
-
-    // Get the item with lowest score (highest priority)
-    const result = await this.client.zrange(queueKey, 0, 0, 'WITHSCORES');
-
-    if (!result || result.length === 0) {
-      return null;
-    }
-
-    try {
-      const queueItem: DriverQueueItem = JSON.parse(result[0]);
-      return queueItem;
-    } catch (error) {
-      this.customLogger.error(
-        `Error parsing queue item for driver ${driverId}:`,
-        error,
-      );
-      return null;
-    }
-  }
-
-  /**
    * Remove and get the next trip for driver (pop operation)
    */
   @WithErrorHandling(null)
@@ -172,14 +144,6 @@ export class DriverTripQueueService extends BaseRedisService {
     return false;
   }
 
-  /**
-   * Get driver's queue length
-   */
-  @WithErrorHandling(0)
-  async getDriverQueueLength(driverId: string): Promise<number> {
-    const queueKey = RedisKeyGenerator.driverTripQueue(driverId);
-    return await this.client.zcard(queueKey);
-  }
 
   /**
    * Check if driver is currently processing a trip
@@ -336,27 +300,6 @@ export class DriverTripQueueService extends BaseRedisService {
     return driversWithTrip;
   }
 
-  /**
-   * Remove a specific trip from all driver queues
-   */
-  @WithErrorHandling(0)
-  async removeTripFromAllDriverQueues(tripId: string): Promise<number> {
-    const driversWithTrip = await this.getDriversWithTripInQueue(tripId);
-    let totalRemoved = 0;
-
-    for (const driverId of driversWithTrip) {
-      const removed = await this.removeSpecificTripFromDriver(driverId, tripId);
-      if (removed) {
-        totalRemoved++;
-      }
-    }
-
-    this.customLogger.debug(
-      `Removed trip ${tripId} from ${totalRemoved} driver queues`,
-    );
-
-    return totalRemoved;
-  }
 
   /**
    * Remove a specific trip from all driver queues and return affected drivers
@@ -433,34 +376,6 @@ export class DriverTripQueueService extends BaseRedisService {
   }
 
   /**
-   * Clean up expired processing trips (for maintenance)
-   */
-  @WithErrorHandling(0)
-  async cleanupExpiredProcessingTrips(): Promise<number> {
-    const pattern = RedisKeyGenerator.driverProcessingTrip('*');
-    const keys = await this.client.keys(pattern);
-
-    let cleanedCount = 0;
-
-    for (const key of keys) {
-      const ttl = await this.client.ttl(key);
-      if (ttl === -1) {
-        // Key exists but has no expiry
-        await this.client.del(key);
-        cleanedCount++;
-      }
-    }
-
-    if (cleanedCount > 0) {
-      this.customLogger.info(
-        `Cleaned up ${cleanedCount} expired processing trips`,
-      );
-    }
-
-    return cleanedCount;
-  }
-
-  /**
    * Set driver's last trip request for recovery
    */
   @WithErrorHandling()
@@ -516,68 +431,5 @@ export class DriverTripQueueService extends BaseRedisService {
     await this.client.del(lastRequestKey);
 
     this.customLogger.debug(`Cleared last request for driver ${driverId}`);
-  }
-
-  /**
-   * Get all driver IDs that have any queue data
-   */
-  @WithErrorHandling([])
-  async getAllDriversWithQueueData(): Promise<string[]> {
-    const queuePattern = RedisKeyGenerator.driverTripQueue('*');
-    const processingPattern = RedisKeyGenerator.driverProcessingTrip('*');
-    const lastRequestPattern = RedisKeyGenerator.driverLastRequest('*');
-
-    const [queueKeys, processingKeys, lastRequestKeys] = await Promise.all([
-      this.client.keys(queuePattern),
-      this.client.keys(processingPattern),
-      this.client.keys(lastRequestPattern),
-    ]);
-
-    const driverIds = new Set<string>();
-
-    // Extract driver IDs from all patterns
-    [...queueKeys, ...processingKeys, ...lastRequestKeys].forEach((key) => {
-      const keyParts = key.split(':');
-      if (keyParts.length >= 2) {
-        driverIds.add(keyParts[1]);
-      }
-    });
-
-    return Array.from(driverIds);
-  }
-
-  /**
-   * Get all queue items for all drivers
-   */
-  @WithErrorHandling([])
-  async getAllQueueItems(): Promise<
-    {
-      driverId: string;
-      queueItems: DriverQueueItem[];
-      currentProcessing: string | null;
-      processingStartedAt: number | null;
-    }[]
-  > {
-    const driverIds = await this.getAllDriversWithQueueData();
-
-    const allQueues: {
-      driverId: string;
-      queueItems: DriverQueueItem[];
-      currentProcessing: string | null;
-      processingStartedAt: number | null;
-    }[] = [];
-
-    for (const driverId of driverIds) {
-      const queueStatus = await this.getDriverQueueStatus(driverId);
-
-      allQueues.push({
-        driverId,
-        queueItems: queueStatus.nextTrips,
-        currentProcessing: queueStatus.currentProcessing,
-        processingStartedAt: queueStatus.processingStartedAt,
-      });
-    }
-
-    return allQueues;
   }
 }
