@@ -170,7 +170,7 @@ export class AuthService {
       smsDto.mobileNumber = phone;
       smsDto.otpCode = otp;
 
-      //await this.smsService.sendSMS(smsDto);
+      await this.smsService.sendSMS(smsDto);
       this.logger.info(`OTP SMS sent successfully to ${phone}`);
     } catch (error) {
       this.logger.error(`Failed to send OTP SMS to ${phone}: ${error.message}`);
