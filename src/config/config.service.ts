@@ -9,6 +9,14 @@ export class ConfigService {
     return this.configService.get<number>('port', 3000);
   }
 
+  get nodeEnv(): string {
+    return this.configService.get<string>('environment', 'development');
+  }
+
+  get isDevelopment(): boolean {
+    return this.nodeEnv === 'development';
+  }
+
   get host(): string {
     return this.configService.get<string>('host', '0.0.0.0');
   }

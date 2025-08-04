@@ -2,10 +2,14 @@ import { Injectable, NestMiddleware } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { LoggerService } from './logger.service';
 import { randomUUID } from 'crypto';
+import { ConfigService } from 'src/config/config.service';
 
 @Injectable()
 export class RequestLoggerMiddleware implements NestMiddleware {
-  constructor(private readonly loggerService: LoggerService) {}
+  constructor(
+    private readonly loggerService: LoggerService,
+    private readonly configService: ConfigService,
+  ) {}
 
   use(req: Request, res: Response, next: NextFunction): void {
     const startTime = Date.now();
@@ -32,13 +36,15 @@ export class RequestLoggerMiddleware implements NestMiddleware {
         platform: requestData.platform,
       };
 
-      this.loggerService.logRequest(
-        requestData.method,
-        requestData.url,
-        res.statusCode,
-        duration,
-        logContext,
-      );
+      if (this.configService.isDevelopment || res.statusCode >= 400) {
+        this.loggerService.logRequest(
+          requestData.method,
+          requestData.url,
+          res.statusCode,
+          duration,
+          logContext,
+        );
+      }
     };
 
     res.on('finish', logOnEnd);
