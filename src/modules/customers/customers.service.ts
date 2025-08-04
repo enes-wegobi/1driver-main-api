@@ -8,12 +8,15 @@ import { InitiatePhoneUpdateDto } from 'src/clients/customer/dto/initiate-phone-
 import { UpdateCustomerDto } from 'src/clients/customer/dto/update-customer.dto';
 import { UpdateNotificationPermissionsDto } from 'src/clients/customer/dto/update-notification-permissions.dto';
 import { LoggerService } from 'src/logger/logger.service';
-import { PaymentMethodService } from '../payments/services/payment-method.service';
+import { SMSService } from '../sms/sms.service';
+import { SendSMSDto } from '../sms/dto/send-sms.dto';
+import { MessageType } from '../sms/enums/message-type.enum';
 
 @Injectable()
 export class CustomersService {
   constructor(
     private readonly customersClient: CustomersClient,
+    private readonly smsService: SMSService,
     private readonly logger: LoggerService,
   ) {}
 
@@ -40,7 +43,16 @@ export class CustomersService {
   }
 
   async initiatePhoneUpdate(userId: string, dto: InitiatePhoneUpdateDto) {
-    return this.customersClient.initiatePhoneUpdate(userId, dto);
+    const result =
+      await this.customersClient.initiatePhoneUpdate(userId, dto);
+
+    if (result?.otp) {
+      this.sendOTPSMS(dto.newPhone, result.otp).catch((error) => {
+        this.logger.error(`Failed to send OTP SMS: ${error.message}`);
+      });
+    }
+
+    return result;
   }
 
   async completePhoneUpdate(userId: string, dto: CompletePhoneUpdateDto) {
@@ -104,4 +116,20 @@ export class CustomersService {
   async updateDriverRate(driverId: string, rate: number): Promise<any> {
     return this.customersClient.updateDriverRate(driverId, rate);
   }
+
+    private async sendOTPSMS(phone: string, otp: string): Promise<void> {
+      try {
+        const smsDto = new SendSMSDto();
+        smsDto.messageType = MessageType.OTP;
+        smsDto.message = 'OTP Verification';
+        smsDto.mobileNumber = phone;
+        smsDto.otpCode = otp;
+  
+        await this.smsService.sendSMS(smsDto);
+        this.logger.info(`OTP SMS sent successfully to ${phone}`);
+      } catch (error) {
+        this.logger.error(`Failed to send OTP SMS to ${phone}: ${error.message}`);
+        throw error;
+      }
+    }
 }
