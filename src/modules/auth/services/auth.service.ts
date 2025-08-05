@@ -27,39 +27,36 @@ export class AuthService {
     const result =
       await this.authClient.initiateCustomerSignup(createCustomerDto);
 
-    if (result?.otp) {
-      this.sendOTPSMS(createCustomerDto.phone, result.otp).catch((error) => {
-        this.logger.error(`Failed to send OTP SMS: ${error.message}`);
-      });
+    if (result) {
+      if (result.otp) {
+        this.sendOTPSMS(createCustomerDto.phone, result.otp).catch((error) => {
+          this.logger.error(`Failed to send OTP SMS: ${error.message}`);
+        });
+      }
+
+      if (result.customer) {
+        try {
+          await this.paymentsService.createStripeCustomer(result.customer._id, {
+            name: `${result.customer.name} ${result.customer.surname}`,
+            email: result.customer.email,
+            phone: result.customer.phone,
+          });
+        } catch (error) {
+          this.logger.logError(error, {
+            userId: result.customer._id,
+            userType: UserType.CUSTOMER,
+            action: 'create_stripe_customer_failed',
+          });
+        }
+      }
+
     }
 
     return result;
   }
 
   async completeCustomerSignup(validateOtpDto: ValidateOtpDto) {
-    const result = await this.authClient.completeCustomerSignup(validateOtpDto);
-
-    // Create Stripe customer after successful signup
-    if (result && result.token && result.customer) {
-      try {
-        await this.paymentsService.createStripeCustomer(result.customer._id, {
-          name: `${result.customer.name} ${result.customer.surname}`,
-          email: result.customer.email,
-          phone: result.customer.phone,
-        });
-      } catch (error) {
-        // Log error but don't fail the signup
-        this.logger.logError(error, {
-          userId: result.customer._id,
-          userType: UserType.CUSTOMER,
-          action: 'create_stripe_customer_failed',
-        });
-      }
-
-      return { token: result.token, customer: result.customer };
-    }
-
-    return result;
+    return await this.authClient.completeCustomerSignup(validateOtpDto);
   }
 
   async signinCustomer(signinDto: SigninDto) {
