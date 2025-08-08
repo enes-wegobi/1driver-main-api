@@ -6,7 +6,6 @@ import {
   IsString,
   Matches,
 } from 'class-validator';
-import { Gender } from 'src/clients/auth/gender.enum';
 
 export class UpdateDriverProfileDto {
   @ApiProperty({
@@ -46,14 +45,4 @@ export class UpdateDriverProfileDto {
   @IsDateString()
   dateOfBirth?: string;
 
-  @ApiProperty({
-    example: Gender.MALE,
-    description: 'Gender',
-    enum: Gender,
-    enumName: 'Gender',
-    required: false,
-  })
-  @IsOptional()
-  @IsEnum(Gender)
-  gender?: Gender;
 }

@@ -9,7 +9,6 @@ import {
   IsEmail,
   IsPhoneNumber,
 } from 'class-validator';
-import { Gender } from '../../auth/gender.enum';
 
 export class UpdateCustomerDto {
   @ApiHideProperty()
@@ -45,15 +44,4 @@ export class UpdateCustomerDto {
   @IsOptional()
   @IsDateString()
   dateOfBirth?: string;
-
-  @ApiProperty({
-    example: Gender.MALE,
-    description: 'Gender',
-    enum: Gender,
-    enumName: 'Gender',
-    required: false,
-  })
-  @IsOptional()
-  @IsEnum(Gender)
-  gender?: Gender;
 }
