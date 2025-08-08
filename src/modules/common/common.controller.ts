@@ -26,6 +26,7 @@ import { LoggerService } from 'src/logger/logger.service';
 import { UpdateAppStateDto } from './dto/update-app-state.dto';
 import { TokenValidationResponseDto } from 'src/modules/common/dto/token-validation-response.dto';
 import { TokenManagerService } from 'src/redis/services/token-manager.service';
+import { MobileConfigResponseDto } from './dto/mobile-config-response.dto';
 
 @ApiTags('common')
 @ApiBearerAuth()
@@ -36,6 +37,7 @@ export class CommonController {
     private readonly driverStatusService: DriverStatusService,
     private readonly customerStatusService: CustomerStatusService,
     private readonly tokenManagerService: TokenManagerService,
+    //private readonly mobileConfigService: MobileConfigService,
     private readonly logger: LoggerService,
   ) {}
 
@@ -154,6 +156,38 @@ export class CommonController {
       throw new HttpException(
         'Token validation failed',
         HttpStatus.UNAUTHORIZED,
+      );
+    }
+  }
+
+  @Get('mobile-config')
+  @UseGuards()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Get mobile app configuration',
+    description: 'Returns configuration settings for mobile applications including build version, OTP expiration time, and trip cancellation timeout',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Mobile configuration retrieved successfully',
+    type: MobileConfigResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.INTERNAL_SERVER_ERROR,
+    description: 'Failed to retrieve mobile configuration',
+  })
+  async getMobileConfig() {
+    try {
+      this.logger.info('Fetching mobile configuration');
+      //return await this.mobileConfigService.getMobileConfig();
+    } catch (error) {
+      this.logger.error(
+        `Error fetching mobile config: ${error.message}`,
+        error.stack,
+      );
+      throw new HttpException(
+        'Failed to retrieve mobile configuration',
+        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }

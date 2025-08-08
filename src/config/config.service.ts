@@ -125,4 +125,20 @@ export class ConfigService {
   get tripCostPerMinute(): number {
     return this.configService.get('tripCostPerMinute', 1);
   }
+
+  get mobileBuildVersion(): string {
+    return this.configService.get<string>('mobileConfig.buildVersion', '1.0.0');
+  }
+
+  get mobileOtpExpiryMinutes(): number {
+    return this.configService.get<number>('mobileConfig.otpExpiryMinutes', 2);
+  }
+
+  get mobileTripCancellableTimeMinutes(): number {
+    return this.configService.get<number>('mobileConfig.tripCancellableTimeMinutes', 5);
+  }
+
+  get mobileConfigCacheTtlSeconds(): number {
+    return this.configService.get<number>('mobileConfig.configCacheTtlSeconds', 3600);
+  }
 }
