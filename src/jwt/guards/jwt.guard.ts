@@ -139,9 +139,10 @@ export class JwtAuthGuard implements CanActivate {
     }
 
     // Fallback validation: User Agent comparison
-    if (currentDevice.userAgent && sessionMetadata.userAgent) {
+    /*if (currentDevice.userAgent && sessionMetadata.userAgent) {
       return currentDevice.userAgent === sessionMetadata.userAgent;
     }
+    */
 
     return false;
   }
