@@ -4,10 +4,11 @@ import { JwtModule } from 'src/jwt/jwt.module';
 import { ConfigModule } from 'src/config/config.module';
 import { LoggerModule } from 'src/logger/logger.module';
 import { CommonController } from './common.controller';
+import { AppVersionService } from './services/app-version.service';
 
 @Module({
   imports: [RedisModule, JwtModule, ConfigModule, LoggerModule],
   controllers: [CommonController],
-  providers: [],
+  providers: [AppVersionService],
 })
 export class CommonModule {}

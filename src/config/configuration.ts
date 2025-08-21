@@ -206,4 +206,8 @@ export default () => ({
     tripCancellableTimeMinutes: parseInt(process.env.MOBILE_TRIP_CANCELLABLE_TIME_MINUTES || '5', 10),
     configCacheTtlSeconds: parseInt(process.env.MOBILE_CONFIG_CACHE_TTL_SECONDS || '3600', 10),
   },
+  appVersion: {
+    driverLatestVersion: process.env.DRIVER_LATEST_VERSION || '1.0.0',
+    customerLatestVersion: process.env.CUSTOMER_LATEST_VERSION || '1.0.0',
+  },
 });
