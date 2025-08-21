@@ -250,4 +250,9 @@ export class DriversClient {
     );
     return data;
   }
+
+  async deleteDriver(driverId: string): Promise<any> {
+    const { data } = await this.httpClient.delete(`/drivers/${driverId}`);
+    return data;
+  }
 }

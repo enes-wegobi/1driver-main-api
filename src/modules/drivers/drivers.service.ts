@@ -169,4 +169,8 @@ export class DriversService {
   async updateCustomerRate(customerId: string, rate: number): Promise<any> {
     return this.driversClient.updateCustomerRate(customerId, rate);
   }
+
+  async deleteDriver(driverId: string): Promise<any> {
+    return this.driversClient.deleteDriver(driverId);
+  }
 }

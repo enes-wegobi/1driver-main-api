@@ -733,4 +733,35 @@ export class DriversController {
       );
     }
   }
+
+  @Delete('me')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Delete driver account' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Driver account deleted successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Driver not found',
+  })
+  async deleteDriverAccount(@GetUser() user: IJwtPayload) {
+    try {
+      await this.driversService.deleteDriver(user.userId);
+      return {
+        success: true,
+        message: 'Driver account deleted successfully',
+      };
+    } catch (error) {
+      this.logger.error(
+        `Error deleting driver account: ${error.message}`,
+        error.stack,
+      );
+      throw new HttpException(
+        error.response?.data ||
+          'An error occurred while deleting driver account',
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
 }
