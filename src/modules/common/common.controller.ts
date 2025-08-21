@@ -7,6 +7,7 @@ import {
   UseGuards,
   HttpException,
   Get,
+  Post,
   Request,
 } from '@nestjs/common';
 import {
@@ -26,23 +27,29 @@ import { LoggerService } from 'src/logger/logger.service';
 import { UpdateAppStateDto } from './dto/update-app-state.dto';
 import { TokenValidationResponseDto } from 'src/modules/common/dto/token-validation-response.dto';
 import { TokenManagerService } from 'src/redis/services/token-manager.service';
-import { MobileConfigResponseDto } from './dto/mobile-config-response.dto';
+import { AppStartupRequestDto } from './dto/app-startup-request.dto';
+import { AppStartupResponseDto } from './dto/app-startup-response.dto';
+import { AppVersionService } from './services/app-version.service';
+import { AppType } from './enums/app-type.enum';
+import { ConfigService } from 'src/config/config.service';
+import { ConfigResponseDto } from './dto/config-response.dto';
 
 @ApiTags('common')
-@ApiBearerAuth()
 @Controller('common')
-@UseGuards(JwtAuthGuard)
 export class CommonController {
   constructor(
     private readonly driverStatusService: DriverStatusService,
     private readonly customerStatusService: CustomerStatusService,
     private readonly tokenManagerService: TokenManagerService,
-    //private readonly mobileConfigService: MobileConfigService,
+    private readonly appVersionService: AppVersionService,
+    private readonly configService: ConfigService,
     private readonly logger: LoggerService,
   ) {}
 
   @Put('app-state')
   @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({
     summary: 'Update app state',
     description: 'Updates the user app state (foreground/background)',
@@ -160,35 +167,59 @@ export class CommonController {
     }
   }
 
-  @Get('mobile-config')
-  @UseGuards()
+  @Get('config')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Get mobile app configuration',
-    description: 'Returns configuration settings for mobile applications including build version, OTP expiration time, and trip cancellation timeout',
+    summary: 'Get app configuration',
+    description: 'Returns configuration settings for applications',
   })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Mobile configuration retrieved successfully',
-    type: MobileConfigResponseDto,
+    description: 'Configuration retrieved successfully',
+    type: ConfigResponseDto,
   })
+  async getConfig(): Promise<ConfigResponseDto> {
+    return {
+      otpExpirySeconds: this.configService.mobileOtpExpiryMinutes * 60,
+      tripCancellableTimeSeconds: this.configService.mobileTripCancellableTimeMinutes * 60,
+    };
+  }
+
+  @Post('driver/check-version')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'App startup version check',
+    description: 'Checks if app version requires force update based on app type',
+  })
+  @ApiBody({ type: AppStartupRequestDto })
   @ApiResponse({
-    status: HttpStatus.INTERNAL_SERVER_ERROR,
-    description: 'Failed to retrieve mobile configuration',
+    status: HttpStatus.OK,
+    description: 'Version check completed successfully',
+    type: AppStartupResponseDto,
   })
-  async getMobileConfig() {
-    try {
-      this.logger.info('Fetching mobile configuration');
-      //return await this.mobileConfigService.getMobileConfig();
-    } catch (error) {
-      this.logger.error(
-        `Error fetching mobile config: ${error.message}`,
-        error.stack,
-      );
-      throw new HttpException(
-        'Failed to retrieve mobile configuration',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
+  async checkDriverAppStartup(@Body() payload: AppStartupRequestDto): Promise<AppStartupResponseDto> {
+    return this.appVersionService.checkForceUpdate(
+      AppType.DRIVER,
+      payload.version,
+    );
+  }
+
+  @Post('customer/check-version')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'App startup version check',
+    description: 'Checks if app version requires force update based on app type',
+  })
+  @ApiBody({ type: AppStartupRequestDto })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Version check completed successfully',
+    type: AppStartupResponseDto,
+  })
+  async checkCustomerAppStartup(@Body() payload: AppStartupRequestDto): Promise<AppStartupResponseDto> {
+    return this.appVersionService.checkForceUpdate(
+      AppType.CUSTOMER,
+      payload.version,
+    );
   }
 }
