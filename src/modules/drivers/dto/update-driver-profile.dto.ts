@@ -1,10 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
   IsDateString,
-  IsEnum,
   IsOptional,
   IsString,
-  Matches,
 } from 'class-validator';
 
 export class UpdateDriverProfileDto {
@@ -25,16 +23,6 @@ export class UpdateDriverProfileDto {
   @IsOptional()
   @IsString()
   surname?: string;
-
-  @ApiProperty({
-    example: '123456789011111',
-    description: 'National identity number (15 digits)',
-    required: false,
-  })
-  @IsOptional()
-  @IsString()
-  @Matches(/^\d{15}$/, { message: 'Identity number must be 15 digits' })
-  identityNumber?: string;
 
   @ApiProperty({
     example: '1993-06-17',
