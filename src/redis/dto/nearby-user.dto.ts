@@ -1,5 +1,5 @@
+import { DriverAvailabilityStatus } from 'src/common/enums/driver-availability-status.enum';
 import { UserType } from 'src/common/user-type.enum';
-import { DriverAvailabilityStatus } from 'src/websocket/dto/driver-location.dto';
 
 /**
  * Coordinates interface representing longitude and latitude

@@ -1,0 +1,1459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Uber-Style Payment System - Stripe Integration</title>
+    <script src="https://js.stripe.com/v3/"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #635bff 0%, #5a52ff 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 16px;
+        }
+
+        .progress-bar {
+            height: 4px;
+            background-color: rgba(255, 255, 255, 0.2);
+            margin-top: 20px;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background-color: white;
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 2px;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .step {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .step.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .step-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .step-number {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #635bff 0%, #5a52ff 100%);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            margin-right: 15px;
+        }
+
+        .step-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #32325d;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #6b7c93;
+            font-size: 14px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid #e6ebf1;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.15s ease;
+        }
+
+        .form-group input:focus {
+            border-color: #635bff;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #635bff 0%, #5a52ff 100%);
+            color: white;
+            padding: 14px 28px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.15s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(99, 91, 255, 0.3);
+        }
+
+        .btn:disabled {
+            background: #e6ebf1;
+            color: #8898aa;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-secondary {
+            background: #f6f9fc;
+            color: #6b7c93;
+            border: 2px solid #e6ebf1;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: #e6ebf1;
+            border-color: #d1d9e0;
+        }
+
+        .trip-info {
+            background: linear-gradient(135deg, #e7f3ff 0%, #f0f8ff 100%);
+            border: 2px solid #b8daff;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 30px;
+        }
+
+        .trip-info h3 {
+            color: #004085;
+            margin-bottom: 16px;
+            font-size: 18px;
+        }
+
+        .trip-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+
+        .trip-detail {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .trip-detail-label {
+            font-size: 12px;
+            color: #6b7c93;
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .trip-detail-value {
+            font-size: 16px;
+            color: #32325d;
+            font-weight: 500;
+        }
+
+        .amount {
+            font-size: 32px;
+            font-weight: 700;
+            color: #635bff;
+        }
+
+        .payment-methods {
+            display: grid;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .payment-method-card {
+            border: 2px solid #e6ebf1;
+            border-radius: 12px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            position: relative;
+        }
+
+        .payment-method-card:hover {
+            border-color: #635bff;
+            box-shadow: 0 4px 12px rgba(99, 91, 255, 0.1);
+        }
+
+        .payment-method-card.selected {
+            border-color: #635bff;
+            background: linear-gradient(135deg, #f8f7ff 0%, #f0f0ff 100%);
+        }
+
+        .payment-method-card.default::before {
+            content: "Varsayılan";
+            position: absolute;
+            top: -8px;
+            right: 16px;
+            background: #00d924;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .card-info {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .card-brand {
+            width: 40px;
+            height: 25px;
+            background: #6b7c93;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .card-details h4 {
+            color: #32325d;
+            margin-bottom: 4px;
+        }
+
+        .card-details p {
+            color: #6b7c93;
+            font-size: 14px;
+        }
+
+        .add-new-card {
+            border: 2px dashed #e6ebf1;
+            border-radius: 12px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .add-new-card:hover {
+            border-color: #635bff;
+            background: #f8f7ff;
+        }
+
+        .add-new-card.active {
+            border-color: #635bff;
+            background: #f8f7ff;
+        }
+
+        #card-element {
+            padding: 14px 16px;
+            border: 2px solid #e6ebf1;
+            border-radius: 8px;
+            background-color: white;
+            margin-top: 16px;
+        }
+
+        #card-element.StripeElement--focus {
+            border-color: #635bff;
+            box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
+        }
+
+        #card-errors {
+            color: #fa755a;
+            margin-top: 12px;
+            font-size: 14px;
+        }
+
+        .status-message {
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .status-success {
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+            border: 2px solid #b8e6c1;
+            color: #155724;
+        }
+
+        .status-error {
+            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+            border: 2px solid #f1aeb5;
+            color: #721c24;
+        }
+
+        .status-warning {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+            border: 2px solid #ffd93d;
+            color: #856404;
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            padding: 40px;
+            color: #635bff;
+        }
+
+        .spinner {
+            width: 24px;
+            height: 24px;
+            border: 3px solid #e6ebf1;
+            border-top: 3px solid #635bff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .navigation {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e6ebf1;
+        }
+
+        .icon {
+            width: 20px;
+            height: 20px;
+        }
+
+        .retry-section {
+            background: #fff3cd;
+            border: 2px solid #ffd93d;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .retry-section h4 {
+            color: #856404;
+            margin-bottom: 12px;
+        }
+
+        .retry-section p {
+            color: #856404;
+            margin-bottom: 16px;
+        }
+
+        .alert {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            border-left: 4px solid;
+        }
+
+        .alert-success {
+            background-color: #d4edda;
+            border-color: #28a745;
+            color: #155724;
+        }
+
+        .alert-error {
+            background-color: #f8d7da;
+            border-color: #dc3545;
+            color: #721c24;
+        }
+
+        .alert-info {
+            background-color: #d1ecf1;
+            border-color: #17a2b8;
+            color: #0c5460;
+        }
+
+        .setup-intent-info {
+            background: #e7f3ff;
+            border: 2px solid #b8daff;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .setup-intent-info h4 {
+            color: #004085;
+            margin-bottom: 12px;
+        }
+
+        .setup-intent-info p {
+            color: #004085;
+            margin-bottom: 8px;
+        }
+
+        .requires-action {
+            background: #fff3cd;
+            border: 2px solid #ffd93d;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .requires-action h4 {
+            color: #856404;
+            margin-bottom: 12px;
+        }
+
+        .requires-action p {
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚗 Uber-Style Payment System</h1>
+            <p>Setup Intent + Off-Session Payment Intent</p>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+        </div>
+
+        <div class="content">
+            <!-- Step 1: Configuration -->
+            <div class="step active" id="step1">
+                <div class="step-header">
+                    <div class="step-number">1</div>
+                    <div class="step-title">Sistem Konfigürasyonu</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="apiUrl">API Base URL:</label>
+                    <input type="url" id="apiUrl" value="https://1drive-dev.wegobitest.com/api" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="stripePublishableKey">Stripe Publishable Key:</label>
+                    <input type="text" id="stripePublishableKey" placeholder="pk_test_..." required>
+                </div>
+
+                <div class="form-group">
+                    <label for="jwtToken">JWT Token:</label>
+                    <input type="text" id="jwtToken" placeholder="Bearer token..." required>
+                </div>
+
+                <div class="navigation">
+                    <div></div>
+                    <button class="btn" onclick="initializeSystem()">
+                        <span>Sistemi Başlat</span>
+                        <svg class="icon" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 2: Trip Information -->
+            <div class="step" id="step2">
+                <div class="step-header">
+                    <div class="step-number">2</div>
+                    <div class="step-title">Trip Bilgileri</div>
+                </div>
+
+                <div class="trip-info" id="tripInfo">
+                    <h3>Aktif Trip Detayları</h3>
+                    <div class="trip-details" id="tripDetails">
+                        <!-- Trip details will be populated here -->
+                    </div>
+                </div>
+
+                <div class="navigation">
+                    <button class="btn btn-secondary" onclick="goToStep(1)">
+                        <svg class="icon" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"></path>
+                        </svg>
+                        <span>Geri</span>
+                    </button>
+                    <button class="btn" onclick="goToStep(3)">
+                        <span>Ödeme Yöntemini Seç</span>
+                        <svg class="icon" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 3: Payment Method Selection -->
+            <div class="step" id="step3">
+                <div class="step-header">
+                    <div class="step-number">3</div>
+                    <div class="step-title">Ödeme Yöntemi Seçimi</div>
+                </div>
+
+                <div id="retrySection" class="retry-section hidden">
+                    <h4>⚠️ Ödeme Başarısız</h4>
+                    <p>Önceki ödeme işlemi başarısız oldu. Lütfen farklı bir ödeme yöntemi seçin veya kart bilgilerinizi kontrol edin.</p>
+                </div>
+
+                <div class="payment-methods" id="paymentMethods">
+                    <!-- Payment methods will be populated here -->
+                </div>
+
+                <div class="add-new-card" id="addNewCard" onclick="toggleNewCardForm()">
+                    <div>
+                        <svg width="48" height="48" fill="#635bff" viewBox="0 0 24 24" style="margin-bottom: 12px;">
+                            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                        </svg>
+                        <h4 style="color: #635bff; margin-bottom: 8px;">Yeni Kart Ekle (Setup Intent)</h4>
+                        <p style="color: #6b7c93;">Güvenli Setup Intent ile yeni bir ödeme kartı ekleyin</p>
+                    </div>
+                </div>
+
+                <div id="newCardForm" class="hidden" style="margin-top: 20px;">
+                    <div class="setup-intent-info">
+                        <h4>🔒 Setup Intent Akışı</h4>
+                        <p>• Setup Intent oluşturulacak</p>
+                        <p>• Kart bilgileri Stripe ile doğrulanacak</p>
+                        <p>• Başarılı doğrulama sonrası backend'e kaydedilecek</p>
+                    </div>
+                    
+                    <h4 style="margin-bottom: 16px; color: #32325d;">Yeni Kart Bilgileri</h4>
+                    <div class="form-group">
+                        <label for="cardName">Kart Üzerindeki İsim (İsteğe bağlı):</label>
+                        <input type="text" id="cardName" placeholder="Örn: İş Kartım">
+                    </div>
+                    <div id="card-element"></div>
+                    <div id="card-errors"></div>
+                    <button class="btn" id="addCardBtn" onclick="addNewCardWithSetupIntent()" style="margin-top: 16px;">
+                        <span>Setup Intent ile Kart Ekle</span>
+                    </button>
+                </div>
+
+                <div class="navigation">
+                    <button class="btn btn-secondary" onclick="goToStep(2)">
+                        <svg class="icon" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"></path>
+                        </svg>
+                        <span>Geri</span>
+                    </button>
+                    <button class="btn" id="proceedToPayment" onclick="proceedToPayment()" disabled>
+                        <span>Ödemeye Geç</span>
+                        <svg class="icon" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 4: Payment Processing -->
+            <div class="step" id="step4">
+                <div class="step-header">
+                    <div class="step-number">4</div>
+                    <div class="step-title">Off-Session Payment Intent</div>
+                </div>
+
+                <div class="trip-info">
+                    <h3>Ödeme Özeti</h3>
+                    <div id="paymentSummary">
+                        <!-- Payment summary will be populated here -->
+                    </div>
+                </div>
+
+                <div id="requiresActionSection" class="requires-action hidden">
+                    <h4>🔐 3D Secure Doğrulaması Gerekli</h4>
+                    <p>Ödemeniz için 3D Secure doğrulaması gerekiyor. Lütfen aşağıdaki butona tıklayın.</p>
+                    <button class="btn" id="confirm3DSecure" onclick="handle3DSecure()" style="margin-top: 16px;">
+                        <span>3D Secure Doğrulaması Yap</span>
+                    </button>
+                </div>
+
+                <div id="paymentStatus" class="loading">
+                    <div class="spinner"></div>
+                    <span>Off-session Payment Intent oluşturuluyor...</span>
+                </div>
+
+                <div class="navigation">
+                    <button class="btn btn-secondary" onclick="goToStep(3)" id="backToPaymentMethod">
+                        <svg class="icon" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"></path>
+                        </svg>
+                        <span>Geri</span>
+                    </button>
+                    <button class="btn hidden" id="retryPaymentBtn" onclick="retryPayment()">
+                        <span>Tekrar Dene</span>
+                        <svg class="icon" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 5: Result -->
+            <div class="step" id="step5">
+                <div class="step-header">
+                    <div class="step-number">5</div>
+                    <div class="step-title">Sonuç</div>
+                </div>
+
+                <div id="finalResult">
+                    <!-- Final result will be populated here -->
+                </div>
+
+                <div class="navigation">
+                    <button class="btn" onclick="startNewPayment()">
+                        <span>Yeni Ödeme</span>
+                        <svg class="icon" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let stripe;
+        let cardElement;
+        let currentStep = 1;
+        let apiUrl = '';
+        let jwtToken = '';
+        let activeTripData = null;
+        let paymentMethods = [];
+        let selectedPaymentMethodId = null;
+        let isRetryMode = false;
+        let currentPaymentIntentId = null;
+        let currentClientSecret = null;
+        let currentSetupIntent = null;
+
+        // Configuration storage (in-memory)
+        let savedConfig = {
+            apiUrl: 'http://127.0.0.1:3000/api',
+            stripeKey: '',
+            jwtToken: ''
+        };
+
+        // Initialize system
+        async function initializeSystem() {
+            apiUrl = document.getElementById('apiUrl').value.trim();
+            const stripeKey = document.getElementById('stripePublishableKey').value.trim();
+            jwtToken = document.getElementById('jwtToken').value.trim();
+
+            if (!apiUrl || !stripeKey || !jwtToken) {
+                showAlert('Lütfen tüm alanları doldurun', 'error');
+                return;
+            }
+
+            // Save config in memory
+            savedConfig = { apiUrl, stripeKey, jwtToken };
+
+            try {
+                showLoading('Sistem başlatılıyor...');
+                
+                // Initialize Stripe
+                stripe = Stripe(stripeKey);
+                
+                // Load active trip
+                await loadActiveTripData();
+                
+                // Load payment methods
+                await loadPaymentMethods();
+                
+                hideLoading();
+                goToStep(2);
+                
+            } catch (error) {
+                hideLoading();
+                showAlert(`Sistem başlatılamadı: ${error.message}`, 'error');
+            }
+        }
+
+        // Load active trip data
+        async function loadActiveTripData() {
+            const response = await fetch(`${apiUrl}/customer-trips/active`, {
+                headers: {
+                    'Authorization': jwtToken.startsWith('Bearer ') ? jwtToken : `Bearer ${jwtToken}`
+                }
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Aktif trip bulunamadı: ${response.status} ${errorText}`);
+            }
+
+            const result = await response.json();
+            if (!result.success || !result.trip) {
+                throw new Error('Aktif trip bulunamadı');
+            }
+
+            activeTripData = result.trip;
+            displayTripInfo();
+        }
+
+        // Display trip information
+        function displayTripInfo() {
+            const tripDetails = document.getElementById('tripDetails');
+            const trip = activeTripData;
+            
+            tripDetails.innerHTML = `
+                <div class="trip-detail">
+                    <div class="trip-detail-label">Trip ID</div>
+                    <div class="trip-detail-value">${trip._id}</div>
+                </div>
+                <div class="trip-detail">
+                    <div class="trip-detail-label">Müşteri</div>
+                    <div class="trip-detail-value">${trip.customer.name} ${trip.customer.surname}</div>
+                </div>
+                <div class="trip-detail">
+                    <div class="trip-detail-label">Sürücü</div>
+                    <div class="trip-detail-value">${trip.driver ? `${trip.driver.name} ${trip.driver.surname}` : 'Atanmamış'}</div>
+                </div>
+                <div class="trip-detail">
+                    <div class="trip-detail-label">Rota</div>
+                    <div class="trip-detail-value">${trip.route.map(r => r.name).join(' → ')}</div>
+                </div>
+                <div class="trip-detail">
+                    <div class="trip-detail-label">Tutar</div>
+                    <div class="trip-detail-value">
+                        <span class="amount">${trip.finalCost.toFixed(2)} €</span>
+                    </div>
+                </div>
+                <div class="trip-detail">
+                    <div class="trip-detail-label">Durum</div>
+                    <div class="trip-detail-value">${trip.status}</div>
+                </div>
+            `;
+        }
+
+        // Load payment methods with corrected API structure
+        async function loadPaymentMethods() {
+            const response = await fetch(`${apiUrl}/payment-methods`, {
+                headers: {
+                    'Authorization': jwtToken.startsWith('Bearer ') ? jwtToken : `Bearer ${jwtToken}`
+                }
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Ödeme yöntemleri yüklenemedi: ${response.status} ${errorText}`);
+            }
+
+            paymentMethods = await response.json();
+            
+            // Check if response is an array
+            if (!Array.isArray(paymentMethods)) {
+                throw new Error('API yanıtı beklenen format değil');
+            }
+
+            displayPaymentMethods();
+        }
+
+        // Display payment methods with corrected data structure
+        function displayPaymentMethods() {
+            const container = document.getElementById('paymentMethods');
+            
+            if (paymentMethods.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #6b7c93; padding: 20px;">Kayıtlı ödeme yöntemi bulunamadı. Lütfen yeni bir kart ekleyin.</p>';
+                return;
+            }
+
+            container.innerHTML = paymentMethods.map(pm => `
+                <div class="payment-method-card ${pm.isDefault ? 'default' : ''}" 
+                     onclick="selectPaymentMethod('${pm._id}')" 
+                     data-payment-method-id="${pm._id}">
+                    <div class="card-info">
+                        <div class="card-brand">${pm.brand ? pm.brand.toUpperCase() : 'CARD'}</div>
+                        <div class="card-details">
+                            <h4>**** **** **** ${pm.last4}</h4>
+                            <p>Son Kullanma: ${pm.expiryMonth}/${pm.expiryYear}</p>
+                            ${pm.name ? `<p style="font-weight: 500; color: #32325d;">${pm.name}</p>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Select payment method
+        function selectPaymentMethod(paymentMethodId) {
+            selectedPaymentMethodId = paymentMethodId;
+            
+            // Update UI
+            document.querySelectorAll('.payment-method-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            
+            const selectedCard = document.querySelector(`[data-payment-method-id="${paymentMethodId}"]`);
+            if (selectedCard) {
+                selectedCard.classList.add('selected');
+            }
+            
+            // Hide new card form if open
+            document.getElementById('newCardForm').classList.add('hidden');
+            document.getElementById('addNewCard').classList.remove('active');
+            
+            // Enable proceed button
+            document.getElementById('proceedToPayment').disabled = false;
+        }
+
+        // Toggle new card form
+        function toggleNewCardForm() {
+            const form = document.getElementById('newCardForm');
+            const addCardDiv = document.getElementById('addNewCard');
+            
+            if (form.classList.contains('hidden')) {
+                // Show form
+                form.classList.remove('hidden');
+                addCardDiv.classList.add('active');
+                
+                // Clear selected payment method
+                selectedPaymentMethodId = null;
+                document.querySelectorAll('.payment-method-card').forEach(card => {
+                    card.classList.remove('selected');
+                });
+                document.getElementById('proceedToPayment').disabled = true;
+                
+                // Initialize Stripe Elements if not already done
+                if (!cardElement) {
+                    initializeStripeElements();
+                }
+            } else {
+                // Hide form
+                form.classList.add('hidden');
+                addCardDiv.classList.remove('active');
+            }
+        }
+
+        // Initialize Stripe Elements
+        function initializeStripeElements() {
+            const elements = stripe.elements();
+            
+            cardElement = elements.create('card', {
+                style: {
+                    base: {
+                        fontSize: '16px',
+                        color: '#424770',
+                        '::placeholder': {
+                            color: '#aab7c4',
+                        },
+                    },
+                },
+            });
+            
+            cardElement.mount('#card-element');
+            
+            cardElement.on('change', ({error}) => {
+                const displayError = document.getElementById('card-errors');
+                if (error) {
+                    displayError.textContent = error.message;
+                } else {
+                    displayError.textContent = '';
+                }
+            });
+        }
+
+        // Add new card with Setup Intent (Uber-style)
+        async function addNewCardWithSetupIntent() {
+            console.log('🚀 Setup Intent başlatılıyor...');
+            
+            const addCardBtn = document.getElementById('addCardBtn');
+            const cardName = document.getElementById('cardName').value.trim();
+            
+            console.log('📝 Kart ismi:', cardName);
+            console.log('🔧 Card Element:', cardElement);
+            
+            if (!cardElement) {
+                showAlert('Kart elementi bulunamadı. Lütfen sayfayı yenileyin.', 'error');
+                return;
+            }
+            
+            addCardBtn.disabled = true;
+            addCardBtn.innerHTML = '<div class="spinner" style="width: 16px; height: 16px; margin-right: 8px;"></div>Setup Intent oluşturuluyor...';
+            
+            try {
+                console.log('📡 Backend\'e Setup Intent isteği gönderiliyor...');
+                console.log('🌐 API URL:', `${apiUrl}/payment-methods/setup-intent`);
+                
+                // Step 1: Create Setup Intent from backend
+                const setupIntentResponse = await fetch(`${apiUrl}/payment-methods/setup-intent`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': jwtToken.startsWith('Bearer ') ? jwtToken : `Bearer ${jwtToken}`
+                    },
+                    body: JSON.stringify({
+                        metadata: { source: 'web_app' }
+                    })
+                });
+                
+                console.log('📥 Setup Intent Response Status:', setupIntentResponse.status);
+                
+                if (!setupIntentResponse.ok) {
+                    const error = await setupIntentResponse.json();
+                    console.error('❌ Setup Intent Error:', error);
+                    throw new Error(error.message || 'Setup Intent oluşturulamadı');
+                }
+                
+                const setupIntentData = await setupIntentResponse.json();
+                console.log('✅ Setup Intent Data:', setupIntentData);
+                currentSetupIntent = setupIntentData;
+                
+                addCardBtn.innerHTML = '<div class="spinner" style="width: 16px; height: 16px; margin-right: 8px;"></div>Kart doğrulanıyor...';
+                
+                console.log('🔐 Stripe ile Setup Intent doğrulanıyor...');
+                console.log('🔑 Client Secret:', setupIntentData.client_secret);
+                
+                // Step 2: First create payment method, then confirm Setup Intent
+                console.log('🔧 Payment method oluşturuluyor...');
+                const { error: pmError, paymentMethod } = await stripe.createPaymentMethod({
+                    type: 'card',
+                    card: cardElement,
+                    billing_details: {
+                        name: cardName || undefined,
+                    },
+                });
+                
+                if (pmError) {
+                    console.error('❌ Payment Method Error:', pmError);
+                    throw new Error(pmError.message);
+                }
+                
+                console.log('✅ Payment Method oluşturuldu:', paymentMethod.id);
+                
+                // Now confirm Setup Intent with the payment method ID
+                const { error, setupIntent } = await stripe.confirmSetupIntent(
+                    setupIntentData.client_secret,
+                    {
+                        payment_method: paymentMethod.id
+                    }
+                );
+                
+                console.log('🔐 Stripe confirmSetupIntent sonucu:');
+                console.log('❌ Error:', error);
+                console.log('✅ Setup Intent:', setupIntent);
+                
+                if (error) {
+                    console.error('❌ Stripe Error:', error);
+                    throw new Error(error.message);
+                }
+                
+                if (setupIntent.status !== 'succeeded') {
+                    console.error('❌ Setup Intent Status:', setupIntent.status);
+                    throw new Error('Setup Intent başarısız: ' + setupIntent.status);
+                }
+                
+                console.log('✅ Setup Intent başarılı! Payment Method ID:', setupIntent.payment_method);
+                
+                addCardBtn.innerHTML = '<div class="spinner" style="width: 16px; height: 16px; margin-right: 8px;"></div>Backend\'e kaydediliyor...';
+                
+                console.log('💾 Backend\'e payment method kaydediliyor...');
+                
+                // Step 3: Save payment method to backend
+                const saveResponse = await fetch(`${apiUrl}/payment-methods`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': jwtToken.startsWith('Bearer ') ? jwtToken : `Bearer ${jwtToken}`
+                    },
+                    body: JSON.stringify({
+                        setupIntentId: setupIntent.id,
+                        paymentMethodId: setupIntent.payment_method,
+                        name: cardName || undefined
+                    })
+                });
+                
+                console.log('📥 Save Response Status:', saveResponse.status);
+                
+                if (!saveResponse.ok) {
+                    const error = await saveResponse.json();
+                    console.error('❌ Save Error:', error);
+                    throw new Error(error.message || 'Kart kaydedilemedi');
+                }
+                
+                const newPaymentMethod = await saveResponse.json();
+                console.log('✅ Yeni Payment Method:', newPaymentMethod);
+                
+                // Reload payment methods
+                console.log('🔄 Payment method listesi yenileniyor...');
+                await loadPaymentMethods();
+                
+                // Select the new payment method
+                selectPaymentMethod(newPaymentMethod._id);
+                
+                // Hide form
+                document.getElementById('newCardForm').classList.add('hidden');
+                document.getElementById('addNewCard').classList.remove('active');
+                
+                // Clear form
+                cardElement.clear();
+                document.getElementById('cardName').value = '';
+                
+                console.log('🎉 Setup Intent akışı tamamlandı!');
+                showAlert('Kart başarıyla Setup Intent ile eklendi!', 'success');
+                
+            } catch (error) {
+                console.error('❌ Setup Intent Hatası:', error);
+                showAlert(`Setup Intent hatası: ${error.message}`, 'error');
+            } finally {
+                addCardBtn.disabled = false;
+                addCardBtn.innerHTML = '<span>Setup Intent ile Kart Ekle</span>';
+            }
+        }
+
+        // Proceed to payment
+        function proceedToPayment() {
+            if (!selectedPaymentMethodId) {
+                showAlert('Lütfen bir ödeme yöntemi seçin', 'error');
+                return;
+            }
+            
+            goToStep(4);
+            processPayment();
+        }
+
+        // Process payment using off-session Payment Intent (Uber-style)
+        async function processPayment() {
+            try {
+                updatePaymentStatus('loading', 'Off-session Payment Intent oluşturuluyor...');
+                
+                // Validate selected payment method exists
+                const selectedMethod = paymentMethods.find(pm => pm._id === selectedPaymentMethodId);
+                if (!selectedMethod) {
+                    throw new Error('Seçilen ödeme yöntemi bulunamadı');
+                }
+
+                const endpoint = 
+                    `${apiUrl}/customer-trips/process-payment`;
+                
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': jwtToken.startsWith('Bearer ') ? jwtToken : `Bearer ${jwtToken}`
+                    },
+                    body: JSON.stringify({
+                        paymentMethodId: selectedPaymentMethodId // Use payment method's own _id
+                    })
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.message || 'Ödeme başlatılamadı');
+                }
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Check if 3D Secure is required
+                    if (result.requiresAction && result.clientSecret) {
+                        currentClientSecret = result.clientSecret;
+                        currentPaymentIntentId = result.paymentIntentId;
+                        show3DSecureRequired();
+                    } else if (result.payment) {
+                        // Payment succeeded without 3D Secure
+                        currentPaymentIntentId = result.paymentIntentId || result.payment.stripePaymentIntentId;
+                        
+                        // Wait for webhook to process
+                        setTimeout(() => {
+                            checkPaymentStatus();
+                        }, 2000);
+                    } else {
+                        throw new Error('Beklenmeyen ödeme yanıtı');
+                    }
+                } else {
+                    throw new Error(result.message || 'Ödeme başlatılamadı');
+                }
+                
+            } catch (error) {
+                showPaymentError(error.message);
+            }
+        }
+
+        // Show 3D Secure required section
+        function show3DSecureRequired() {
+            updatePaymentStatus('warning', '⚠️ 3D Secure Doğrulaması Gerekli');
+            document.getElementById('requiresActionSection').classList.remove('hidden');
+        }
+
+        // Handle 3D Secure authentication
+        async function handle3DSecure() {
+            if (!currentClientSecret) {
+                showAlert('3D Secure client secret bulunamadı', 'error');
+                return;
+            }
+
+            const confirm3DBtn = document.getElementById('confirm3DSecure');
+            confirm3DBtn.disabled = true;
+            confirm3DBtn.innerHTML = '<div class="spinner" style="width: 16px; height: 16px; margin-right: 8px;"></div>3D Secure işleniyor...';
+
+            try {
+                updatePaymentStatus('loading', '3D Secure doğrulaması yapılıyor...');
+                
+                // Confirm payment intent with 3D Secure
+                const { error, paymentIntent } = await stripe.confirmCardPayment(currentClientSecret);
+                
+                if (error) {
+                    throw new Error(error.message);
+                }
+                
+                if (paymentIntent.status === 'succeeded') {
+                    // Hide 3D Secure section
+                    document.getElementById('requiresActionSection').classList.add('hidden');
+                    
+                    // Wait for webhook to process
+                    setTimeout(() => {
+                        checkPaymentStatus();
+                    }, 2000);
+                } else {
+                    throw new Error('3D Secure doğrulaması başarısız: ' + paymentIntent.status);
+                }
+                
+            } catch (error) {
+                showPaymentError(`3D Secure hatası: ${error.message}`);
+            } finally {
+                confirm3DBtn.disabled = false;
+                confirm3DBtn.innerHTML = '<span>3D Secure Doğrulaması Yap</span>';
+            }
+        }
+
+        // Confirm payment with Stripe
+        async function confirmPaymentWithStripe(paymentIntentId) {
+            try {
+                updatePaymentStatus('loading', 'Ödeme onaylanıyor...');
+                
+                // Get payment intent from Stripe
+                const paymentIntent = await stripe.retrievePaymentIntent(paymentIntentId);
+                
+                if (paymentIntent.error) {
+                    throw new Error(paymentIntent.error.message);
+                }
+                
+                if (paymentIntent.paymentIntent.status === 'requires_confirmation') {
+                    const confirmResult = await stripe.confirmCardPayment(paymentIntentId);
+                    
+                    if (confirmResult.error) {
+                        throw new Error(confirmResult.error.message);
+                    }
+                    
+                    if (confirmResult.paymentIntent.status === 'succeeded') {
+                        // Wait a moment for webhook to process
+                        setTimeout(() => {
+                            checkPaymentStatus();
+                        }, 2000);
+                    } else {
+                        throw new Error('Ödeme onaylanamadı');
+                    }
+                } else if (paymentIntent.paymentIntent.status === 'succeeded') {
+                    checkPaymentStatus();
+                } else {
+                    throw new Error('Ödeme durumu: ' + paymentIntent.paymentIntent.status);
+                }
+                
+            } catch (error) {
+                showPaymentError(error.message);
+            }
+        }
+
+        // Check payment status
+        async function checkPaymentStatus() {
+            try {
+                const response = await fetch(`${apiUrl}/customer-trips/payment-status`, {
+                    headers: {
+                        'Authorization': jwtToken.startsWith('Bearer ') ? jwtToken : `Bearer ${jwtToken}`
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Ödeme durumu kontrol edilemedi');
+                }
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Check if trip is already completed and paid
+                    if (result.trip && result.trip.paymentStatus === 'PAID') {
+                        // Trip is already paid, show success
+                        const mockResult = {
+                            currentPayment: {
+                                _id: 'completed',
+                                status: 'SUCCEEDED'
+                            }
+                        };
+                        showPaymentSuccess(mockResult);
+                        return;
+                    }
+                    
+                    // Check current payment status
+                    if (result.currentPayment) {
+                        if (result.currentPayment.status === 'SUCCEEDED') {
+                            showPaymentSuccess(result);
+                        } else if (result.currentPayment.status === 'FAILED') {
+                            showPaymentError('Ödeme başarısız oldu');
+                        } else {
+                            // Still processing, check again
+                            setTimeout(() => {
+                                checkPaymentStatus();
+                            }, 3000);
+                        }
+                    } else {
+                        throw new Error('Ödeme durumu alınamadı');
+                    }
+                } else {
+                    throw new Error('Ödeme durumu alınamadı');
+                }
+                
+            } catch (error) {
+                showPaymentError(error.message);
+            }
+        }
+
+        // Show payment success
+        function showPaymentSuccess(result) {
+            updatePaymentStatus('success', '✅ Ödeme Başarılı!');
+            
+            const finalResult = document.getElementById('finalResult');
+            finalResult.innerHTML = `
+                <div class="status-message status-success">
+                    <h3>🎉 Ödeme Başarıyla Tamamlandı!</h3>
+                    <p>Trip ödemeniz başarıyla işlendi.</p>
+                    <div style="margin-top: 20px;">
+                        <p><strong>Ödeme ID:</strong> ${result.currentPayment?._id || result.payment?._id}</p>
+                        <p><strong>Tutar:</strong> ${activeTripData.finalCost.toFixed(2)} €</p>
+                        <p><strong>Trip ID:</strong> ${activeTripData._id}</p>
+                    </div>
+                </div>
+            `;
+            
+            goToStep(5);
+        }
+
+        // Show payment error
+        function showPaymentError(message) {
+            updatePaymentStatus('error', '❌ Ödeme Başarısız');
+            
+            document.getElementById('retryPaymentBtn').classList.remove('hidden');
+            document.getElementById('backToPaymentMethod').classList.remove('hidden');
+            
+            isRetryMode = true;
+            
+            // Show retry section in step 3
+            document.getElementById('retrySection').classList.remove('hidden');
+        }
+
+        // Update payment status
+        function updatePaymentStatus(type, message) {
+            const statusDiv = document.getElementById('paymentStatus');
+            
+            if (type === 'loading') {
+                statusDiv.className = 'loading';
+                statusDiv.innerHTML = `
+                    <div class="spinner"></div>
+                    <span>${message}</span>
+                `;
+            } else if (type === 'success') {
+                statusDiv.className = 'status-message status-success';
+                statusDiv.innerHTML = `<h3>${message}</h3>`;
+            } else if (type === 'error') {
+                statusDiv.className = 'status-message status-error';
+                statusDiv.innerHTML = `<h3>${message}</h3>`;
+            }
+        }
+
+        // Retry payment
+        function retryPayment() {
+            goToStep(3);
+            document.getElementById('retrySection').classList.remove('hidden');
+        }
+
+        // Navigation functions
+        function goToStep(stepNumber) {
+            // Hide all steps
+            document.querySelectorAll('.step').forEach(step => {
+                step.classList.remove('active');
+            });
+            
+            // Show target step
+            document.getElementById(`step${stepNumber}`).classList.add('active');
+            
+            // Update progress
+            updateProgress(stepNumber);
+            
+            currentStep = stepNumber;
+            
+            // Update payment summary if going to step 4
+            if (stepNumber === 4) {
+                updatePaymentSummary();
+            }
+        }
+
+        // Update progress bar
+        function updateProgress(step) {
+            const progress = (step / 5) * 100;
+            document.getElementById('progressFill').style.width = `${progress}%`;
+        }
+
+        // Update payment summary with corrected data structure
+        function updatePaymentSummary() {
+            const summaryDiv = document.getElementById('paymentSummary');
+            const selectedMethod = paymentMethods.find(pm => pm._id === selectedPaymentMethodId);
+            
+            summaryDiv.innerHTML = `
+                <div class="trip-details">
+                    <div class="trip-detail">
+                        <div class="trip-detail-label">Trip ID</div>
+                        <div class="trip-detail-value">${activeTripData._id}</div>
+                    </div>
+                    <div class="trip-detail">
+                        <div class="trip-detail-label">Tutar</div>
+                        <div class="trip-detail-value">
+                            <span class="amount">${activeTripData.finalCost.toFixed(2)} €</span>
+                        </div>
+                    </div>
+                    <div class="trip-detail">
+                        <div class="trip-detail-label">Ödeme Yöntemi</div>
+                        <div class="trip-detail-value">
+                            ${selectedMethod ? `${selectedMethod.brand ? selectedMethod.brand.toUpperCase() : 'CARD'} **** ${selectedMethod.last4}` : 'Seçilmemiş'}
+                        </div>
+                    </div>
+                    <div class="trip-detail">
+                        <div class="trip-detail-label">Müşteri</div>
+                        <div class="trip-detail-value">${activeTripData.customer.name} ${activeTripData.customer.surname}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Start new payment
+        function startNewPayment() {
+            // Reset all variables
+            selectedPaymentMethodId = null;
+            isRetryMode = false;
+            currentPaymentIntentId = null;
+            
+            // Hide retry section
+            document.getElementById('retrySection').classList.add('hidden');
+            
+            // Reset UI
+            document.querySelectorAll('.payment-method-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            
+            document.getElementById('proceedToPayment').disabled = true;
+            
+            // Go back to step 1
+            goToStep(1);
+        }
+
+        // Alert system (replaces localStorage-dependent functions)
+        function showAlert(message, type = 'info') {
+            // Remove existing alerts
+            const existingAlerts = document.querySelectorAll('.alert');
+            existingAlerts.forEach(alert => alert.remove());
+            
+            // Create new alert
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            
+            // Insert at the top of current step
+            const currentStepEl = document.querySelector('.step.active');
+            if (currentStepEl) {
+                currentStepEl.insertBefore(alert, currentStepEl.firstChild);
+                
+                // Auto remove after 5 seconds
+                setTimeout(() => {
+                    if (alert.parentNode) {
+                        alert.remove();
+                    }
+                }, 5000);
+            }
+        }
+
+        // Utility functions
+        function showLoading(message) {
+            console.log('Loading:', message);
+        }
+
+        function hideLoading() {
+            console.log('Loading hidden');
+        }
+
+        // Initialize on page load with saved config
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load saved values from memory
+            if (savedConfig.apiUrl) document.getElementById('apiUrl').value = savedConfig.apiUrl;
+            if (savedConfig.stripeKey) document.getElementById('stripePublishableKey').value = savedConfig.stripeKey;
+            if (savedConfig.jwtToken) document.getElementById('jwtToken').value = savedConfig.jwtToken;
+            
+            // Save values to memory when they change
+            document.getElementById('apiUrl').addEventListener('change', function() {
+                savedConfig.apiUrl = this.value;
+            });
+            
+            document.getElementById('stripePublishableKey').addEventListener('change', function() {
+                savedConfig.stripeKey = this.value;
+            });
+            
+            document.getElementById('jwtToken').addEventListener('change', function() {
+                savedConfig.jwtToken = this.value;
+            });
+        });
+    </script>
+</body>
+</html>

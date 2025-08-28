@@ -26,9 +26,9 @@ import {
   ApiParam,
   ApiResponse,
 } from '@nestjs/swagger';
-import { JwtAuthGuard } from 'src/jwt/jwt.guard';
+import { JwtAuthGuard } from 'src/jwt/guards/jwt.guard';
 import { DriversService } from './drivers.service';
-import { GetUser } from 'src/jwt/user.decoretor';
+import { GetUser } from 'src/jwt/user.decorator';
 import { IJwtPayload } from 'src/jwt/jwt-payload.interface';
 import { v4 as uuidv4 } from 'uuid';
 import { FileInterceptor } from '@nest-lab/fastify-multer';
@@ -45,17 +45,18 @@ import { CompletePhoneUpdateDto } from 'src/clients/customer/dto/complete-phone-
 import { UpdateNotificationPermissionsDto } from 'src/clients/driver/dto/update-notification-permissions.dto';
 import { UpdateDriverProfileDto } from './dto/update-driver-profile.dto';
 import { UpdateDriverExpoTokenDto } from './dto/update-driver-expo-token.dto';
+import { UpdateRateDto } from 'src/common/dto/update-rate.dto';
+import { LoggerService } from 'src/logger/logger.service';
 
 @ApiTags('drivers')
 @ApiBearerAuth()
 @Controller('drivers')
 @UseGuards(JwtAuthGuard)
 export class DriversController {
-  private readonly logger = new Logger(DriversController.name);
-
   constructor(
     private readonly driversService: DriversService,
     private readonly s3Service: S3Service,
+    private readonly logger: LoggerService,
   ) {}
 
   @Get('me')
@@ -63,7 +64,6 @@ export class DriversController {
   @UseGuards(JwtAuthGuard)
   async getProfile(@GetUser() user: IJwtPayload) {
     try {
-      this.logger.log(`Getting profile for customer ID: ${user.userId}`);
       return await this.driversService.findOne(user.userId);
     } catch (error) {
       this.logger.error(
@@ -110,29 +110,27 @@ export class DriversController {
     }
 
     try {
+      const userId = user.userId;
       const fileExists = await this.driversService.checkFileExists(
-        user.userId,
+        userId,
         fileType,
       );
 
       if (fileExists) {
         const existingFileKey = await this.driversService.deleteFile(
-          user.userId,
+          userId,
           fileType,
         );
         if (existingFileKey) {
           await this.s3Service.deleteFile(existingFileKey);
         }
-        this.logger.log(
-          `Deleted existing file of type ${fileType} for user ${user.userId}`,
-        );
       }
 
-      const fileKey = `${user.userId}/${fileType}/${uuidv4()}-${file.originalname}`;
+      const fileKey = `${userId}/${fileType}/${uuidv4()}-${file.originalname}`;
       await this.s3Service.uploadFileWithKey(file, fileKey);
       const fileUrl = this.s3Service.getPublicUrl(fileKey);
       await this.driversService.notifyFileUploaded(
-        user.userId,
+        userId,
         fileType,
         fileUrl,
         file.mimetype,
@@ -274,7 +272,6 @@ export class DriversController {
     @GetUser() user: IJwtPayload,
   ) {
     try {
-      this.logger.log(`Adding bank information for driver ID: ${user.userId}`);
       const updatedDriver = await this.driversService.addBankInformation(
         user.userId,
         bankInfoDto,
@@ -306,7 +303,6 @@ export class DriversController {
   })
   async getAllBankInformation(@GetUser() user: IJwtPayload) {
     try {
-      this.logger.log(`Getting bank information for driver ID: ${user.userId}`);
       return await this.driversService.getAllBankInformation(user.userId);
     } catch (error) {
       this.logger.error(
@@ -336,9 +332,6 @@ export class DriversController {
     @GetUser() user: IJwtPayload,
   ) {
     try {
-      this.logger.log(
-        `Deleting bank information ${bankInfoId} for driver ID: ${user.userId}`,
-      );
       return await this.driversService.deleteBankInformation(
         user.userId,
         bankInfoId,
@@ -372,9 +365,6 @@ export class DriversController {
     @GetUser() user: IJwtPayload,
   ) {
     try {
-      this.logger.log(
-        `Setting bank information ${bankInfoId} as default for driver ID: ${user.userId}`,
-      );
       return await this.driversService.setDefaultBankInformation(
         user.userId,
         bankInfoId,
@@ -531,9 +521,6 @@ export class DriversController {
     @Body() permissionsDto: UpdateNotificationPermissionsDto,
   ) {
     try {
-      this.logger.log(
-        `Updating notification permissions for driver ID: ${user.userId}`,
-      );
       return await this.driversService.updateNotificationPermissions(
         user.userId,
         permissionsDto,
@@ -606,11 +593,11 @@ export class DriversController {
     }
 
     try {
-      const fileKey = `profile-photos/drivers/${user.userId}/${uuidv4()}-${file.originalname}`;
-
+      const userId = user.userId;
+      const fileKey = `profile-photos/drivers/${userId}/${uuidv4()}-${file.originalname}`;
       await this.s3Service.uploadFileWithKey(file, fileKey);
       const photoUrl = this.s3Service.getPublicUrl(fileKey);
-      await this.driversService.updatePhoto(user.userId, photoUrl);
+      await this.driversService.updatePhoto(userId, photoUrl);
 
       return {
         message: 'Profile photo uploaded successfully',
@@ -659,7 +646,6 @@ export class DriversController {
     @Body() updateExpoTokenDto: UpdateDriverExpoTokenDto,
   ) {
     try {
-      this.logger.log(`Updating expo token for driver ID: ${user.userId}`);
       await this.driversService.updateExpoToken(
         user.userId,
         updateExpoTokenDto.expoToken,
@@ -693,7 +679,6 @@ export class DriversController {
   })
   async deleteExpoToken(@GetUser() user: IJwtPayload) {
     try {
-      this.logger.log(`Deleting expo token for driver ID: ${user.userId}`);
       await this.driversService.deleteExpoToken(user.userId);
       return {
         success: true,
@@ -706,6 +691,75 @@ export class DriversController {
       );
       throw new HttpException(
         error.response?.data || 'An error occurred while deleting expo token',
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Patch(':id/rate')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Update customer rating' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Rating updated successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Customer not found',
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Invalid rate value (must be between 0 and 5)',
+  })
+  async updateCustomerRate(
+    @Param('id') customerId: string,
+    @Body() updateRateDto: UpdateRateDto,
+    @GetUser() user: IJwtPayload,
+  ) {
+    try {
+      await this.driversService.updateCustomerRate(
+        customerId,
+        updateRateDto.rate,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Error updating customer rating: ${error.message}`,
+        error.stack,
+      );
+      throw new HttpException(
+        error.response?.data ||
+          'An error occurred while updating customer rating',
+        error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  @Delete('me')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Delete driver account' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Driver account deleted successfully',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Driver not found',
+  })
+  async deleteDriverAccount(@GetUser() user: IJwtPayload) {
+    try {
+      await this.driversService.deleteDriver(user.userId);
+      return {
+        success: true,
+        message: 'Driver account deleted successfully',
+      };
+    } catch (error) {
+      this.logger.error(
+        `Error deleting driver account: ${error.message}`,
+        error.stack,
+      );
+      throw new HttpException(
+        error.response?.data ||
+          'An error occurred while deleting driver account',
         error.response?.status || HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }

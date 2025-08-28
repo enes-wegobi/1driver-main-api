@@ -4,11 +4,8 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
-  Matches,
-  IsPhoneNumber,
-  ValidateNested,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsAllowedPhoneCountry } from '../../../common/validators/allowed-phone-countries.validator';
 
 export class CreateDriverDto {
   @ApiProperty({
@@ -31,7 +28,7 @@ export class CreateDriverDto {
     example: '+905551234567',
     description: 'Phone number in international format',
   })
-  @IsPhoneNumber()
+  @IsAllowedPhoneCountry()
   @IsNotEmpty()
   phone: string;
 
@@ -42,15 +39,6 @@ export class CreateDriverDto {
   @IsEmail()
   @IsNotEmpty()
   email: string;
-
-  @ApiProperty({
-    example: '123456789012345',
-    description: 'National identity number (15 digits)',
-  })
-  @IsString()
-  @IsNotEmpty()
-  @Matches(/^\d{15}$/, { message: 'Identity number must be 15 digits' })
-  identityNumber: string;
 
   @ApiProperty({
     example: 'ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]',

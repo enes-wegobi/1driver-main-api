@@ -1,12 +1,14 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { RedisService } from './redis.service';
 import { BaseRedisService } from './services/base-redis.service';
-import { LocationService } from './services/location.service';
 import { DriverStatusService } from './services/driver-status.service';
 import { CustomerStatusService } from './services/customer-status.service';
+import { LocationService } from './services/location.service';
 import { NearbySearchService } from './services/nearby-search.service';
 import { ActiveTripService } from './services/active-trip.service';
+import { DriverTripQueueService } from './services/driver-trip-queue.service';
+import { TokenManagerService } from './services/token-manager.service';
+import { WebSocketRedisService } from './services/websocket-redis.service';
 
 @Module({
   imports: [ConfigModule],
@@ -17,15 +19,20 @@ import { ActiveTripService } from './services/active-trip.service';
     CustomerStatusService,
     NearbySearchService,
     ActiveTripService,
-    RedisService,
+    TokenManagerService,
+    DriverTripQueueService,
+    WebSocketRedisService,
   ],
   exports: [
+    BaseRedisService,
     LocationService,
     DriverStatusService,
     CustomerStatusService,
     NearbySearchService,
     ActiveTripService,
-    RedisService,
+    TokenManagerService,
+    DriverTripQueueService,
+    WebSocketRedisService,
   ],
 })
 export class RedisModule {}

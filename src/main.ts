@@ -1,3 +1,6 @@
+import './instrument';
+
+import { config } from 'dotenv';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import {
@@ -11,61 +14,23 @@ import fastifyMultipart from '@fastify/multipart';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { IoAdapter } from '@nestjs/platform-socket.io';
-import { ServerOptions } from 'socket.io';
-import { createClient } from 'redis';
-import { createAdapter } from '@socket.io/redis-adapter';
+import { WebSocketModule } from './websocket/websocket.module';
+import { LoggerService } from './logger/logger.service';
+import rawBody from 'fastify-raw-body';
 
-class FastifySocketIORedisAdapter extends IoAdapter {
-  private pubClient: any;
-  private subClient: any;
-
-  constructor(app) {
-    super(app);
-  }
-
-  async connectToRedis(redisUrl: string) {
-    this.pubClient = createClient({ url: redisUrl });
-    this.subClient = this.pubClient.duplicate();
-
-    await Promise.all([this.pubClient.connect(), this.subClient.connect()]);
-
-    this.pubClient.on('error', (err) =>
-      console.error('Redis Pub Client Error', err),
-    );
-    this.subClient.on('error', (err) =>
-      console.error('Redis Sub Client Error', err),
-    );
-
-    console.log('Redis adapter clients connected');
-  }
-
-  createIOServer(port: number, options?: ServerOptions) {
-    const server = this.httpServer;
-    const io = super.createIOServer(port, {
-      ...options,
-      cors: {
-        origin: '*',
-        methods: ['GET', 'POST'],
-        credentials: true,
-        allowedHeaders: ['Authorization', 'Content-Type'],
-      },
-      transports: ['websocket', 'polling'],
-      serverFactory: (handler) => handler(server),
-    });
-
-    if (this.pubClient && this.subClient) {
-      const redisAdapter = createAdapter(this.pubClient, this.subClient);
-      io.adapter(redisAdapter);
-      console.log('Redis adapter applied to Socket.IO server');
-    }
-
-    return io;
-  }
-}
-
+config();
 async function bootstrap() {
   const fastifyAdapter = new FastifyAdapter();
+  const webhookRoutes = ['/api/webhooks/stripe'];
+
+  await fastifyAdapter.register(rawBody as any, {
+    field: 'rawBody',
+    global: false,
+    encoding: false,
+    runFirst: true,
+    routes: ['/api/webhooks/stripe', '/webhooks/stripe'],
+    jsonContentTypes: [],
+  });
 
   await fastifyAdapter.register(fastifyMultipart as any, {
     limits: {
@@ -80,9 +45,8 @@ async function bootstrap() {
   );
 
   const configService = app.get(ConfigService);
-  const redisUrl = configService.get<string>('redis.url', '0.0.0.0');
-  const socketIOAdapter = new FastifySocketIORedisAdapter(app);
-  await socketIOAdapter.connectToRedis(redisUrl);
+  const socketIOAdapter = WebSocketModule.getSocketIOAdapter(app);
+  await socketIOAdapter.connectToRedis();
   app.useWebSocketAdapter(socketIOAdapter);
 
   app.setGlobalPrefix('api');
@@ -96,8 +60,7 @@ async function bootstrap() {
   );
 
   const config = new DocumentBuilder()
-    .setTitle('Customer API Gateway')
-    .setDescription('The Customer API Gateway description')
+    .setTitle('1Driver-Main-Api')
     .setVersion('1.0')
     .addTag('users')
     .addBearerAuth()
@@ -115,6 +78,7 @@ async function bootstrap() {
       'Accept',
       'Origin',
       'X-Requested-With',
+      'stripe-signature',
     ],
   });
 
@@ -143,13 +107,24 @@ async function bootstrap() {
     encodings: ['gzip', 'deflate'],
   });
 
-  const port = configService.get<number>('PORT', 3000);
-  const host = configService.get<string>('HOST', '0.0.0.0');
+  const port = configService.get('PORT', 3000);
+  const host = configService.get('HOST', '0.0.0.0');
 
   await app.listen(port, host);
-  console.log(`API Gateway started: ${await app.getUrl()}`);
-  console.log(`Swagger documentation: ${await app.getUrl()}/api/docs`);
-  console.log(`WebSocket server is running with Redis adapter`);
+
+  // Get logger service for startup logs
+  const logger = app.get(LoggerService);
+  logger.info(`API Gateway started: ${await app.getUrl()}`, {
+    port,
+    host,
+    type: 'startup',
+  });
+  logger.info(`Swagger documentation: ${await app.getUrl()}/api/docs`, {
+    type: 'startup',
+  });
+  logger.info(`WebSocket server is running with Redis adapter`, {
+    type: 'startup',
+  });
 }
 
 bootstrap();

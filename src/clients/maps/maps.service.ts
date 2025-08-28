@@ -3,7 +3,6 @@ import axios from 'axios';
 import {
   BatchDistanceRequest,
   BatchDistanceResponse,
-  Coordinates,
   DistanceResponse,
   RoutePoint,
 } from './maps.interface';
@@ -52,81 +51,134 @@ export class MapsService {
         );
       }
 
-      // Format coordinates for Google Maps API
-      const originCoords = `${origin.lat},${origin.lon}`;
-      const destCoords = `${destination.lat},${destination.lon}`;
-
-      // Format waypoints for Google Maps API
-      const waypointsParam =
-        waypoints.length > 0
-          ? waypoints.map((wp) => `${wp.lat},${wp.lon}`).join('|')
-          : null;
-
-      // Prepare request parameters
-      const params: any = {
-        origins: originCoords,
-        destinations: destCoords,
-        key: this.configService.googleMapsApiKey,
+      // Build Routes API request body
+      const requestBody = {
+        origins: [
+          {
+            waypoint: {
+              location: {
+                latLng: {
+                  latitude: origin.lat,
+                  longitude: origin.lon,
+                },
+              },
+            },
+          },
+        ],
+        destinations: [
+          {
+            waypoint: {
+              location: {
+                latLng: {
+                  latitude: destination.lat,
+                  longitude: destination.lon,
+                },
+              },
+            },
+          },
+        ],
+        travelMode: 'DRIVE',
+        routingPreference: 'TRAFFIC_AWARE',
       };
 
-      // Add waypoints if they exist
-      if (waypointsParam) {
-        params.waypoints = waypointsParam;
+      // Add intermediate waypoints if they exist
+      if (waypoints.length > 0) {
+        requestBody.destinations = waypoints.map((wp) => ({
+          waypoint: {
+            location: {
+              latLng: {
+                latitude: wp.lat,
+                longitude: wp.lon,
+              },
+            },
+          },
+        }));
+        requestBody.destinations.push({
+          waypoint: {
+            location: {
+              latLng: {
+                latitude: destination.lat,
+                longitude: destination.lon,
+              },
+            },
+          },
+        });
       }
 
-      // Send request to Google Distance Matrix API
-      const response = await axios.get(
-        'https://maps.googleapis.com/maps/api/distancematrix/json',
+      // Send request to Google Routes API
+      const response = await axios.post(
+        'https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix',
+        requestBody,
         {
-          params,
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Goog-Api-Key': this.configService.googleMapsApiKey,
+            'X-Goog-FieldMask':
+              'originIndex,destinationIndex,duration,distanceMeters,status,condition',
+          },
         },
       );
 
-      // Check API response
-      if (response.data.status !== 'OK') {
+      // Check if we have valid results
+      if (!response.data || !response.data.length) {
         throw new RedisException(
           RedisErrors.INVALID_REQUEST.code,
-          RedisErrors.INVALID_REQUEST.message,
+          'No route found',
           HttpStatus.BAD_REQUEST,
         );
       }
 
-      // Extract distance and duration information
-      const distanceData = response.data.rows[0].elements[0];
+      // Get the first result (origin to destination)
+      const routeResult = response.data[0];
 
-      if (distanceData.status === 'ZERO_RESULTS') {
+      // Check if route exists using the condition field (Routes API v2 format)
+      if (routeResult.condition !== 'ROUTE_EXISTS') {
         throw new RedisException(
           RedisErrors.INVALID_REQUEST.code,
-          RedisErrors.INVALID_REQUEST.message,
+          `Route calculation failed: ${routeResult.condition || 'Unknown error'}`,
           HttpStatus.BAD_REQUEST,
         );
       }
+
+      // Format coordinates for backward compatibility
+      const originCoords = `${origin.lat},${origin.lon}`;
+      const destCoords = `${destination.lat},${destination.lon}`;
+
+      // Convert duration from seconds string to readable format
+      const durationSeconds = parseInt(
+        routeResult.duration?.replace('s', '') || '0',
+      );
+      const durationText = this.formatDuration(durationSeconds);
+
+      // Convert distance from meters to readable format
+      const distanceMeters = routeResult.distanceMeters || 0;
+      const distanceText = this.formatDistance(distanceMeters);
 
       const result: DistanceResponse = {
         success: true,
         origin: {
           coordinates: originCoords,
-          address: response.data.origin_addresses[0],
+          address: origin.name || 'Origin',
         },
         destination: {
           coordinates: destCoords,
-          address: response.data.destination_addresses[0],
+          address: destination.name || 'Destination',
         },
         distance: {
-          text: distanceData.distance.text,
-          value: distanceData.distance.value, // meters
+          text: distanceText,
+          value: distanceMeters,
         },
         duration: {
-          text: distanceData.duration.text,
-          value: distanceData.duration.value, // seconds
+          text: durationText,
+          value: durationSeconds,
         },
       };
 
       // Add waypoints information if available
-      if (waypoints.length > 0 && response.data.waypoint_addresses) {
-        result.waypoints = waypoints.map((wp, index) => ({
+      if (waypoints.length > 0) {
+        result.waypoints = waypoints.map((wp) => ({
           coordinates: `${wp.lat},${wp.lon}`,
-          address: response.data.waypoint_addresses[index] || 'Unknown address',
+          address: wp.name || 'Waypoint',
         }));
       }
 
@@ -134,15 +186,17 @@ export class MapsService {
     } catch (error) {
       console.error('Maps Service Error:', error.message);
 
-      // If it's already a TripException, rethrow it
+      // If it's already a RedisException, rethrow it
       if (error instanceof RedisException) {
         throw error;
       }
 
-      // Otherwise, wrap it in a TripException
+      // Otherwise, wrap it in a RedisException
       throw new RedisException(
         RedisErrors.INVALID_REQUEST.code,
-        RedisErrors.INVALID_REQUEST.message,
+        error.response?.data?.error?.message ||
+          error.message ||
+          RedisErrors.INVALID_REQUEST.message,
         HttpStatus.BAD_REQUEST,
       );
     }
@@ -165,48 +219,74 @@ export class MapsService {
         );
       }
 
-      // Format origin coordinates for Google Maps API
-      const originCoords = `${request.referencePoint.lat},${request.referencePoint.lon}`;
-
-      // Format destinations for Google Maps API
-      const destinations = request.driverLocations
-        .map((driver) => `${driver.coordinates.lat},${driver.coordinates.lon}`)
-        .join('|');
-
-      // Prepare request parameters
-      const params: any = {
-        origins: originCoords,
-        destinations: destinations,
-        key: this.configService.googleMapsApiKey,
+      // Build Routes API request body
+      const requestBody = {
+        origins: [
+          {
+            waypoint: {
+              location: {
+                latLng: {
+                  latitude: request.referencePoint.lat,
+                  longitude: request.referencePoint.lon,
+                },
+              },
+            },
+          },
+        ],
+        destinations: request.driverLocations.map((driver) => ({
+          waypoint: {
+            location: {
+              latLng: {
+                latitude: driver.coordinates.lat,
+                longitude: driver.coordinates.lon,
+              },
+            },
+          },
+        })),
+        travelMode: 'DRIVE',
+        routingPreference: 'TRAFFIC_AWARE',
       };
 
-      // Send request to Google Distance Matrix API
-      const response = await axios.get(
-        'https://maps.googleapis.com/maps/api/distancematrix/json',
-        { params },
+      // Send request to Google Routes API
+      const response = await axios.post(
+        'https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix',
+        requestBody,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Goog-Api-Key': this.configService.googleMapsApiKey,
+            'X-Goog-FieldMask':
+              'originIndex,destinationIndex,duration,distanceMeters,status,condition',
+          },
+        },
       );
 
-      // Check API response
-      if (response.data.status !== 'OK') {
+      // Check if we have valid results
+      if (!response.data || !Array.isArray(response.data)) {
         throw new RedisException(
           RedisErrors.INVALID_REQUEST.code,
-          RedisErrors.INVALID_REQUEST.message,
+          'No routes found',
           HttpStatus.BAD_REQUEST,
         );
       }
 
       // Process results and map them to driver IDs
       const results = {};
-      const elements = response.data.rows[0].elements;
 
-      request.driverLocations.forEach((driver, index) => {
-        const element = elements[index];
+      response.data.forEach((routeResult, index) => {
+        if (
+          index < request.driverLocations.length &&
+          routeResult.condition === 'ROUTE_EXISTS'
+        ) {
+          const driver = request.driverLocations[index];
+          const durationSeconds = parseInt(
+            routeResult.duration?.replace('s', '') || '0',
+          );
 
-        if (element.status === 'OK') {
           results[driver.driverId] = {
             coordinates: driver.coordinates,
-            distance: element.distance.value,
-            duration: element.duration.value,
+            distance: routeResult.distanceMeters || 0,
+            duration: durationSeconds,
           };
         }
       });
@@ -227,9 +307,44 @@ export class MapsService {
       // Otherwise, wrap it in a RedisException
       throw new RedisException(
         RedisErrors.INVALID_REQUEST.code,
-        RedisErrors.INVALID_REQUEST.message,
+        error.response?.data?.error?.message ||
+          error.message ||
+          RedisErrors.INVALID_REQUEST.message,
         HttpStatus.BAD_REQUEST,
       );
     }
+  }
+
+  private formatDuration(seconds: number): string {
+    if (seconds < 60) {
+      return `${seconds} sec${seconds !== 1 ? 's' : ''}`;
+    }
+
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+
+    if (minutes < 60) {
+      if (remainingSeconds === 0) {
+        return `${minutes} min${minutes !== 1 ? 's' : ''}`;
+      }
+      return `${minutes} min${minutes !== 1 ? 's' : ''} ${remainingSeconds} sec${remainingSeconds !== 1 ? 's' : ''}`;
+    }
+
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+
+    if (remainingMinutes === 0) {
+      return `${hours} hour${hours !== 1 ? 's' : ''}`;
+    }
+    return `${hours} hour${hours !== 1 ? 's' : ''} ${remainingMinutes} min${remainingMinutes !== 1 ? 's' : ''}`;
+  }
+
+  private formatDistance(meters: number): string {
+    if (meters < 1000) {
+      return `${meters} m`;
+    }
+
+    const kilometers = (meters / 1000).toFixed(1);
+    return `${kilometers} km`;
   }
 }

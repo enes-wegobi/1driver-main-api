@@ -5,21 +5,76 @@ import {
   Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { createClient, RedisClientType } from 'redis';
+import Redis from 'ioredis';
+import { LoggerService } from '../../logger/logger.service';
 
 @Injectable()
 export class BaseRedisService implements OnModuleInit, OnModuleDestroy {
-  protected client: RedisClientType;
-  protected readonly logger = new Logger(BaseRedisService.name);
+  // Static Redis client instance shared across all instances of this service
+  private static redisClient: Redis | null = null;
+
+  // Protected accessor for the static client
+  protected get client(): Redis {
+    if (!BaseRedisService.redisClient) {
+      throw new Error('Redis client not initialized');
+    }
+    return BaseRedisService.redisClient;
+  }
+
+  protected readonly customLogger?: LoggerService;
   protected DRIVER_LOCATION_EXPIRY: number;
   protected ACTIVE_DRIVER_EXPIRY: number;
   protected ACTIVE_CUSTOMER_EXPIRY: number;
   protected ACTIVE_TRIP_EXPIRY: number;
 
-  constructor(protected configService: ConfigService) {
-    this.client = createClient({
-      url: this.configService.get<string>('redis.url'),
-    });
+  constructor(
+    protected configService: ConfigService,
+    customLogger?: LoggerService,
+  ) {
+    this.customLogger = customLogger;
+    // Initialize the Redis client only once (singleton pattern)
+    if (!BaseRedisService.redisClient) {
+      const host = this.configService.get<string>('valkey.host', 'localhost');
+      const port = this.configService.get<number>('valkey.port', 6379);
+      const username = this.configService.get<string>('valkey.username', '');
+      const password = this.configService.get<string>('valkey.password', '');
+      const tls = this.configService.get<boolean>('valkey.tls', false);
+
+      console.log('BaseRedisService Valkey Config:', {
+        host,
+        port,
+        username,
+        hasPassword: !!password,
+        tls,
+      });
+
+      BaseRedisService.redisClient = new Redis({
+        host,
+        port,
+        username,
+        password,
+        tls: tls ? {} : undefined,
+      });
+
+      // Set up event listeners only once
+      BaseRedisService.redisClient.on('error', (err) => {
+        if (this.customLogger) {
+          this.customLogger.logError(err, {
+            type: 'redis_connection_error',
+            service: 'valkey',
+          });
+        }
+      });
+
+      BaseRedisService.redisClient.on('connect', () => {
+        if (this.customLogger) {
+          this.customLogger.info('Valkey connection established', {
+            type: 'redis_connection_success',
+            service: 'valkey',
+          });
+        }
+      });
+    }
 
     // Initialize expiry times from configuration with defaults
     this.DRIVER_LOCATION_EXPIRY = this.configService.get<number>(
@@ -38,21 +93,26 @@ export class BaseRedisService implements OnModuleInit, OnModuleDestroy {
       'redis.activeTripExpiry',
       3600,
     ); // Default: 60 minutes
-
-    this.client.on('error', (err) =>
-      this.logger.error('Redis Client Error', err),
-    );
   }
 
   async onModuleInit() {
-    await this.client.connect();
+    // ioredis automatically connects, no need to explicitly connect
   }
 
   async onModuleDestroy() {
-    await this.client.disconnect();
+    // Only quit the client when the application is shutting down
+    // and only if we're the last service to be destroyed
+    // This is a simplistic approach - in a real app you might want to use a reference counter
+    if (BaseRedisService.redisClient) {
+      await BaseRedisService.redisClient.quit();
+      BaseRedisService.redisClient = null;
+    }
   }
 
-  getRedisClient(): RedisClientType {
-    return this.client;
+  getRedisClient(): Redis {
+    if (!BaseRedisService.redisClient) {
+      throw new Error('Redis client not initialized');
+    }
+    return BaseRedisService.redisClient;
   }
 }

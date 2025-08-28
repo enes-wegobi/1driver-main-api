@@ -1,29 +1,34 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { CustomersClient } from 'src/clients/customer/customers.client';
+import { UserType } from 'src/common/user-type.enum';
+import { LoggerService } from 'src/logger/logger.service';
 
 @Injectable()
 export class SupportTicketsService {
-  private readonly logger = new Logger(SupportTicketsService.name);
-
-  constructor(private readonly customersClient: CustomersClient) {}
+  constructor(
+    private readonly customersClient: CustomersClient,
+    private readonly logger: LoggerService,
+  ) {}
 
   async create(
-    customerId: string,
+    userId: string,
+    userType: UserType,
     subject: string,
     description: string,
-    fileKey: string | null,
     fileUrl: string | null,
   ) {
-    this.logger.log(
-      `Creating support ticket for customer ${customerId} with subject ${subject}`,
+    this.logger.info(
+      `Creating support ticket for ${userType} ${userId} with subject ${subject}`,
     );
 
     // Send the support ticket data to the customer client
+    // The backend service will handle both customer and driver support tickets
     return this.customersClient.createSupportTicket(
-      customerId,
+      userId,
       subject,
       description,
-      fileKey,
+      fileUrl,
+      userType,
     );
   }
 }

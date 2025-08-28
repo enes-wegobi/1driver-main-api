@@ -5,8 +5,9 @@ import {
   S3Client,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from 'src/config/config.service';
+import { LoggerService } from 'src/logger/logger.service';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
@@ -14,17 +15,18 @@ export class S3Service {
   private s3Client: S3Client;
   private readonly bucketName: string;
   private readonly region: string;
-  private readonly logger = new Logger(S3Service.name);
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly logger: LoggerService,
+  ) {
     this.region = this.configService.spacesRegion;
     this.bucketName = this.configService.spacesBucketName;
 
-    this.logger.log(
+    this.logger.info(
       `Initializing S3 client with region: ${this.region}, bucket: ${this.bucketName}`,
     );
 
-    // Digital Ocean Spaces için S3Client konfigürasyonu
     this.s3Client = new S3Client({
       region: this.region,
       endpoint: this.configService.spacesEndpoint,
@@ -35,7 +37,7 @@ export class S3Service {
       },
     });
 
-    this.logger.log(
+    this.logger.info(
       `S3 client initialized with endpoint: ${this.configService.spacesEndpoint}`,
     );
   }
@@ -61,7 +63,7 @@ export class S3Service {
     fileKey: string,
   ): Promise<void> {
     try {
-      this.logger.log(
+      this.logger.info(
         `Uploading file with key: ${fileKey} to bucket: ${this.bucketName}`,
       );
 
@@ -74,7 +76,7 @@ export class S3Service {
       });
 
       await this.s3Client.send(command);
-      this.logger.log(`File uploaded successfully with key: ${fileKey}`);
+      this.logger.info(`File uploaded successfully with key: ${fileKey}`);
     } catch (error) {
       this.logger.error(`Error uploading file: ${error.message}`, error.stack);
       throw error;
@@ -86,7 +88,7 @@ export class S3Service {
     expiresIn: number = 3600,
   ): Promise<string> {
     try {
-      this.logger.log(`Getting signed URL for file with key: ${fileKey}`);
+      this.logger.info(`Getting signed URL for file with key: ${fileKey}`);
 
       const command = new GetObjectCommand({
         Bucket: this.bucketName,
@@ -94,7 +96,7 @@ export class S3Service {
       });
 
       const url = await getSignedUrl(this.s3Client, command, { expiresIn });
-      this.logger.log(`Signed URL generated successfully for key: ${fileKey}`);
+      this.logger.info(`Signed URL generated successfully for key: ${fileKey}`);
       return url;
     } catch (error) {
       this.logger.error(
@@ -111,11 +113,8 @@ export class S3Service {
    * @returns The permanent public URL.
    */
   getPublicUrl(fileKey: string): string {
-    this.logger.log(`Generating public URL for file with key: ${fileKey}`);
-    // Using the endpoint from config to construct the URL
-    // Format: https://<bucket-name>.<region>.digitaloceanspaces.com/<file-key>
+    this.logger.info(`Generating public URL for file with key: ${fileKey}`);
     const endpoint = this.configService.spacesCdnEndpoint;
-    // Remove the https:// prefix if it exists
     const cleanEndpoint = endpoint.replace(/^https?:\/\//, '');
 
     return `https://${cleanEndpoint}/${fileKey}`;
@@ -123,7 +122,7 @@ export class S3Service {
 
   async deleteFile(fileKey: string): Promise<void> {
     try {
-      this.logger.log(
+      this.logger.info(
         `Deleting file with key: ${fileKey} from bucket: ${this.bucketName}`,
       );
 
@@ -133,7 +132,7 @@ export class S3Service {
       });
 
       await this.s3Client.send(command);
-      this.logger.log(`File deleted successfully with key: ${fileKey}`);
+      this.logger.info(`File deleted successfully with key: ${fileKey}`);
     } catch (error) {
       this.logger.error(`Error deleting file: ${error.message}`, error.stack);
       throw error;

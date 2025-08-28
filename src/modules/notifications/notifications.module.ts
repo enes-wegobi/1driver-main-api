@@ -1,13 +1,12 @@
-import { Module } from '@nestjs/common';
-import { ConfigModule } from 'src/config/config.module';
-import { NotificationsController } from './notifications.controller';
-import { NotificationsService } from './notifications.service';
-import { JwtModule } from 'src/jwt/jwt.modulte';
+/*import { Module } from '@nestjs/common';
+import { ForceLogoutService } from './force-logout.service';
+import { WebSocketModule } from '../../websocket/websocket.module';
+import { ExpoNotificationsModule } from '../expo-notifications/expo-notifications.module';
 
 @Module({
-  imports: [ConfigModule, JwtModule],
-  controllers: [NotificationsController],
-  providers: [NotificationsService],
-  exports: [NotificationsService],
+  imports: [WebSocketModule, ExpoNotificationsModule],
+  providers: [ForceLogoutService],
+  exports: [ForceLogoutService],
 })
 export class NotificationsModule {}
+*/

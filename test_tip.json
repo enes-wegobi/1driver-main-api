@@ -1,0 +1,63 @@
+{
+  "_id": {
+    "$oid": "683569ddf1886f5a65e9da1f"
+  },
+  "customer": {
+    "id": "683443e2d905e54ccdb2bab2",
+    "name": "John",
+    "surname": "Doe",
+    "rate": 0
+  },
+  "status": "PAYMENT",
+  "paymentStatus": "UNPAID",
+  "route": [
+    {
+      "lat": 41.0082,
+      "lon": 28.9784,
+      "name": "enes",
+      "_id": {
+        "$oid": "683569ddf1886f5a65e9da20"
+      }
+    },
+    {
+      "lat": 41.0082,
+      "lon": 28.9984,
+      "name": "tevfik",
+      "_id": {
+        "$oid": "683569ddf1886f5a65e9da21"
+      }
+    }
+  ],
+  "estimatedDistance": 18643,
+  "estimatedDuration": 1730,
+  "estimatedCost": 28.83,
+  "calledDriverIds": [
+    "682ed4aeb306a637868932e0"
+  ],
+  "rejectedDriverIds": [],
+  "callRetryCount": 1,
+  "createdAt": {
+    "$date": "2025-05-27T07:29:33.703Z"
+  },
+  "updatedAt": {
+    "$date": "2025-05-27T07:33:07.959Z"
+  },
+  "__v": 0,
+  "callStartTime": {
+    "$date": "2025-05-27T07:32:18.875Z"
+  },
+  "driver": {
+    "id": "682ed4aeb306a637868932e0",
+    "name": "John",
+    "surname": "Doe",
+    "rate": 0
+  },
+  "tripStartTime": {
+    "$date": "2025-05-27T07:32:37.944Z"
+  },
+  "actualDuration": 30,
+  "finalCost": 10,
+  "tripEndTime": {
+    "$date": "2025-05-27T07:33:07.958Z"
+  }
+}

@@ -4,13 +4,15 @@ import { BaseRedisService } from './base-redis.service';
 import { RedisKeyGenerator } from '../redis-key.generator';
 import { WithErrorHandling } from '../decorators/with-error-handling.decorator';
 import { UserType } from 'src/common/user-type.enum';
+import { LoggerService } from 'src/logger/logger.service';
 
 @Injectable()
 export class ActiveTripService extends BaseRedisService {
-  private readonly serviceLogger = new Logger(ActiveTripService.name);
-
-  constructor(configService: ConfigService) {
-    super(configService);
+  constructor(
+    configService: ConfigService,
+    protected readonly customLogger: LoggerService,
+  ) {
+    super(configService, customLogger);
   }
 
   /*
@@ -23,7 +25,7 @@ export class ActiveTripService extends BaseRedisService {
     userType: UserType,
     tripId: string,
   ): Promise<boolean> {
-    this.serviceLogger.debug(
+    this.customLogger.debug(
       `Setting active trip ID for ${userType} ${userId}: ${tripId}`,
     );
     const key = RedisKeyGenerator.userActiveTrip(userId, userType);
@@ -47,7 +49,7 @@ export class ActiveTripService extends BaseRedisService {
     userId: string,
     userType: UserType,
   ): Promise<boolean> {
-    this.serviceLogger.debug(`Removing active trip for ${userType} ${userId}`);
+    this.customLogger.debug(`Removing active trip for ${userType} ${userId}`);
     const key = RedisKeyGenerator.userActiveTrip(userId, userType);
     await this.client.del(key);
     return true;
@@ -62,28 +64,10 @@ export class ActiveTripService extends BaseRedisService {
     const exists = await this.client.exists(key);
 
     if (exists === 1) {
-      this.serviceLogger.debug(
-        `Refreshing TTL for active trip of ${userType} ${userId}`,
-      );
       await this.client.expire(key, this.ACTIVE_TRIP_EXPIRY);
       return true;
     }
 
     return false;
-  }
-
-  /**
-   * Validates if a trip ID has a valid format
-   * This is a simple validation that can be extended based on your ID format
-   */
-  isValidTripId(tripId: string | null): boolean {
-    if (!tripId || typeof tripId !== 'string' || tripId.trim() === '') {
-      return false;
-    }
-
-    // Add additional validation if needed, e.g., for MongoDB ObjectId format:
-    // return /^[0-9a-fA-F]{24}$/.test(tripId);
-
-    return true;
   }
 }

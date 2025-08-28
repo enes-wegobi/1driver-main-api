@@ -7,12 +7,11 @@ import {
   ValidateNested,
   IsEnum,
   IsDateString,
-  Matches,
-  IsPhoneNumber,
+  Length,
 } from 'class-validator';
+import { IsAllowedPhoneCountry } from '../../../common/validators/allowed-phone-countries.validator';
 import { Type } from 'class-transformer';
 import { CreateVehicleDto } from './create-vehicle.dto';
-import { Gender } from '../gender.enum';
 
 export class CreateCustomerDto {
   @ApiProperty({
@@ -35,7 +34,7 @@ export class CreateCustomerDto {
     example: '+905551234567',
     description: 'Phone number in international format',
   })
-  @IsPhoneNumber()
+  @IsAllowedPhoneCountry()
   @IsNotEmpty()
   phone: string;
 
@@ -63,17 +62,6 @@ export class CreateCustomerDto {
   @IsOptional()
   @IsDateString()
   dateOfBirth?: string;
-
-  @ApiProperty({
-    example: Gender.MALE,
-    description: 'Gender',
-    enum: Gender,
-    enumName: 'Gender',
-    required: false,
-  })
-  @IsOptional()
-  @IsEnum(Gender)
-  gender?: Gender;
 
   @ApiProperty({
     example: 'ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]',

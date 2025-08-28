@@ -9,7 +9,6 @@ import {
   IsEmail,
   IsPhoneNumber,
 } from 'class-validator';
-import { Gender } from '../../auth/gender.enum';
 
 export class UpdateCustomerDto {
   @ApiHideProperty()
@@ -28,13 +27,13 @@ export class UpdateCustomerDto {
   email?: string;
 
   @ApiProperty({
-    example: '12345678901',
-    description: 'National identity number (11 digits)',
+    example: '123456789011111',
+    description: 'National identity number (15 digits)',
     required: false,
   })
   @IsOptional()
   @IsString()
-  @Matches(/^\d{11}$/, { message: 'Identity number must be 11 digits' })
+  @Matches(/^\d{15}$/, { message: 'Identity number must be 15 digits' })
   identityNumber?: string;
 
   @ApiProperty({
@@ -45,15 +44,4 @@ export class UpdateCustomerDto {
   @IsOptional()
   @IsDateString()
   dateOfBirth?: string;
-
-  @ApiProperty({
-    example: Gender.MALE,
-    description: 'Gender',
-    enum: Gender,
-    enumName: 'Gender',
-    required: false,
-  })
-  @IsOptional()
-  @IsEnum(Gender)
-  gender?: Gender;
 }

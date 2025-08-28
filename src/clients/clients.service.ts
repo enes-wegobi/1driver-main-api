@@ -3,19 +3,22 @@ import { ConfigService } from '@nestjs/config';
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosError } from 'axios';
 import * as http from 'http';
 import * as https from 'https';
+import { LoggerService } from '../logger/logger.service';
 
 @Injectable()
 export class ClientsService implements OnModuleInit {
-  private readonly logger = new Logger(ClientsService.name);
   private readonly clients: Map<string, AxiosInstance> = new Map();
 
-  constructor(private configService: ConfigService) {}
+  constructor(
+    private configService: ConfigService,
+    private logger: LoggerService,
+  ) {}
 
   /**
    * Initialize and warm up connections to all services when the application starts
    */
   async onModuleInit() {
-    this.logger.log('Initializing and warming up connections to all services');
+    this.logger.info('Initializing and warming up connections to all services');
     const services = this.configService.get('services');
 
     if (services) {
@@ -26,9 +29,9 @@ export class ClientsService implements OnModuleInit {
           this.clients.set(serviceName, client);
 
           // Attempt a health check to warm up the connection
-          this.logger.log(`Warming up connection to ${serviceName} service`);
+          this.logger.info(`Warming up connection to ${serviceName} service`);
           await client.get('/health', { timeout: 5000 }).catch(() => {
-            this.logger.log(
+            this.logger.info(
               `Initial connection attempt to ${serviceName} completed`,
             );
           });
@@ -43,7 +46,7 @@ export class ClientsService implements OnModuleInit {
       });
 
       const results = await Promise.allSettled(warmupPromises);
-      this.logger.log(
+      this.logger.info(
         `Connection warm-up completed for ${results.length} services`,
       );
     } else {
@@ -76,7 +79,7 @@ export class ClientsService implements OnModuleInit {
       throw new Error(`Configuration not found for "${serviceName}" service`);
     }
 
-    this.logger.log(
+    this.logger.info(
       `Creating HTTP client for ${serviceName} with URL: ${serviceConfig.url} and timeout: ${serviceConfig.timeout}ms`,
     );
 
@@ -100,54 +103,106 @@ export class ClientsService implements OnModuleInit {
 
     const client = axios.create(config);
 
+    // Request interceptor - add request ID and start time
     client.interceptors.request.use(
       (config) => {
-        this.logger.debug(
-          `[${serviceName}] Request: ${config.method?.toUpperCase()} ${config.url}`,
+        // Add start time for duration calculation
+        (config as any).startTime = Date.now();
+
+        // Forward request ID if available in headers
+        const requestId = config.headers['x-request-id'];
+        /*
+        this.logger.info(
+          `[${serviceName}] Request started: ${config.method?.toUpperCase()} ${config.url}`,
+          {
+            requestId: requestId as string,
+            serviceName,
+            method: config.method?.toUpperCase(),
+            url: config.url,
+          },
         );
+        */
+
         return config;
       },
       (error) => {
-        this.logger.error(`[${serviceName}] Request error:`, error);
+        this.logger.error(`[${serviceName}] Request error: ${error.message}`, {
+          serviceName,
+          error: error.message,
+        });
         return Promise.reject(error);
       },
     );
 
+    // Response interceptor - log service calls with duration
     client.interceptors.response.use(
       (response) => {
-        this.logger.debug(
-          `[${serviceName}] Response: ${response.status} ${response.statusText} for ${response.config.method?.toUpperCase()} ${response.config.url}`,
+        const duration = Date.now() - (response.config as any).startTime;
+        const requestId = response.config.headers['x-request-id'] as string;
+        /*
+        this.logger.logServiceCall(
+          serviceName,
+          response.config.method?.toUpperCase() || 'UNKNOWN',
+          response.config.url || 'UNKNOWN',
+          response.status,
+          duration,
+          requestId || 'unknown',
         );
+        */
+
         return response;
       },
       (error: AxiosError) => {
         const request = error.config;
         const method = request?.method?.toUpperCase() || 'UNKNOWN';
         const url = request?.url || 'UNKNOWN';
+        const duration = request ? Date.now() - (request as any).startTime : 0;
+        const requestId = request?.headers['x-request-id'] as string;
 
+        // Log service call even for errors
+        /*
+        this.logger.logServiceCall(
+          serviceName,
+          method,
+          url,
+          error.response?.status || 0,
+          duration,
+          requestId || 'unknown',
+        );
+        */
+        // Log detailed error
         if (error.code === 'ECONNRESET') {
           this.logger.error(
-            `[${serviceName}] Connection reset for ${method} ${url}. This might indicate that the service is unavailable or overloaded.`,
+            `[${serviceName}] Connection reset for ${method} ${url}`,
+            { requestId, serviceName, method, url, error: 'ECONNRESET' },
           );
         } else if (error.code === 'ECONNREFUSED') {
           this.logger.error(
-            `[${serviceName}] Connection refused for ${method} ${url}. The service might be down or not running.`,
+            `[${serviceName}] Connection refused for ${method} ${url}`,
+            { requestId, serviceName, method, url, error: 'ECONNREFUSED' },
           );
         } else if (error.code === 'ETIMEDOUT') {
           this.logger.error(
-            `[${serviceName}] Request timeout for ${method} ${url}. The service might be slow or unresponsive.`,
+            `[${serviceName}] Request timeout for ${method} ${url}`,
+            { requestId, serviceName, method, url, error: 'ETIMEDOUT' },
           );
         } else if (error.response) {
           const responseData = error.response.data as any;
           this.logger.error(
-            `[${serviceName}] HTTP error ${error.response.status} for ${method} ${url}: ${
-              responseData?.message || error.message
-            }`,
+            `[${serviceName}] HTTP error ${error.response.status} for ${method} ${url}: ${responseData?.message || error.message}`,
+            {
+              requestId,
+              serviceName,
+              method,
+              url,
+              statusCode: error.response.status,
+              error: responseData?.message || error.message,
+            },
           );
         } else {
           this.logger.error(
             `[${serviceName}] Error for ${method} ${url}: ${error.message}`,
-            error.stack,
+            { requestId, serviceName, method, url, error: error.message },
           );
         }
 
@@ -200,7 +255,7 @@ export class ClientsService implements OnModuleInit {
     for (let attempt = 1; attempt <= retryCount; attempt++) {
       try {
         if (attempt > 1) {
-          this.logger.log(
+          this.logger.info(
             `Retry attempt ${attempt}/${retryCount} for ${serviceName}`,
           );
         }

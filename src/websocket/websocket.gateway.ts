@@ -6,24 +6,25 @@ import {
   WebSocketServer,
   SubscribeMessage,
 } from '@nestjs/websockets';
-import { Logger } from '@nestjs/common';
+import { UseGuards } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import { WebSocketService } from './websocket.service';
-import { JwtService } from 'src/jwt/jwt.service';
 import { LocationDto } from './dto/location.dto';
-import {
-  DriverLocationDto,
-  DriverAvailabilityStatus,
-} from './dto/driver-location.dto';
 import { DriverStatusService } from 'src/redis/services/driver-status.service';
 import { CustomerStatusService } from 'src/redis/services/customer-status.service';
 import { LocationService } from 'src/redis/services/location.service';
 import { ActiveTripService } from 'src/redis/services/active-trip.service';
-import { TripClient } from 'src/clients/trip/trip.client';
 import { UserType } from 'src/common/user-type.enum';
+import { TripService } from 'src/modules/trip/services/trip.service';
+import { EventType } from 'src/modules/event/enum/event-type.enum';
+import { DriverAvailabilityStatus } from 'src/common/enums/driver-availability-status.enum';
+import { LoggerService } from 'src/logger/logger.service';
+import { WsJwtGuard } from '../jwt/guards/ws-jwt.guard';
+import { JwtService } from 'src/jwt/jwt.service';
+import { TokenManagerService } from 'src/redis/services/token-manager.service';
 
-const PING_INTERVAL = 25000;
-const PING_TIMEOUT = 10000;
+const PING_INTERVAL = 5000;
+const PING_TIMEOUT = 2000;
 
 @NestWebSocketGateway({
   cors: {
@@ -41,37 +42,71 @@ const PING_TIMEOUT = 10000;
 export class WebSocketGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
-  private readonly logger = new Logger(WebSocketGateway.name);
-
   constructor(
     private readonly webSocketService: WebSocketService,
     private readonly driverStatusService: DriverStatusService,
     private readonly customerStatusService: CustomerStatusService,
     private readonly locationService: LocationService,
-    private readonly jwtService: JwtService,
     private readonly activeTripService: ActiveTripService,
-    private readonly tripClient: TripClient,
+    private readonly tripService: TripService,
+    private readonly logger: LoggerService,
+    private readonly jwtService: JwtService,
+    private readonly tokenManager: TokenManagerService,
   ) {}
 
   @WebSocketServer()
   server: Server;
 
   afterInit(server: Server) {
-    this.logger.log('Socket.IO Server initialized with Redis Adapter');
+    this.logger.info('Socket.IO Server initialized with Redis Adapter');
     this.webSocketService.setServer(server);
   }
 
-  async handleConnection(client: Socket, ...args: any[]) {
-    const clientId = client.id;
+  private extractToken(client: Socket): string | null {
+    // Try multiple sources for the token
+    return (
+      client.handshake.auth?.token ||
+      client.handshake.query?.token ||
+      client.handshake.headers.authorization?.replace('Bearer ', '') ||
+      null
+    );
+  }
 
-    const token =
-      client.handshake.auth.token ||
-      client.handshake.query.token ||
-      client.handshake.headers.authorization?.replace('Bearer ', '');
+  private extractDeviceId(client: Socket): string | null {
+    const headerDeviceId = client.handshake.headers['x-device-id'];
+    const headerDeviceIdLower =
+      client.handshake.headers['x-device-id'.toLowerCase()];
+    const queryDeviceId = client.handshake.query['x-device-id'];
+    const authDeviceId = client.handshake.auth?.deviceId;
+
+    return (
+      (typeof headerDeviceId === 'string' ? headerDeviceId : null) ||
+      (typeof headerDeviceIdLower === 'string' ? headerDeviceIdLower : null) ||
+      (typeof queryDeviceId === 'string' ? queryDeviceId : null) ||
+      (typeof authDeviceId === 'string' ? authDeviceId : null) ||
+      null
+    );
+  }
+
+  async handleConnection(client: Socket, ...args: any[]) {
+    this.logger.debug(`Client connected: ${client.id}`);
+
+    const clientId = client.id;
+    const token = this.extractToken(client);
+    const deviceId = this.extractDeviceId(client);
+    const userType = client.data.userType;
 
     if (!token) {
       client.emit('error', {
         message: 'Authentication required',
+      });
+      client.disconnect(true);
+      return;
+    }
+
+    if (!deviceId) {
+      client.emit('error', {
+        message: 'Device ID required',
       });
       client.disconnect(true);
       return;
@@ -86,55 +121,151 @@ export class WebSocketGateway
         return;
       }
 
+      const userId = payload.userId;
+
       const userType = payload.userType;
-      if (userType !== 'driver' && userType !== 'customer') {
+      if (userType !== UserType.DRIVER && userType !== UserType.CUSTOMER) {
         client.emit('error', { message: 'Invalid user type' });
         client.disconnect(true);
         return;
       }
 
+      // Check active session
+      const activeSession = await this.tokenManager.getActiveToken(
+        userId,
+        userType,
+      );
+      if (!activeSession) {
+        client.emit('error', {
+          message: 'No active session found - please login again',
+        });
+        client.disconnect(true);
+        return;
+      }
+
+      // Verify token matches the active session
+      if (activeSession.token !== token) {
+        client.emit('error', {
+          message: 'Token mismatch - session expired or invalid',
+          reason: 'token_mismatch',
+        });
+        client.disconnect(true);
+        return;
+      }
+
+      // Verify device ID matches the active session
+      if (activeSession.deviceId !== deviceId) {
+        this.logger.warn(
+          `Device ID mismatch for user ${userId}: session device ${activeSession.deviceId} vs connection device ${deviceId}`,
+        );
+        client.emit('error', {
+          message: 'Device ID mismatch - please login with this device',
+          reason: 'device_mismatch',
+          sessionDeviceId: activeSession.deviceId,
+          requestedDeviceId: deviceId,
+        });
+        client.disconnect(true);
+        return;
+      }
+
       // Store user data in the socket
-      client.data.userId = payload.userId;
+      client.data.userId = userId;
       client.data.userType = userType;
+      client.data.deviceId = deviceId;
+
+      this.logger.info(
+        `WebSocket connection set for user ${userId} (${userType}), socket: ${client.id}, device: ${deviceId}`,
+      );
+
+      // Register user connection for tracking (single connection per user)
+      // This will automatically disconnect any existing connection for this user
+      await this.webSocketService.registerUserConnection(
+        userId,
+        userType,
+        client,
+        deviceId,
+      );
 
       // Join rooms based on user type and ID for easier targeting
-      client.join(`user:${payload.userId}`);
+      client.join(`user:${userId}`);
       client.join(`type:${userType}`);
+      client.join(`device:${deviceId}`);
 
-      // Mark user as active based on user type
-      if (userType === 'driver') {
-        await this.driverStatusService.markDriverAsActive(payload.userId);
+      this.logger.debug(
+        `[ROOM_JOIN] Client ${clientId} joined rooms: user:${userId}, type:${userType}, device:${deviceId}`,
+      );
 
-        // Get current availability status
-        const status = await this.driverStatusService.getDriverAvailability(
-          payload.userId,
+      if (userType === UserType.DRIVER) {
+        await this.driverStatusService.markDriverAsConnected(userId);
+        await this.driverStatusService.setDriverAppStateOnConnect(userId);
+
+        await this.driverStatusService.updateDriverAvailability(
+          userId,
+          DriverAvailabilityStatus.BUSY,
         );
 
-        client.emit('connection', {
-          status: 'connected',
-          clientId: clientId,
-          userType: userType,
-          availabilityStatus: status,
-          message: 'Connection successful',
-        });
-      } else if (userType === 'customer') {
-        await this.customerStatusService.markCustomerAsActive(payload.userId);
+        const status =
+          await this.driverStatusService.getDriverAvailability(userId);
 
         client.emit('connection', {
           status: 'connected',
           clientId: clientId,
           userType: userType,
-          message: 'Connection successful',
+          deviceId: deviceId,
+          availabilityStatus: status,
+          message: 'Authentication successful',
+          timestamp: new Date().toISOString(),
+        });
+      } else if (userType === UserType.CUSTOMER) {
+        await this.customerStatusService.markCustomerAsActive(userId);
+        await this.customerStatusService.setCustomerAppStateOnConnect(userId);
+
+        client.emit('connection', {
+          status: 'connected',
+          clientId: clientId,
+          userType: userType,
+          deviceId: deviceId,
+          message: 'Authentication successful',
+          timestamp: new Date().toISOString(),
         });
       }
 
-      this.logger.log(
-        `Client ${clientId} authenticated as ${userType} with userId: ${payload.userId}`,
+      this.logger.info(
+        `Client ${clientId} authenticated as ${userType} with userId: ${userId}, deviceId: ${deviceId}`,
       );
+
+      // Listen to built-in ping/pong events for logging
+      client.on('ping', () => {
+        this.logger.debug(
+          `[PING] Received from ${userType}:${userId} (${clientId})`,
+        );
+      });
+
+      client.on('pong', (latency) => {
+        this.logger.debug(
+          `[PONG] Received from ${userType}:${userId} (${clientId}), latency: ${latency}ms`,
+        );
+      });
+      this.logger.info(`WebSocket client authenticated successfully`, {
+        clientId,
+        userId: userId,
+        userType,
+        deviceId,
+        connectionTime: new Date().toISOString(),
+        hasExistingConnection: false, // This will be enhanced in registerUserConnection
+      });
     } catch (error) {
-      this.logger.error(`Authentication error: ${error.message}`);
+      this.logger.error('WebSocket authentication error', {
+        clientId: client.id,
+        error: error.message,
+        stack: error.stack,
+        token: token ? 'provided' : 'missing',
+        deviceId: deviceId || 'missing',
+      });
       client.emit('error', {
         message: 'Authentication failed',
+        reason: 'server_error',
+        timestamp: new Date().toISOString(),
       });
       client.disconnect(true);
     }
@@ -143,155 +274,87 @@ export class WebSocketGateway
   async handleDisconnect(client: Socket) {
     const userId = client.data.userId;
     const userType = client.data.userType;
+    const deviceId = client.data.deviceId;
+
+    // Clean up WebSocket service tracking
+    await this.webSocketService.handleSocketDisconnect(client);
 
     if (userId) {
-      if (userType === 'driver') {
-        // Mark driver as inactive when they disconnect
-        await this.driverStatusService.markDriverAsInactive(userId);
-        this.logger.log(
-          `Driver ${userId} marked as inactive due to disconnect`,
-        );
-      } else if (userType === 'customer') {
-        // Mark customer as inactive when they disconnect
+      if (userType === UserType.DRIVER) {
+        await this.driverStatusService.markDriverAsDisconnected(userId);
+        await this.driverStatusService.setDriverAppStateOnDisconnect(userId);
+        const status =
+          await this.driverStatusService.getDriverAvailability(userId);
+        if (status !== DriverAvailabilityStatus.ON_TRIP) {
+          await this.driverStatusService.deleteDriverAvailability(userId);
+        }
+        this.logger.info(`Driver disconnected and marked as inactive`, {
+          userId,
+          deviceId,
+          clientId: client.id,
+          disconnectionTime: new Date().toISOString(),
+        });
+      } else if (userType === UserType.CUSTOMER) {
         await this.customerStatusService.markCustomerAsInactive(userId);
-        this.logger.log(
-          `Customer ${userId} marked as inactive due to disconnect`,
+        await this.customerStatusService.setCustomerAppStateOnDisconnect(
+          userId,
         );
+        this.logger.info(`Customer disconnected and marked as inactive`, {
+          userId,
+          deviceId,
+          clientId: client.id,
+          disconnectionTime: new Date().toISOString(),
+        });
       }
     }
 
-    this.logger.log(`Client disconnected: ${client.id}`);
-  }
-
-  @SubscribeMessage('message')
-  handleMessage(client: Socket, payload: any) {
-    this.logger.debug(
-      `Message received [${client.id}]: ${JSON.stringify(payload)}`,
-    );
-    return { event: 'message', data: payload };
+    this.logger.info(`Client disconnected: ${client.id}`);
   }
 
   @SubscribeMessage('updateLocation')
-  handleLocationUpdate(client: Socket, payload: LocationDto) {
+  @UseGuards(WsJwtGuard)
+  async handleDriverLocationUpdate(client: Socket, payload: LocationDto) {
     const userId = client.data.userId;
     const userType = client.data.userType;
+    const deviceId = client.data.deviceId;
 
-    if (!userId) {
-      client.emit('error', { message: 'User not authenticated' });
-      return;
-    }
-
-    this.logger.debug(
-      `Location update from ${userType} ${userId}: ${JSON.stringify(payload)}`,
-    );
-
-    this.storeUserLocation(userId, userType, payload);
-
-    this.broadcastLocationToTripRoom(client, payload);
-
-    return { success: true };
-  }
-
-  /**
-   * Broadcast location updates to trip room if user is in an active trip
-   */
-  private async broadcastLocationToTripRoom(
-    client: Socket,
-    location: LocationDto,
-  ) {
-    try {
-      const userId = client.data.userId;
-      const userType = client.data.userType;
-
-      if (!userId) return;
-
-      // Check if user is in any trip rooms
-      const rooms = Array.from(client.rooms);
-      const tripRooms = rooms.filter((room) => room.startsWith('trip:'));
-
-      if (tripRooms.length === 0) return;
-
-      // Broadcast location to all trip rooms the user is in
-      for (const room of tripRooms) {
-        const tripId = room.split(':')[1];
-
-        // Broadcast to the room except the sender
-        client.to(room).emit('locationUpdate', {
-          tripId,
-          userId,
-          userType,
-          location,
-          timestamp: new Date().toISOString(),
-        });
-
-        this.logger.debug(
-          `Broadcasted ${userType} location to trip room ${room}`,
-        );
-      }
-    } catch (error) {
-      this.logger.error(
-        `Error broadcasting location to trip room: ${error.message}`,
-      );
-    }
-  }
-
-  @SubscribeMessage('updateDriverLocation')
-  async handleDriverLocationUpdate(client: Socket, payload: DriverLocationDto) {
-    const userId = client.data.userId;
-    const userType = client.data.userType;
+    // Update user activity
+    await this.webSocketService.updateUserActivity(userId, userType);
 
     if (!userId) {
       client.emit('error', { message: 'User not authenticated' });
       return { success: false, message: 'User not authenticated' };
     }
 
-    if (userType !== 'driver') {
-      client.emit('error', {
-        message: 'Only drivers can update driver location',
-      });
-      return {
-        success: false,
-        message: 'Only drivers can update driver location',
-      };
-    }
-
-    this.logger.debug(
-      `Driver location update from ${userId}: ${JSON.stringify(payload)}`,
-    );
-
     try {
-      // Get driver's active trip ID
-      const tripId = await this.activeTripService.getUserActiveTripIfExists(
-        userId,
-        UserType.DRIVER,
-      );
+      if (userType === UserType.DRIVER) {
+        const tripId = await this.activeTripService.getUserActiveTripIfExists(
+          userId,
+          UserType.DRIVER,
+        );
 
-      if (tripId) {
-        // Get trip details to find customer ID
-        const tripDetails = await this.tripClient.getTripById(tripId);
-        
-        if (tripDetails.success && tripDetails.trip.customer && tripDetails.trip.customer.id) {
-          const customerId = tripDetails.trip.customer.id;
-          
-          // Send location update directly to customer
-          this.webSocketService.sendToUser(customerId, 'driverLocation', {
-            tripId,
-            driverId: userId,
-            location: payload,
-            timestamp: new Date().toISOString(),
-          });
-          
-          this.logger.debug(
-            `Driver ${userId} location sent to customer ${customerId} for trip ${tripId}`,
-          );
+        if (tripId) {
+          const tripDetails = await this.tripService.findById(tripId);
+
+          if (tripDetails && tripDetails.customer && tripDetails.customer.id) {
+            const customerId = tripDetails.customer.id;
+
+            this.webSocketService.sendToUser(
+              customerId,
+              EventType.DRIVER_LOCATION_UPDATED,
+              {
+                tripId,
+                driverId: userId,
+                location: payload,
+                timestamp: new Date().toISOString(),
+              },
+            );
+          }
         }
       }
 
       // Store location to redis
       this.storeUserLocation(userId, userType, payload);
-
-      // Broadcast location to trip room if driver is in an active trip
-      this.broadcastLocationToTripRoom(client, payload);
 
       return { success: true };
     } catch (error) {
@@ -301,99 +364,26 @@ export class WebSocketGateway
       return { success: false, message: 'Failed to process location update' };
     }
   }
-  /*
-//TODO check
-  @SubscribeMessage('joinTripRoom')
-  handleJoinTripRoom(client: Socket, payload: { tripId: string }) {
-    const userId = client.data.userId;
-    const userType = client.data.userType;
-
-    if (!userId) {
-      client.emit('error', { message: 'User not authenticated' });
-      return { success: false, message: 'User not authenticated' };
-    }
-
-    if (!payload.tripId) {
-      client.emit('error', { message: 'Trip ID is required' });
-      return { success: false, message: 'Trip ID is required' };
-    }
-
-    const roomName = `trip:${payload.tripId}`;
-
-    // Join the room
-    client.join(roomName);
-
-    this.logger.debug(
-      `User ${userId} (${userType}) joined trip room ${roomName}`,
-    );
-
-    // Notify the room that a user has joined
-    client.to(roomName).emit('userJoinedTrip', {
-      userId,
-      userType,
-      tripId: payload.tripId,
-      timestamp: new Date().toISOString(),
-    });
-
-    return {
-      success: true,
-      message: `Joined trip room for trip ${payload.tripId}`,
-    };
-  }
-
-  @SubscribeMessage('leaveTripRoom')
-  handleLeaveTripRoom(client: Socket, payload: { tripId: string }) {
-    const userId = client.data.userId;
-    const userType = client.data.userType;
-
-    if (!userId) {
-      client.emit('error', { message: 'User not authenticated' });
-      return { success: false, message: 'User not authenticated' };
-    }
-
-    if (!payload.tripId) {
-      client.emit('error', { message: 'Trip ID is required' });
-      return { success: false, message: 'Trip ID is required' };
-    }
-
-    const roomName = `trip:${payload.tripId}`;
-
-    // Leave the room
-    client.leave(roomName);
-
-    this.logger.debug(
-      `User ${userId} (${userType}) left trip room ${roomName}`,
-    );
-
-    // Notify the room that a user has left
-    client.to(roomName).emit('userLeftTrip', {
-      userId,
-      userType,
-      tripId: payload.tripId,
-      timestamp: new Date().toISOString(),
-    });
-
-    return {
-      success: true,
-      message: `Left trip room for trip ${payload.tripId}`,
-    };
-  }
-  */
 
   @SubscribeMessage('updateDriverAvailability')
+  @UseGuards(WsJwtGuard)
   async handleDriverAvailabilityUpdate(
     client: Socket,
     payload: { status: DriverAvailabilityStatus },
   ) {
     const userId = client.data.userId;
     const userType = client.data.userType;
+    const deviceId = client.data.deviceId;
+
+    // Update user activity
+    await this.webSocketService.updateUserActivity(userId, userType);
 
     if (!userId) {
       client.emit('error', { message: 'User not authenticated' });
       return { success: false, message: 'User not authenticated' };
     }
 
-    if (userType !== 'driver') {
+    if (userType !== UserType.DRIVER) {
       client.emit('error', {
         message: 'Only drivers can update availability status',
       });
@@ -403,11 +393,36 @@ export class WebSocketGateway
       };
     }
 
+    // Only allow ON_TRIP and AVAILABLE status changes from drivers
+    if (payload.status === DriverAvailabilityStatus.ON_TRIP) {
+      client.emit('error', {
+        message: 'ON_TRIP status is controlled by the trip system',
+      });
+      return {
+        success: false,
+        message: 'ON_TRIP status is controlled by the trip system',
+      };
+    }
+
     this.logger.debug(
       `Driver ${userId} availability update: ${payload.status}`,
     );
 
     try {
+      // Check if driver can change availability
+      const validation = await this.driverStatusService.canChangeAvailability(
+        userId,
+        payload.status,
+      );
+
+      if (!validation.canChange) {
+        client.emit('error', { message: validation.reason });
+        return {
+          success: false,
+          message: validation.reason,
+        };
+      }
+
       await this.driverStatusService.updateDriverAvailability(
         userId,
         payload.status,
@@ -427,7 +442,43 @@ export class WebSocketGateway
       };
     }
   }
+  /*
+  @SubscribeMessage('eventAck')
+  async handleEventAck(client: Socket, payload: EventAckPayload) {
+    const userId = client.data.userId;
 
+    if (!userId) {
+      client.emit('error', { message: 'User not authenticated' });
+      return { success: false, message: 'User not authenticated' };
+    }
+
+    try {
+      await this.keyspaceEventService.removeTTLKey(userId, payload.eventId);
+
+      this.logger.debug(
+        `Event acknowledged and TTL key cleaned: ${payload.eventId}`,
+        {
+          eventId: payload.eventId,
+          userId,
+        },
+      );
+
+      return {
+        success: true,
+        eventId: payload.eventId,
+      };
+    } catch (error) {
+      this.logger.error(
+        `Error processing ACK for event ${payload.eventId}: ${error.message}`,
+      );
+      return {
+        success: false,
+        eventId: payload.eventId,
+        message: 'Failed to process acknowledgment',
+      };
+    }
+  }
+*/
   private async storeUserLocation(
     userId: string,
     userType: string,

@@ -3,11 +3,15 @@ import { ConfigService } from '@nestjs/config';
 import { BaseRedisService } from './base-redis.service';
 import { RedisKeyGenerator } from '../redis-key.generator';
 import { WithErrorHandling } from '../decorators/with-error-handling.decorator';
+import { LoggerService } from '../../logger/logger.service';
 
 @Injectable()
 export class LocationService extends BaseRedisService {
-  constructor(configService: ConfigService) {
-    super(configService);
+  constructor(
+    configService: ConfigService,
+    protected readonly customLogger: LoggerService,
+  ) {
+    super(configService, customLogger);
   }
 
   @WithErrorHandling()
@@ -25,11 +29,12 @@ export class LocationService extends BaseRedisService {
     pipeline.expire(key, this.DRIVER_LOCATION_EXPIRY);
 
     const geoKey = RedisKeyGenerator.geoIndex(userType);
-    pipeline.geoAdd(geoKey, {
-      longitude: locationData.longitude,
-      latitude: locationData.latitude,
-      member: userId,
-    });
+    pipeline.geoadd(
+      geoKey,
+      locationData.longitude,
+      locationData.latitude,
+      userId,
+    );
 
     await pipeline.exec();
     return true;

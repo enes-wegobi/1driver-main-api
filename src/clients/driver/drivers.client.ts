@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { AxiosInstance } from 'axios';
 import { ClientsService } from '../clients.service';
 import { FileType } from 'src/modules/drivers/enum/file-type.enum';
-import { NotifyFileUploadedDto } from '../users/dto/notify-file-uploaded.dto';
+import { NotifyFileUploadedDto } from './dto/notify-file-uploaded.dto';
 import { CreateBankInformationDto } from 'src/modules/drivers/dto/bank-information.dto';
 import { UpdateNotificationPermissionsDto, SetActiveTripDto } from './dto';
 import { UpdateDriverProfileDto } from 'src/modules/drivers/dto/update-driver-profile.dto';
@@ -12,13 +12,16 @@ import {
   InitiateEmailUpdateDto,
   InitiatePhoneUpdateDto,
 } from '../customer/dto';
+import { LoggerService } from 'src/logger/logger.service';
 
 @Injectable()
 export class DriversClient {
-  private readonly logger = new Logger(DriversClient.name);
   private readonly httpClient: AxiosInstance;
 
-  constructor(private readonly clientsService: ClientsService) {
+  constructor(
+    private readonly clientsService: ClientsService,
+    private readonly logger: LoggerService,
+  ) {
     this.httpClient = this.clientsService.createHttpClient('users');
   }
 
@@ -77,18 +80,12 @@ export class DriversClient {
       fileName: fileName,
     };
 
-    this.logger.log(
-      `Notifying file upload for driver ${driverId}, file type ${fileType}`,
-    );
     const { data } = await this.httpClient.post(
       `/drivers/${driverId}/files/notify`,
       notifyDto,
       { timeout: 60000 },
     );
 
-    this.logger.log(
-      `Successfully notified file upload for driver ${driverId}, file type ${fileType}`,
-    );
     return data;
   }
 
@@ -212,37 +209,50 @@ export class DriversClient {
   }
 
   async updatePhoto(driverId: string, photoUrl: string): Promise<any> {
-    this.logger.log(`Updating photo for driver ${driverId}`);
     const { data } = await this.httpClient.put(`/drivers/${driverId}/photo`, {
       photoUrl,
     });
-    this.logger.log(`Successfully updated photo for driver ${driverId}`);
     return data;
   }
 
   async deletePhoto(driverId: string): Promise<any> {
-    this.logger.log(`Deleting photo for driver ${driverId}`);
     const { data } = await this.httpClient.delete(`/drivers/${driverId}/photo`);
-    this.logger.log(`Successfully deleted photo for driver ${driverId}`);
     return data;
   }
 
   async updateExpoToken(driverId: string, expoToken: string): Promise<any> {
-    this.logger.log(`Updating expo token for driver ${driverId}`);
     const { data } = await this.httpClient.put(
       `/drivers/${driverId}/expo-token`,
       { expoToken },
     );
-    this.logger.log(`Successfully updated expo token for driver ${driverId}`);
     return data;
   }
 
   async deleteExpoToken(driverId: string): Promise<any> {
-    this.logger.log(`Deleting expo token for driver ${driverId}`);
     const { data } = await this.httpClient.delete(
       `/drivers/${driverId}/expo-token`,
     );
-    this.logger.log(`Successfully deleted expo token for driver ${driverId}`);
+    return data;
+  }
+
+  async setActiveTrip(driverId: string, dto: SetActiveTripDto): Promise<any> {
+    const { data } = await this.httpClient.put(
+      `/drivers/${driverId}/active-trip`,
+      dto,
+    );
+    return data;
+  }
+
+  async updateCustomerRate(customerId: string, rate: number): Promise<any> {
+    const { data } = await this.httpClient.patch(
+      `/customers/${customerId}/rate`,
+      { rate },
+    );
+    return data;
+  }
+
+  async deleteDriver(driverId: string): Promise<any> {
+    const { data } = await this.httpClient.delete(`/drivers/${driverId}`);
     return data;
   }
 }

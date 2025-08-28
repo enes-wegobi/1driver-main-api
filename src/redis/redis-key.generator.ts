@@ -35,6 +35,16 @@ export class RedisKeyGenerator {
     return `driver:status:${driverId}`;
   }
 
+  // ========== OPTIONAL: APP STATE KEY ==========
+  // (Only add if you need to track app state separately)
+  static driverAppState(driverId: string): string {
+    return `driver:app-state:${driverId}`;
+  }
+
+  static customerAppState(customerId: string): string {
+    return `customer:app-state:${customerId}`;
+  }
+
   // Active users sets
   static activeDriversSet(): string {
     return 'drivers:active';
@@ -47,5 +57,31 @@ export class RedisKeyGenerator {
   // Helper method for nearby users
   static nearbyUsers(userType: UserType): string {
     return this.geoIndex(userType);
+  }
+
+  static userActiveToken(userId: string, userType: UserType): string {
+    return `auth:user:active_token:${userType}:${userId}`;
+  }
+
+  static sessionActivity(userId: string, userType: UserType): string {
+    return `auth:user:session_activity:${userType}:${userId}`;
+  }
+
+  // Driver trip queue keys (new sequential system)
+  static driverTripQueue(driverId: string): string {
+    return `driver:${driverId}:trip-queue`;
+  }
+
+  static driverProcessingTrip(driverId: string): string {
+    return `driver:${driverId}:processing`;
+  }
+
+  static driverLastRequest(driverId: string): string {
+    return `driver:${driverId}:last-request`;
+  }
+
+  // WebSocket connection keys
+  static userActiveWebSocket(userId: string, userType: UserType): string {
+    return `ws:user:active_socket:${userType}:${userId}`;
   }
 }

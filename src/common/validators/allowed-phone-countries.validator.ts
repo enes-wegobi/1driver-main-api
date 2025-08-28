@@ -1,0 +1,74 @@
+import {
+  ValidatorConstraint,
+  ValidatorConstraintInterface,
+  ValidationOptions,
+  registerDecorator,
+} from 'class-validator';
+import { isValidPhoneNumber } from 'libphonenumber-js';
+
+@ValidatorConstraint({ name: 'allowedPhoneCountries', async: false })
+export class AllowedPhoneCountriesConstraint
+  implements ValidatorConstraintInterface
+{
+  constructor() {}
+  private readonly allowedCountryCodes = [
+    '+90', // Turkey
+    '+91', // India
+    '+92', // Pakistan
+    '+966', // Saudi Arabia
+    '+880', // Bangladesh
+    '+63', // Philippines
+    '+44', // United Kingdom
+    '+20', // Egypt
+    '+7', // Russia
+    '+86', // China
+    '+968', // Oman
+    '+98', // Iran
+    '+94', // Sri Lanka
+    '+977', // Nepal
+    '+971',
+    '+1', // United States
+    '+49', // Germany
+    '+962', // Jordan
+    '+974', // Qatar
+    '+965', // Kuwait
+    '+973', // Bahrain
+    '+33', // France
+  ];
+
+  validate(phone: string) {
+    if (!phone || typeof phone !== 'string') {
+      return false;
+    }
+
+    // Skip validation in development environment
+    const skipInDevelopment = process.env.NODE_ENV === 'development';
+    if (skipInDevelopment) {
+      return isValidPhoneNumber(phone);
+    }
+
+    // First check if it's a valid phone number format
+    if (!isValidPhoneNumber(phone)) {
+      return false;
+    }
+
+    // Check if phone starts with any of the allowed country codes
+    return this.allowedCountryCodes.some((code) => phone.startsWith(code));
+  }
+
+  defaultMessage() {
+    return 'Invalid phone number format.';
+  }
+}
+
+export function IsAllowedPhoneCountry(validationOptions?: ValidationOptions) {
+  return function (object: Object, propertyName: string) {
+    registerDecorator({
+      target: object.constructor,
+      propertyName: propertyName,
+      options: validationOptions,
+      constraints: [],
+      validator: AllowedPhoneCountriesConstraint,
+    });
+  };
+}
