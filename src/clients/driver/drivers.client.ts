@@ -68,14 +68,14 @@ export class DriversClient {
   async notifyFileUploaded(
     driverId: string,
     fileType: FileType,
-    fileKey: string,
+    fileUrl: string,
     contentType: string,
     fileName: string,
   ): Promise<any> {
     const notifyDto: NotifyFileUploadedDto = {
       userId: driverId,
       fileType: fileType,
-      fileKey: fileKey,
+      fileUrl: fileUrl,
       contentType: contentType,
       fileName: fileName,
     };
