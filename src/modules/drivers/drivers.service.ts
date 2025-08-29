@@ -39,14 +39,14 @@ export class DriversService {
   async notifyFileUploaded(
     driverId: string,
     fileType: FileType,
-    fileKey: string,
+    fileUrl: string,
     contentType: string,
     fileName: string,
   ): Promise<any> {
     return this.driversClient.notifyFileUploaded(
       driverId,
       fileType,
-      fileKey,
+      fileUrl,
       contentType,
       fileName,
     );
