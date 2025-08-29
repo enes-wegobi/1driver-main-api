@@ -109,6 +109,17 @@ export class DriversController {
       throw new BadRequestException('File is required');
     }
 
+    const fileName = file.originalname || 'unknown-file';
+    const contentType = file.mimetype || 'application/octet-stream';
+
+    if (!file.originalname) {
+      this.logger.warn('File originalname is missing, using fallback');
+    }
+
+    if (!file.mimetype) {
+      this.logger.warn('File mimetype is missing, using fallback');
+    }
+
     try {
       const userId = user.userId;
       const fileExists = await this.driversService.checkFileExists(
@@ -126,15 +137,15 @@ export class DriversController {
         }
       }
 
-      const fileKey = `${userId}/${fileType}/${uuidv4()}-${file.originalname}`;
+      const fileKey = `${userId}/${fileType}/${uuidv4()}-${fileName}`;
       await this.s3Service.uploadFileWithKey(file, fileKey);
       const fileUrl = this.s3Service.getPublicUrl(fileKey);
       await this.driversService.notifyFileUploaded(
         userId,
         fileType,
         fileUrl,
-        file.mimetype,
-        file.originalname,
+        contentType,
+        fileName,
       );
 
       return {
