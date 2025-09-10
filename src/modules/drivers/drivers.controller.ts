@@ -109,6 +109,15 @@ export class DriversController {
       throw new BadRequestException('File is required');
     }
 
+    this.logger.info('File upload details', {
+      userId: user.userId,
+      fileType,
+      originalName: file.originalname,
+      mimeType: file.mimetype,
+      size: file.size,
+      sizeKB: file.size ? Math.round(file.size / 1024) : 0
+    });
+
     const fileName = file.originalname || 'unknown-file';
     const contentType = file.mimetype || 'application/octet-stream';
 
