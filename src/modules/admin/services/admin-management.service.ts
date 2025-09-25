@@ -1,4 +1,4 @@
-import { Injectable, ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { AdminUserRepository } from '../repositories/admin-user.repository';
 import { CreateAdminDto } from '../dto/create-admin.dto';
 import { AdminCreateResponseDto } from '../dto/admin-create-response.dto';
@@ -7,6 +7,7 @@ import { NormalAdminListResponseDto, NormalAdminListItemDto, PaginationInfoDto }
 import { AdminDeleteResponseDto } from '../dto/admin-delete-response.dto';
 import { GetNormalAdminsQueryDto } from '../dto/get-normal-admins-query.dto';
 import { AdminUser } from '../schemas/admin-user.schema';
+import { AdminErrorService } from '../exceptions';
 import * as bcrypt from 'bcrypt';
 import { AdminRole } from '../enums/admin-role.enum';
 
@@ -21,7 +22,7 @@ export class AdminManagementService {
 
     const existingAdmin = await this.adminUserRepository.findByEmail(email);
     if (existingAdmin) {
-      throw new ConflictException('Admin with this email already exists');
+      AdminErrorService.throwEmailAlreadyExists();
     }
 
     const passwordHash = await this.hashPassword(password);
@@ -50,7 +51,7 @@ export class AdminManagementService {
 
     const existingAdmin = await this.adminUserRepository.findByEmail(email);
     if (existingAdmin) {
-      throw new ConflictException('Admin with this email already exists');
+      AdminErrorService.throwEmailAlreadyExists();
     }
 
     const passwordHash = await this.hashPassword(password);
@@ -111,15 +112,15 @@ export class AdminManagementService {
     const admin = await this.adminUserRepository.findById(id);
 
     if (!admin) {
-      throw new NotFoundException('Admin not found');
+      AdminErrorService.throwAdminNotFoundForDelete();
     }
 
     if (admin.role === AdminRole.SUPER_ADMIN) {
-      throw new BadRequestException('Cannot delete super admin');
+      AdminErrorService.throwCannotDeleteSuperAdmin();
     }
 
     if (admin.role !== AdminRole.NORMAL_ADMIN) {
-      throw new BadRequestException('Can only delete normal admin users');
+      AdminErrorService.throwInvalidAdminType();
     }
 
     await this.adminUserRepository.deleteById(id);

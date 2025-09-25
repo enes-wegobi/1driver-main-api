@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { JwtService } from '../../../jwt/jwt.service';
 import { AdminUserRepository } from '../repositories/admin-user.repository';
 import { PasswordResetCodeRepository } from '../repositories/password-reset-code.repository';
@@ -10,6 +10,7 @@ import { VerifyResetCodeDto } from '../dto/verify-reset-code.dto';
 import { ResetPasswordDto } from '../dto/reset-password.dto';
 import { ResetCodeResponseDto, VerifyCodeResponseDto, ResetPasswordResponseDto } from '../dto/reset-code-response.dto';
 import { AdminUser } from '../schemas/admin-user.schema';
+import { AdminErrorService } from '../exceptions';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -25,12 +26,12 @@ export class AdminAuthService {
 
     const admin = await this.adminUserRepository.findByEmail(email);
     if (!admin) {
-      throw new UnauthorizedException('Email or password is incorrect');
+      AdminErrorService.throwInvalidCredentials();
     }
 
     const isPasswordValid = await bcrypt.compare(password, admin.passwordHash);
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Email or password is incorrect');
+      AdminErrorService.throwInvalidCredentials();
     }
 
     const payload = {
@@ -62,7 +63,7 @@ export class AdminAuthService {
   async getAdminProfile(userId: string): Promise<AdminProfileResponseDto> {
     const admin = await this.adminUserRepository.findById(userId);
     if (!admin) {
-      throw new NotFoundException('Admin not found');
+      AdminErrorService.throwAdminNotFound();
     }
 
     return {
@@ -97,7 +98,7 @@ export class AdminAuthService {
 
     const admin = await this.adminUserRepository.findByEmail(email);
     if (!admin) {
-      throw new NotFoundException('Admin with this email does not exist');
+      AdminErrorService.throwResetCodeNotFound();
     }
 
     await this.passwordResetCodeRepository.deleteByEmail(email);
@@ -123,7 +124,7 @@ export class AdminAuthService {
 
     const resetCode = await this.passwordResetCodeRepository.findByEmailAndCode(email, code);
     if (!resetCode) {
-      throw new BadRequestException('Invalid or expired verification code');
+      AdminErrorService.throwInvalidResetCode();
     }
 
     return {
@@ -136,17 +137,17 @@ export class AdminAuthService {
     const { email, code, newPassword, confirmPassword } = resetPasswordDto;
 
     if (newPassword !== confirmPassword) {
-      throw new BadRequestException('Passwords do not match');
+      AdminErrorService.throwPasswordMismatch();
     }
 
     const resetCode = await this.passwordResetCodeRepository.findByEmailAndCode(email, code);
     if (!resetCode) {
-      throw new BadRequestException('Invalid or expired verification code');
+      AdminErrorService.throwInvalidResetCode();
     }
 
     const admin = await this.adminUserRepository.findByEmail(email);
     if (!admin) {
-      throw new NotFoundException('Admin not found');
+      AdminErrorService.throwAdminNotFound();
     }
 
     const passwordHash = await this.hashPassword(newPassword);

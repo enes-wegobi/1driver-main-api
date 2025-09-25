@@ -80,7 +80,4 @@ export class AdminUserRepository {
     return this.adminUserModel.findByIdAndDelete(id).exec();
   }
 
-  async findByIdAndRole(id: string, role: AdminRole): Promise<AdminUserDocument | null> {
-    return this.adminUserModel.findOne({ _id: id, role }).exec();
-  }
 }
