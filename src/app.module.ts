@@ -28,6 +28,7 @@ import { TripEventsService } from './events/trip-events.service';
 import { TripApprovalHandler } from './events/handlers/trip-approval.handler';
 import { AuthEventsModule } from './events/auth-events.module';
 import { SMSModule } from './modules/sms/sms.module';
+import { AdminModule } from './modules/admin/admin.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { SMSModule } from './modules/sms/sms.module';
     LoggerModule,
     JwtModule,
     AuthModule,
+    AdminModule,
     CustomersModule,
     ContentModule,
     WebSocketModule,
