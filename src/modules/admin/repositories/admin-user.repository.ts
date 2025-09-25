@@ -26,4 +26,12 @@ export class AdminUserRepository {
   async findActiveByEmail(email: string): Promise<AdminUserDocument | null> {
     return this.adminUserModel.findOne({ email, isActive: true }).exec();
   }
+
+  async updatePassword(id: string, passwordHash: string): Promise<AdminUserDocument | null> {
+    return this.adminUserModel.findByIdAndUpdate(
+      id,
+      { passwordHash },
+      { new: true },
+    ).exec();
+  }
 }
