@@ -1,13 +1,9 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 import { EntityDocumentHelper } from 'src/common/utils/document-helper';
+import { AdminRole } from '../enums/admin-role.enum';
 
 export type AdminUserDocument = AdminUser & Document;
-
-export enum AdminRole {
-  SUPER_ADMIN = 'super_admin',
-  NORMAL_ADMIN = 'normal_admin',
-}
 
 @Schema({ timestamps: true })
 export class AdminUser extends EntityDocumentHelper {
@@ -25,12 +21,6 @@ export class AdminUser extends EntityDocumentHelper {
 
   @Prop({ enum: AdminRole, default: AdminRole.NORMAL_ADMIN })
   role: AdminRole;
-
-  @Prop({ default: true })
-  isActive: boolean;
-
-  @Prop()
-  lastLoginAt: Date;
 }
 
 export const AdminUserSchema = SchemaFactory.createForClass(AdminUser);

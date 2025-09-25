@@ -23,7 +23,7 @@ export class AdminAuthService {
   async login(loginDto: AdminLoginDto): Promise<AdminLoginResponseDto> {
     const { email, password } = loginDto;
 
-    const admin = await this.adminUserRepository.findActiveByEmail(email);
+    const admin = await this.adminUserRepository.findByEmail(email);
     if (!admin) {
       throw new UnauthorizedException('Email or password is incorrect');
     }
@@ -65,10 +65,6 @@ export class AdminAuthService {
       throw new NotFoundException('Admin not found');
     }
 
-    if (!admin.isActive) {
-      throw new UnauthorizedException('Admin account is inactive');
-    }
-
     return {
       id: admin._id.toString(),
       email: admin.email,
@@ -102,10 +98,6 @@ export class AdminAuthService {
     const admin = await this.adminUserRepository.findByEmail(email);
     if (!admin) {
       throw new NotFoundException('Admin with this email does not exist');
-    }
-
-    if (!admin.isActive) {
-      throw new UnauthorizedException('Admin account is inactive');
     }
 
     await this.passwordResetCodeRepository.deleteByEmail(email);
