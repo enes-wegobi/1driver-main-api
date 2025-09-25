@@ -47,10 +47,9 @@ export class AdminAuthService {
       admin: {
         id: admin._id.toString(),
         email: admin.email,
-        firstName: admin.firstName,
-        lastName: admin.lastName,
+        name: admin.name,
+        surname: admin.surname,
         role: admin.role,
-        lastLoginAt: new Date(),
       },
     };
   }
@@ -73,18 +72,17 @@ export class AdminAuthService {
     return {
       id: admin._id.toString(),
       email: admin.email,
-      firstName: admin.firstName,
-      lastName: admin.lastName,
+      name: admin.name,
+      surname: admin.surname,
       role: admin.role,
-      isActive: admin.isActive,
     };
   }
 
   async createAdminUser(userData: {
     email: string;
     password: string;
-    firstName: string;
-    lastName: string;
+    name: string;
+    surname: string;
     role?: string;
   }): Promise<AdminUser> {
     const passwordHash = await this.hashPassword(userData.password);
@@ -92,8 +90,8 @@ export class AdminAuthService {
     return this.adminUserRepository.create({
       email: userData.email,
       passwordHash,
-      firstName: userData.firstName,
-      lastName: userData.lastName,
+      name: userData.name,
+      surname: userData.surname,
       role: userData.role as any,
     });
   }
@@ -120,6 +118,7 @@ export class AdminAuthService {
       code: resetCode,
       expiresAt,
     });
+    //TODO send code with email
 
     return {
       message: 'Verification code sent to your email',

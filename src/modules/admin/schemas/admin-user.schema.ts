@@ -18,10 +18,10 @@ export class AdminUser extends EntityDocumentHelper {
   passwordHash: string;
 
   @Prop({ required: true })
-  firstName: string;
+  name: string;
 
   @Prop({ required: true })
-  lastName: string;
+  surname: string;
 
   @Prop({ enum: AdminRole, default: AdminRole.NORMAL_ADMIN })
   role: AdminRole;

@@ -18,13 +18,13 @@ export class AdminProfileResponseDto {
     description: 'Admin first name',
     example: 'John',
   })
-  firstName: string;
+  name: string;
 
   @ApiProperty({
     description: 'Admin last name',
     example: 'Doe',
   })
-  lastName: string;
+  surname: string;
 
   @ApiProperty({
     description: 'Admin role',
@@ -32,11 +32,4 @@ export class AdminProfileResponseDto {
     example: AdminRole.SUPER_ADMIN,
   })
   role: AdminRole;
-
-  @ApiProperty({
-    description: 'Account active status',
-    example: true,
-  })
-  isActive: boolean;
-
 }

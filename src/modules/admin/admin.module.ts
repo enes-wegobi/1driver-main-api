@@ -5,7 +5,9 @@ import { PasswordResetCode, PasswordResetCodeSchema } from './schemas/password-r
 import { AdminUserRepository } from './repositories/admin-user.repository';
 import { PasswordResetCodeRepository } from './repositories/password-reset-code.repository';
 import { AdminAuthService } from './services/admin-auth.service';
+import { AdminManagementService } from './services/admin-management.service';
 import { AdminAuthController } from './controllers/admin-auth.controller';
+import { AdminManagementController } from './controllers/admin-management.controller';
 import { JwtModule } from '../../jwt/jwt.module';
 
 @Module({
@@ -16,8 +18,8 @@ import { JwtModule } from '../../jwt/jwt.module';
     ]),
     JwtModule,
   ],
-  controllers: [AdminAuthController],
-  providers: [AdminUserRepository, PasswordResetCodeRepository, AdminAuthService],
+  controllers: [AdminAuthController, AdminManagementController],
+  providers: [AdminUserRepository, PasswordResetCodeRepository, AdminAuthService, AdminManagementService],
   exports: [AdminAuthService],
 })
 export class AdminModule {}
