@@ -13,7 +13,6 @@ import { WebSocketModule } from './websocket/websocket.module';
 import { RedisModule } from './redis/redis.module';
 import { S3Module } from './s3/s3.module';
 import { DriversModule } from './modules/drivers/drivers.module';
-import { PromotionsModule } from './modules/promotions/promotions.module';
 import { ExpoNotificationsModule } from './modules/expo-notifications/expo-notifications.module';
 import { TripModule } from './modules/trip/trip.module';
 import { SupportTicketsModule } from './modules/support-tickets/support-tickets.module';
@@ -52,7 +51,6 @@ import { CampaignsModule } from './modules/campaigns/campaigns.module';
     S3Module,
     DriversModule,
     TripModule,
-    PromotionsModule,
     ExpoNotificationsModule,
     SupportTicketsModule,
     LocationModule,
