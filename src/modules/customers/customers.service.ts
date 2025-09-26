@@ -26,6 +26,10 @@ export class CustomersService {
     return customer;
   }
 
+  async findAll(options?: { page?: number; limit?: number; search?: string }) {
+    return this.customersClient.findAll(options);
+  }
+
   async updateProfile(id: string, profileData: UpdateCustomerDto) {
     return this.customersClient.updateProfile(id, profileData);
   }

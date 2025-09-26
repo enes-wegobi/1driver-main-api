@@ -210,4 +210,26 @@ export class CustomersClient {
     });
     return data;
   }
+
+  async findAll(options?: { page?: number; limit?: number; search?: string }): Promise<any> {
+    let url = '/customers';
+    const params = new URLSearchParams();
+
+    if (options?.page) {
+      params.append('page', options.page.toString());
+    }
+    if (options?.limit) {
+      params.append('limit', options.limit.toString());
+    }
+    if (options?.search) {
+      params.append('search', options.search);
+    }
+
+    if (params.toString()) {
+      url += `?${params.toString()}`;
+    }
+
+    const { data } = await this.httpClient.get(url);
+    return data;
+  }
 }
