@@ -27,9 +27,7 @@ export class DriverPenaltyService {
         ? PenaltyType.DRIVER_LATE_CANCELLATION
         : PenaltyType.CUSTOMER_LATE_CANCELLATION;
 
-    const penaltyAmount = this.calculatePenaltyAmount(
-      userType,
-    );
+    const penaltyAmount = this.calculatePenaltyAmount(userType);
 
     const status =
       userType === UserType.DRIVER
@@ -127,9 +125,7 @@ export class DriverPenaltyService {
     return timeDifferenceSeconds > 300; // 5 minutes in seconds
   }
 
-  private calculatePenaltyAmount(
-    userType: UserType,
-  ): number {
+  private calculatePenaltyAmount(userType: UserType): number {
     if (userType === UserType.DRIVER) {
       // Driver cancellations have no penalty amount
       return 0;
