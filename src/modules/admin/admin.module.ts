@@ -19,6 +19,10 @@ import { TripModule } from '../trip/trip.module';
 import { PaymentsModule } from '../payments/payments.module';
 import { CustomersModule } from '../customers/customers.module';
 import { DriversModule } from '../drivers/drivers.module';
+import { CampaignsModule } from '../campaigns/campaigns.module';
+import { S3Module } from '../../s3/s3.module';
+import { AdminCampaignsService } from './services/admin-campaigns.service';
+import { AdminCampaignsController } from './controllers/admin-campaigns.controller';
 
 @Module({
   imports: [
@@ -31,9 +35,11 @@ import { DriversModule } from '../drivers/drivers.module';
     PaymentsModule,
     CustomersModule,
     DriversModule,
+    CampaignsModule,
+    S3Module,
   ],
-  controllers: [AdminAuthController, AdminManagementController, AdminTripController, AdminCustomerController, AdminDriverController],
-  providers: [AdminUserRepository, PasswordResetCodeRepository, AdminAuthService, AdminManagementService, AdminTripService, AdminCustomerService, AdminDriverService],
+  controllers: [AdminAuthController, AdminManagementController, AdminTripController, AdminCustomerController, AdminDriverController, AdminCampaignsController],
+  providers: [AdminUserRepository, PasswordResetCodeRepository, AdminAuthService, AdminManagementService, AdminTripService, AdminCustomerService, AdminDriverService, AdminCampaignsService],
   exports: [AdminAuthService],
 })
 export class AdminModule {}

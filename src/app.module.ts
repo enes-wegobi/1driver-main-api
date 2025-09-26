@@ -29,6 +29,7 @@ import { TripApprovalHandler } from './events/handlers/trip-approval.handler';
 import { AuthEventsModule } from './events/auth-events.module';
 import { SMSModule } from './modules/sms/sms.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { CampaignsModule } from './modules/campaigns/campaigns.module';
 
 @Module({
   imports: [
@@ -60,6 +61,7 @@ import { AdminModule } from './modules/admin/admin.module';
     HealthModule,
     AuthEventsModule,
     SMSModule,
+    CampaignsModule,
   ],
   providers: [
     {
