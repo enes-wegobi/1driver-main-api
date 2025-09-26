@@ -81,14 +81,30 @@ export class AdminCustomerService {
   }
 
   private mapAddress(address: any): AdminCustomerAddressDto {
+    const coordinates = address.location?.coordinates
+      ? { lat: address.location.coordinates[1], lng: address.location.coordinates[0] }
+      : { lat: 0, lng: 0 };
+
     return {
       id: address.id || address._id,
-      title: address.title,
-      addressLine: address.addressLine,
-      city: address.city,
-      district: address.district,
-      coordinates: address.coordinates || { lat: 0, lng: 0 },
+      label: address.label || '',
+      formatted_address: address.formatted_address || '',
+      street_number: address.street_number || '',
+      route: address.route || '',
+      neighborhood: address.neighborhood || '',
+      locality: address.locality || '',
+      administrative_area_level_2: address.administrative_area_level_2 || '',
+      administrative_area_level_1: address.administrative_area_level_1 || '',
+      postal_code: address.postal_code || '',
+      country: address.country || '',
+      country_code: address.country_code || '',
+      timezone: address.timezone || '',
+      place_id: address.place_id || '',
+      coordinates,
+      additional_info: address.additional_info || '',
       isDefault: address.isDefault || false,
+      createdAt: address.createdAt,
+      updatedAt: address.updatedAt,
     };
   }
 

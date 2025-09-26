@@ -5,16 +5,43 @@ export class AdminCustomerAddressDto {
   id: string;
 
   @ApiProperty()
-  title: string;
+  label: string;
 
   @ApiProperty()
-  addressLine: string;
+  formatted_address: string;
 
   @ApiProperty()
-  city: string;
+  street_number: string;
 
   @ApiProperty()
-  district: string;
+  route: string;
+
+  @ApiProperty()
+  neighborhood: string;
+
+  @ApiProperty()
+  locality: string;
+
+  @ApiProperty()
+  administrative_area_level_2: string;
+
+  @ApiProperty()
+  administrative_area_level_1: string;
+
+  @ApiProperty()
+  postal_code: string;
+
+  @ApiProperty()
+  country: string;
+
+  @ApiProperty()
+  country_code: string;
+
+  @ApiProperty()
+  timezone: string;
+
+  @ApiProperty()
+  place_id: string;
 
   @ApiProperty()
   coordinates: {
@@ -23,7 +50,16 @@ export class AdminCustomerAddressDto {
   };
 
   @ApiProperty()
+  additional_info: string;
+
+  @ApiProperty()
   isDefault: boolean;
+
+  @ApiProperty()
+  createdAt: Date;
+
+  @ApiProperty()
+  updatedAt: Date;
 }
 
 export class AdminCustomerPaymentMethodDto {
