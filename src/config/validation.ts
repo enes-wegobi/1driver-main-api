@@ -11,8 +11,6 @@ const envSchema = z.object({
   USERS_SERVICE_TIMEOUT: z.coerce.number().optional().default(5000),
   AUTH_SERVICE_URL: z.string().optional().default('http://localhost:3001'),
   AUTH_SERVICE_TIMEOUT: z.coerce.number().optional().default(5000),
-  PROMOTION_SERVICE_URL: z.string().optional().default('http://localhost:3002'),
-  PROMOTION_SERVICE_TIMEOUT: z.coerce.number().optional().default(5000),
   JWT_SECRET: z.string().optional().default('supersecret'),
   JWT_EXPIRES_IN: z.coerce.number().optional().default(2592000),
   SPACES_REGION: z.string().optional(),
