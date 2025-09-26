@@ -25,6 +25,10 @@ export class DriversService {
     return this.driversClient.findMany(driverIds);
   }
 
+  async findAll(query: { page?: number; limit?: number; search?: string }) {
+    return this.driversClient.findAll(query);
+  }
+
   async checkFileExists(
     driverId: string,
     fileType: FileType,
