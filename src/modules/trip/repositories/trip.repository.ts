@@ -296,4 +296,22 @@ export class TripRepository {
       totalDuration: result[0].totalDuration || 0,
     };
   }
+
+  async findWithPagination(
+    filter: any = {},
+    options: { skip?: number; limit?: number; sort?: any } = {}
+  ): Promise<TripDocument[]> {
+    const { skip = 0, limit = 10, sort = { createdAt: -1 } } = options;
+
+    return this.tripModel
+      .find(filter)
+      .sort(sort)
+      .skip(skip)
+      .limit(limit)
+      .lean();
+  }
+
+  async countDocuments(filter: any = {}): Promise<number> {
+    return this.tripModel.countDocuments(filter);
+  }
 }

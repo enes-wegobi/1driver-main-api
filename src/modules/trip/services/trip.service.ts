@@ -626,7 +626,7 @@ export class TripService {
               status: TripStatus.DRAFT,
               calledDriverIds: [],
               rejectedDriverIds: [],
-              callStartTime: null,
+              callStartTime: undefined,
               callRetryCount: 0,
             };
 
@@ -2214,5 +2214,19 @@ export class TripService {
         error.response?.data?.message || `Failed to ${actionName}`,
       );
     }
+  }
+
+  // ================================
+  // ADMIN METHODS
+  // ================================
+
+  async findAll(filter: any = {}, options: { skip?: number; limit?: number; sort?: any } = {}): Promise<TripDocument[]> {
+    const { skip = 0, limit = 10, sort = { createdAt: -1 } } = options;
+
+    return this.tripRepository.findWithPagination(filter, { skip, limit, sort });
+  }
+
+  async count(filter: any = {}): Promise<number> {
+    return this.tripRepository.countDocuments(filter);
   }
 }
