@@ -27,26 +27,26 @@ import {
   ApiResponse,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/jwt/guards/jwt.guard';
-import { DriversService } from './drivers.service';
 import { GetUser } from 'src/jwt/user.decorator';
 import { IJwtPayload } from 'src/jwt/jwt-payload.interface';
 import { v4 as uuidv4 } from 'uuid';
 import { FileInterceptor } from '@nest-lab/fastify-multer';
 import { S3Service } from 'src/s3/s3.service';
-import { FileType } from './enum/file-type.enum';
+import { FileType } from '../enum/file-type.enum';
 import {
   BankInformationDto,
   CreateBankInformationDto,
-} from './dto/bank-information.dto';
+} from '../dto/bank-information.dto';
 import { InitiateEmailUpdateDto } from 'src/clients/customer/dto/initiate-email-update.dto';
 import { CompleteEmailUpdateDto } from 'src/clients/customer/dto/complete-email-update.dto';
 import { InitiatePhoneUpdateDto } from 'src/clients/customer/dto/initiate-phone-update.dto';
 import { CompletePhoneUpdateDto } from 'src/clients/customer/dto/complete-phone-update.dto';
 import { UpdateNotificationPermissionsDto } from 'src/clients/driver/dto/update-notification-permissions.dto';
-import { UpdateDriverProfileDto } from './dto/update-driver-profile.dto';
-import { UpdateDriverExpoTokenDto } from './dto/update-driver-expo-token.dto';
+import { UpdateDriverProfileDto } from '../dto/update-driver-profile.dto';
+import { UpdateDriverExpoTokenDto } from '../dto/update-driver-expo-token.dto';
 import { UpdateRateDto } from 'src/common/dto/update-rate.dto';
 import { LoggerService } from 'src/logger/logger.service';
+import { DriversService } from '../services/drivers.service';
 
 @ApiTags('drivers')
 @ApiBearerAuth()

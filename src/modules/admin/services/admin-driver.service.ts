@@ -10,7 +10,7 @@ import {
   AdminDriverDrivingLicenseDto,
   AdminDriverDrivingLicenseFileDto,
 } from '../dto/admin-driver-detail-response.dto';
-import { DriversService } from '../../drivers/drivers.service';
+import { DriversService } from '../../drivers/services/drivers.service';
 
 @Injectable()
 export class AdminDriverService {

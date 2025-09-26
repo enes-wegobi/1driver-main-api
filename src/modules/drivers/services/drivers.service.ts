@@ -1,13 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { DriversClient } from 'src/clients/driver/drivers.client';
-import { FileType } from './enum/file-type.enum';
-import { CreateBankInformationDto } from './dto/bank-information.dto';
+import { FileType } from '../enum/file-type.enum';
+import { CreateBankInformationDto } from '../dto/bank-information.dto';
 import { InitiateEmailUpdateDto } from 'src/clients/customer/dto/initiate-email-update.dto';
 import { CompleteEmailUpdateDto } from 'src/clients/customer/dto/complete-email-update.dto';
 import { InitiatePhoneUpdateDto } from 'src/clients/customer/dto/initiate-phone-update.dto';
 import { CompletePhoneUpdateDto } from 'src/clients/customer/dto/complete-phone-update.dto';
 import { UpdateNotificationPermissionsDto } from 'src/clients/driver/dto/update-notification-permissions.dto';
-import { UpdateDriverProfileDto } from './dto/update-driver-profile.dto';
+import { UpdateDriverProfileDto } from '../dto/update-driver-profile.dto';
 
 @Injectable()
 export class DriversService {

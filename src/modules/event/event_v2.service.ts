@@ -1,6 +1,6 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { WebSocketService } from 'src/websocket/websocket.service';
-import { DriversService } from 'src/modules/drivers/drivers.service';
+import { DriversService } from 'src/modules/drivers/services/drivers.service';
 import { CustomersService } from 'src/modules/customers/customers.service';
 import { ExpoNotificationsService } from 'src/modules/expo-notifications/expo-notifications.service';
 import { DriverStatusService } from 'src/redis/services/driver-status.service';
