@@ -6,7 +6,7 @@ export class BaseQueryDto {
   @ApiProperty({
     required: false,
     default: 1,
-    description: 'Page number'
+    description: 'Page number',
   })
   @IsOptional()
   @Type(() => Number)
@@ -17,7 +17,7 @@ export class BaseQueryDto {
   @ApiProperty({
     required: false,
     default: 10,
-    description: 'Number of items per page'
+    description: 'Number of items per page',
   })
   @IsOptional()
   @Type(() => Number)
@@ -27,7 +27,7 @@ export class BaseQueryDto {
 
   @ApiProperty({
     required: false,
-    description: 'Search term'
+    description: 'Search term',
   })
   @IsOptional()
   @IsString()

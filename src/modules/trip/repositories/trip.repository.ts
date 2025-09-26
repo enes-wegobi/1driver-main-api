@@ -299,7 +299,7 @@ export class TripRepository {
 
   async findWithPagination(
     filter: any = {},
-    options: { skip?: number; limit?: number; sort?: any } = {}
+    options: { skip?: number; limit?: number; sort?: any } = {},
   ): Promise<TripDocument[]> {
     const { skip = 0, limit = 10, sort = { createdAt: -1 } } = options;
 

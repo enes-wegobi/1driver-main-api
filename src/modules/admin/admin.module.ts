@@ -1,7 +1,10 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AdminUser, AdminUserSchema } from './schemas/admin-user.schema';
-import { PasswordResetCode, PasswordResetCodeSchema } from './schemas/password-reset-code.schema';
+import {
+  PasswordResetCode,
+  PasswordResetCodeSchema,
+} from './schemas/password-reset-code.schema';
 import { AdminUserRepository } from './repositories/admin-user.repository';
 import { PasswordResetCodeRepository } from './repositories/password-reset-code.repository';
 import { AdminAuthService } from './services/admin-auth.service';
@@ -38,8 +41,24 @@ import { AdminCampaignsController } from './controllers/admin-campaigns.controll
     CampaignsModule,
     S3Module,
   ],
-  controllers: [AdminAuthController, AdminManagementController, AdminTripController, AdminCustomerController, AdminDriverController, AdminCampaignsController],
-  providers: [AdminUserRepository, PasswordResetCodeRepository, AdminAuthService, AdminManagementService, AdminTripService, AdminCustomerService, AdminDriverService, AdminCampaignsService],
+  controllers: [
+    AdminAuthController,
+    AdminManagementController,
+    AdminTripController,
+    AdminCustomerController,
+    AdminDriverController,
+    AdminCampaignsController,
+  ],
+  providers: [
+    AdminUserRepository,
+    PasswordResetCodeRepository,
+    AdminAuthService,
+    AdminManagementService,
+    AdminTripService,
+    AdminCustomerService,
+    AdminDriverService,
+    AdminCampaignsService,
+  ],
   exports: [AdminAuthService],
 })
 export class AdminModule {}

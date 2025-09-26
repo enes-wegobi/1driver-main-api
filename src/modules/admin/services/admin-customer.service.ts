@@ -1,7 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { GetAdminCustomersQueryDto } from '../dto/get-admin-customers-query.dto';
-import { AdminCustomerListResponseDto, AdminCustomerListItemDto } from '../dto/admin-customer-list-response.dto';
-import { AdminCustomerDetailResponseDto, AdminCustomerAddressDto, AdminCustomerPaymentMethodDto } from '../dto/admin-customer-detail-response.dto';
+import {
+  AdminCustomerListResponseDto,
+  AdminCustomerListItemDto,
+} from '../dto/admin-customer-list-response.dto';
+import {
+  AdminCustomerDetailResponseDto,
+  AdminCustomerAddressDto,
+  AdminCustomerPaymentMethodDto,
+} from '../dto/admin-customer-detail-response.dto';
 import { PaymentMethodService } from '../../payments/services/payment-method.service';
 import { CustomersService } from '../../customers/customers.service';
 
@@ -12,7 +19,9 @@ export class AdminCustomerService {
     private readonly paymentMethodService: PaymentMethodService,
   ) {}
 
-  async getAllCustomers(query: GetAdminCustomersQueryDto): Promise<AdminCustomerListResponseDto> {
+  async getAllCustomers(
+    query: GetAdminCustomersQueryDto,
+  ): Promise<AdminCustomerListResponseDto> {
     const page = query.page || 1;
     const limit = query.limit || 10;
 
@@ -22,7 +31,9 @@ export class AdminCustomerService {
       search: query.search,
     });
 
-    const mappedCustomers = result.items?.map(customer => this.mapCustomerToListItem(customer)) || [];
+    const mappedCustomers =
+      result.items?.map((customer) => this.mapCustomerToListItem(customer)) ||
+      [];
 
     return {
       customers: mappedCustomers,
@@ -30,20 +41,24 @@ export class AdminCustomerService {
         page: result.page || page,
         limit: result.limit || limit,
         total: result.total || 0,
-        totalPages: result.totalPages || Math.ceil((result.total || 0) / limit)
-      }
+        totalPages: result.totalPages || Math.ceil((result.total || 0) / limit),
+      },
     };
   }
 
-  async getCustomerById(customerId: string): Promise<AdminCustomerDetailResponseDto | null> {
+  async getCustomerById(
+    customerId: string,
+  ): Promise<AdminCustomerDetailResponseDto | null> {
     const customer = await this.customersService.findOne(customerId);
 
     if (!customer) {
       return null;
     }
     let paymentMethods: AdminCustomerPaymentMethodDto[] = [];
-    const customerPaymentMethods = await this.paymentMethodService.getPaymentMethods(customer._id);
-    paymentMethods = customerPaymentMethods?.map(pm => this.mapPaymentMethod(pm)) || [];
+    const customerPaymentMethods =
+      await this.paymentMethodService.getPaymentMethods(customer._id);
+    paymentMethods =
+      customerPaymentMethods?.map((pm) => this.mapPaymentMethod(pm)) || [];
 
     return this.mapCustomerToDetail(customer, paymentMethods);
   }
@@ -58,8 +73,12 @@ export class AdminCustomerService {
     };
   }
 
-  private mapCustomerToDetail(customer: any, paymentMethods: AdminCustomerPaymentMethodDto[]): AdminCustomerDetailResponseDto {
-    const addresses = customer.addresses?.map(address => this.mapAddress(address)) || [];
+  private mapCustomerToDetail(
+    customer: any,
+    paymentMethods: AdminCustomerPaymentMethodDto[],
+  ): AdminCustomerDetailResponseDto {
+    const addresses =
+      customer.addresses?.map((address) => this.mapAddress(address)) || [];
 
     return {
       id: customer.id || customer._id,
@@ -82,7 +101,10 @@ export class AdminCustomerService {
 
   private mapAddress(address: any): AdminCustomerAddressDto {
     const coordinates = address.location?.coordinates
-      ? { lat: address.location.coordinates[1], lng: address.location.coordinates[0] }
+      ? {
+          lat: address.location.coordinates[1],
+          lng: address.location.coordinates[0],
+        }
       : { lat: 0, lng: 0 };
 
     return {

@@ -1,5 +1,17 @@
-import { Controller, Get, Param, Query, UseGuards, NotFoundException } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  Controller,
+  Get,
+  Param,
+  Query,
+  UseGuards,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { AdminCustomerService } from '../services/admin-customer.service';
 import { GetAdminCustomersQueryDto } from '../dto/get-admin-customers-query.dto';
 import { AdminAuthGuard } from '../guards/admin-auth.guard';
@@ -18,24 +30,31 @@ export class AdminCustomerController {
   @ApiResponse({
     status: 200,
     description: 'Customers retrieved successfully',
-    type: AdminCustomerListResponseDto
+    type: AdminCustomerListResponseDto,
   })
-  async getAllCustomers(@Query() query: GetAdminCustomersQueryDto): Promise<AdminCustomerListResponseDto> {
+  async getAllCustomers(
+    @Query() query: GetAdminCustomersQueryDto,
+  ): Promise<AdminCustomerListResponseDto> {
     return this.adminCustomerService.getAllCustomers(query);
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get customer details by ID including addresses and payment methods' })
+  @ApiOperation({
+    summary:
+      'Get customer details by ID including addresses and payment methods',
+  })
   @ApiResponse({
     status: 200,
     description: 'Customer details retrieved successfully',
-    type: AdminCustomerDetailResponseDto
+    type: AdminCustomerDetailResponseDto,
   })
   @ApiResponse({
     status: 404,
-    description: 'Customer not found'
+    description: 'Customer not found',
   })
-  async getCustomerById(@Param('id') id: string): Promise<AdminCustomerDetailResponseDto> {
+  async getCustomerById(
+    @Param('id') id: string,
+  ): Promise<AdminCustomerDetailResponseDto> {
     const customer = await this.adminCustomerService.getCustomerById(id);
 
     if (!customer) {

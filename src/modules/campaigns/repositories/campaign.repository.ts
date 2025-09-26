@@ -30,12 +30,13 @@ export class CampaignRepository {
         $or: [
           { name: { $regex: search, $options: 'i' } },
           { code: { $regex: search, $options: 'i' } },
-          { description: { $regex: search, $options: 'i' } }
-        ]
+          { description: { $regex: search, $options: 'i' } },
+        ],
       };
     }
 
-    return this.campaignModel.find(query)
+    return this.campaignModel
+      .find(query)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
@@ -50,8 +51,8 @@ export class CampaignRepository {
         $or: [
           { name: { $regex: search, $options: 'i' } },
           { code: { $regex: search, $options: 'i' } },
-          { description: { $regex: search, $options: 'i' } }
-        ]
+          { description: { $regex: search, $options: 'i' } },
+        ],
       };
     }
 
@@ -72,18 +73,24 @@ export class CampaignRepository {
 
   async findActiveCampaigns(): Promise<CampaignDocument[]> {
     const now = new Date();
-    return this.campaignModel.find({
-      startDate: { $lte: now },
-      endDate: { $gt: now }
-    }).exec();
+    return this.campaignModel
+      .find({
+        startDate: { $lte: now },
+        endDate: { $gt: now },
+      })
+      .exec();
   }
 
-  async findByTargetGroup(targetGroup: CampaignTargetGroup): Promise<CampaignDocument[]> {
+  async findByTargetGroup(
+    targetGroup: CampaignTargetGroup,
+  ): Promise<CampaignDocument[]> {
     const now = new Date();
-    return this.campaignModel.find({
-      targetGroup,
-      startDate: { $lte: now },
-      endDate: { $gt: now }
-    }).exec();
+    return this.campaignModel
+      .find({
+        targetGroup,
+        startDate: { $lte: now },
+        endDate: { $gt: now },
+      })
+      .exec();
   }
 }

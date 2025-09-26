@@ -1,10 +1,32 @@
-import { Controller, Get, Post, Delete, Param, Query, Body, UseGuards, HttpStatus, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
+import {
+  Controller,
+  Get,
+  Post,
+  Delete,
+  Param,
+  Query,
+  Body,
+  UseGuards,
+  HttpStatus,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiConsumes,
+} from '@nestjs/swagger';
 import { FileInterceptor } from '@nest-lab/fastify-multer';
 import { AdminCampaignsService } from '../services/admin-campaigns.service';
 import { CreateCampaignDto } from '../dto/create-campaign.dto';
 import { AdminCampaignsQueryDto } from '../dto/admin-campaigns-query.dto';
-import { AdminCampaignResponseDto, AdminCampaignListResponseDto } from '../dto/admin-campaign-response.dto';
+import {
+  AdminCampaignResponseDto,
+  AdminCampaignListResponseDto,
+} from '../dto/admin-campaign-response.dto';
 import { AdminDeleteResponseDto } from '../dto/admin-delete-response.dto';
 import { AdminAuthGuard } from '../guards/admin-auth.guard';
 
@@ -22,24 +44,31 @@ export class AdminCampaignsController {
   @ApiResponse({
     status: HttpStatus.CREATED,
     description: 'Campaign created successfully',
-    type: AdminCampaignResponseDto
+    type: AdminCampaignResponseDto,
   })
   @ApiResponse({
     status: HttpStatus.CONFLICT,
-    description: 'Campaign with this code already exists or invalid date range'
+    description: 'Campaign with this code already exists or invalid date range',
   })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
-    description: 'Invalid file format or file too large'
+    description: 'Invalid file format or file too large',
   })
   async createCampaign(
     @Body() createCampaignDto: CreateCampaignDto,
-    @UploadedFile() image?: Express.Multer.File
+    @UploadedFile() image?: Express.Multer.File,
   ): Promise<AdminCampaignResponseDto> {
     if (image) {
-      const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
+      const allowedMimeTypes = [
+        'image/jpeg',
+        'image/png',
+        'image/jpg',
+        'image/webp',
+      ];
       if (!allowedMimeTypes.includes(image.mimetype)) {
-        throw new BadRequestException('Invalid file format. Only JPEG, PNG, JPG and WebP are allowed');
+        throw new BadRequestException(
+          'Invalid file format. Only JPEG, PNG, JPG and WebP are allowed',
+        );
       }
 
       const maxSizeInBytes = 5 * 1024 * 1024; // 5MB
@@ -56,10 +85,16 @@ export class AdminCampaignsController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Campaigns retrieved successfully',
-    type: AdminCampaignListResponseDto
+    type: AdminCampaignListResponseDto,
   })
-  async getAllCampaigns(@Query() query: AdminCampaignsQueryDto): Promise<AdminCampaignListResponseDto> {
-    return this.adminCampaignsService.getAllCampaigns(query.page, query.limit, query.search);
+  async getAllCampaigns(
+    @Query() query: AdminCampaignsQueryDto,
+  ): Promise<AdminCampaignListResponseDto> {
+    return this.adminCampaignsService.getAllCampaigns(
+      query.page,
+      query.limit,
+      query.search,
+    );
   }
 
   @Get(':id')
@@ -67,13 +102,15 @@ export class AdminCampaignsController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Campaign details retrieved successfully',
-    type: AdminCampaignResponseDto
+    type: AdminCampaignResponseDto,
   })
   @ApiResponse({
     status: HttpStatus.NOT_FOUND,
-    description: 'Campaign not found'
+    description: 'Campaign not found',
   })
-  async getCampaignById(@Param('id') id: string): Promise<AdminCampaignResponseDto> {
+  async getCampaignById(
+    @Param('id') id: string,
+  ): Promise<AdminCampaignResponseDto> {
     return this.adminCampaignsService.getCampaignById(id);
   }
 
@@ -82,17 +119,19 @@ export class AdminCampaignsController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Campaign deleted successfully',
-    type: AdminDeleteResponseDto
+    type: AdminDeleteResponseDto,
   })
   @ApiResponse({
     status: HttpStatus.NOT_FOUND,
-    description: 'Campaign not found'
+    description: 'Campaign not found',
   })
-  async deleteCampaign(@Param('id') id: string): Promise<AdminDeleteResponseDto> {
+  async deleteCampaign(
+    @Param('id') id: string,
+  ): Promise<AdminDeleteResponseDto> {
     const deletedCampaign = await this.adminCampaignsService.deleteCampaign(id);
     return {
       message: 'Campaign deleted successfully',
-      deletedId: deletedCampaign._id.toString()
+      deletedId: deletedCampaign._id.toString(),
     };
   }
 }

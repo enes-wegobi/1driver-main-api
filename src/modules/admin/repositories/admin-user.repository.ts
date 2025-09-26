@@ -24,18 +24,19 @@ export class AdminUserRepository {
     return this.adminUserModel.findById(id).exec();
   }
 
-  async updatePassword(id: string, passwordHash: string): Promise<AdminUserDocument | null> {
-    return this.adminUserModel.findByIdAndUpdate(
-      id,
-      { passwordHash },
-      { new: true },
-    ).exec();
+  async updatePassword(
+    id: string,
+    passwordHash: string,
+  ): Promise<AdminUserDocument | null> {
+    return this.adminUserModel
+      .findByIdAndUpdate(id, { passwordHash }, { new: true })
+      .exec();
   }
 
   async findNormalAdmins(
     page: number = 1,
     limit: number = 10,
-    search?: string
+    search?: string,
   ): Promise<AdminUserDocument[]> {
     const skip = (page - 1) * limit;
 
@@ -47,12 +48,13 @@ export class AdminUserRepository {
         $or: [
           { email: { $regex: search, $options: 'i' } },
           { name: { $regex: search, $options: 'i' } },
-          { surname: { $regex: search, $options: 'i' } }
-        ]
+          { surname: { $regex: search, $options: 'i' } },
+        ],
       };
     }
 
-    return this.adminUserModel.find(query)
+    return this.adminUserModel
+      .find(query)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
@@ -68,8 +70,8 @@ export class AdminUserRepository {
         $or: [
           { email: { $regex: search, $options: 'i' } },
           { name: { $regex: search, $options: 'i' } },
-          { surname: { $regex: search, $options: 'i' } }
-        ]
+          { surname: { $regex: search, $options: 'i' } },
+        ],
       };
     }
 
@@ -79,5 +81,4 @@ export class AdminUserRepository {
   async deleteById(id: string): Promise<AdminUserDocument | null> {
     return this.adminUserModel.findByIdAndDelete(id).exec();
   }
-
 }

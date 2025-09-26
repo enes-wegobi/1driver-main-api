@@ -8,7 +8,11 @@ import { AdminProfileResponseDto } from '../dto/admin-profile-response.dto';
 import { SendResetCodeDto } from '../dto/send-reset-code.dto';
 import { VerifyResetCodeDto } from '../dto/verify-reset-code.dto';
 import { ResetPasswordDto } from '../dto/reset-password.dto';
-import { ResetCodeResponseDto, VerifyCodeResponseDto, ResetPasswordResponseDto } from '../dto/reset-code-response.dto';
+import {
+  ResetCodeResponseDto,
+  VerifyCodeResponseDto,
+  ResetPasswordResponseDto,
+} from '../dto/reset-code-response.dto';
 import { AdminUser } from '../schemas/admin-user.schema';
 import { AdminErrorService } from '../exceptions';
 import * as bcrypt from 'bcrypt';
@@ -93,7 +97,9 @@ export class AdminAuthService {
     });
   }
 
-  async sendResetCode(sendResetCodeDto: SendResetCodeDto): Promise<ResetCodeResponseDto> {
+  async sendResetCode(
+    sendResetCodeDto: SendResetCodeDto,
+  ): Promise<ResetCodeResponseDto> {
     const { email } = sendResetCodeDto;
 
     const admin = await this.adminUserRepository.findByEmail(email);
@@ -119,10 +125,15 @@ export class AdminAuthService {
     };
   }
 
-  async verifyResetCode(verifyResetCodeDto: VerifyResetCodeDto): Promise<VerifyCodeResponseDto> {
+  async verifyResetCode(
+    verifyResetCodeDto: VerifyResetCodeDto,
+  ): Promise<VerifyCodeResponseDto> {
     const { email, code } = verifyResetCodeDto;
 
-    const resetCode = await this.passwordResetCodeRepository.findByEmailAndCode(email, code);
+    const resetCode = await this.passwordResetCodeRepository.findByEmailAndCode(
+      email,
+      code,
+    );
     if (!resetCode) {
       AdminErrorService.throwInvalidResetCode();
     }
@@ -133,14 +144,19 @@ export class AdminAuthService {
     };
   }
 
-  async resetPassword(resetPasswordDto: ResetPasswordDto): Promise<ResetPasswordResponseDto> {
+  async resetPassword(
+    resetPasswordDto: ResetPasswordDto,
+  ): Promise<ResetPasswordResponseDto> {
     const { email, code, newPassword, confirmPassword } = resetPasswordDto;
 
     if (newPassword !== confirmPassword) {
       AdminErrorService.throwPasswordMismatch();
     }
 
-    const resetCode = await this.passwordResetCodeRepository.findByEmailAndCode(email, code);
+    const resetCode = await this.passwordResetCodeRepository.findByEmailAndCode(
+      email,
+      code,
+    );
     if (!resetCode) {
       AdminErrorService.throwInvalidResetCode();
     }
@@ -151,7 +167,10 @@ export class AdminAuthService {
     }
 
     const passwordHash = await this.hashPassword(newPassword);
-    await this.adminUserRepository.updatePassword(admin._id.toString(), passwordHash);
+    await this.adminUserRepository.updatePassword(
+      admin._id.toString(),
+      passwordHash,
+    );
 
     await this.passwordResetCodeRepository.markAsUsed(resetCode.id);
 

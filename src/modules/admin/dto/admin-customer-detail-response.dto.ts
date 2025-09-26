@@ -79,7 +79,6 @@ export class AdminCustomerPaymentMethodDto {
   isDefault: boolean;
 }
 
-
 export class AdminCustomerVehicleDto {
   @ApiProperty()
   transmissionType: string;
@@ -87,7 +86,6 @@ export class AdminCustomerVehicleDto {
   @ApiProperty()
   licensePlate: string;
 }
-
 
 export class AdminCustomerDetailResponseDto {
   @ApiProperty()

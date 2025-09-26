@@ -211,7 +211,11 @@ export class CustomersClient {
     return data;
   }
 
-  async findAll(options?: { page?: number; limit?: number; search?: string }): Promise<any> {
+  async findAll(options?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+  }): Promise<any> {
     let url = '/customers';
     const params = new URLSearchParams();
 

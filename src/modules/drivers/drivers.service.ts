@@ -8,14 +8,10 @@ import { InitiatePhoneUpdateDto } from 'src/clients/customer/dto/initiate-phone-
 import { CompletePhoneUpdateDto } from 'src/clients/customer/dto/complete-phone-update.dto';
 import { UpdateNotificationPermissionsDto } from 'src/clients/driver/dto/update-notification-permissions.dto';
 import { UpdateDriverProfileDto } from './dto/update-driver-profile.dto';
-import { LoggerService } from 'src/logger/logger.service';
 
 @Injectable()
 export class DriversService {
-  constructor(
-    private readonly driversClient: DriversClient,
-    private readonly logger: LoggerService,
-  ) {}
+  constructor(private readonly driversClient: DriversClient) {}
 
   async findOne(id: string, fields?: string | string[]) {
     return this.driversClient.findOne(id, fields);
@@ -56,33 +52,6 @@ export class DriversService {
     );
   }
 
-  async verifyFile(
-    driverId: string,
-    fileType: FileType,
-    isVerified: boolean,
-  ): Promise<any> {
-    return this.driversClient.verifyFile(driverId, fileType, isVerified);
-  }
-
-  async verifyDrivingLicenseFront(
-    driverId: string,
-    isVerified: boolean,
-  ): Promise<any> {
-    return this.verifyFile(
-      driverId,
-      FileType.DRIVERS_LICENSE_FRONT,
-      isVerified,
-    );
-  }
-
-  async verifyDrivingLicenseBack(
-    driverId: string,
-    isVerified: boolean,
-  ): Promise<any> {
-    return this.verifyFile(driverId, FileType.DRIVERS_LICENSE_BACK, isVerified);
-  }
-
-  // Bank Information Methods
   async addBankInformation(
     driverId: string,
     bankInfoDto: CreateBankInformationDto,
@@ -108,7 +77,6 @@ export class DriversService {
     return this.driversClient.setDefaultBankInformation(driverId, bankInfoId);
   }
 
-  // Email and Phone Update Methods
   async initiateEmailUpdate(
     driverId: string,
     dto: InitiateEmailUpdateDto,

@@ -159,7 +159,7 @@ export class TripService {
           const lat = trip.route[0].lat;
           const lon = trip.route[0].lon;
 
-          let driverIds = await this.searchDriver(
+          const driverIds = await this.searchDriver(
             trip.route[0].lat,
             trip.route[0].lon,
           );
@@ -836,9 +836,10 @@ export class TripService {
   private calculateEstimatedCost(durationInSeconds: number): number {
     const durationInMinutes = durationInSeconds / 60;
     const costPerMinute = this.configService.tripCostPerMinute;
-    const estimatedCost = Math.round(durationInMinutes * costPerMinute * 100) / 100;
+    const estimatedCost =
+      Math.round(durationInMinutes * costPerMinute * 100) / 100;
     if (estimatedCost < 15) {
-        return 15;
+      return 15;
     }
     return estimatedCost;
   }
@@ -1295,16 +1296,16 @@ export class TripService {
   private async validateCustomerHasPaymentMethod(
     customerId: string,
   ): Promise<void> {
-      const defaultPaymentMethod =
-        await this.paymentMethodService.getDefaultPaymentMethod(customerId);
+    const defaultPaymentMethod =
+      await this.paymentMethodService.getDefaultPaymentMethod(customerId);
 
-      if (!defaultPaymentMethod) {
-        throw new RedisException(
-          RedisErrors.PAYMENT_NOT_FOUND.code,
-          RedisErrors.PAYMENT_NOT_FOUND.message,
-          HttpStatus.BAD_REQUEST,
-        );
-      }
+    if (!defaultPaymentMethod) {
+      throw new RedisException(
+        RedisErrors.PAYMENT_NOT_FOUND.code,
+        RedisErrors.PAYMENT_NOT_FOUND.message,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
   }
 
   private async getTrip(tripId: string): Promise<TripDocument> {
@@ -2220,10 +2221,17 @@ export class TripService {
   // ADMIN METHODS
   // ================================
 
-  async findAll(filter: any = {}, options: { skip?: number; limit?: number; sort?: any } = {}): Promise<TripDocument[]> {
+  async findAll(
+    filter: any = {},
+    options: { skip?: number; limit?: number; sort?: any } = {},
+  ): Promise<TripDocument[]> {
     const { skip = 0, limit = 10, sort = { createdAt: -1 } } = options;
 
-    return this.tripRepository.findWithPagination(filter, { skip, limit, sort });
+    return this.tripRepository.findWithPagination(filter, {
+      skip,
+      limit,
+      sort,
+    });
   }
 
   async count(filter: any = {}): Promise<number> {

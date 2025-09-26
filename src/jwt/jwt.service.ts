@@ -24,7 +24,7 @@ export class JwtService {
     }
   }
 
-  generateToken(payload: Object): string {
+  generateToken(payload: object): string {
     return this.jwtService.sign(payload, {
       secret: this.configService.get<string>('jwt.secret'),
       expiresIn: '180d',

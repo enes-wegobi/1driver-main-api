@@ -2,7 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { TripService } from '../../trip/services/trip.service';
 import { GetAdminTripsQueryDto } from '../dto/get-admin-trips-query.dto';
 import { TripDocument } from '../../trip/schemas/trip.schema';
-import { AdminTripListItemDto, AdminTripListResponseDto } from '../dto/admin-trip-list-response.dto';
+import {
+  AdminTripListItemDto,
+  AdminTripListResponseDto,
+} from '../dto/admin-trip-list-response.dto';
 import { AdminTripDetailResponseDto } from '../dto/admin-trip-detail-response.dto';
 import { PaymentMethodService } from '../../payments/services/payment-method.service';
 
@@ -13,13 +16,14 @@ export class AdminTripService {
     private readonly paymentMethodService: PaymentMethodService,
   ) {}
 
-  async getAllTrips(query: GetAdminTripsQueryDto): Promise<AdminTripListResponseDto> {
+  async getAllTrips(
+    query: GetAdminTripsQueryDto,
+  ): Promise<AdminTripListResponseDto> {
     const page = query.page || 1;
     const limit = query.limit || 10;
     const skip = (page - 1) * limit;
 
     const filter: any = {};
-
 
     if (query.search) {
       filter.$or = [
@@ -32,10 +36,10 @@ export class AdminTripService {
 
     const [trips, total] = await Promise.all([
       this.tripService.findAll(filter, { skip, limit }),
-      this.tripService.count(filter)
+      this.tripService.count(filter),
     ]);
 
-    const mappedTrips = trips.map(trip => this.mapTripToListItem(trip));
+    const mappedTrips = trips.map((trip) => this.mapTripToListItem(trip));
 
     return {
       trips: mappedTrips,
@@ -43,12 +47,14 @@ export class AdminTripService {
         page,
         limit,
         total,
-        totalPages: Math.ceil(total / limit)
-      }
+        totalPages: Math.ceil(total / limit),
+      },
     };
   }
 
-  async getTripById(tripId: string): Promise<AdminTripDetailResponseDto | null> {
+  async getTripById(
+    tripId: string,
+  ): Promise<AdminTripDetailResponseDto | null> {
     const trip = await this.tripService.findById(tripId);
 
     if (!trip) {
@@ -57,7 +63,10 @@ export class AdminTripService {
 
     let paymentMethodBrand: string | undefined;
     if (trip.paymentMethodId) {
-      const paymentMethod = await this.paymentMethodService.getPaymentMethodById(trip.paymentMethodId);
+      const paymentMethod =
+        await this.paymentMethodService.getPaymentMethodById(
+          trip.paymentMethodId,
+        );
       paymentMethodBrand = paymentMethod?.brand;
     }
 
@@ -78,7 +87,10 @@ export class AdminTripService {
     };
   }
 
-  private mapTripToDetail(trip: TripDocument, paymentMethodBrand: string | undefined): AdminTripDetailResponseDto {
+  private mapTripToDetail(
+    trip: TripDocument,
+    paymentMethodBrand: string | undefined,
+  ): AdminTripDetailResponseDto {
     return {
       id: trip._id.toString(),
       route: trip.route,
@@ -86,7 +98,7 @@ export class AdminTripService {
         name: trip.driver.name,
         surname: trip.driver.surname,
         rate: trip.driver.rate,
-      } ,
+      },
       rating: trip.rating,
       comment: trip.customerComment,
       paymentMethodBrand: paymentMethodBrand,

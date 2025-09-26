@@ -1,5 +1,20 @@
-import { Controller, Post, Body, HttpCode, HttpStatus, Get, UseGuards, Request, Put } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  Controller,
+  Post,
+  Body,
+  HttpCode,
+  HttpStatus,
+  Get,
+  UseGuards,
+  Request,
+  Put,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { AdminAuthService } from '../services/admin-auth.service';
 import { AdminLoginDto } from '../dto/admin-login.dto';
 import { AdminLoginResponseDto } from '../dto/admin-login-response.dto';
@@ -7,7 +22,11 @@ import { AdminProfileResponseDto } from '../dto/admin-profile-response.dto';
 import { SendResetCodeDto } from '../dto/send-reset-code.dto';
 import { VerifyResetCodeDto } from '../dto/verify-reset-code.dto';
 import { ResetPasswordDto } from '../dto/reset-password.dto';
-import { ResetCodeResponseDto, VerifyCodeResponseDto, ResetPasswordResponseDto } from '../dto/reset-code-response.dto';
+import {
+  ResetCodeResponseDto,
+  VerifyCodeResponseDto,
+  ResetPasswordResponseDto,
+} from '../dto/reset-code-response.dto';
 import { AdminAuthGuard } from '../guards/admin-auth.guard';
 
 @ApiTags('Admin Authentication')
@@ -69,7 +88,9 @@ export class AdminAuthController {
     status: 401,
     description: 'Admin account is inactive',
   })
-  async sendResetCode(@Body() sendResetCodeDto: SendResetCodeDto): Promise<ResetCodeResponseDto> {
+  async sendResetCode(
+    @Body() sendResetCodeDto: SendResetCodeDto,
+  ): Promise<ResetCodeResponseDto> {
     return this.adminAuthService.sendResetCode(sendResetCodeDto);
   }
 
@@ -85,7 +106,9 @@ export class AdminAuthController {
     status: 400,
     description: 'Invalid or expired verification code',
   })
-  async verifyResetCode(@Body() verifyResetCodeDto: VerifyResetCodeDto): Promise<VerifyCodeResponseDto> {
+  async verifyResetCode(
+    @Body() verifyResetCodeDto: VerifyResetCodeDto,
+  ): Promise<VerifyCodeResponseDto> {
     return this.adminAuthService.verifyResetCode(verifyResetCodeDto);
   }
 
@@ -105,7 +128,9 @@ export class AdminAuthController {
     status: 404,
     description: 'Admin not found',
   })
-  async resetPassword(@Body() resetPasswordDto: ResetPasswordDto): Promise<ResetPasswordResponseDto> {
+  async resetPassword(
+    @Body() resetPasswordDto: ResetPasswordDto,
+  ): Promise<ResetPasswordResponseDto> {
     return this.adminAuthService.resetPassword(resetPasswordDto);
   }
 }

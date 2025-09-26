@@ -1,14 +1,11 @@
 import {
   DeleteObjectCommand,
-  GetObjectCommand,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from 'src/config/config.service';
 import { LoggerService } from 'src/logger/logger.service';
-import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class S3Service {
@@ -43,17 +40,6 @@ export class S3Service {
   }
 
   /**
-   * Uploads a file to S3 with an automatically generated key.
-   * @param file The file to upload.
-   * @returns The generated file key.
-   */
-  async uploadFileWithGeneratedKey(file: Express.Multer.File): Promise<string> {
-    const fileKey = `${uuidv4()}-${file.originalname}`;
-    await this.uploadFileWithKey(file, fileKey);
-    return fileKey;
-  }
-
-  /**
    * Uploads a file to S3 with a specific key.
    * @param file The file to upload.
    * @param fileKey The specific key to use for the S3 object.
@@ -79,30 +65,6 @@ export class S3Service {
       this.logger.info(`File uploaded successfully with key: ${fileKey}`);
     } catch (error) {
       this.logger.error(`Error uploading file: ${error.message}`, error.stack);
-      throw error;
-    }
-  }
-
-  async getSignedUrl(
-    fileKey: string,
-    expiresIn: number = 3600,
-  ): Promise<string> {
-    try {
-      this.logger.info(`Getting signed URL for file with key: ${fileKey}`);
-
-      const command = new GetObjectCommand({
-        Bucket: this.bucketName,
-        Key: fileKey,
-      });
-
-      const url = await getSignedUrl(this.s3Client, command, { expiresIn });
-      this.logger.info(`Signed URL generated successfully for key: ${fileKey}`);
-      return url;
-    } catch (error) {
-      this.logger.error(
-        `Error getting signed URL: ${error.message}`,
-        error.stack,
-      );
       throw error;
     }
   }

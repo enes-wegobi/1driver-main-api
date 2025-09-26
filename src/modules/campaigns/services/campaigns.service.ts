@@ -1,4 +1,8 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { CampaignRepository } from '../repositories/campaign.repository';
 import { Campaign, CampaignDocument } from '../schemas/campaign.schema';
 import { CampaignTargetGroup, CampaignType } from '../enums';
@@ -19,8 +23,12 @@ export interface CreateCampaignDto {
 export class CampaignsService {
   constructor(private readonly campaignRepository: CampaignRepository) {}
 
-  async create(createCampaignDto: CreateCampaignDto): Promise<CampaignDocument> {
-    const existingCampaign = await this.campaignRepository.findByCode(createCampaignDto.code);
+  async create(
+    createCampaignDto: CreateCampaignDto,
+  ): Promise<CampaignDocument> {
+    const existingCampaign = await this.campaignRepository.findByCode(
+      createCampaignDto.code,
+    );
     if (existingCampaign) {
       throw new ConflictException('Campaign with this code already exists');
     }
@@ -35,7 +43,7 @@ export class CampaignsService {
   async findAll(page: number = 1, limit: number = 10, search?: string) {
     const [campaigns, total] = await Promise.all([
       this.campaignRepository.findAll(page, limit, search),
-      this.campaignRepository.count(search)
+      this.campaignRepository.count(search),
     ]);
 
     const totalPages = Math.ceil(total / limit);
@@ -48,8 +56,8 @@ export class CampaignsService {
         total,
         totalPages,
         hasNextPage: page < totalPages,
-        hasPrevPage: page > 1
-      }
+        hasPrevPage: page > 1,
+      },
     };
   }
 
@@ -73,7 +81,9 @@ export class CampaignsService {
     return this.campaignRepository.findActiveCampaigns();
   }
 
-  async findByTargetGroup(targetGroup: CampaignTargetGroup): Promise<CampaignDocument[]> {
+  async findByTargetGroup(
+    targetGroup: CampaignTargetGroup,
+  ): Promise<CampaignDocument[]> {
     return this.campaignRepository.findByTargetGroup(targetGroup);
   }
 

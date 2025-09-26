@@ -181,7 +181,8 @@ export class CommonController {
   async getConfig(): Promise<ConfigResponseDto> {
     return {
       otpExpirySeconds: this.configService.mobileOtpExpiryMinutes * 60,
-      tripCancellableTimeSeconds: this.configService.mobileTripCancellableTimeMinutes * 60,
+      tripCancellableTimeSeconds:
+        this.configService.mobileTripCancellableTimeMinutes * 60,
     };
   }
 
@@ -189,7 +190,8 @@ export class CommonController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'App startup version check',
-    description: 'Checks if app version requires force update based on app type',
+    description:
+      'Checks if app version requires force update based on app type',
   })
   @ApiBody({ type: AppStartupRequestDto })
   @ApiResponse({
@@ -197,7 +199,9 @@ export class CommonController {
     description: 'Version check completed successfully',
     type: AppStartupResponseDto,
   })
-  async checkDriverAppStartup(@Body() payload: AppStartupRequestDto): Promise<AppStartupResponseDto> {
+  async checkDriverAppStartup(
+    @Body() payload: AppStartupRequestDto,
+  ): Promise<AppStartupResponseDto> {
     return this.appVersionService.checkForceUpdate(
       AppType.DRIVER,
       payload.version,
@@ -208,7 +212,8 @@ export class CommonController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary: 'App startup version check',
-    description: 'Checks if app version requires force update based on app type',
+    description:
+      'Checks if app version requires force update based on app type',
   })
   @ApiBody({ type: AppStartupRequestDto })
   @ApiResponse({
@@ -216,7 +221,9 @@ export class CommonController {
     description: 'Version check completed successfully',
     type: AppStartupResponseDto,
   })
-  async checkCustomerAppStartup(@Body() payload: AppStartupRequestDto): Promise<AppStartupResponseDto> {
+  async checkCustomerAppStartup(
+    @Body() payload: AppStartupRequestDto,
+  ): Promise<AppStartupResponseDto> {
     return this.appVersionService.checkForceUpdate(
       AppType.CUSTOMER,
       payload.version,

@@ -7,17 +7,7 @@ import { DriversClient } from './driver/drivers.client';
 
 @Module({
   imports: [ConfigModule],
-  providers: [
-    ClientsService,
-    AuthClient,
-    CustomersClient,
-    DriversClient,
-  ],
-  exports: [
-    ClientsService,
-    AuthClient,
-    CustomersClient,
-    DriversClient,
-  ],
+  providers: [ClientsService, AuthClient, CustomersClient, DriversClient],
+  exports: [ClientsService, AuthClient, CustomersClient, DriversClient],
 })
 export class ClientsModule {}

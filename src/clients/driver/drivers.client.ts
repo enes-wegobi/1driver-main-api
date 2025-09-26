@@ -12,16 +12,12 @@ import {
   InitiateEmailUpdateDto,
   InitiatePhoneUpdateDto,
 } from '../customer/dto';
-import { LoggerService } from 'src/logger/logger.service';
 
 @Injectable()
 export class DriversClient {
   private readonly httpClient: AxiosInstance;
 
-  constructor(
-    private readonly clientsService: ClientsService,
-    private readonly logger: LoggerService,
-  ) {
+  constructor(private readonly clientsService: ClientsService) {
     this.httpClient = this.clientsService.createHttpClient('users');
   }
 
@@ -48,7 +44,11 @@ export class DriversClient {
     return data;
   }
 
-  async findAll(query: { page?: number; limit?: number; search?: string }): Promise<any> {
+  async findAll(query: {
+    page?: number;
+    limit?: number;
+    search?: string;
+  }): Promise<any> {
     const params = new URLSearchParams();
 
     if (query.page) params.append('page', query.page.toString());
@@ -100,19 +100,6 @@ export class DriversClient {
     return data;
   }
 
-  async verifyFile(
-    driverId: string,
-    fileType: FileType,
-    isVerified: boolean,
-  ): Promise<any> {
-    const { data } = await this.httpClient.put(
-      `/drivers/${driverId}/files/${fileType}/verify`,
-      { isVerified },
-    );
-    return data;
-  }
-
-  // Bank Information Methods
   async addBankInformation(
     driverId: string,
     bankInfoDto: CreateBankInformationDto,
@@ -152,7 +139,6 @@ export class DriversClient {
     return data;
   }
 
-  // Email and Phone Update Methods
   async initiateEmailUpdate(
     driverId: string,
     dto: InitiateEmailUpdateDto,
@@ -242,14 +228,6 @@ export class DriversClient {
   async deleteExpoToken(driverId: string): Promise<any> {
     const { data } = await this.httpClient.delete(
       `/drivers/${driverId}/expo-token`,
-    );
-    return data;
-  }
-
-  async setActiveTrip(driverId: string, dto: SetActiveTripDto): Promise<any> {
-    const { data } = await this.httpClient.put(
-      `/drivers/${driverId}/active-trip`,
-      dto,
     );
     return data;
   }

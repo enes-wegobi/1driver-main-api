@@ -1,5 +1,17 @@
-import { Controller, Get, Param, Query, UseGuards, NotFoundException } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  Controller,
+  Get,
+  Param,
+  Query,
+  UseGuards,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { AdminDriverService } from '../services/admin-driver.service';
 import { GetAdminDriversQueryDto } from '../dto/get-admin-drivers-query.dto';
 import { AdminAuthGuard } from '../guards/admin-auth.guard';
@@ -18,24 +30,31 @@ export class AdminDriverController {
   @ApiResponse({
     status: 200,
     description: 'Drivers retrieved successfully',
-    type: AdminDriverListResponseDto
+    type: AdminDriverListResponseDto,
   })
-  async getAllDrivers(@Query() query: GetAdminDriversQueryDto): Promise<AdminDriverListResponseDto> {
+  async getAllDrivers(
+    @Query() query: GetAdminDriversQueryDto,
+  ): Promise<AdminDriverListResponseDto> {
     return this.adminDriverService.getAllDrivers(query);
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get driver details by ID including bank information and driving license' })
+  @ApiOperation({
+    summary:
+      'Get driver details by ID including bank information and driving license',
+  })
   @ApiResponse({
     status: 200,
     description: 'Driver details retrieved successfully',
-    type: AdminDriverDetailResponseDto
+    type: AdminDriverDetailResponseDto,
   })
   @ApiResponse({
     status: 404,
-    description: 'Driver not found'
+    description: 'Driver not found',
   })
-  async getDriverById(@Param('id') id: string): Promise<AdminDriverDetailResponseDto> {
+  async getDriverById(
+    @Param('id') id: string,
+  ): Promise<AdminDriverDetailResponseDto> {
     const driver = await this.adminDriverService.getDriverById(id);
 
     if (!driver) {

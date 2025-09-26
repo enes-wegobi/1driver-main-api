@@ -1,5 +1,17 @@
-import { Controller, Get, Param, Query, UseGuards, NotFoundException } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  Controller,
+  Get,
+  Param,
+  Query,
+  UseGuards,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { AdminTripService } from '../services/admin-trip.service';
 import { GetAdminTripsQueryDto } from '../dto/get-admin-trips-query.dto';
 import { AdminAuthGuard } from '../guards/admin-auth.guard';
@@ -17,9 +29,11 @@ export class AdminTripController {
   @ApiOperation({ summary: 'Get all trips for admin' })
   @ApiResponse({
     status: 200,
-    description: 'Trips retrieved successfully'
+    description: 'Trips retrieved successfully',
   })
-  async getAllTrips(@Query() query: GetAdminTripsQueryDto): Promise<AdminTripListResponseDto> {
+  async getAllTrips(
+    @Query() query: GetAdminTripsQueryDto,
+  ): Promise<AdminTripListResponseDto> {
     return this.adminTripService.getAllTrips(query);
   }
 
@@ -27,13 +41,15 @@ export class AdminTripController {
   @ApiOperation({ summary: 'Get trip details by ID' })
   @ApiResponse({
     status: 200,
-    description: 'Trip details retrieved successfully'
+    description: 'Trip details retrieved successfully',
   })
   @ApiResponse({
     status: 404,
-    description: 'Trip not found'
+    description: 'Trip not found',
   })
-  async getTripById(@Param('id') id: string): Promise<AdminTripDetailResponseDto> {
+  async getTripById(
+    @Param('id') id: string,
+  ): Promise<AdminTripDetailResponseDto> {
     const trip = await this.adminTripService.getTripById(id);
 
     if (!trip) {

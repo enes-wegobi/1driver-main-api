@@ -16,5 +16,4 @@ export class AdminCreateResponseDto {
 
   @ApiProperty({ enum: AdminRole })
   role: AdminRole;
-
 }

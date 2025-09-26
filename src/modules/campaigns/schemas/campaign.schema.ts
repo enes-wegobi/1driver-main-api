@@ -45,7 +45,7 @@ CampaignSchema.index({ code: 1 });
 CampaignSchema.index({ startDate: 1, endDate: 1 });
 CampaignSchema.index({ targetGroup: 1 });
 
-CampaignSchema.virtual('status').get(function() {
+CampaignSchema.virtual('status').get(function () {
   return new Date() > this.endDate ? 'INACTIVE' : 'ACTIVE';
 });
 

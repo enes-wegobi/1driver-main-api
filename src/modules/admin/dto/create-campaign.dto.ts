@@ -1,12 +1,22 @@
 ﻿import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, IsDate, IsEnum, IsNumber, IsOptional, IsUrl, Min, Max } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsString,
+  IsDate,
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsUrl,
+  Min,
+  Max,
+} from 'class-validator';
 import { Transform } from 'class-transformer';
 import { CampaignType, CampaignTargetGroup } from '../../campaigns/enums';
 
 export class CreateCampaignDto {
   @ApiProperty({
     description: 'Campaign name',
-    example: 'Summer Discount'
+    example: 'Summer Discount',
   })
   @IsNotEmpty()
   @IsString()
@@ -14,7 +24,7 @@ export class CreateCampaignDto {
 
   @ApiProperty({
     description: 'Campaign start date',
-    example: '2024-01-01T00:00:00.000Z'
+    example: '2024-01-01T00:00:00.000Z',
   })
   @IsNotEmpty()
   @IsDate()
@@ -23,7 +33,7 @@ export class CreateCampaignDto {
 
   @ApiProperty({
     description: 'Campaign end date',
-    example: '2024-12-31T23:59:59.999Z'
+    example: '2024-12-31T23:59:59.999Z',
   })
   @IsNotEmpty()
   @IsDate()
@@ -32,7 +42,7 @@ export class CreateCampaignDto {
 
   @ApiProperty({
     description: 'Unique campaign code',
-    example: 'SUMMER2024'
+    example: 'SUMMER2024',
   })
   @IsNotEmpty()
   @IsString()
@@ -41,7 +51,7 @@ export class CreateCampaignDto {
   @ApiProperty({
     description: 'Campaign type',
     enum: CampaignType,
-    example: CampaignType.PERCENTAGE
+    example: CampaignType.PERCENTAGE,
   })
   @IsNotEmpty()
   @IsEnum(CampaignType)
@@ -50,14 +60,14 @@ export class CreateCampaignDto {
   @ApiPropertyOptional({
     type: 'string',
     format: 'binary',
-    description: 'Campaign image file'
+    description: 'Campaign image file',
   })
   @IsOptional()
   image?: any;
 
   @ApiProperty({
     description: 'Campaign value (percentage: 1-100, amount: positive number)',
-    example: 20
+    example: 20,
   })
   @IsNotEmpty()
   @IsNumber()
@@ -73,7 +83,7 @@ export class CreateCampaignDto {
   @ApiProperty({
     description: 'Target group for the campaign',
     enum: CampaignTargetGroup,
-    example: CampaignTargetGroup.FIRST_TIME_USERS
+    example: CampaignTargetGroup.FIRST_TIME_USERS,
   })
   @IsNotEmpty()
   @IsEnum(CampaignTargetGroup)
@@ -82,7 +92,7 @@ export class CreateCampaignDto {
   @ApiProperty({
     description: 'Campaign description',
     example: 'Special discount for summer season',
-    required: false
+    required: false,
   })
   @IsOptional()
   @IsString()

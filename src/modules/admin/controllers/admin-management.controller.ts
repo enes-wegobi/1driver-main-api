@@ -1,5 +1,23 @@
-import { Controller, Post, Body, HttpCode, HttpStatus, Get, Delete, Param, Query, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  Controller,
+  Post,
+  Body,
+  HttpCode,
+  HttpStatus,
+  Get,
+  Delete,
+  Param,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiQuery,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { AdminManagementService } from '../services/admin-management.service';
 import { CreateAdminDto } from '../dto/create-admin.dto';
 import { AdminCreateResponseDto } from '../dto/admin-create-response.dto';
@@ -12,7 +30,9 @@ import { AdminAuthGuard } from '../guards/admin-auth.guard';
 @ApiTags('Admin Management')
 @Controller('admin/users')
 export class AdminManagementController {
-  constructor(private readonly adminManagementService: AdminManagementService) {}
+  constructor(
+    private readonly adminManagementService: AdminManagementService,
+  ) {}
 
   @Post('super')
   @HttpCode(HttpStatus.CREATED)
@@ -34,7 +54,9 @@ export class AdminManagementController {
     status: 401,
     description: 'Unauthorized - Invalid or missing token',
   })
-  async createAdmin(@Body() createAdminDto: CreateAdminDto): Promise<AdminCreateResponseDto> {
+  async createAdmin(
+    @Body() createAdminDto: CreateAdminDto,
+  ): Promise<AdminCreateResponseDto> {
     return this.adminManagementService.createAdmin(createAdminDto);
   }
 
@@ -60,7 +82,9 @@ export class AdminManagementController {
     status: 401,
     description: 'Unauthorized - Invalid or missing token',
   })
-  async createNormalAdmin(@Body() createNormalAdminDto: CreateNormalAdminDto): Promise<AdminCreateResponseDto> {
+  async createNormalAdmin(
+    @Body() createNormalAdminDto: CreateNormalAdminDto,
+  ): Promise<AdminCreateResponseDto> {
     return this.adminManagementService.createNormalAdmin(createNormalAdminDto);
   }
 
@@ -72,19 +96,19 @@ export class AdminManagementController {
     name: 'page',
     required: false,
     type: Number,
-    description: 'Page number (default: 1)'
+    description: 'Page number (default: 1)',
   })
   @ApiQuery({
     name: 'limit',
     required: false,
     type: Number,
-    description: 'Items per page (default: 10)'
+    description: 'Items per page (default: 10)',
   })
   @ApiQuery({
     name: 'search',
     required: false,
     type: String,
-    description: 'Search term for email, name or surname'
+    description: 'Search term for email, name or surname',
   })
   @ApiResponse({
     status: 200,
@@ -95,7 +119,9 @@ export class AdminManagementController {
     status: 401,
     description: 'Unauthorized - Invalid or missing token',
   })
-  async getNormalAdmins(@Query() queryDto: GetNormalAdminsQueryDto): Promise<NormalAdminListResponseDto> {
+  async getNormalAdmins(
+    @Query() queryDto: GetNormalAdminsQueryDto,
+  ): Promise<NormalAdminListResponseDto> {
     return this.adminManagementService.getNormalAdmins(queryDto);
   }
 
@@ -126,7 +152,9 @@ export class AdminManagementController {
     status: 401,
     description: 'Unauthorized - Invalid or missing token',
   })
-  async deleteNormalAdmin(@Param('id') id: string): Promise<AdminDeleteResponseDto> {
+  async deleteNormalAdmin(
+    @Param('id') id: string,
+  ): Promise<AdminDeleteResponseDto> {
     return this.adminManagementService.deleteNormalAdmin(id);
   }
 }

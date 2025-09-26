@@ -1,16 +1,24 @@
 import { Injectable } from '@nestjs/common';
 import { GetAdminDriversQueryDto } from '../dto/get-admin-drivers-query.dto';
-import { AdminDriverListResponseDto, AdminDriverListItemDto } from '../dto/admin-driver-list-response.dto';
-import { AdminDriverDetailResponseDto, AdminDriverBankInformationDto, AdminDriverDrivingLicenseDto, AdminDriverDrivingLicenseFileDto } from '../dto/admin-driver-detail-response.dto';
+import {
+  AdminDriverListResponseDto,
+  AdminDriverListItemDto,
+} from '../dto/admin-driver-list-response.dto';
+import {
+  AdminDriverDetailResponseDto,
+  AdminDriverBankInformationDto,
+  AdminDriverDrivingLicenseDto,
+  AdminDriverDrivingLicenseFileDto,
+} from '../dto/admin-driver-detail-response.dto';
 import { DriversService } from '../../drivers/drivers.service';
 
 @Injectable()
 export class AdminDriverService {
-  constructor(
-    private readonly driversService: DriversService,
-  ) {}
+  constructor(private readonly driversService: DriversService) {}
 
-  async getAllDrivers(query: GetAdminDriversQueryDto): Promise<AdminDriverListResponseDto> {
+  async getAllDrivers(
+    query: GetAdminDriversQueryDto,
+  ): Promise<AdminDriverListResponseDto> {
     const page = query.page || 1;
     const limit = query.limit || 10;
 
@@ -20,7 +28,8 @@ export class AdminDriverService {
       search: query.search,
     });
 
-    const mappedDrivers = result.items?.map(driver => this.mapDriverToListItem(driver)) || [];
+    const mappedDrivers =
+      result.items?.map((driver) => this.mapDriverToListItem(driver)) || [];
 
     return {
       drivers: mappedDrivers,
@@ -28,12 +37,14 @@ export class AdminDriverService {
         page: result.page || page,
         limit: result.limit || limit,
         total: result.total || 0,
-        totalPages: result.totalPages || Math.ceil((result.total || 0) / limit)
-      }
+        totalPages: result.totalPages || Math.ceil((result.total || 0) / limit),
+      },
     };
   }
 
-  async getDriverById(driverId: string): Promise<AdminDriverDetailResponseDto | null> {
+  async getDriverById(
+    driverId: string,
+  ): Promise<AdminDriverDetailResponseDto | null> {
     const driver = await this.driversService.findOne(driverId);
 
     if (!driver) {
@@ -56,8 +67,12 @@ export class AdminDriverService {
   }
 
   private mapDriverToDetail(driver: any): AdminDriverDetailResponseDto {
-    const bankInformations = driver.bankInformations?.map(bank => this.mapBankInformation(bank)) || [];
-    const drivingLicense = driver.drivingLicense ? this.mapDrivingLicense(driver.drivingLicense) : undefined;
+    const bankInformations =
+      driver.bankInformations?.map((bank) => this.mapBankInformation(bank)) ||
+      [];
+    const drivingLicense = driver.drivingLicense
+      ? this.mapDrivingLicense(driver.drivingLicense)
+      : undefined;
 
     return {
       id: driver.id || driver._id,
@@ -90,7 +105,9 @@ export class AdminDriverService {
 
   private mapDrivingLicense(license: any): AdminDriverDrivingLicenseDto {
     return {
-      front: license.front ? this.mapDrivingLicenseFile(license.front) : undefined,
+      front: license.front
+        ? this.mapDrivingLicenseFile(license.front)
+        : undefined,
       back: license.back ? this.mapDrivingLicenseFile(license.back) : undefined,
       verifiedAt: license.verifiedAt,
     };

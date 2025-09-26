@@ -21,4 +21,5 @@ export class PasswordResetCode {
   createdAt: Date;
 }
 
-export const PasswordResetCodeSchema = SchemaFactory.createForClass(PasswordResetCode);
+export const PasswordResetCodeSchema =
+  SchemaFactory.createForClass(PasswordResetCode);
