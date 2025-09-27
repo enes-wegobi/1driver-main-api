@@ -2,9 +2,6 @@ import { ApiProperty } from '@nestjs/swagger';
 
 export class AdminDriverBankInformationDto {
   @ApiProperty()
-  id: string;
-
-  @ApiProperty()
   fullName: string;
 
   @ApiProperty()
@@ -19,9 +16,6 @@ export class AdminDriverBankInformationDto {
 
 export class AdminDriverDrivingLicenseFileDto {
   @ApiProperty()
-  isUploaded: boolean;
-
-  @ApiProperty()
   fileUrl?: string;
 
   @ApiProperty()
@@ -29,12 +23,6 @@ export class AdminDriverDrivingLicenseFileDto {
 
   @ApiProperty()
   fileName?: string;
-
-  @ApiProperty()
-  status?: string;
-
-  @ApiProperty()
-  verifiedAt?: Date;
 }
 
 export class AdminDriverDrivingLicenseDto {
@@ -65,28 +53,10 @@ export class AdminDriverDetailResponseDto {
   phone: string;
 
   @ApiProperty()
-  onboardingStatus: string;
-
-  @ApiProperty()
-  smsNotificationPermission: boolean;
-
-  @ApiProperty()
-  emailNotificationPermission: boolean;
-
-  @ApiProperty()
-  mobileNotificationPermission: boolean;
-
-  @ApiProperty()
-  expoToken?: string;
+  photoUrl: string;
 
   @ApiProperty()
   rate?: number;
-
-  @ApiProperty()
-  rateCount?: number;
-
-  @ApiProperty()
-  totalRating?: number;
 
   @ApiProperty({ type: [AdminDriverBankInformationDto] })
   bankInformations: AdminDriverBankInformationDto[];

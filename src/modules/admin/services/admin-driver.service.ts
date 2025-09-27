@@ -79,14 +79,8 @@ export class AdminDriverService {
       surname: driver.surname,
       email: driver.email,
       phone: driver.phone,
-      onboardingStatus: driver.onboardingStatus,
-      smsNotificationPermission: driver.smsNotificationPermission,
-      emailNotificationPermission: driver.emailNotificationPermission,
-      mobileNotificationPermission: driver.mobileNotificationPermission,
-      expoToken: driver.expoToken,
+      photoUrl: driver.photoUrl,
       rate: driver.rate,
-      rateCount: driver.rateCount,
-      totalRating: driver.totalRating,
       bankInformations,
       drivingLicense,
     };
@@ -94,7 +88,6 @@ export class AdminDriverService {
 
   private mapBankInformation(bank: any): AdminDriverBankInformationDto {
     return {
-      id: bank.id || bank._id,
       fullName: bank.fullName,
       bankId: bank.bankId,
       iban: bank.iban,
@@ -114,12 +107,9 @@ export class AdminDriverService {
 
   private mapDrivingLicenseFile(file: any): AdminDriverDrivingLicenseFileDto {
     return {
-      isUploaded: file.isUploaded,
       fileUrl: file.fileUrl,
       contentType: file.contentType,
       fileName: file.fileName,
-      status: file.status,
-      verifiedAt: file.verifiedAt,
     };
   }
 }
