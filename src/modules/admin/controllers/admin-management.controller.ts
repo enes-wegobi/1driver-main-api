@@ -26,6 +26,7 @@ import { NormalAdminListResponseDto } from '../dto/normal-admin-list-response.dt
 import { AdminDeleteResponseDto } from '../dto/admin-delete-response.dto';
 import { GetNormalAdminsQueryDto } from '../dto/get-normal-admins-query.dto';
 import { AdminAuthGuard } from '../guards/admin-auth.guard';
+import { IdParamDto } from '../dto/id-param.dto';
 
 @ApiTags('Admin Management')
 @Controller('admin/users')
@@ -132,7 +133,7 @@ export class AdminManagementController {
   @ApiOperation({ summary: 'Delete normal admin user' })
   @ApiParam({
     name: 'id',
-    description: 'Admin user ID',
+    description: 'Admin user ID (MongoDB ObjectId)',
     type: 'string',
   })
   @ApiResponse({
@@ -141,20 +142,20 @@ export class AdminManagementController {
     type: AdminDeleteResponseDto,
   })
   @ApiResponse({
-    status: 404,
-    description: 'Admin not found',
+    status: 400,
+    description: 'Invalid admin ID format or cannot delete super admin',
   })
   @ApiResponse({
-    status: 400,
-    description: 'Cannot delete super admin or invalid admin type',
+    status: 404,
+    description: 'Admin not found',
   })
   @ApiResponse({
     status: 401,
     description: 'Unauthorized - Invalid or missing token',
   })
   async deleteNormalAdmin(
-    @Param('id') id: string,
+    @Param() params: IdParamDto,
   ): Promise<AdminDeleteResponseDto> {
-    return this.adminManagementService.deleteNormalAdmin(id);
+    return this.adminManagementService.deleteNormalAdmin(params.id);
   }
 }

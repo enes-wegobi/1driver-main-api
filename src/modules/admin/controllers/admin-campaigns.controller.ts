@@ -18,6 +18,7 @@ import {
   ApiResponse,
   ApiBearerAuth,
   ApiConsumes,
+  ApiParam,
 } from '@nestjs/swagger';
 import { FileInterceptor } from '@nest-lab/fastify-multer';
 import { AdminCampaignsService } from '../services/admin-campaigns.service';
@@ -29,6 +30,7 @@ import {
 } from '../dto/admin-campaign-response.dto';
 import { AdminDeleteResponseDto } from '../dto/admin-delete-response.dto';
 import { AdminAuthGuard } from '../guards/admin-auth.guard';
+import { IdParamDto } from '../dto/id-param.dto';
 
 @ApiTags('Admin Campaigns')
 @ApiBearerAuth()
@@ -99,36 +101,54 @@ export class AdminCampaignsController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get campaign details by ID' })
+  @ApiParam({
+    name: 'id',
+    description: 'Campaign ID (MongoDB ObjectId)',
+    type: 'string',
+  })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Campaign details retrieved successfully',
     type: AdminCampaignResponseDto,
   })
   @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Invalid campaign ID format',
+  })
+  @ApiResponse({
     status: HttpStatus.NOT_FOUND,
     description: 'Campaign not found',
   })
   async getCampaignById(
-    @Param('id') id: string,
+    @Param() params: IdParamDto,
   ): Promise<AdminCampaignResponseDto> {
-    return this.adminCampaignsService.getCampaignById(id);
+    return this.adminCampaignsService.getCampaignById(params.id);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Delete campaign by ID' })
+  @ApiParam({
+    name: 'id',
+    description: 'Campaign ID (MongoDB ObjectId)',
+    type: 'string',
+  })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Campaign deleted successfully',
     type: AdminDeleteResponseDto,
   })
   @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Invalid campaign ID format',
+  })
+  @ApiResponse({
     status: HttpStatus.NOT_FOUND,
     description: 'Campaign not found',
   })
   async deleteCampaign(
-    @Param('id') id: string,
+    @Param() params: IdParamDto,
   ): Promise<AdminDeleteResponseDto> {
-    const deletedCampaign = await this.adminCampaignsService.deleteCampaign(id);
+    const deletedCampaign = await this.adminCampaignsService.deleteCampaign(params.id);
     return {
       message: 'Campaign deleted successfully',
       deletedId: deletedCampaign._id.toString(),

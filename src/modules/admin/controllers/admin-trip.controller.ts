@@ -11,12 +11,14 @@ import {
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
+  ApiParam,
 } from '@nestjs/swagger';
 import { AdminTripService } from '../services/admin-trip.service';
 import { GetAdminTripsQueryDto } from '../dto/get-admin-trips-query.dto';
 import { AdminAuthGuard } from '../guards/admin-auth.guard';
 import { AdminTripListResponseDto } from '../dto/admin-trip-list-response.dto';
 import { AdminTripDetailResponseDto } from '../dto/admin-trip-detail-response.dto';
+import { IdParamDto } from '../dto/id-param.dto';
 
 @ApiTags('Admin Trips')
 @ApiBearerAuth()
@@ -39,18 +41,27 @@ export class AdminTripController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get trip details by ID' })
+  @ApiParam({
+    name: 'id',
+    description: 'Trip ID (MongoDB ObjectId)',
+    type: 'string',
+  })
   @ApiResponse({
     status: 200,
     description: 'Trip details retrieved successfully',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid trip ID format',
   })
   @ApiResponse({
     status: 404,
     description: 'Trip not found',
   })
   async getTripById(
-    @Param('id') id: string,
+    @Param() params: IdParamDto,
   ): Promise<AdminTripDetailResponseDto> {
-    const trip = await this.adminTripService.getTripById(id);
+    const trip = await this.adminTripService.getTripById(params.id);
 
     if (!trip) {
       throw new NotFoundException('Trip not found');
