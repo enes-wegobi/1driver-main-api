@@ -22,7 +22,6 @@ export class CustomersService {
 
   async findOne(id: string, fields?: string | string[]) {
     const customer = await this.customersClient.findOne(id, fields);
-
     return customer;
   }
 

@@ -30,8 +30,15 @@ export class CustomersClient {
       url += `?fields=${encodeURIComponent(fieldsParam)}`;
     }
 
-    const { data } = await this.httpClient.get(url);
-    return data;
+    try {
+      const { data } = await this.httpClient.get(url);
+      return data;
+    } catch (error) {
+      if (error.response?.status === 404) {
+        return null;
+      }
+      throw error;
+    }
   }
 
   async updateProfile(
