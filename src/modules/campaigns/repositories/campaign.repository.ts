@@ -30,13 +30,13 @@ export class CampaignRepository {
         $or: [
           { name: { $regex: search, $options: 'i' } },
           { code: { $regex: search, $options: 'i' } },
-          { description: { $regex: search, $options: 'i' } },
         ],
       };
     }
 
     return this.campaignModel
       .find(query)
+      .select('_id startDate endDate code type imageUrl')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
@@ -51,7 +51,6 @@ export class CampaignRepository {
         $or: [
           { name: { $regex: search, $options: 'i' } },
           { code: { $regex: search, $options: 'i' } },
-          { description: { $regex: search, $options: 'i' } },
         ],
       };
     }

@@ -1,6 +1,53 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { CampaignType, CampaignTargetGroup } from '../../campaigns/enums';
 
+export class AdminCampaignListItemDto {
+  @ApiProperty({
+    description: 'Campaign ID',
+    example: '507f1f77bcf86cd799439011',
+  })
+  id: string;
+
+  @ApiProperty({
+    description: 'Campaign start date',
+    example: '2024-01-01T00:00:00.000Z',
+  })
+  startDate: Date;
+
+  @ApiProperty({
+    description: 'Campaign end date',
+    example: '2024-12-31T23:59:59.999Z',
+  })
+  endDate: Date;
+
+  @ApiProperty({
+    description: 'Unique campaign code',
+    example: 'SUMMER2024',
+  })
+  code: string;
+
+  @ApiProperty({
+    description: 'Campaign type',
+    enum: CampaignType,
+    example: CampaignType.PERCENTAGE,
+  })
+  type: CampaignType;
+
+  @ApiProperty({
+    description: 'Campaign image URL',
+    example: 'https://example.com/campaign-image.jpg',
+    required: false,
+  })
+  imageUrl?: string;
+
+  @ApiProperty({
+    description: 'Campaign status (computed based on dates)',
+    example: 'ACTIVE',
+    enum: ['ACTIVE', 'INACTIVE'],
+  })
+  status: string;
+}
+
 export class AdminCampaignResponseDto {
   @ApiProperty({
     description: 'Campaign ID',
@@ -76,10 +123,10 @@ export class AdminCampaignResponseDto {
 
 export class AdminCampaignListResponseDto {
   @ApiProperty({
-    type: [AdminCampaignResponseDto],
+    type: [AdminCampaignListItemDto],
     description: 'List of campaigns',
   })
-  data: AdminCampaignResponseDto[];
+  data: AdminCampaignListItemDto[];
 
   @ApiProperty({
     description: 'Pagination information',

@@ -55,8 +55,6 @@ export class CampaignsService {
         limit,
         total,
         totalPages,
-        hasNextPage: page < totalPages,
-        hasPrevPage: page > 1,
       },
     };
   }

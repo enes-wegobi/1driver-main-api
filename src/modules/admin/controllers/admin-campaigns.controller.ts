@@ -29,6 +29,8 @@ import {
   AdminCampaignListResponseDto,
 } from '../dto/admin-campaign-response.dto';
 import { AdminDeleteResponseDto } from '../dto/admin-delete-response.dto';
+import { CampaignTypesResponseDto } from '../dto/campaign-types-response.dto';
+import { CampaignTargetGroupsResponseDto } from '../dto/campaign-target-groups-response.dto';
 import { AdminAuthGuard } from '../guards/admin-auth.guard';
 import { IdParamDto } from '../dto/id-param.dto';
 
@@ -152,6 +154,32 @@ export class AdminCampaignsController {
     return {
       message: 'Campaign deleted successfully',
       deletedId: deletedCampaign._id.toString(),
+    };
+  }
+
+  @Get('types')
+  @ApiOperation({ summary: 'Get all available campaign types' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Campaign types retrieved successfully',
+    type: CampaignTypesResponseDto,
+  })
+  getCampaignTypes(): CampaignTypesResponseDto {
+    return {
+      types: this.adminCampaignsService.getCampaignTypes(),
+    };
+  }
+
+  @Get('target-groups')
+  @ApiOperation({ summary: 'Get all available campaign target groups' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Campaign target groups retrieved successfully',
+    type: CampaignTargetGroupsResponseDto,
+  })
+  getCampaignTargetGroups(): CampaignTargetGroupsResponseDto {
+    return {
+      targetGroups: this.adminCampaignsService.getCampaignTargetGroups(),
     };
   }
 }
