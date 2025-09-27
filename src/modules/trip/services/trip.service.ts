@@ -42,6 +42,7 @@ import { EstimateTripDto } from '../dto/estimate-trip.dto';
 import { LockService } from 'src/lock/lock.service';
 import { LoggerService } from 'src/logger/logger.service';
 import { TripEventsService } from 'src/events/trip-events.service';
+import { TripCostSummaryService } from './trip-cost-summary.service';
 
 export interface TripOperationResult {
   success: boolean;
@@ -2227,7 +2228,24 @@ export class TripService {
   ): Promise<TripDocument[]> {
     const { skip = 0, limit = 10, sort = { createdAt: -1 } } = options;
 
-    return this.tripRepository.findWithPagination(filter, {
+    const allowedStatuses = [
+      TripStatus.APPROVED,
+      TripStatus.DRIVER_ON_WAY_TO_PICKUP,
+      TripStatus.ARRIVED_AT_PICKUP,
+      TripStatus.TRIP_IN_PROGRESS,
+      TripStatus.PAYMENT,
+      TripStatus.PAYMENT_RETRY,
+      TripStatus.COMPLETED,
+      TripStatus.CANCELLED_PAYMENT,
+      TripStatus.CANCELLED,
+    ];
+
+    const updatedFilter = {
+      ...filter,
+      status: { $in: allowedStatuses },
+    };
+
+    return this.tripRepository.findWithPagination(updatedFilter, {
       skip,
       limit,
       sort,
@@ -2235,6 +2253,23 @@ export class TripService {
   }
 
   async count(filter: any = {}): Promise<number> {
-    return this.tripRepository.countDocuments(filter);
+    const allowedStatuses = [
+      TripStatus.APPROVED,
+      TripStatus.DRIVER_ON_WAY_TO_PICKUP,
+      TripStatus.ARRIVED_AT_PICKUP,
+      TripStatus.TRIP_IN_PROGRESS,
+      TripStatus.PAYMENT,
+      TripStatus.PAYMENT_RETRY,
+      TripStatus.COMPLETED,
+      TripStatus.CANCELLED_PAYMENT,
+      TripStatus.CANCELLED,
+    ];
+
+    const updatedFilter = {
+      ...filter,
+      status: { $in: allowedStatuses },
+    };
+
+    return this.tripRepository.countDocuments(updatedFilter);
   }
 }

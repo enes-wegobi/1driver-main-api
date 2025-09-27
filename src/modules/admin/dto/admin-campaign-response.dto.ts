@@ -88,8 +88,6 @@ export class AdminCampaignListResponseDto {
       limit: 10,
       total: 25,
       totalPages: 3,
-      hasNextPage: true,
-      hasPrevPage: false,
     },
   })
   pagination: {
@@ -97,7 +95,5 @@ export class AdminCampaignListResponseDto {
     limit: number;
     total: number;
     totalPages: number;
-    hasNextPage: boolean;
-    hasPrevPage: boolean;
   };
 }

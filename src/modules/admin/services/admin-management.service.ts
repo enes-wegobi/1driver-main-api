@@ -14,6 +14,7 @@ import { AdminUser } from '../schemas/admin-user.schema';
 import { AdminErrorService } from '../exceptions';
 import * as bcrypt from 'bcrypt';
 import { AdminRole } from '../enums/admin-role.enum';
+import { isValidObjectId } from 'mongoose';
 
 @Injectable()
 export class AdminManagementService {
@@ -102,6 +103,7 @@ export class AdminManagementService {
       email: admin.email,
       name: admin.name,
       surname: admin.surname,
+      phone: admin.phone,
       role: admin.role,
     }));
 
@@ -112,8 +114,6 @@ export class AdminManagementService {
       totalPages,
       totalCount,
       limit,
-      hasNext: page < totalPages,
-      hasPrev: page > 1,
     };
 
     return {
@@ -123,6 +123,10 @@ export class AdminManagementService {
   }
 
   async deleteNormalAdmin(id: string): Promise<AdminDeleteResponseDto> {
+    if (!isValidObjectId(id)) {
+      AdminErrorService.throwAdminNotFoundForDelete();
+    }
+
     const admin = await this.adminUserRepository.findById(id);
 
     if (!admin) {

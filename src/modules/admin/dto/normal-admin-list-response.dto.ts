@@ -9,6 +9,9 @@ export class NormalAdminListItemDto {
   email: string;
 
   @ApiProperty()
+  phone: string;
+
+  @ApiProperty()
   name: string;
 
   @ApiProperty()
@@ -30,12 +33,6 @@ export class PaginationInfoDto {
 
   @ApiProperty()
   limit: number;
-
-  @ApiProperty()
-  hasNext: boolean;
-
-  @ApiProperty()
-  hasPrev: boolean;
 }
 
 export class NormalAdminListResponseDto {

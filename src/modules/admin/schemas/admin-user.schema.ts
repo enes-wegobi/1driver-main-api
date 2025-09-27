@@ -21,6 +21,9 @@ export class AdminUser extends EntityDocumentHelper {
 
   @Prop({ enum: AdminRole, default: AdminRole.NORMAL_ADMIN })
   role: AdminRole;
+
+  @Prop({ required: true })
+  phone: string;
 }
 
 export const AdminUserSchema = SchemaFactory.createForClass(AdminUser);

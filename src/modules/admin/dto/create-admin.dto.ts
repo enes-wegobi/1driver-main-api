@@ -6,6 +6,7 @@ import {
   MinLength,
   IsOptional,
   IsEnum,
+  IsPhoneNumber,
 } from 'class-validator';
 import { AdminRole } from '../enums/admin-role.enum';
 
@@ -39,4 +40,12 @@ export class CreateAdminDto {
   @IsOptional()
   @IsEnum(AdminRole)
   role?: AdminRole;
+
+  @ApiProperty({
+    example: '+905551234567',
+    required: false,
+  })
+  @IsOptional()
+  @IsPhoneNumber()
+  phone?: string;
 }

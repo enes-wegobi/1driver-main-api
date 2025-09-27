@@ -26,6 +26,8 @@ import { CampaignsModule } from '../campaigns/campaigns.module';
 import { S3Module } from '../../s3/s3.module';
 import { AdminCampaignsService } from './services/admin-campaigns.service';
 import { AdminCampaignsController } from './controllers/admin-campaigns.controller';
+import { AdminStatisticsService } from './services/admin-statistics.service';
+import { AdminStatisticsController } from './controllers/admin-statistics.controller';
 
 @Module({
   imports: [
@@ -48,6 +50,7 @@ import { AdminCampaignsController } from './controllers/admin-campaigns.controll
     AdminCustomerController,
     AdminDriverController,
     AdminCampaignsController,
+    AdminStatisticsController,
   ],
   providers: [
     AdminUserRepository,
@@ -58,6 +61,7 @@ import { AdminCampaignsController } from './controllers/admin-campaigns.controll
     AdminCustomerService,
     AdminDriverService,
     AdminCampaignsService,
+    AdminStatisticsService,
   ],
   exports: [AdminAuthService],
 })

@@ -32,4 +32,11 @@ export class AdminProfileResponseDto {
     example: AdminRole.SUPER_ADMIN,
   })
   role: AdminRole;
+
+  @ApiProperty({
+    description: 'Admin phone number',
+    example: '+905551234567',
+    required: false,
+  })
+  phone?: string;
 }
