@@ -12,8 +12,8 @@ export class AdminLoginDto {
 
   @ApiProperty({
     description: 'Admin password',
-    example: 'password123',
-    minLength: 6,
+    example: 'password123!',
+    minLength: 8,
   })
   @IsString()
   @IsNotEmpty()

@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsString, MinLength, IsOptional, IsPhoneNumber } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString, MinLength, IsOptional, IsPhoneNumber, Matches } from 'class-validator';
 
 export class CreateNormalAdminDto {
   @ApiProperty({ example: 'admin@example.com' })
@@ -7,10 +7,13 @@ export class CreateNormalAdminDto {
   @IsNotEmpty()
   email: string;
 
-  @ApiProperty({ example: 'StrongPassword123' })
+  @ApiProperty({ example: 'StrongPassword123!' })
   @IsString()
   @IsNotEmpty()
-  @MinLength(6)
+  @MinLength(8, { message: 'Password must be at least 8 characters long' })
+  @Matches(/[!@#$%^&*(),.?":{}|<>]/, {
+    message: 'Password must contain at least one special character',
+  })
   password: string;
 
   @ApiProperty({ example: 'John' })

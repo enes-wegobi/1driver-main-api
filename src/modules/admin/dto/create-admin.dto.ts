@@ -7,6 +7,7 @@ import {
   IsOptional,
   IsEnum,
   IsPhoneNumber,
+  Matches,
 } from 'class-validator';
 import { AdminRole } from '../enums/admin-role.enum';
 
@@ -16,10 +17,13 @@ export class CreateAdminDto {
   @IsNotEmpty()
   email: string;
 
-  @ApiProperty({ example: 'StrongPassword123' })
+  @ApiProperty({ example: 'StrongPassword123!' })
   @IsString()
   @IsNotEmpty()
-  @MinLength(6)
+  @MinLength(8, { message: 'Password must be at least 8 characters long' })
+  @Matches(/[!@#$%^&*(),.?":{}|<>]/, {
+    message: 'Password must contain at least one special character',
+  })
   password: string;
 
   @ApiProperty({ example: 'John' })
