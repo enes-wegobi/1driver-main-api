@@ -85,7 +85,7 @@ export class AdminStatisticsService {
   }
 
   private async getTotalDriversCount(): Promise<number> {
-    const driversResponse = await this.driversService.findAll({ page: 1, limit: 1 });
+    const driversResponse = await this.driversService.findAll({ page: 1, limit: 1, onboardingStatus: 'approved' });
     return driversResponse.total || 0;
   }
 

@@ -29,8 +29,15 @@ export class DriversClient {
       url += `?fields=${encodeURIComponent(fieldsParam)}`;
     }
 
-    const { data } = await this.httpClient.get(url);
-    return data;
+    try {
+      const { data } = await this.httpClient.get(url);
+      return data;
+    } catch (error) {
+      if (error.response?.status === 404) {
+        return null;
+      }
+      throw error;
+    }
   }
 
   async findMany(driverIds: string[]): Promise<any[]> {
@@ -48,12 +55,14 @@ export class DriversClient {
     page?: number;
     limit?: number;
     search?: string;
+    onboardingStatus?: string;
   }): Promise<any> {
     const params = new URLSearchParams();
 
     if (query.page) params.append('page', query.page.toString());
     if (query.limit) params.append('limit', query.limit.toString());
     if (query.search) params.append('search', query.search);
+    if (query.onboardingStatus) params.append('onboardingStatus', query.onboardingStatus);
 
     const { data } = await this.httpClient.get(`/drivers?${params.toString()}`);
     return data;

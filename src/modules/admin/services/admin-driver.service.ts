@@ -26,6 +26,7 @@ export class AdminDriverService {
       page,
       limit,
       search: query.search,
+      onboardingStatus: 'approved',
     });
 
     const mappedDrivers =
@@ -61,8 +62,6 @@ export class AdminDriverService {
       surname: driver.surname,
       email: driver.email,
       phone: driver.phone,
-      onboardingStatus: driver.onboardingStatus,
-      rate: driver.rate,
     };
   }
 

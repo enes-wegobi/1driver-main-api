@@ -21,7 +21,7 @@ export class DriversService {
     return this.driversClient.findMany(driverIds);
   }
 
-  async findAll(query: { page?: number; limit?: number; search?: string }) {
+  async findAll(query: { page?: number; limit?: number; search?: string, onboardingStatus?: string}) {
     return this.driversClient.findAll(query);
   }
 
