@@ -23,7 +23,7 @@ export class AdminCampaignsService {
     let imageUrl: string | undefined;
 
     if (image) {
-      const fileKey = `campaing-photos/${createCampaignDto.code}/${uuidv4()}-${image?.originalname}`;
+      const fileKey = `campaign-photos/${createCampaignDto.code}/${uuidv4()}-${image?.originalname}`;
       await this.s3Service.uploadFileWithKey(image, fileKey);
       imageUrl = this.s3Service.getPublicUrl(fileKey);
     }

@@ -56,7 +56,7 @@ export class AdminCampaignsController {
   })
   @ApiResponse({
     status: HttpStatus.BAD_REQUEST,
-    description: 'Invalid file format or file too large',
+    description: 'Invalid file format or file too large (max 15MB)',
   })
   async createCampaign(
     @Body() createCampaignDto: CreateCampaignDto,
@@ -75,9 +75,9 @@ export class AdminCampaignsController {
         );
       }
 
-      const maxSizeInBytes = 5 * 1024 * 1024; // 5MB
+      const maxSizeInBytes = 15 * 1024 * 1024; // 15MB
       if (image.size > maxSizeInBytes) {
-        throw new BadRequestException('File too large. Maximum size is 5MB');
+        throw new BadRequestException('File too large. Maximum size is 15MB');
       }
     }
 
