@@ -99,7 +99,6 @@ export class TripRepository {
             TripStatus.DRIVER_ON_WAY_TO_PICKUP,
             TripStatus.ARRIVED_AT_PICKUP,
             TripStatus.TRIP_IN_PROGRESS,
-            TripStatus.PAYMENT,
           ],
         },
       })
