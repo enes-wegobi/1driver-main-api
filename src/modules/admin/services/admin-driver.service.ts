@@ -60,8 +60,6 @@ export class AdminDriverService {
     const page = query.page || 1;
     const limit = query.limit || 10;
 
-    const statuses = ['declined', 'waiting_for_documents_approval', 'waiting_for_upload_documents'];
-
     const result = await this.driversService.findAllApplication({
       page,
       limit,
@@ -107,6 +105,7 @@ export class AdminDriverService {
       surname: driver.surname,
       email: driver.email,
       phone: driver.phone,
+      onboardingStatus: driver.onboardingStatus,
     };
   }
 

@@ -15,6 +15,9 @@ export class AdminDriverListItemDto {
 
   @ApiProperty()
   phone: string;
+
+  @ApiProperty()
+  onboardingStatus: string;
 }
 
 export class PaginationDto {
