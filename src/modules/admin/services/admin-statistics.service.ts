@@ -60,16 +60,6 @@ export class AdminStatisticsService {
     return { startDate, endDate };
   }
 
-  private async getTotalTrips(startDate: Date, endDate: Date): Promise<number> {
-    const filter = {
-      createdAt: {
-        $gte: startDate,
-        $lte: endDate,
-      },
-    };
-    return this.tripService.count(filter);
-  }
-
   private async getCompletedTrips(startDate: Date, endDate: Date): Promise<number> {
     const filter = {
       status: TripStatus.COMPLETED,
@@ -82,7 +72,7 @@ export class AdminStatisticsService {
   }
 
   private async getTotalDriversCount(): Promise<number> {
-    const driversResponse = await this.driversService.findAll({ page: 1, limit: 1, onboardingStatus: ['approved'] });
+    const driversResponse = await this.driversService.findAll({ page: 1, limit: 1 });
     return driversResponse.total || 0;
   }
 

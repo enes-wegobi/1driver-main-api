@@ -32,6 +32,7 @@ export class AdminTripController {
   @ApiResponse({
     status: 200,
     description: 'Trips retrieved successfully',
+    type: AdminTripListResponseDto
   })
   async getAllTrips(
     @Query() query: GetAdminTripsQueryDto,

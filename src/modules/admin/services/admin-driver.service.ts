@@ -26,7 +26,6 @@ export class AdminDriverService {
       page,
       limit,
       search: query.search,
-      onboardingStatus: ['approved'],
     });
 
     const mappedDrivers =
@@ -63,11 +62,10 @@ export class AdminDriverService {
 
     const statuses = ['declined', 'waiting_for_documents_approval', 'waiting_for_upload_documents'];
 
-    const result = await this.driversService.findAll({
+    const result = await this.driversService.findAllApplication({
       page,
       limit,
       search: query.search,
-      onboardingStatus: statuses,
     });
 
     const mappedDrivers =

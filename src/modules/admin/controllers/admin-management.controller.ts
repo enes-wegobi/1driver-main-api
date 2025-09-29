@@ -37,7 +37,6 @@ export class AdminManagementController {
 
   @Post('super')
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Create new admin user' })
   @ApiResponse({
     status: 201,
     description: 'Admin created successfully',

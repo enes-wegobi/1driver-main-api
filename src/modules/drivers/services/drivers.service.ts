@@ -21,8 +21,12 @@ export class DriversService {
     return this.driversClient.findMany(driverIds);
   }
 
-  async findAll(query: { page?: number; limit?: number; search?: string, onboardingStatus?: string[]}) {
+  async findAll(query: { page?: number; limit?: number; search?: string}) {
     return this.driversClient.findAll(query);
+  }
+
+  async findAllApplication(query: { page?: number; limit?: number; search?: string}) {
+    return this.driversClient.findAllApplication(query);
   }
 
   async checkFileExists(

@@ -55,7 +55,6 @@ export class DriversClient {
     page?: number;
     limit?: number;
     search?: string;
-    onboardingStatus?: string[];
   }): Promise<any> {
     const params = new URLSearchParams();
 
@@ -63,13 +62,22 @@ export class DriversClient {
     if (query.limit) params.append('limit', query.limit.toString());
     if (query.search) params.append('search', query.search);
 
-    if (query.onboardingStatus) {
-      query.onboardingStatus.forEach(status => {
-        params.append('onboardingStatus[]', status);
-      });
-    }
-
     const { data } = await this.httpClient.get(`/drivers?${params.toString()}`);
+    return data;
+  }
+
+    async findAllApplication(query: {
+    page?: number;
+    limit?: number;
+    search?: string;
+  }): Promise<any> {
+    const params = new URLSearchParams();
+
+    if (query.page) params.append('page', query.page.toString());
+    if (query.limit) params.append('limit', query.limit.toString());
+    if (query.search) params.append('search', query.search);
+
+    const { data } = await this.httpClient.get(`/drivers/applications?${params.toString()}`);
     return data;
   }
 
