@@ -62,7 +62,7 @@ export class AdminManagementService {
   async createNormalAdmin(
     createNormalAdminDto: CreateNormalAdminDto,
   ): Promise<AdminCreateResponseDto> {
-    const { email, password, name, surname } = createNormalAdminDto;
+    const { email, password, name, surname, phone } = createNormalAdminDto;
 
     const existingAdmin = await this.adminUserRepository.findByEmail(email);
     if (existingAdmin) {
@@ -76,6 +76,7 @@ export class AdminManagementService {
       passwordHash,
       name,
       surname,
+      phone,
       role: AdminRole.NORMAL_ADMIN,
     };
 

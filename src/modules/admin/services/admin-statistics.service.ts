@@ -20,25 +20,22 @@ export class AdminStatisticsService {
     const { startDate, endDate } = this.buildDateRange(query);
 
     const [
-      totalTrips,
       completedTrips,
       totalDrivers,
       totalCustomers,
-      costSummaries,
+      totalCost,
     ] = await Promise.all([
-      this.getTotalTrips(startDate, endDate),
       this.getCompletedTrips(startDate, endDate),
       this.getTotalDriversCount(),
       this.getTotalCustomersCount(),
-      this.tripCostSummaryService.getAllCostSummaries(startDate, endDate),
+      this.getTotalCost(startDate, endDate),
     ]);
 
     return {
-      totalTrips,
       completedTrips,
       totalDrivers,
       totalCustomers,
-      costSummaries,
+      totalCost,
     };
   }
 
@@ -92,5 +89,10 @@ export class AdminStatisticsService {
   private async getTotalCustomersCount(): Promise<number> {
     const customersResponse = await this.customersService.findAll({ page: 1, limit: 1 });
     return customersResponse.total || 0;
+  }
+
+  private async getTotalCost(startDate: Date, endDate: Date): Promise<number> {
+    const costSummaries = await this.tripCostSummaryService.getAllCostSummaries(startDate, endDate);
+    return costSummaries.reduce((total, summary) => total + (summary.finalCost || 0), 0);
   }
 }

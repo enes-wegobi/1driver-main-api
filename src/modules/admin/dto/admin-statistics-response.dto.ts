@@ -1,13 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { TripCostSummary } from '../../trip/schemas/trip-cost-summary.schema';
 
 export class AdminStatisticsResponseDto {
-  @ApiProperty({
-    description: 'Total number of trips in date range',
-    example: 150,
-  })
-  totalTrips: number;
-
   @ApiProperty({
     description: 'Number of completed trips in date range',
     example: 80,
@@ -27,8 +20,8 @@ export class AdminStatisticsResponseDto {
   totalCustomers: number;
 
   @ApiProperty({
-    description: 'Cost summaries for trips in date range',
-    type: [TripCostSummary],
+    description: 'Total cost of all trips in date range',
+    example: 1250.50,
   })
-  costSummaries: TripCostSummary[];
+  totalCost: number;
 }
