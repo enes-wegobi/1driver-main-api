@@ -362,6 +362,16 @@ export class TripService {
           UserType.CUSTOMER,
         );
 
+        await this.activeTripService.removeUserActiveTrip(
+          driverId,
+          UserType.DRIVER,
+        );
+
+        await this.driverStatusService.updateDriverAvailability(
+          driverId,
+          DriverAvailabilityStatus.AVAILABLE,
+        );
+
         return { success: true, trip: updatedTrip };
       },
     );
@@ -1252,22 +1262,11 @@ export class TripService {
   }
 
   async cleanupCompletedTrip(
-    driverId: string,
     customerId: string,
   ): Promise<void> {
     await this.activeTripService.removeUserActiveTrip(
-      driverId,
-      UserType.DRIVER,
-    );
-    await this.activeTripService.removeUserActiveTrip(
       customerId,
       UserType.CUSTOMER,
-    );
-
-    // Set driver status back to AVAILABLE when trip is completed
-    await this.driverStatusService.updateDriverAvailability(
-      driverId,
-      DriverAvailabilityStatus.AVAILABLE,
     );
   }
 

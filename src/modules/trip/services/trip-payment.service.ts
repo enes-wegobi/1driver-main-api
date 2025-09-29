@@ -252,7 +252,6 @@ export class TripPaymentService {
 
     await this.tripCostSummaryService.createFromCompletedTrip(updatedTrip);
     await this.tripService.cleanupCompletedTrip(
-      trip.driver.id,
       trip.customer.id,
     );
 
