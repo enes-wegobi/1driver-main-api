@@ -26,7 +26,7 @@ export class AdminDriverService {
       page,
       limit,
       search: query.search,
-      onboardingStatus: 'approved',
+      onboardingStatus: ['approved'],
     });
 
     const mappedDrivers =
@@ -53,6 +53,53 @@ export class AdminDriverService {
     }
 
     return this.mapDriverToDetail(driver);
+  }
+
+  async getAllApplications(
+    query: GetAdminDriversQueryDto,
+  ): Promise<AdminDriverListResponseDto> {
+    const page = query.page || 1;
+    const limit = query.limit || 10;
+
+    const statuses = ['declined', 'waiting_for_documents_approval', 'waiting_for_upload_documents'];
+
+    const result = await this.driversService.findAll({
+      page,
+      limit,
+      search: query.search,
+      onboardingStatus: statuses,
+    });
+
+    const mappedDrivers =
+      result.items?.map((driver) => this.mapDriverToListItem(driver)) || [];
+
+    return {
+      drivers: mappedDrivers,
+      pagination: {
+        page: result.page || page,
+        limit: result.limit || limit,
+        total: result.total || 0,
+        totalPages: result.totalPages || Math.ceil((result.total || 0) / limit),
+      },
+    };
+  }
+
+  async getApplicationById(
+    driverId: string,
+  ): Promise<AdminDriverDetailResponseDto | null> {
+    return this.getDriverById(driverId);
+  }
+
+  async approveApplication(driverId: string): Promise<any> {
+    return this.driversService.approveDriver(driverId);
+  }
+
+  async rejectApplication(driverId: string, reason?: string): Promise<any> {
+    return this.driversService.rejectDriver(driverId, reason);
+  }
+
+  async requestDocumentReupload(driverId: string, message?: string): Promise<any> {
+    return this.driversService.requestDocumentReupload(driverId, message);
   }
 
   private mapDriverToListItem(driver: any): AdminDriverListItemDto {

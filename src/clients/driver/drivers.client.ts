@@ -55,14 +55,19 @@ export class DriversClient {
     page?: number;
     limit?: number;
     search?: string;
-    onboardingStatus?: string;
+    onboardingStatus?: string[];
   }): Promise<any> {
     const params = new URLSearchParams();
 
     if (query.page) params.append('page', query.page.toString());
     if (query.limit) params.append('limit', query.limit.toString());
     if (query.search) params.append('search', query.search);
-    if (query.onboardingStatus) params.append('onboardingStatus', query.onboardingStatus);
+
+    if (query.onboardingStatus) {
+      query.onboardingStatus.forEach(status => {
+        params.append('onboardingStatus[]', status);
+      });
+    }
 
     const { data } = await this.httpClient.get(`/drivers?${params.toString()}`);
     return data;
@@ -251,6 +256,30 @@ export class DriversClient {
 
   async deleteDriver(driverId: string): Promise<any> {
     const { data } = await this.httpClient.delete(`/drivers/${driverId}`);
+    return data;
+  }
+
+  async approveDriver(driverId: string): Promise<any> {
+    const { data } = await this.httpClient.post(
+      `/drivers/${driverId}/approve`,
+      {},
+    );
+    return data;
+  }
+
+  async rejectDriver(driverId: string, reason?: string): Promise<any> {
+    const { data } = await this.httpClient.post(
+      `/drivers/${driverId}/reject`,
+      { reason },
+    );
+    return data;
+  }
+
+  async requestDocumentReupload(driverId: string, message?: string): Promise<any> {
+    const { data } = await this.httpClient.post(
+      `/drivers/${driverId}/request-reupload`,
+      { message },
+    );
     return data;
   }
 }

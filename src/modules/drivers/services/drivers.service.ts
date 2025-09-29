@@ -21,7 +21,7 @@ export class DriversService {
     return this.driversClient.findMany(driverIds);
   }
 
-  async findAll(query: { page?: number; limit?: number; search?: string, onboardingStatus?: string}) {
+  async findAll(query: { page?: number; limit?: number; search?: string, onboardingStatus?: string[]}) {
     return this.driversClient.findAll(query);
   }
 
@@ -144,5 +144,17 @@ export class DriversService {
 
   async deleteDriver(driverId: string): Promise<any> {
     return this.driversClient.deleteDriver(driverId);
+  }
+
+  async approveDriver(driverId: string): Promise<any> {
+    return this.driversClient.approveDriver(driverId);
+  }
+
+  async rejectDriver(driverId: string, reason?: string): Promise<any> {
+    return this.driversClient.rejectDriver(driverId, reason);
+  }
+
+  async requestDocumentReupload(driverId: string, message?: string): Promise<any> {
+    return this.driversClient.requestDocumentReupload(driverId, message);
   }
 }

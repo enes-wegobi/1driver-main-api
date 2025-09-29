@@ -28,6 +28,7 @@ export class AdminManagementService {
       password,
       name,
       surname,
+      phone,
       role = AdminRole.NORMAL_ADMIN,
     } = createAdminDto;
 
@@ -44,6 +45,7 @@ export class AdminManagementService {
       name,
       surname,
       role,
+      phone
     };
 
     const createdAdmin = await this.adminUserRepository.create(adminData);
