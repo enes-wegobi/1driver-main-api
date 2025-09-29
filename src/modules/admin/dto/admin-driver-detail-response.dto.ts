@@ -56,6 +56,9 @@ export class AdminDriverDetailResponseDto {
   photoUrl: string;
 
   @ApiProperty()
+  onboardingStatus: string;
+
+  @ApiProperty()
   rate?: number;
 
   @ApiProperty({ type: [AdminDriverBankInformationDto] })

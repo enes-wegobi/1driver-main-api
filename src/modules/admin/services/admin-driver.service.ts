@@ -125,6 +125,7 @@ export class AdminDriverService {
       phone: driver.phone,
       photoUrl: driver.photoUrl,
       rate: driver.rate,
+      onboardingStatus: driver.onboardingStatus,
       bankInformations,
       drivingLicense,
     };
