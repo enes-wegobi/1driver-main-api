@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Delete,
   Param,
   Query,
@@ -23,6 +24,7 @@ import {
 import { FileInterceptor } from '@nest-lab/fastify-multer';
 import { AdminCampaignsService } from '../services/admin-campaigns.service';
 import { CreateCampaignDto } from '../dto/create-campaign.dto';
+import { UpdateCampaignDto } from '../dto/update-campaign.dto';
 import { AdminCampaignsQueryDto } from '../dto/admin-campaigns-query.dto';
 import {
   AdminCampaignResponseDto,
@@ -125,6 +127,63 @@ export class AdminCampaignsController {
     @Param() params: IdParamDto,
   ): Promise<AdminCampaignResponseDto> {
     return this.adminCampaignsService.getCampaignById(params.id);
+  }
+
+  @Patch(':id')
+  @UseInterceptors(FileInterceptor('image'))
+  @ApiOperation({ summary: 'Update campaign by ID with optional image upload' })
+  @ApiConsumes('multipart/form-data')
+  @ApiParam({
+    name: 'id',
+    description: 'Campaign ID (MongoDB ObjectId)',
+    type: 'string',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Campaign updated successfully',
+    type: AdminCampaignResponseDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Invalid campaign ID format or invalid file format/size',
+  })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Campaign not found',
+  })
+  @ApiResponse({
+    status: HttpStatus.CONFLICT,
+    description: 'Campaign code already exists or invalid date range',
+  })
+  async updateCampaign(
+    @Param() params: IdParamDto,
+    @Body() updateCampaignDto: UpdateCampaignDto,
+    @UploadedFile() image?: Express.Multer.File,
+  ): Promise<AdminCampaignResponseDto> {
+    if (image) {
+      const allowedMimeTypes = [
+        'image/jpeg',
+        'image/png',
+        'image/jpg',
+        'image/webp',
+      ];
+      if (!allowedMimeTypes.includes(image.mimetype)) {
+        throw new BadRequestException(
+          'Invalid file format. Only JPEG, PNG, JPG and WebP are allowed',
+        );
+      }
+
+      const maxSizeInBytes = 15 * 1024 * 1024;
+      if (image.size > maxSizeInBytes) {
+        throw new BadRequestException('File too large. Maximum size is 15MB');
+      }
+    }
+
+    return this.adminCampaignsService.updateCampaign(
+      params.id,
+      updateCampaignDto,
+      image,
+    );
   }
 
   @Delete(':id')

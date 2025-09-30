@@ -88,4 +88,34 @@ export class CampaignsService {
   async findByCode(code: string): Promise<CampaignDocument | null> {
     return this.campaignRepository.findByCode(code);
   }
+
+  async update(
+    id: string,
+    updateData: Partial<CreateCampaignDto>,
+  ): Promise<CampaignDocument> {
+    const existingCampaign = await this.findById(id);
+
+    if (updateData.code && updateData.code !== existingCampaign.code) {
+      const campaignWithCode = await this.campaignRepository.findByCode(
+        updateData.code,
+      );
+      if (campaignWithCode) {
+        throw new ConflictException('Campaign with this code already exists');
+      }
+    }
+
+    const startDate = updateData.startDate || existingCampaign.startDate;
+    const endDate = updateData.endDate || existingCampaign.endDate;
+
+    if (startDate >= endDate) {
+      throw new ConflictException('End date must be after start date');
+    }
+
+    const updated = await this.campaignRepository.update(id, updateData);
+    if (!updated) {
+      throw new NotFoundException('Campaign not found');
+    }
+
+    return updated;
+  }
 }

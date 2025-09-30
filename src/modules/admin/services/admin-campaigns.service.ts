@@ -84,4 +84,47 @@ export class AdminCampaignsService {
   getCampaignTargetGroups(): string[] {
     return Object.values(CampaignTargetGroup);
   }
+
+  async updateCampaign(
+    id: string,
+    updateCampaignDto: Partial<CreateCampaignDto>,
+    image?: Express.Multer.File,
+  ): Promise<AdminCampaignResponseDto> {
+    const existingCampaign = await this.campaignsService.findById(id);
+    let imageUrl = existingCampaign.imageUrl;
+
+    if (image) {
+      if (existingCampaign.imageUrl) {
+        const oldKey = existingCampaign.imageUrl.split('.com/')[1];
+        if (oldKey) {
+          await this.s3Service.deleteFile(oldKey);
+        }
+      }
+
+      const fileKey = `campaign-photos/${updateCampaignDto.code || existingCampaign.code}/${uuidv4()}-${image.originalname}`;
+      await this.s3Service.uploadFileWithKey(image, fileKey);
+      imageUrl = this.s3Service.getPublicUrl(fileKey);
+    }
+
+    const campaignData = {
+      ...updateCampaignDto,
+      ...(image && { imageUrl }),
+    };
+
+    const updatedCampaign = await this.campaignsService.update(id, campaignData);
+
+    return {
+      id: updatedCampaign._id.toString(),
+      name: updatedCampaign.name,
+      startDate: updatedCampaign.startDate,
+      endDate: updatedCampaign.endDate,
+      code: updatedCampaign.code,
+      type: updatedCampaign.type,
+      value: updatedCampaign.value,
+      imageUrl: updatedCampaign.imageUrl,
+      targetGroup: updatedCampaign.targetGroup,
+      description: updatedCampaign.description,
+      status: new Date() > updatedCampaign.endDate ? 'INACTIVE' : 'ACTIVE',
+    };
+  }
 }

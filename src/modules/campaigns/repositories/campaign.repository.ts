@@ -92,4 +92,13 @@ export class CampaignRepository {
       })
       .exec();
   }
+
+  async update(
+    id: string,
+    campaignData: Partial<Campaign>,
+  ): Promise<CampaignDocument | null> {
+    return this.campaignModel
+      .findByIdAndUpdate(id, campaignData, { new: true })
+      .exec();
+  }
 }
