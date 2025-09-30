@@ -64,7 +64,7 @@ export class AdminCampaignsController {
     @Body() createCampaignDto: CreateCampaignDto,
     @UploadedFile() image?: Express.Multer.File,
   ): Promise<AdminCampaignResponseDto> {
-    if (image) {
+    if (image && image.size > 0) {
       const allowedMimeTypes = [
         'image/jpeg',
         'image/png',
@@ -160,7 +160,7 @@ export class AdminCampaignsController {
     @Body() updateCampaignDto: UpdateCampaignDto,
     @UploadedFile() image?: Express.Multer.File,
   ): Promise<AdminCampaignResponseDto> {
-    if (image) {
+    if (image && image.size > 0) {
       const allowedMimeTypes = [
         'image/jpeg',
         'image/png',

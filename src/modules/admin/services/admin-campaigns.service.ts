@@ -41,6 +41,7 @@ export class AdminCampaignsService {
 
     const transformedData: AdminCampaignListItemDto[] = result.data.map((campaign) => ({
       id: campaign._id.toString(),
+      name: campaign.name,
       startDate: campaign.startDate,
       endDate: campaign.endDate,
       code: campaign.code,
@@ -93,7 +94,7 @@ export class AdminCampaignsService {
     const existingCampaign = await this.campaignsService.findById(id);
     let imageUrl = existingCampaign.imageUrl;
 
-    if (image) {
+    if (image && image.size > 0) {
       if (existingCampaign.imageUrl) {
         const oldKey = existingCampaign.imageUrl.split('.com/')[1];
         if (oldKey) {

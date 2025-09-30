@@ -9,6 +9,12 @@ export class AdminCampaignListItemDto {
   id: string;
 
   @ApiProperty({
+    description: 'Campaign name',
+    example: 'Summer Campaign',
+  })
+  name: string;
+
+  @ApiProperty({
     description: 'Campaign start date',
     example: '2024-01-01T00:00:00.000Z',
   })

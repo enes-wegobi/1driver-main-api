@@ -36,7 +36,7 @@ export class CampaignRepository {
 
     return this.campaignModel
       .find(query)
-      .select('_id startDate endDate code type imageUrl')
+      .select('_id startDate endDate code type imageUrl name')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
