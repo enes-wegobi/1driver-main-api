@@ -97,7 +97,7 @@ export class AdminCampaignsService {
       if (existingCampaign.imageUrl) {
         const oldKey = existingCampaign.imageUrl.split('.com/')[1];
         if (oldKey) {
-          await this.s3Service.deleteFile(oldKey);
+          this.s3Service.deleteFile(oldKey).catch(() => {});
         }
       }
 

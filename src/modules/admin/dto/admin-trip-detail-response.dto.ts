@@ -42,6 +42,9 @@ export class AdminTripDetailResponseDto {
   paymentMethodBrand?: string;
 
   @ApiProperty()
+  paymentMethodLast4?: string;
+
+  @ApiProperty()
   finalCost: number;
 
   @ApiProperty()

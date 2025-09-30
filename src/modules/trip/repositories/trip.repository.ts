@@ -208,7 +208,7 @@ export class TripRepository {
     const filter: any = {
       'driver.id': driverId,
       status: {
-        $in: [TripStatus.COMPLETED, TripStatus.CANCELLED],
+        $in: [TripStatus.COMPLETED, TripStatus.CANCELLED, TripStatus.PAYMENT],
       },
     };
 

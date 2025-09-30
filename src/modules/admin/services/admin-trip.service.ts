@@ -62,15 +62,17 @@ export class AdminTripService {
     }
 
     let paymentMethodBrand: string | undefined;
+    let paymentMethodLast4: string | undefined;
     if (trip.paymentMethodId) {
       const paymentMethod =
         await this.paymentMethodService.getPaymentMethodById(
           trip.paymentMethodId,
         );
       paymentMethodBrand = paymentMethod?.brand;
+      paymentMethodLast4 = paymentMethod?.last4;
     }
 
-    return this.mapTripToDetail(trip, paymentMethodBrand);
+    return this.mapTripToDetail(trip, paymentMethodBrand, paymentMethodLast4);
   }
 
   private mapTripToListItem(trip: TripDocument): AdminTripListItemDto {
@@ -90,6 +92,7 @@ export class AdminTripService {
   private mapTripToDetail(
     trip: TripDocument,
     paymentMethodBrand: string | undefined,
+    paymentMethodLast4: string | undefined,
   ): AdminTripDetailResponseDto {
     return {
       id: trip._id.toString(),
@@ -102,6 +105,7 @@ export class AdminTripService {
       rating: trip.rating,
       comment: trip.customerComment,
       paymentMethodBrand: paymentMethodBrand,
+      paymentMethodLast4: paymentMethodLast4,
       finalCost: trip.finalCost,
       status: trip.status,
       paymentStatus: trip.paymentStatus,
