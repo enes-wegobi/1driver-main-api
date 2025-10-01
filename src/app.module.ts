@@ -29,6 +29,7 @@ import { AuthEventsModule } from './events/auth-events.module';
 import { SMSModule } from './modules/sms/sms.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { CampaignsModule } from './modules/campaigns/campaigns.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { CampaignsModule } from './modules/campaigns/campaigns.module';
     DriversModule,
     TripModule,
     ExpoNotificationsModule,
+    NotificationsModule,
     SupportTicketsModule,
     LocationModule,
     QueueModule,
