@@ -2271,4 +2271,12 @@ export class TripService {
 
     return this.tripRepository.countDocuments(updatedFilter);
   }
+
+  async getCompletedTripsCount(customerId: string): Promise<number> {
+    return this.tripRepository.countCompletedTripsByCustomerId(customerId);
+  }
+
+  async getLastCompletedTripDate(customerId: string): Promise<Date | null> {
+    return this.tripRepository.getLastCompletedTripDate(customerId);
+  }
 }

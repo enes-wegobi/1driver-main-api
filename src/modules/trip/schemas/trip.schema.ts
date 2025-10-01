@@ -82,6 +82,10 @@ export class Trip extends EntityDocumentHelper {
 
   @Prop()
   tripEndTime: Date;
+
+  createdAt: Date;
+
+  updatedAt: Date;
 }
 
 export const TripSchema = SchemaFactory.createForClass(Trip);

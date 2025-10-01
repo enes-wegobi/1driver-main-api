@@ -313,4 +313,27 @@ export class TripRepository {
   async countDocuments(filter: any = {}): Promise<number> {
     return this.tripModel.countDocuments(filter);
   }
+
+  async countCompletedTripsByCustomerId(customerId: string): Promise<number> {
+    return this.tripModel.countDocuments({
+      'customer.id': customerId,
+      status: TripStatus.COMPLETED,
+    });
+  }
+
+  async getLastCompletedTripDate(
+    customerId: string,
+  ): Promise<Date | null> {
+    const trip = await this.tripModel
+      .findOne({
+        'customer.id': customerId,
+        status: TripStatus.COMPLETED,
+      })
+      .select('createdAt')
+      .sort({ createdAt: -1 })
+      .lean()
+      .exec();
+
+    return trip ? trip.createdAt : null;
+  }
 }

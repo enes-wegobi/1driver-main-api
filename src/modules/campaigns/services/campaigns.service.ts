@@ -4,8 +4,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { CampaignRepository } from '../repositories/campaign.repository';
-import { Campaign, CampaignDocument } from '../schemas/campaign.schema';
+import { CampaignDocument } from '../schemas/campaign.schema';
 import { CampaignTargetGroup, CampaignType } from '../enums';
+import { CampaignEligibilityService } from './campaign-eligibility.service';
 
 export interface CreateCampaignDto {
   name: string;
@@ -21,7 +22,10 @@ export interface CreateCampaignDto {
 
 @Injectable()
 export class CampaignsService {
-  constructor(private readonly campaignRepository: CampaignRepository) {}
+  constructor(
+    private readonly campaignRepository: CampaignRepository,
+    private readonly eligibilityService: CampaignEligibilityService,
+  ) {}
 
   async create(
     createCampaignDto: CreateCampaignDto,
@@ -117,5 +121,35 @@ export class CampaignsService {
     }
 
     return updated;
+  }
+
+  async findEligibleCampaignsForUser(
+    userId: string,
+  ): Promise<CampaignDocument[]> {
+    const [activeCampaigns, eligibilityData] = await Promise.all([
+      this.campaignRepository.findActiveCampaigns(),
+      this.eligibilityService.getUserEligibilityData(userId),
+    ]);
+
+    const eligibleCampaigns: CampaignDocument[] = [];
+
+    for (const campaign of activeCampaigns) {
+      const isEligible = this.eligibilityService.isUserEligibleForTargetGroup(
+        campaign.targetGroup,
+        eligibilityData,
+      );
+
+      if (isEligible) {
+        eligibleCampaigns.push(campaign);
+      }
+    }
+
+    return eligibleCampaigns;
+  }
+
+  async getCampaignDetailsForUser(
+    campaignId: string,
+  ): Promise<CampaignDocument> {
+    return this.findById(campaignId);
   }
 }
