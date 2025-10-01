@@ -26,6 +26,7 @@ import { QueueModule } from '../../queue/queue.module';
 import { DriversModule } from '../drivers/drivers.module';
 import { LockModule } from 'src/lock/lock.module';
 import { TripEventsService } from '../../events/trip-events.service';
+import { CampaignsModule } from '../campaigns/campaigns.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { TripEventsService } from '../../events/trip-events.service';
     forwardRef(() => PaymentsModule),
     forwardRef(() => QueueModule),
     forwardRef(() => DriversModule),
+    forwardRef(() => CampaignsModule),
   ],
   providers: [
     TripService,

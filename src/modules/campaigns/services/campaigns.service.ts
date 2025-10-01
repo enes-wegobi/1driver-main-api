@@ -7,6 +7,7 @@ import { CampaignRepository } from '../repositories/campaign.repository';
 import { CampaignDocument } from '../schemas/campaign.schema';
 import { CampaignTargetGroup, CampaignType } from '../enums';
 import { CampaignEligibilityService } from './campaign-eligibility.service';
+import { EligibleCampaignDto } from '../dto/eligible-campaigns-response.dto';
 
 export interface CreateCampaignDto {
   name: string;
@@ -125,7 +126,7 @@ export class CampaignsService {
 
   async findEligibleCampaignsForUser(
     userId: string,
-  ): Promise<CampaignDocument[]> {
+  ): Promise<EligibleCampaignDto[]> {
     const [activeCampaigns, eligibilityData] = await Promise.all([
       this.campaignRepository.findActiveCampaigns(),
       this.eligibilityService.getUserEligibilityData(userId),
@@ -144,12 +145,18 @@ export class CampaignsService {
       }
     }
 
-    return eligibleCampaigns;
-  }
-
-  async getCampaignDetailsForUser(
-    campaignId: string,
-  ): Promise<CampaignDocument> {
-    return this.findById(campaignId);
+    return eligibleCampaigns.map((campaign) => ({
+      id: campaign._id.toString(),
+      name: campaign.name,
+      startDate: campaign.startDate,
+      endDate: campaign.endDate,
+      code: campaign.code,
+      type: campaign.type,
+      imageUrl: campaign.imageUrl,
+      value: campaign.value,
+      targetGroup: campaign.targetGroup,
+      description: campaign.description,
+      status: campaign.status,
+    }));
   }
 }

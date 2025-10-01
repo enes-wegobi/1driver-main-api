@@ -1,4 +1,4 @@
-import { BadRequestException, HttpStatus, Injectable } from '@nestjs/common';
+import { BadRequestException, HttpStatus, Injectable, Inject, forwardRef } from '@nestjs/common';
 import { TripRepository } from '../repositories/trip.repository';
 import { CreateTripDto } from '../dto/create-trip.dto';
 import { TripDocument } from '../schemas/trip.schema';
@@ -42,7 +42,11 @@ import { EstimateTripDto } from '../dto/estimate-trip.dto';
 import { LockService } from 'src/lock/lock.service';
 import { LoggerService } from 'src/logger/logger.service';
 import { TripEventsService } from 'src/events/trip-events.service';
-import { TripCostSummaryService } from './trip-cost-summary.service';
+import { CampaignsService } from '../../campaigns/services/campaigns.service';
+import { CampaignUsageRepository } from '../../campaigns/repositories/campaign-usage.repository';
+import { CampaignEligibilityService } from '../../campaigns/services/campaign-eligibility.service';
+import { CampaignType } from '../../campaigns/enums';
+import { Types } from 'mongoose';
 
 export interface TripOperationResult {
   success: boolean;
@@ -92,6 +96,12 @@ export class TripService {
     private readonly event2Service: Event2Service,
     private readonly logger: LoggerService,
     private readonly tripEventsService: TripEventsService,
+    @Inject(forwardRef(() => CampaignsService))
+    private readonly campaignsService: CampaignsService,
+    @Inject(forwardRef(() => CampaignUsageRepository))
+    private readonly campaignUsageRepository: CampaignUsageRepository,
+    @Inject(forwardRef(() => CampaignEligibilityService))
+    private readonly campaignEligibilityService: CampaignEligibilityService,
   ) {}
 
   // ================================
@@ -2278,5 +2288,369 @@ export class TripService {
 
   async getLastCompletedTripDate(customerId: string): Promise<Date | null> {
     return this.tripRepository.getLastCompletedTripDate(customerId);
+  }
+
+  async applyCampaignToTrip(
+    tripId: string,
+    customerId: string,
+    couponCode: string,
+  ): Promise<TripOperationResult> {
+    return this.lockService.executeWithLock(
+      `trip:${tripId}`,
+      async () => {
+        return this.executeWithErrorHandling(
+          'applying campaign to trip',
+          async () => {
+            const trip = await this.getTrip(tripId);
+
+            if (trip.customer.id !== customerId) {
+              throw new BadRequestException(
+                'You are not authorized to apply campaign to this trip',
+              );
+            }
+
+            if (trip.status !== TripStatus.PAYMENT) {
+              throw new BadRequestException(
+                'Campaign can only be applied to trips in PAYMENT status',
+              );
+            }
+
+            if (trip.appliedCampaign) {
+              throw new BadRequestException(
+                'A campaign has already been applied to this trip. Please remove it first.',
+              );
+            }
+
+            const campaign = await this.campaignsService.findByCode(couponCode);
+            if (!campaign) {
+              throw new BadRequestException('Invalid campaign code');
+            }
+
+            const now = new Date();
+            if (now < campaign.startDate || now > campaign.endDate) {
+              throw new BadRequestException('Campaign is not active');
+            }
+
+            const eligibilityData =
+              await this.campaignEligibilityService.getUserEligibilityData(
+                customerId,
+              );
+            const isEligible =
+              this.campaignEligibilityService.isUserEligibleForTargetGroup(
+                campaign.targetGroup,
+                eligibilityData,
+              );
+
+            if (!isEligible) {
+              throw new BadRequestException(
+                'You are not eligible for this campaign',
+              );
+            }
+
+            let discountAmount = 0;
+            if (campaign.type === CampaignType.PERCENTAGE) {
+              discountAmount = (trip.finalCost * campaign.value) / 100;
+            } else if (campaign.type === CampaignType.AMOUNT) {
+              discountAmount = campaign.value;
+            }
+
+            discountAmount = Math.round(discountAmount * 100) / 100;
+
+            const newFinalCost = Math.max(0, trip.finalCost - discountAmount);
+
+            const updateData = {
+              originalFinalCost: trip.finalCost,
+              finalCost: newFinalCost,
+              appliedCampaign: {
+                campaignId: campaign._id.toString(),
+                code: campaign.code,
+                discountAmount,
+              },
+            };
+
+            const updatedTrip = await this.updateTripWithData(tripId, updateData);
+
+            await this.campaignUsageRepository.create({
+              campaignId: new Types.ObjectId(campaign._id),
+              tripId: new Types.ObjectId(tripId),
+              customerId,
+              discountAmount,
+            });
+
+            this.logger.info(
+              `Campaign ${campaign.code} applied to trip ${tripId}. Discount: ${discountAmount} AED`,
+            );
+
+            return { success: true, trip: updatedTrip };
+          },
+        );
+      },
+      'Trip campaign application is currently being processed. Please try again.',
+      30000,
+      2,
+    );
+  }
+
+  async removeCampaignFromTrip(
+    tripId: string,
+    customerId: string,
+  ): Promise<TripOperationResult> {
+    return this.lockService.executeWithLock(
+      `trip:${tripId}`,
+      async () => {
+        return this.executeWithErrorHandling(
+          'removing campaign from trip',
+          async () => {
+            const trip = await this.getTrip(tripId);
+
+            if (trip.customer.id !== customerId) {
+              throw new BadRequestException(
+                'You are not authorized to remove campaign from this trip',
+              );
+            }
+
+            if (trip.status !== TripStatus.PAYMENT) {
+              throw new BadRequestException(
+                'Campaign can only be removed from trips in PAYMENT status',
+              );
+            }
+
+            if (!trip.appliedCampaign) {
+              throw new BadRequestException(
+                'No campaign has been applied to this trip',
+              );
+            }
+
+            const updateData = {
+              $set: {
+                finalCost: trip.originalFinalCost || trip.finalCost,
+              },
+              $unset: {
+                originalFinalCost: '',
+                appliedCampaign: '',
+              },
+            };
+
+            const updatedTrip = await this.updateTripWithData(tripId, updateData);
+
+            await this.campaignUsageRepository.deleteByTripId(tripId);
+
+            return { success: true, trip: updatedTrip };
+          },
+        );
+      },
+      'Trip campaign removal is currently being processed. Please try again.',
+      30000,
+      2,
+    );
+  }
+
+  async applyCampaignToActiveTrip(
+    customerId: string,
+    campaignId: string,
+  ): Promise<ActiveTripResult> {
+    const tripId = await this.getUserActiveTripId(
+      customerId,
+      UserType.CUSTOMER,
+    );
+
+    return this.lockService.executeWithLock(
+      `trip:${tripId}`,
+      async () => {
+        return this.executeWithErrorHandling(
+          'applying campaign to active trip',
+          async () => {
+            const trip = await this.getTrip(tripId);
+
+            if (trip.customer.id !== customerId) {
+              throw new BadRequestException(
+                'You are not authorized to apply campaign to this trip',
+              );
+            }
+
+            if (trip.status !== TripStatus.PAYMENT) {
+              throw new BadRequestException(
+                'Campaign can only be applied to trips in PAYMENT status',
+              );
+            }
+
+            if (trip.appliedCampaign) {
+              throw new BadRequestException(
+                'A campaign has already been applied to this trip. Please remove it first.',
+              );
+            }
+
+            const campaign = await this.campaignsService.findById(campaignId);
+            if (!campaign) {
+              throw new BadRequestException('Campaign not found');
+            }
+
+            const now = new Date();
+            if (now < campaign.startDate || now > campaign.endDate) {
+              throw new BadRequestException('Campaign is not active');
+            }
+
+            const eligibilityData =
+              await this.campaignEligibilityService.getUserEligibilityData(
+                customerId,
+              );
+            const isEligible =
+              this.campaignEligibilityService.isUserEligibleForTargetGroup(
+                campaign.targetGroup,
+                eligibilityData,
+              );
+
+            if (!isEligible) {
+              throw new BadRequestException(
+                'You are not eligible for this campaign',
+              );
+            }
+
+            let discountAmount = 0;
+            if (campaign.type === CampaignType.PERCENTAGE) {
+              discountAmount = (trip.finalCost * campaign.value) / 100;
+            } else if (campaign.type === CampaignType.AMOUNT) {
+              discountAmount = campaign.value;
+            }
+
+            discountAmount = Math.round(discountAmount * 100) / 100;
+
+            const newFinalCost = Math.max(0, trip.finalCost - discountAmount);
+
+            const updateData = {
+              originalFinalCost: trip.finalCost,
+              finalCost: newFinalCost,
+              appliedCampaign: {
+                campaignId: campaign._id.toString(),
+                code: campaign.code,
+                discountAmount,
+              },
+            };
+
+            const updatedTrip = await this.updateTripWithData(tripId, updateData);
+
+            await this.campaignUsageRepository.create({
+              campaignId: new Types.ObjectId(campaign._id),
+              tripId: new Types.ObjectId(tripId),
+              customerId,
+              discountAmount,
+            });
+
+            this.logger.info(
+              `Campaign ${campaign.code} applied to active trip ${tripId}. Discount: ${discountAmount} AED`,
+            );
+
+            const result: ActiveTripResult = {
+              success: true,
+              trip: updatedTrip,
+            };
+
+            if (updatedTrip.driver && updatedTrip.driver.id) {
+              try {
+                const driverLocation = await this.locationService.getUserLocation(
+                  updatedTrip.driver.id,
+                );
+                result.driverLocation = driverLocation;
+              } catch (error) {
+                this.logger.warn(
+                  `Failed to fetch driver location for trip ${tripId}: ${error.message}`,
+                );
+                result.driverLocation = null;
+              }
+            } else {
+              result.driverLocation = null;
+            }
+
+            return result;
+          },
+        );
+      },
+      'Trip campaign application is currently being processed. Please try again.',
+      30000,
+      2,
+    );
+  }
+
+  async removeCampaignFromActiveTrip(
+    customerId: string,
+  ): Promise<ActiveTripResult> {
+    const tripId = await this.getUserActiveTripId(
+      customerId,
+      UserType.CUSTOMER,
+    );
+
+    return this.lockService.executeWithLock(
+      `trip:${tripId}`,
+      async () => {
+        return this.executeWithErrorHandling(
+          'removing campaign from active trip',
+          async () => {
+            const trip = await this.getTrip(tripId);
+
+            if (trip.customer.id !== customerId) {
+              throw new BadRequestException(
+                'You are not authorized to remove campaign from this trip',
+              );
+            }
+
+            if (trip.status !== TripStatus.PAYMENT) {
+              throw new BadRequestException(
+                'Campaign can only be removed from trips in PAYMENT status',
+              );
+            }
+
+            if (!trip.appliedCampaign) {
+              throw new BadRequestException(
+                'No campaign has been applied to this trip',
+              );
+            }
+
+            const updateData = {
+              $set: {
+                finalCost: trip.originalFinalCost || trip.finalCost,
+              },
+              $unset: {
+                originalFinalCost: '',
+                appliedCampaign: '',
+              },
+            };
+
+            const updatedTrip = await this.updateTripWithData(tripId, updateData);
+
+            await this.campaignUsageRepository.deleteByTripId(tripId);
+
+            this.logger.info(
+              `Campaign removed from active trip ${tripId}`,
+            );
+
+            const result: ActiveTripResult = {
+              success: true,
+              trip: updatedTrip,
+            };
+
+            if (updatedTrip.driver && updatedTrip.driver.id) {
+              try {
+                const driverLocation = await this.locationService.getUserLocation(
+                  updatedTrip.driver.id,
+                );
+                result.driverLocation = driverLocation;
+              } catch (error) {
+                this.logger.warn(
+                  `Failed to fetch driver location for trip ${tripId}: ${error.message}`,
+                );
+                result.driverLocation = null;
+              }
+            } else {
+              result.driverLocation = null;
+            }
+
+            return result;
+          },
+        );
+      },
+      'Trip campaign removal is currently being processed. Please try again.',
+      30000,
+      2,
+    );
   }
 }

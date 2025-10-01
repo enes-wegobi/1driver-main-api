@@ -16,6 +16,7 @@ import { CampaignsService } from '../services/campaigns.service';
 import { JwtAuthGuard } from 'src/jwt/guards/jwt.guard';
 import { GetUser } from 'src/jwt/user.decorator';
 import { IJwtPayload } from 'src/jwt/jwt-payload.interface';
+import { EligibleCampaignDto } from '../dto/eligible-campaigns-response.dto';
 
 @ApiTags('Customer Campaigns')
 @ApiBearerAuth()
@@ -31,27 +32,11 @@ export class CustomerCampaignsController {
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Eligible campaigns retrieved successfully',
+    type: [EligibleCampaignDto],
   })
-  async getEligibleCampaigns(@GetUser() user: IJwtPayload) {
+  async getEligibleCampaigns(
+    @GetUser() user: IJwtPayload,
+  ): Promise<EligibleCampaignDto[]> {
     return this.campaignsService.findEligibleCampaignsForUser(user.userId);
-  }
-
-  @Get(':id')
-  @ApiOperation({ summary: 'Get campaign details by ID' })
-  @ApiParam({
-    name: 'id',
-    description: 'Campaign ID (MongoDB ObjectId)',
-    type: 'string',
-  })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Campaign details retrieved successfully',
-  })
-  @ApiResponse({
-    status: HttpStatus.NOT_FOUND,
-    description: 'Campaign not found',
-  })
-  async getCampaignById(@Param('id') id: string) {
-    return this.campaignsService.getCampaignDetailsForUser(id);
   }
 }

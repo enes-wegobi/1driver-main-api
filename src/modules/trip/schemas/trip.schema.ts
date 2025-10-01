@@ -65,6 +65,22 @@ export class Trip extends EntityDocumentHelper {
   @Prop()
   finalCost: number;
 
+  @Prop()
+  originalFinalCost: number;
+
+  @Prop({
+    type: {
+      campaignId: String,
+      code: String,
+      discountAmount: Number,
+    },
+  })
+  appliedCampaign: {
+    campaignId: string;
+    code: string;
+    discountAmount: number;
+  };
+
   @Prop({ type: [String], default: [] })
   calledDriverIds: string[];
 

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject, forwardRef } from '@nestjs/common';
 import { TripService } from '../../trip/services/trip.service';
 import { CampaignTargetGroup } from '../enums';
 
@@ -9,7 +9,10 @@ export interface UserEligibilityData {
 
 @Injectable()
 export class CampaignEligibilityService {
-  constructor(private readonly tripService: TripService) {}
+  constructor(
+    @Inject(forwardRef(() => TripService))
+    private readonly tripService: TripService,
+  ) {}
 
   async getUserEligibilityData(
     userId: string,
