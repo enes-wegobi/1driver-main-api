@@ -8,6 +8,9 @@ export class PaginatedNotificationsResponseDto {
   @ApiProperty({ example: 45, description: 'Total number of notifications' })
   total: number;
 
+  @ApiProperty({ example: 12, description: 'Number of unread notifications' })
+  unreadCount: number;
+
   @ApiProperty({ example: 1, description: 'Current page number' })
   page: number;
 

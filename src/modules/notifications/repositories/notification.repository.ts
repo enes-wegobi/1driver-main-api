@@ -49,6 +49,10 @@ export class NotificationRepository {
     return this.notificationModel.countDocuments({ userId, userType });
   }
 
+  async countUnreadByUserId(userId: string, userType: UserType): Promise<number> {
+    return this.notificationModel.countDocuments({ userId, userType, isRead: false });
+  }
+
   async markAsRead(notificationId: string): Promise<NotificationDocument | null> {
     return this.notificationModel
       .findByIdAndUpdate(

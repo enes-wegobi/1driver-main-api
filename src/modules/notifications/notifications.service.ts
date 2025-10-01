@@ -108,12 +108,10 @@ export class NotificationsService {
     userType: UserType,
     query: GetNotificationsQueryDto,
   ) {
-    const { notifications, total } = await this.notificationRepository.findByUserId(
-      userId,
-      userType,
-      query.page,
-      query.limit,
-    );
+    const [{ notifications, total }, unreadCount] = await Promise.all([
+      this.notificationRepository.findByUserId(userId, userType, query.page, query.limit),
+      this.notificationRepository.countUnreadByUserId(userId, userType),
+    ]);
 
     return {
       notifications: notifications.map((n) => ({
@@ -126,6 +124,7 @@ export class NotificationsService {
         readAt: n.readAt,
       })),
       total,
+      unreadCount,
       page: query.page,
       limit: query.limit,
       totalPages: Math.ceil(total / (query.limit ?? 20)),
