@@ -2475,9 +2475,8 @@ export class TripService {
             }
 
             if (trip.appliedCampaign) {
-              throw new BadRequestException(
-                'A campaign has already been applied to this trip. Please remove it first.',
-              );
+              await this.campaignUsageRepository.deleteByTripId(tripId);
+              trip.finalCost = trip.originalFinalCost || trip.finalCost;
             }
 
             const campaign = await this.campaignsService.findById(campaignId);
