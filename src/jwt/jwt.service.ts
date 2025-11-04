@@ -24,6 +24,13 @@ export class JwtService {
     }
   }
 
+  generateToken(payload: object): string {
+    return this.jwtService.sign(payload, {
+      secret: this.configService.get<string>('jwt.secret'),
+      expiresIn: '180d',
+    });
+  }
+
   /**
    * Decodes a JWT token without validating it
    * @param token The token to decode

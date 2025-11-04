@@ -99,7 +99,6 @@ export class TripRepository {
             TripStatus.DRIVER_ON_WAY_TO_PICKUP,
             TripStatus.ARRIVED_AT_PICKUP,
             TripStatus.TRIP_IN_PROGRESS,
-            TripStatus.PAYMENT,
           ],
         },
       })
@@ -209,7 +208,7 @@ export class TripRepository {
     const filter: any = {
       'driver.id': driverId,
       status: {
-        $in: [TripStatus.COMPLETED, TripStatus.CANCELLED],
+        $in: [TripStatus.COMPLETED, TripStatus.CANCELLED, TripStatus.PAYMENT],
       },
     };
 
@@ -295,5 +294,46 @@ export class TripRepository {
       totalEarnings: result[0].totalEarnings || 0,
       totalDuration: result[0].totalDuration || 0,
     };
+  }
+
+  async findWithPagination(
+    filter: any = {},
+    options: { skip?: number; limit?: number; sort?: any } = {},
+  ): Promise<TripDocument[]> {
+    const { skip = 0, limit = 10, sort = { createdAt: -1 } } = options;
+
+    return this.tripModel
+      .find(filter)
+      .sort(sort)
+      .skip(skip)
+      .limit(limit)
+      .lean();
+  }
+
+  async countDocuments(filter: any = {}): Promise<number> {
+    return this.tripModel.countDocuments(filter);
+  }
+
+  async countCompletedTripsByCustomerId(customerId: string): Promise<number> {
+    return this.tripModel.countDocuments({
+      'customer.id': customerId,
+      status: TripStatus.COMPLETED,
+    });
+  }
+
+  async getLastCompletedTripDate(
+    customerId: string,
+  ): Promise<Date | null> {
+    const trip = await this.tripModel
+      .findOne({
+        'customer.id': customerId,
+        status: TripStatus.COMPLETED,
+      })
+      .select('createdAt')
+      .sort({ createdAt: -1 })
+      .lean()
+      .exec();
+
+    return trip ? trip.createdAt : null;
   }
 }

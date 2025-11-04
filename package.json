@@ -17,7 +17,8 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "seed:admin": "ts-node -r tsconfig-paths/register src/seeders/admin-super-admin.seeder.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.787.0",
@@ -47,7 +48,9 @@
     "@sentry/profiling-node": "^9.38.0",
     "@sentry/tracing": "^7.120.3",
     "@socket.io/redis-adapter": "^8.3.0",
+    "@types/bcrypt": "^6.0.0",
     "axios": "^1.8.4",
+    "bcrypt": "^6.0.0",
     "bullmq": "^5.53.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",

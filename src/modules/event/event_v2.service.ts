@@ -1,6 +1,6 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { WebSocketService } from 'src/websocket/websocket.service';
-import { DriversService } from 'src/modules/drivers/drivers.service';
+import { DriversService } from 'src/modules/drivers/services/drivers.service';
 import { CustomersService } from 'src/modules/customers/customers.service';
 import { ExpoNotificationsService } from 'src/modules/expo-notifications/expo-notifications.service';
 import { DriverStatusService } from 'src/redis/services/driver-status.service';
@@ -457,17 +457,29 @@ export class Event2Service {
     body: string;
   } {
     const notificationMap = {
+      [EventType.TRIP_REQUESTED]: {
+        title: 'Trip Requested',
+        body: 'Your trip request has been submitted successfully.',
+      },
       [EventType.TRIP_DRIVER_ASSIGNED]: {
         title: 'Trip Approved',
         body: 'A driver has approved your trip request!',
       },
-      [EventType.TRIP_DRIVER_NOT_FOUND]: {
-        title: 'No Drivers Available',
-        body: "We couldn't find any available drivers for your trip.",
+      [EventType.TRIP_ALREADY_TAKEN]: {
+        title: 'Trip Unavailable',
+        body: 'This trip has already been taken by another driver.',
+      },
+      [EventType.TRIP_REJECTED]: {
+        title: 'Trip Request Declined',
+        body: 'Your trip request was declined. We are looking for another driver.',
       },
       [EventType.TRIP_CANCELLED]: {
         title: 'Trip Cancelled',
         body: 'Your trip has been cancelled.',
+      },
+      [EventType.TRIP_COMPLETED]: {
+        title: 'Trip Completed',
+        body: 'Your trip has been completed successfully. Thank you for riding with us!',
       },
       [EventType.TRIP_DRIVER_EN_ROUTE]: {
         title: 'Driver En Route',
@@ -481,9 +493,53 @@ export class Event2Service {
         title: 'Trip Started',
         body: 'Your trip has started.',
       },
+      [EventType.TRIP_DRIVER_NOT_FOUND]: {
+        title: 'No Drivers Available',
+        body: "We couldn't find any available drivers for your trip.",
+      },
       [EventType.TRIP_PAYMENT_REQUIRED]: {
         title: 'Payment Required',
         body: 'Please complete payment for your trip.',
+      },
+      [EventType.TRIP_PAYMENT_STARTED]: {
+        title: 'Processing Payment',
+        body: 'Your payment is being processed.',
+      },
+      [EventType.TRIP_PAYMENT_PROCESSING]: {
+        title: 'Payment Processing',
+        body: 'Please wait while we process your payment.',
+      },
+      [EventType.TRIP_PAYMENT_SUCCESS]: {
+        title: 'Payment Successful',
+        body: 'Your payment has been processed successfully.',
+      },
+      [EventType.TRIP_PAYMENT_FAILED]: {
+        title: 'Payment Failed',
+        body: 'Payment could not be processed. Please try again or use a different payment method.',
+      },
+      [EventType.TRIP_PAYMENT_RETRY]: {
+        title: 'Payment Retry',
+        body: 'Retrying your payment. Please wait.',
+      },
+      [EventType.DRIVER_LOCATION_UPDATED]: {
+        title: 'Driver Location Updated',
+        body: 'Your driver location has been updated.',
+      },
+      [EventType.DRIVER_STATUS_CHANGED]: {
+        title: 'Driver Status Changed',
+        body: 'Your driver status has been updated.',
+      },
+      [EventType.CUSTOMER_LOCATION_UPDATED]: {
+        title: 'Location Updated',
+        body: 'Your location has been updated.',
+      },
+      [EventType.NOTIFICATION]: {
+        title: 'Notification',
+        body: 'You have a new notification.',
+      },
+      [EventType.ERROR]: {
+        title: 'System Alert',
+        body: 'We encountered an issue. Please try again or contact support if the problem persists.',
       },
     };
 

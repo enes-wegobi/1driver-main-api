@@ -30,8 +30,15 @@ export class CustomersClient {
       url += `?fields=${encodeURIComponent(fieldsParam)}`;
     }
 
-    const { data } = await this.httpClient.get(url);
-    return data;
+    try {
+      const { data } = await this.httpClient.get(url);
+      return data;
+    } catch (error) {
+      if (error.response?.status === 404) {
+        return null;
+      }
+      throw error;
+    }
   }
 
   async updateProfile(
@@ -208,6 +215,32 @@ export class CustomersClient {
     const { data } = await this.httpClient.patch(`/drivers/${driverId}/rate`, {
       rate,
     });
+    return data;
+  }
+
+  async findAll(options?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+  }): Promise<any> {
+    let url = '/customers';
+    const params = new URLSearchParams();
+
+    if (options?.page) {
+      params.append('page', options.page.toString());
+    }
+    if (options?.limit) {
+      params.append('limit', options.limit.toString());
+    }
+    if (options?.search) {
+      params.append('search', options.search);
+    }
+
+    if (params.toString()) {
+      url += `?${params.toString()}`;
+    }
+
+    const { data } = await this.httpClient.get(url);
     return data;
   }
 }

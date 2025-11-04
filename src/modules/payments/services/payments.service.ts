@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { StripeService } from './stripe.service';
 import { CustomersService } from '../../customers/customers.service';
 import { PaymentRepository } from '../repositories/payment.repository';

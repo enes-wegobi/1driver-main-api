@@ -35,6 +35,7 @@ import { RequestDriverDto } from '../dto/request-driver.dto';
 import { TripStatus } from 'src/common/enums/trip-status.enum';
 import { UserType } from 'src/common/user-type.enum';
 import { ActiveTripService } from 'src/redis/services/active-trip.service';
+import { ApplyCampaignByIdDto } from '../dto/apply-campaign-by-id.dto';
 
 @ApiTags('customer-trips')
 @Controller('customer-trips')
@@ -353,5 +354,56 @@ export class CustomersTripsController {
     @GetUser() user: IJwtPayload,
   ) {
     return await this.tripService.getTripDetailForCustomer(tripId, user.userId);
+  }
+
+  @Post('active/apply-campaign')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Apply campaign to active trip',
+    description:
+      'Apply a campaign to reduce the final cost of the active trip. Campaign must be active and customer must be eligible.',
+  })
+  @ApiBody({ type: ApplyCampaignByIdDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Campaign applied successfully',
+  })
+  @ApiResponse({
+    status: 400,
+    description:
+      'Invalid campaign ID, campaign not active, customer not eligible, or trip not in PAYMENT status',
+  })
+  async applyCampaign(
+    @Body() applyCampaignDto: ApplyCampaignByIdDto,
+    @GetUser() user: IJwtPayload,
+  ) {
+    return await this.tripService.applyCampaignToActiveTrip(
+      user.userId,
+      applyCampaignDto.campaignId,
+    );
+  }
+
+  @Delete('active/remove-campaign')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Remove applied campaign from active trip',
+    description:
+      'Remove the applied campaign from the active trip and restore the original final cost.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Campaign removed successfully',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'No campaign applied to trip or trip not in PAYMENT status',
+  })
+  async removeCampaign(
+    @GetUser() user: IJwtPayload,
+  ) {
+    return await this.tripService.removeCampaignFromActiveTrip(user.userId);
   }
 }

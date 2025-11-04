@@ -1,9 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import {
-  IsDateString,
-  IsOptional,
-  IsString,
-} from 'class-validator';
+import { IsDateString, IsOptional, IsString } from 'class-validator';
 
 export class UpdateDriverProfileDto {
   @ApiProperty({
@@ -32,5 +28,4 @@ export class UpdateDriverProfileDto {
   @IsOptional()
   @IsDateString()
   dateOfBirth?: string;
-
 }

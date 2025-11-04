@@ -393,8 +393,8 @@ export class HealthService {
   private analyzeConnections(sockets: any[]) {
     let drivers = 0;
     let customers = 0;
-    let healthy = sockets.length; // RemoteSocket objects are always connected
-    let unhealthy = 0;
+    const healthy = sockets.length; // RemoteSocket objects are always connected
+    const unhealthy = 0;
     let totalPingTime = 0;
     let pingCount = 0;
 

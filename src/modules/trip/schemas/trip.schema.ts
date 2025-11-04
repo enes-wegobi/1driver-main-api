@@ -65,6 +65,22 @@ export class Trip extends EntityDocumentHelper {
   @Prop()
   finalCost: number;
 
+  @Prop()
+  originalFinalCost: number;
+
+  @Prop({
+    type: {
+      campaignId: String,
+      code: String,
+      discountAmount: Number,
+    },
+  })
+  appliedCampaign: {
+    campaignId: string;
+    code: string;
+    discountAmount: number;
+  };
+
   @Prop({ type: [String], default: [] })
   calledDriverIds: string[];
 
@@ -82,6 +98,10 @@ export class Trip extends EntityDocumentHelper {
 
   @Prop()
   tripEndTime: Date;
+
+  createdAt: Date;
+
+  updatedAt: Date;
 }
 
 export const TripSchema = SchemaFactory.createForClass(Trip);
@@ -116,7 +136,6 @@ TripSchema.index(
           TripStatus.DRIVER_ON_WAY_TO_PICKUP,
           TripStatus.ARRIVED_AT_PICKUP,
           TripStatus.TRIP_IN_PROGRESS,
-          TripStatus.PAYMENT,
         ],
       },
     },

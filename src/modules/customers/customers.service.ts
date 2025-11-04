@@ -22,8 +22,11 @@ export class CustomersService {
 
   async findOne(id: string, fields?: string | string[]) {
     const customer = await this.customersClient.findOne(id, fields);
-
     return customer;
+  }
+
+  async findAll(options?: { page?: number; limit?: number; search?: string }) {
+    return this.customersClient.findAll(options);
   }
 
   async updateProfile(id: string, profileData: UpdateCustomerDto) {
@@ -43,8 +46,7 @@ export class CustomersService {
   }
 
   async initiatePhoneUpdate(userId: string, dto: InitiatePhoneUpdateDto) {
-    const result =
-      await this.customersClient.initiatePhoneUpdate(userId, dto);
+    const result = await this.customersClient.initiatePhoneUpdate(userId, dto);
 
     if (result?.otp) {
       this.sendOTPSMS(dto.newPhone, result.otp).catch((error) => {
@@ -117,19 +119,19 @@ export class CustomersService {
     return this.customersClient.updateDriverRate(driverId, rate);
   }
 
-    private async sendOTPSMS(phone: string, otp: string): Promise<void> {
-      try {
-        const smsDto = new SendSMSDto();
-        smsDto.messageType = MessageType.OTP;
-        smsDto.message = 'OTP Verification';
-        smsDto.mobileNumber = phone;
-        smsDto.otpCode = otp;
-  
-        await this.smsService.sendSMS(smsDto);
-        this.logger.info(`OTP SMS sent successfully to ${phone}`);
-      } catch (error) {
-        this.logger.error(`Failed to send OTP SMS to ${phone}: ${error.message}`);
-        throw error;
-      }
+  private async sendOTPSMS(phone: string, otp: string): Promise<void> {
+    try {
+      const smsDto = new SendSMSDto();
+      smsDto.messageType = MessageType.OTP;
+      smsDto.message = 'OTP Verification';
+      smsDto.mobileNumber = phone;
+      smsDto.otpCode = otp;
+
+      await this.smsService.sendSMS(smsDto);
+      this.logger.info(`OTP SMS sent successfully to ${phone}`);
+    } catch (error) {
+      this.logger.error(`Failed to send OTP SMS to ${phone}: ${error.message}`);
+      throw error;
     }
+  }
 }
