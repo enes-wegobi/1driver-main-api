@@ -12,16 +12,12 @@ import {
   InitiateEmailUpdateDto,
   InitiatePhoneUpdateDto,
 } from '../customer/dto';
-import { LoggerService } from 'src/logger/logger.service';
 
 @Injectable()
 export class DriversClient {
   private readonly httpClient: AxiosInstance;
 
-  constructor(
-    private readonly clientsService: ClientsService,
-    private readonly logger: LoggerService,
-  ) {
+  constructor(private readonly clientsService: ClientsService) {
     this.httpClient = this.clientsService.createHttpClient('users');
   }
 
@@ -33,8 +29,15 @@ export class DriversClient {
       url += `?fields=${encodeURIComponent(fieldsParam)}`;
     }
 
-    const { data } = await this.httpClient.get(url);
-    return data;
+    try {
+      const { data } = await this.httpClient.get(url);
+      return data;
+    } catch (error) {
+      if (error.response?.status === 404) {
+        return null;
+      }
+      throw error;
+    }
   }
 
   async findMany(driverIds: string[]): Promise<any[]> {
@@ -45,6 +48,36 @@ export class DriversClient {
     const { data } = await this.httpClient.post('/drivers', {
       driverIds,
     });
+    return data;
+  }
+
+  async findAll(query: {
+    page?: number;
+    limit?: number;
+    search?: string;
+  }): Promise<any> {
+    const params = new URLSearchParams();
+
+    if (query.page) params.append('page', query.page.toString());
+    if (query.limit) params.append('limit', query.limit.toString());
+    if (query.search) params.append('search', query.search);
+
+    const { data } = await this.httpClient.get(`/drivers?${params.toString()}`);
+    return data;
+  }
+
+    async findAllApplication(query: {
+    page?: number;
+    limit?: number;
+    search?: string;
+  }): Promise<any> {
+    const params = new URLSearchParams();
+
+    if (query.page) params.append('page', query.page.toString());
+    if (query.limit) params.append('limit', query.limit.toString());
+    if (query.search) params.append('search', query.search);
+
+    const { data } = await this.httpClient.get(`/drivers/applications?${params.toString()}`);
     return data;
   }
 
@@ -89,19 +122,6 @@ export class DriversClient {
     return data;
   }
 
-  async verifyFile(
-    driverId: string,
-    fileType: FileType,
-    isVerified: boolean,
-  ): Promise<any> {
-    const { data } = await this.httpClient.put(
-      `/drivers/${driverId}/files/${fileType}/verify`,
-      { isVerified },
-    );
-    return data;
-  }
-
-  // Bank Information Methods
   async addBankInformation(
     driverId: string,
     bankInfoDto: CreateBankInformationDto,
@@ -141,7 +161,6 @@ export class DriversClient {
     return data;
   }
 
-  // Email and Phone Update Methods
   async initiateEmailUpdate(
     driverId: string,
     dto: InitiateEmailUpdateDto,
@@ -235,14 +254,6 @@ export class DriversClient {
     return data;
   }
 
-  async setActiveTrip(driverId: string, dto: SetActiveTripDto): Promise<any> {
-    const { data } = await this.httpClient.put(
-      `/drivers/${driverId}/active-trip`,
-      dto,
-    );
-    return data;
-  }
-
   async updateCustomerRate(customerId: string, rate: number): Promise<any> {
     const { data } = await this.httpClient.patch(
       `/customers/${customerId}/rate`,
@@ -253,6 +264,30 @@ export class DriversClient {
 
   async deleteDriver(driverId: string): Promise<any> {
     const { data } = await this.httpClient.delete(`/drivers/${driverId}`);
+    return data;
+  }
+
+  async approveDriver(driverId: string): Promise<any> {
+    const { data } = await this.httpClient.post(
+      `/drivers/${driverId}/approve`,
+      {},
+    );
+    return data;
+  }
+
+  async rejectDriver(driverId: string, reason?: string): Promise<any> {
+    const { data } = await this.httpClient.post(
+      `/drivers/${driverId}/reject`,
+      { reason },
+    );
+    return data;
+  }
+
+  async requestDocumentReupload(driverId: string, message?: string): Promise<any> {
+    const { data } = await this.httpClient.post(
+      `/drivers/${driverId}/request-reupload`,
+      { message },
+    );
     return data;
   }
 }

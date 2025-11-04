@@ -1,7 +1,5 @@
-import { IsNotEmpty, IsString, IsArray, ValidateNested } from 'class-validator';
+import { IsNotEmpty, IsString, IsArray } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { CustomerDto } from './customer.dto';
 
 export class CallDriversDto {
   @ApiProperty({

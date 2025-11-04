@@ -5,7 +5,6 @@ import {
   HttpCode,
   HttpStatus,
   UseGuards,
-  Logger,
 } from '@nestjs/common';
 import {
   ApiOperation,
@@ -76,9 +75,7 @@ export class LocationController {
     }
 
     try {
-        this.logger.debug(
-        `location payload: ${JSON.stringify(payload)}`,
-      );
+      this.logger.debug(`location payload: ${JSON.stringify(payload)}`);
       const result = await this.locationService.updateDriverLocation(
         user.userId,
         payload,

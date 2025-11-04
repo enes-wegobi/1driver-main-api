@@ -1,0 +1,162 @@
+import {
+  Injectable,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
+import { CampaignRepository } from '../repositories/campaign.repository';
+import { CampaignDocument } from '../schemas/campaign.schema';
+import { CampaignTargetGroup, CampaignType } from '../enums';
+import { CampaignEligibilityService } from './campaign-eligibility.service';
+import { EligibleCampaignDto } from '../dto/eligible-campaigns-response.dto';
+
+export interface CreateCampaignDto {
+  name: string;
+  startDate: Date;
+  endDate: Date;
+  code: string;
+  type: CampaignType;
+  imageUrl?: string;
+  value: number;
+  targetGroup: CampaignTargetGroup;
+  description?: string;
+}
+
+@Injectable()
+export class CampaignsService {
+  constructor(
+    private readonly campaignRepository: CampaignRepository,
+    private readonly eligibilityService: CampaignEligibilityService,
+  ) {}
+
+  async create(
+    createCampaignDto: CreateCampaignDto,
+  ): Promise<CampaignDocument> {
+    const existingCampaign = await this.campaignRepository.findByCode(
+      createCampaignDto.code,
+    );
+    if (existingCampaign) {
+      throw new ConflictException('Campaign with this code already exists');
+    }
+
+    if (createCampaignDto.startDate >= createCampaignDto.endDate) {
+      throw new ConflictException('End date must be after start date');
+    }
+
+    return this.campaignRepository.create(createCampaignDto);
+  }
+
+  async findAll(page: number = 1, limit: number = 10, search?: string) {
+    const [campaigns, total] = await Promise.all([
+      this.campaignRepository.findAll(page, limit, search),
+      this.campaignRepository.count(search),
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data: campaigns,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+      },
+    };
+  }
+
+  async findById(id: string): Promise<CampaignDocument> {
+    const campaign = await this.campaignRepository.findById(id);
+    if (!campaign) {
+      throw new NotFoundException('Campaign not found');
+    }
+    return campaign;
+  }
+
+  async deleteById(id: string): Promise<CampaignDocument> {
+    const campaign = await this.campaignRepository.deleteById(id);
+    if (!campaign) {
+      throw new NotFoundException('Campaign not found');
+    }
+    return campaign;
+  }
+
+  async findActiveCampaigns(): Promise<CampaignDocument[]> {
+    return this.campaignRepository.findActiveCampaigns();
+  }
+
+  async findByTargetGroup(
+    targetGroup: CampaignTargetGroup,
+  ): Promise<CampaignDocument[]> {
+    return this.campaignRepository.findByTargetGroup(targetGroup);
+  }
+
+  async findByCode(code: string): Promise<CampaignDocument | null> {
+    return this.campaignRepository.findByCode(code);
+  }
+
+  async update(
+    id: string,
+    updateData: Partial<CreateCampaignDto>,
+  ): Promise<CampaignDocument> {
+    const existingCampaign = await this.findById(id);
+
+    if (updateData.code && updateData.code !== existingCampaign.code) {
+      const campaignWithCode = await this.campaignRepository.findByCode(
+        updateData.code,
+      );
+      if (campaignWithCode) {
+        throw new ConflictException('Campaign with this code already exists');
+      }
+    }
+
+    const startDate = updateData.startDate || existingCampaign.startDate;
+    const endDate = updateData.endDate || existingCampaign.endDate;
+
+    if (startDate >= endDate) {
+      throw new ConflictException('End date must be after start date');
+    }
+
+    const updated = await this.campaignRepository.update(id, updateData);
+    if (!updated) {
+      throw new NotFoundException('Campaign not found');
+    }
+
+    return updated;
+  }
+
+  async findEligibleCampaignsForUser(
+    userId: string,
+  ): Promise<EligibleCampaignDto[]> {
+    const [activeCampaigns, eligibilityData] = await Promise.all([
+      this.campaignRepository.findActiveCampaigns(),
+      this.eligibilityService.getUserEligibilityData(userId),
+    ]);
+
+    const eligibleCampaigns: CampaignDocument[] = [];
+
+    for (const campaign of activeCampaigns) {
+      const isEligible = this.eligibilityService.isUserEligibleForTargetGroup(
+        campaign.targetGroup,
+        eligibilityData,
+      );
+
+      if (isEligible) {
+        eligibleCampaigns.push(campaign);
+      }
+    }
+
+    return eligibleCampaigns.map((campaign) => ({
+      id: campaign._id.toString(),
+      name: campaign.name,
+      startDate: campaign.startDate,
+      endDate: campaign.endDate,
+      code: campaign.code,
+      type: campaign.type,
+      imageUrl: campaign.imageUrl,
+      value: campaign.value,
+      targetGroup: campaign.targetGroup,
+      description: campaign.description,
+      status: campaign.status,
+    }));
+  }
+}

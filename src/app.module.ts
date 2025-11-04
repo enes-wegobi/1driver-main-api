@@ -13,7 +13,6 @@ import { WebSocketModule } from './websocket/websocket.module';
 import { RedisModule } from './redis/redis.module';
 import { S3Module } from './s3/s3.module';
 import { DriversModule } from './modules/drivers/drivers.module';
-import { PromotionsModule } from './modules/promotions/promotions.module';
 import { ExpoNotificationsModule } from './modules/expo-notifications/expo-notifications.module';
 import { TripModule } from './modules/trip/trip.module';
 import { SupportTicketsModule } from './modules/support-tickets/support-tickets.module';
@@ -28,6 +27,9 @@ import { TripEventsService } from './events/trip-events.service';
 import { TripApprovalHandler } from './events/handlers/trip-approval.handler';
 import { AuthEventsModule } from './events/auth-events.module';
 import { SMSModule } from './modules/sms/sms.module';
+import { AdminModule } from './modules/admin/admin.module';
+import { CampaignsModule } from './modules/campaigns/campaigns.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 
 @Module({
   imports: [
@@ -42,6 +44,7 @@ import { SMSModule } from './modules/sms/sms.module';
     LoggerModule,
     JwtModule,
     AuthModule,
+    AdminModule,
     CustomersModule,
     ContentModule,
     WebSocketModule,
@@ -49,8 +52,8 @@ import { SMSModule } from './modules/sms/sms.module';
     S3Module,
     DriversModule,
     TripModule,
-    PromotionsModule,
     ExpoNotificationsModule,
+    NotificationsModule,
     SupportTicketsModule,
     LocationModule,
     QueueModule,
@@ -58,6 +61,7 @@ import { SMSModule } from './modules/sms/sms.module';
     HealthModule,
     AuthEventsModule,
     SMSModule,
+    CampaignsModule,
   ],
   providers: [
     {

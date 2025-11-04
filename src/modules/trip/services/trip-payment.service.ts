@@ -17,6 +17,7 @@ import { UserType } from 'src/common/user-type.enum';
 import { DriverEarningsService } from 'src/modules/drivers/services/driver-earnings.service';
 import { LockService } from 'src/lock/lock.service';
 import { LoggerService } from 'src/logger/logger.service';
+import { TripCostSummaryService } from './trip-cost-summary.service';
 
 export interface TripPaymentResult {
   success: boolean;
@@ -39,6 +40,8 @@ export class TripPaymentService {
     private readonly lockService: LockService,
     private readonly driverEarningsService: DriverEarningsService,
     private readonly logger: LoggerService,
+    private readonly tripCostSummaryService: TripCostSummaryService,
+    
   ) {}
 
   async processTripPayment(
@@ -247,8 +250,8 @@ export class TripPaymentService {
       },
     );
 
+    await this.tripCostSummaryService.createFromCompletedTrip(updatedTrip);
     await this.tripService.cleanupCompletedTrip(
-      trip.driver.id,
       trip.customer.id,
     );
 

@@ -11,7 +11,10 @@ export class AppVersionService {
     private readonly logger: LoggerService,
   ) {}
 
-  checkForceUpdate(appType: AppType, currentVersion: string): AppStartupResponseDto {
+  checkForceUpdate(
+    appType: AppType,
+    currentVersion: string,
+  ): AppStartupResponseDto {
     const latestVersion = this.getAppVersion(appType);
     const forceUpdate = this.isVersionLower(currentVersion, latestVersion);
     return {
@@ -23,15 +26,24 @@ export class AppVersionService {
   private getAppVersion(appType: AppType): string {
     switch (appType) {
       case AppType.DRIVER:
-        return this.configService.get<string>('appVersion.driverLatestVersion', '1.0.0');
+        return this.configService.get<string>(
+          'appVersion.driverLatestVersion',
+          '1.0.0',
+        );
       case AppType.CUSTOMER:
-        return this.configService.get<string>('appVersion.customerLatestVersion', '1.0.0');
+        return this.configService.get<string>(
+          'appVersion.customerLatestVersion',
+          '1.0.0',
+        );
       default:
         return '1.0.0';
     }
   }
 
-  private isVersionLower(currentVersion: string, latestVersion: string): boolean {
+  private isVersionLower(
+    currentVersion: string,
+    latestVersion: string,
+  ): boolean {
     try {
       const current = this.parseVersion(currentVersion);
       const latest = this.parseVersion(latestVersion);
@@ -39,7 +51,7 @@ export class AppVersionService {
       if (current.major !== latest.major) {
         return current.major < latest.major;
       }
-      
+
       return current.minor < latest.minor;
     } catch (error) {
       this.logger.warn(
@@ -49,7 +61,11 @@ export class AppVersionService {
     }
   }
 
-  private parseVersion(version: string): { major: number; minor: number; patch: number } {
+  private parseVersion(version: string): {
+    major: number;
+    minor: number;
+    patch: number;
+  } {
     const parts = version.split('.');
     if (parts.length !== 3) {
       throw new Error(`Invalid version format: ${version}`);

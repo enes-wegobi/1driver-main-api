@@ -104,7 +104,7 @@ export class ConfigService {
     return this.configService.get<string>(
       'stripe.apiVersion',
       '2025-04-30.basil',
-    )!;
+    );
   }
 
   get stripeWebhookSecret(): string {
@@ -112,7 +112,7 @@ export class ConfigService {
   }
 
   get tripMongoUser(): string {
-    return this.configService.get('trip.mongoUser')!!;
+    return this.configService.get('trip.mongoUser')!;
   }
 
   get tripMongoUri(): string {
@@ -135,10 +135,16 @@ export class ConfigService {
   }
 
   get mobileTripCancellableTimeMinutes(): number {
-    return this.configService.get<number>('mobileConfig.tripCancellableTimeMinutes', 5);
+    return this.configService.get<number>(
+      'mobileConfig.tripCancellableTimeMinutes',
+      5,
+    );
   }
 
   get mobileConfigCacheTtlSeconds(): number {
-    return this.configService.get<number>('mobileConfig.configCacheTtlSeconds', 3600);
+    return this.configService.get<number>(
+      'mobileConfig.configCacheTtlSeconds',
+      3600,
+    );
   }
 }
